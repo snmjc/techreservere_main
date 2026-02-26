@@ -1,0 +1,360 @@
+/* ===== AI GENERATED: AdminManageFacilitiesPage Styles ===== */
+/* Purpose: Styles for admin manage facilities page, venue list, and equipment grid */
+/* Scope: AdminManageFacilitiesPage.vue, FacilityVenueListComponent.vue, FacilityEquipmentGridComponent.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.manage-facilities-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1rem;
+}
+
+/* ========================================= */
+/* TABS ROW (Venue | Equipment)              */
+/* ========================================= */
+
+.manage-facilities-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.manage-facilities-tab-button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #888888;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.manage-facilities-tab-button:hover {
+  color: #333333;
+}
+
+.manage-facilities-tab-button--active {
+  color: #1a6e3a;
+  border-bottom-color: #1a6e3a;
+}
+
+.manage-facilities-tab-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #cccccc;
+}
+
+/* ========================================= */
+/* TOOLBAR (Action buttons row)              */
+/* ========================================= */
+
+.manage-facilities-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.manage-facilities-toolbar-spacer {
+  flex: 1;
+}
+
+.manage-facilities-edit-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #333333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.manage-facilities-edit-button:hover {
+  background-color: #444444;
+}
+
+.manage-facilities-add-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #333333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.manage-facilities-add-button:hover {
+  background-color: #444444;
+}
+
+/* ========================================= */
+/* FILTER PILLS (All / Available / Unavail)  */
+/* ========================================= */
+
+.manage-facilities-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.manage-facilities-filter-pill {
+  padding: 0.4rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #cccccc;
+  border-radius: 20px;
+  background-color: #ffffff;
+  color: #555555;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.manage-facilities-filter-pill:hover {
+  background-color: #f0f0f0;
+}
+
+.manage-facilities-filter-pill--active {
+  background-color: #1a6e3a;
+  color: #ffffff;
+  border-color: #1a6e3a;
+}
+
+.manage-facilities-filter-pill--active:hover {
+  background-color: #15803d;
+}
+
+/* ========================================= */
+/* SHOWING ROW + LEGEND                      */
+/* ========================================= */
+
+.manage-facilities-showing-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.manage-facilities-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-facilities-showing-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+}
+
+.manage-facilities-showing-select {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.manage-facilities-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.manage-facilities-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+.manage-facilities-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.manage-facilities-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #555555;
+}
+
+.manage-facilities-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.manage-facilities-legend-dot--available {
+  background-color: #16a34a;
+}
+
+.manage-facilities-legend-dot--unavailable {
+  background-color: #dc2626;
+}
+
+/* ========================================= */
+/* VENUE LIST                                */
+/* ========================================= */
+
+.facility-venue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.facility-venue-floor-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.facility-venue-floor-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #777777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.facility-venue-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.facility-venue-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.facility-venue-chip--available {
+  background-color: #16a34a;
+}
+
+.facility-venue-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.facility-venue-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ========================================= */
+/* EQUIPMENT GRID                            */
+/* ========================================= */
+
+.facility-equipment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.facility-equipment-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.facility-equipment-chip--available {
+  background-color: #16a34a;
+}
+
+.facility-equipment-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.facility-equipment-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.manage-facilities-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .manage-facilities-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-facilities-toolbar-spacer {
+    display: none;
+  }
+
+  .manage-facilities-legend {
+    margin-left: 0;
+  }
+
+  .manage-facilities-page-heading {
+    font-size: 1.25rem;
+  }
+}

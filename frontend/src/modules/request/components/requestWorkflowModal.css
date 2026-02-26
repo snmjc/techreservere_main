@@ -1,0 +1,264 @@
+/* ===== AI GENERATED: RequestWorkflowModal Styles ===== */
+/* Purpose: Styles for the workflow view modal overlay and content */
+/* Scope: RequestWorkflowModalComponent.vue */
+
+/* ========================================= */
+/* OVERLAY                                   */
+/* ========================================= */
+
+.request-workflow-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+/* ========================================= */
+/* CONTAINER                                 */
+/* ========================================= */
+
+.request-workflow-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  animation: workflowModalFadeIn 0.2s ease;
+}
+
+@keyframes workflowModalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================= */
+/* CLOSE BUTTON                              */
+/* ========================================= */
+
+.request-workflow-modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.request-workflow-modal-close-button:hover {
+  background-color: #f0f0f0;
+  color: #333333;
+}
+
+/* ========================================= */
+/* HEADING                                   */
+/* ========================================= */
+
+.request-workflow-modal-heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #d97706;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* DETAILS                                   */
+/* ========================================= */
+
+.request-workflow-modal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.request-workflow-modal-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.request-workflow-modal-row--split {
+  justify-content: space-between;
+}
+
+.request-workflow-modal-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.request-workflow-modal-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.request-workflow-modal-field--right {
+  text-align: right;
+}
+
+.request-workflow-modal-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.request-workflow-modal-value {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #555555;
+}
+
+.request-workflow-modal-value--status {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.request-workflow-modal-divider {
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 0.5rem 0;
+}
+
+/* ========================================= */
+/* SECTION + SUMMARY TABLE                   */
+/* ========================================= */
+
+.request-workflow-modal-section {
+  margin-top: 0.25rem;
+}
+
+.request-workflow-modal-section-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 0.4rem;
+}
+
+.request-workflow-modal-summary-table {
+  width: 100%;
+  max-width: 320px;
+  border-collapse: collapse;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.request-workflow-modal-summary-cell {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.request-workflow-modal-summary-cell--count {
+  text-align: right;
+  font-weight: 600;
+  width: 60px;
+}
+
+/* ========================================= */
+/* ACTION BUTTONS                            */
+/* ========================================= */
+
+.request-workflow-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.request-workflow-modal-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.request-workflow-modal-action-button:active {
+  transform: scale(0.97);
+}
+
+/* Deploy/Release — green */
+.request-workflow-modal-action-button--deploy {
+  background-color: #16a34a;
+}
+
+.request-workflow-modal-action-button--deploy:hover {
+  background-color: #15803d;
+}
+
+/* Edit Workflow — dark gray */
+.request-workflow-modal-action-button--edit {
+  background-color: #444444;
+}
+
+.request-workflow-modal-action-button--edit:hover {
+  background-color: #333333;
+}
+
+/* Cancel — red */
+.request-workflow-modal-action-button--cancel {
+  background-color: #dc2626;
+}
+
+.request-workflow-modal-action-button--cancel:hover {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .request-workflow-modal-container {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .request-workflow-modal-row--split {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .request-workflow-modal-actions {
+    flex-direction: column;
+  }
+
+  .request-workflow-modal-action-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

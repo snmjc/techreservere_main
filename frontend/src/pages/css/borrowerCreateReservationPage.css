@@ -1,0 +1,142 @@
+/* ===== AI GENERATED: BorrowerCreateReservationPage Styles ===== */
+/* Purpose: Styles for borrower create reservation form page */
+/* Scope: BorrowerCreateReservationPage.vue */
+
+/* ========================================= */
+/* PAGE HEADER                               */
+/* ========================================= */
+
+.create-reservation-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.create-reservation-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+}
+
+.create-reservation-next-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d97706;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.create-reservation-next-link:hover {
+  color: #b45309;
+}
+
+/* ========================================= */
+/* FORM CARD                                 */
+/* ========================================= */
+
+.create-reservation-form-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.create-reservation-form-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 1.5rem;
+}
+
+/* ========================================= */
+/* FORM ROWS                                 */
+/* ========================================= */
+
+.create-reservation-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.create-reservation-form-label {
+  flex-shrink: 0;
+  width: 180px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444444;
+  text-align: right;
+}
+
+.create-reservation-form-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: #333333;
+  background-color: #f9f9f9;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+  outline: none;
+  max-width: 320px;
+  transition: border-color 0.15s ease;
+}
+
+.create-reservation-form-input:focus {
+  border-color: #1a8a4a;
+}
+
+.create-reservation-form-select {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: #333333;
+  background-color: #f9f9f9;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+  outline: none;
+  max-width: 320px;
+  cursor: pointer;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.create-reservation-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .create-reservation-form-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .create-reservation-form-label {
+    text-align: left;
+    width: auto;
+  }
+
+  .create-reservation-form-input,
+  .create-reservation-form-select {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .create-reservation-form-card {
+    padding: 1.5rem;
+  }
+}

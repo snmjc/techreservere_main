@@ -1,0 +1,339 @@
+/* ===== AI GENERATED: LoginPage Styles ===== */
+/* Purpose: Styles for the login page layout, branding panel, and form panel */
+/* Scope: LoginPage.vue and AuthenticationLoginFormComponent.vue */
+
+/* ========================================= */
+/* LOGIN PAGE LAYOUT                         */
+/* ========================================= */
+
+.login-page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* ========================================= */
+/* LEFT PANEL — BRANDING                     */
+/* ========================================= */
+
+.login-page-branding-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50%;
+  background: linear-gradient(135deg, #0d5e2f 0%, #1a8a4a 50%, #0d5e2f 100%);
+  overflow: hidden;
+}
+
+.login-page-branding-overlay {
+  position: absolute;
+  inset: 0;
+  background: url('../assets/feu-building-bg.jpg') center / cover no-repeat;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.login-page-branding-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+  max-width: 420px;
+}
+
+.login-page-logo {
+  width: 180px;
+  height: 180px;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.login-page-brand-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.5px;
+}
+
+.login-page-brand-tech {
+  color: #ffffff;
+}
+
+.login-page-brand-reserve {
+  color: #f5b731;
+}
+
+.login-page-brand-subtitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.login-page-brand-description {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.login-page-brand-description strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ========================================= */
+/* RIGHT PANEL — FORM                        */
+/* ========================================= */
+
+.login-page-form-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 50%;
+  background-color: #f0f0f0;
+  overflow: hidden;
+}
+
+.login-page-form-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  border: 40px solid rgba(0, 100, 50, 0.04);
+  pointer-events: none;
+}
+
+.login-page-form-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem;
+}
+
+.login-page-footer {
+  position: absolute;
+  bottom: 1.5rem;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* LOGIN FORM COMPONENT                      */
+/* ========================================= */
+
+.login-form-container {
+  width: 100%;
+}
+
+.login-form-heading {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.login-form-field-group {
+  margin-bottom: 1.25rem;
+}
+
+.login-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 0.4rem;
+}
+
+.login-form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 24px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-form-input:focus {
+  border-color: #1a8a4a;
+  box-shadow: 0 0 0 3px rgba(26, 138, 74, 0.15);
+}
+
+.login-form-input::placeholder {
+  color: #aaaaaa;
+}
+
+/* ========================================= */
+/* OPTIONS ROW (Remember + Forgot)           */
+/* ========================================= */
+
+.login-form-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+.login-form-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #555555;
+  cursor: pointer;
+}
+
+.login-form-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #1a8a4a;
+  cursor: pointer;
+}
+
+.login-form-forgot-link {
+  font-size: 0.85rem;
+  color: #1a8a4a;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.login-form-forgot-link:hover {
+  color: #145a30;
+  text-decoration: underline;
+}
+
+/* ========================================= */
+/* SUBMIT BUTTON                             */
+/* ========================================= */
+
+.login-form-submit-button {
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #1a8a4a;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  letter-spacing: 0.3px;
+}
+
+.login-form-submit-button:hover:not(:disabled) {
+  background-color: #145a30;
+}
+
+.login-form-submit-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.login-form-submit-button:disabled {
+  background-color: #88c4a0;
+  cursor: not-allowed;
+}
+
+/* ========================================= */
+/* ERROR MESSAGE                             */
+/* ========================================= */
+
+.login-form-error-message {
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* ========================================= */
+/* SIGN UP PROMPT                            */
+/* ========================================= */
+
+.login-form-signup-prompt {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: #666666;
+  text-align: center;
+}
+
+.login-form-signup-link {
+  color: #1a8a4a;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.login-form-signup-link:hover {
+  color: #145a30;
+  text-decoration: underline;
+}
+
+/* ========================================= */
+/* RESPONSIVE: MOBILE                        */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .login-page-wrapper {
+    flex-direction: column;
+  }
+
+  .login-page-branding-panel {
+    width: 100%;
+    min-height: 280px;
+    padding: 2rem 1rem;
+  }
+
+  .login-page-logo {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 1rem;
+  }
+
+  .login-page-brand-title {
+    font-size: 1.75rem;
+  }
+
+  .login-page-brand-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .login-page-brand-description {
+    display: none;
+  }
+
+  .login-page-form-panel {
+    width: 100%;
+    min-height: calc(100vh - 280px);
+  }
+
+  .login-page-form-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .login-page-form-watermark {
+    width: 300px;
+    height: 300px;
+    border-width: 25px;
+  }
+}

@@ -1,0 +1,307 @@
+/* ===== AI GENERATED: BorrowerCreateReservationDocumentsPage Styles ===== */
+/* Purpose: Styles for documents/submit step in borrower create reservation flow */
+/* Scope: BorrowerCreateReservationDocumentsPage.vue */
+
+/* ========================================= */
+/* PAGE HEADER                               */
+/* ========================================= */
+
+.create-reservation-docs-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.create-reservation-docs-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+}
+
+.create-reservation-docs-prev-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d97706;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.create-reservation-docs-prev-link:hover {
+  color: #b45309;
+}
+
+/* ========================================= */
+/* FORM SUBTITLE                             */
+/* ========================================= */
+
+.create-reservation-docs-form-subtitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 1.25rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ========================================= */
+/* FORM CARD                                 */
+/* ========================================= */
+
+.create-reservation-docs-form-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ========================================= */
+/* FORM SECTIONS                             */
+/* ========================================= */
+
+.create-reservation-docs-section {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.create-reservation-docs-section-label {
+  flex-shrink: 0;
+  width: 240px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #333333;
+}
+
+.create-reservation-docs-section-sublabel {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #666666;
+  margin-top: 0.15rem;
+}
+
+.create-reservation-docs-section-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.create-reservation-docs-additional-fee-note {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: #d97706;
+  text-align: right;
+  margin-bottom: 0.25rem;
+}
+
+/* ========================================= */
+/* MANPOWER ROW                              */
+/* ========================================= */
+
+.create-reservation-docs-manpower-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.create-reservation-docs-manpower-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #555555;
+  min-width: 120px;
+  text-align: right;
+}
+
+.create-reservation-docs-manpower-input {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  color: #333333;
+  background-color: #f9f9f9;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+  outline: none;
+  max-width: 260px;
+  transition: border-color 0.15s ease;
+}
+
+.create-reservation-docs-manpower-input:focus {
+  border-color: #1a8a4a;
+}
+
+/* ========================================= */
+/* DOCUMENTS LIST                            */
+/* ========================================= */
+
+.create-reservation-docs-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.create-reservation-docs-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #1a6e3a;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.create-reservation-docs-file-item:hover {
+  color: #15803d;
+  text-decoration: underline;
+}
+
+.create-reservation-docs-file-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #d97706;
+  flex-shrink: 0;
+}
+
+.create-reservation-docs-file-name {
+  font-weight: 500;
+}
+
+.create-reservation-docs-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #1a6e3a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 0.35rem;
+  transition: background-color 0.15s ease;
+}
+
+.create-reservation-docs-upload-button:hover {
+  background-color: #15803d;
+}
+
+/* ========================================= */
+/* DOCUMENT TYPE                             */
+/* ========================================= */
+
+.create-reservation-docs-type-select {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  color: #333333;
+  background-color: #f9f9f9;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+  outline: none;
+  max-width: 260px;
+  cursor: pointer;
+}
+
+/* ========================================= */
+/* SUBMIT BUTTON                             */
+/* ========================================= */
+
+.create-reservation-docs-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.create-reservation-docs-submit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #16a34a, #1a6e3a);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.3);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.create-reservation-docs-submit-button:hover {
+  background: linear-gradient(135deg, #15803d, #166534);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+  transform: translateY(-1px);
+}
+
+.create-reservation-docs-submit-button:active {
+  transform: translateY(0);
+}
+
+.create-reservation-docs-submit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.create-reservation-docs-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .create-reservation-docs-section {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .create-reservation-docs-section-label {
+    width: auto;
+  }
+
+  .create-reservation-docs-manpower-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .create-reservation-docs-manpower-label {
+    text-align: left;
+    min-width: auto;
+  }
+
+  .create-reservation-docs-manpower-input {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .create-reservation-docs-form-card {
+    padding: 1.5rem;
+  }
+
+  .create-reservation-docs-type-select {
+    max-width: 100%;
+    width: 100%;
+  }
+}

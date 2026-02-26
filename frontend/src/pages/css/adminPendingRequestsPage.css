@@ -1,0 +1,315 @@
+/* ===== AI GENERATED: AdminPendingRequestsPage Styles ===== */
+/* Purpose: Styles for admin pending requests page and request table component */
+/* Scope: AdminPendingRequestsPage.vue, RequestPendingTableComponent.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.pending-requests-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* TOOLBAR (Search + Showing)                */
+/* ========================================= */
+
+.pending-requests-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.pending-requests-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pending-requests-search-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.pending-requests-search-input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s ease;
+}
+
+.pending-requests-search-input:focus {
+  border-color: #1a8a4a;
+}
+
+.pending-requests-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pending-requests-showing-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.pending-requests-showing-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.pending-requests-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.pending-requests-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.request-pending-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.request-pending-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.request-pending-table-header-row {
+  background-color: #3a3a4a;
+}
+
+.request-pending-table-header-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.request-pending-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.request-pending-table-body-row:hover {
+  background-color: #f9fafb;
+}
+
+.request-pending-table-body-row:last-child {
+  border-bottom: none;
+}
+
+.request-pending-table-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  vertical-align: middle;
+}
+
+.request-pending-table-cell--id {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 70px;
+}
+
+.request-pending-table-cell--name {
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.request-pending-table-cell--role {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 80px;
+}
+
+.request-pending-table-cell--schedule {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  width: 130px;
+}
+
+.request-pending-table-cell--quantity {
+  text-align: center;
+  width: 65px;
+}
+
+.request-pending-table-cell--type {
+  width: 90px;
+}
+
+.request-pending-table-cell--purpose {
+  font-size: 0.72rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-pending-table-cell--actions {
+  width: 100px;
+}
+
+/* ========================================= */
+/* TYPE BADGES                               */
+/* ========================================= */
+
+.request-pending-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.request-pending-type-badge--venue {
+  background-color: #16a34a;
+}
+
+.request-pending-type-badge--equipment {
+  background-color: #2563eb;
+}
+
+.request-pending-type-badge--both {
+  background-color: #7c3aed;
+}
+
+/* ========================================= */
+/* ACTION ICONS                              */
+/* ========================================= */
+
+.request-pending-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.request-pending-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.request-pending-action-icon:active {
+  transform: scale(0.92);
+}
+
+.request-pending-action-icon--view {
+  background-color: #2563eb;
+}
+
+.request-pending-action-icon--view:hover {
+  background-color: #1d4ed8;
+}
+
+.request-pending-action-icon--approve {
+  background-color: #16a34a;
+}
+
+.request-pending-action-icon--approve:hover {
+  background-color: #15803d;
+}
+
+.request-pending-action-icon--reject {
+  background-color: #dc2626;
+}
+
+.request-pending-action-icon--reject:hover {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* EMPTY STATE                               */
+/* ========================================= */
+
+.request-pending-table-empty-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.pending-requests-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .pending-requests-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pending-requests-search-input {
+    width: 140px;
+  }
+
+  .pending-requests-page-heading {
+    font-size: 1.25rem;
+  }
+}

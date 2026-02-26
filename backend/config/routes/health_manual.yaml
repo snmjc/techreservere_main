@@ -1,0 +1,9 @@
+health_index:
+  path: /health
+  controller: App\Controller\HealthController::index
+  methods: [GET]
+
+health_db:
+  path: /health/db
+  controller: App\Controller\HealthController::db
+  methods: [GET]

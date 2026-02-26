@@ -1,0 +1,321 @@
+/* ===== AI GENERATED: AdminActiveReservationsPage Styles ===== */
+/* Purpose: Styles for admin active reservations page and table component */
+/* Scope: AdminActiveReservationsPage.vue, ReservationActiveTableComponent.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.active-reservations-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* TOOLBAR (Search + Showing)                */
+/* ========================================= */
+
+.active-reservations-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.active-reservations-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-reservations-search-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.active-reservations-search-input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s ease;
+}
+
+.active-reservations-search-input:focus {
+  border-color: #1a8a4a;
+}
+
+.active-reservations-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-reservations-showing-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.active-reservations-showing-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.active-reservations-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.active-reservations-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.reservation-active-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.reservation-active-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.reservation-active-table-header-row {
+  background-color: #3a3a4a;
+}
+
+.reservation-active-table-header-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.reservation-active-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.reservation-active-table-body-row:hover {
+  background-color: #f9fafb;
+}
+
+.reservation-active-table-body-row:last-child {
+  border-bottom: none;
+}
+
+.reservation-active-table-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  vertical-align: middle;
+}
+
+.reservation-active-table-cell--id {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 65px;
+}
+
+.reservation-active-table-cell--name {
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.reservation-active-table-cell--role {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 70px;
+}
+
+.reservation-active-table-cell--schedule {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.reservation-active-table-cell--facility {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  width: 100px;
+}
+
+.reservation-active-table-cell--quantity {
+  text-align: center;
+  width: 60px;
+}
+
+.reservation-active-table-cell--type {
+  width: 80px;
+}
+
+.reservation-active-table-cell--purpose {
+  font-size: 0.72rem;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reservation-active-table-cell--actions {
+  width: 100px;
+}
+
+/* ========================================= */
+/* TYPE BADGES                               */
+/* ========================================= */
+
+.reservation-active-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.reservation-active-type-badge--venue {
+  background-color: #16a34a;
+}
+
+.reservation-active-type-badge--equipment {
+  background-color: #2563eb;
+}
+
+.reservation-active-type-badge--both {
+  background-color: #7c3aed;
+}
+
+/* ========================================= */
+/* ACTION ICONS                              */
+/* ========================================= */
+
+.reservation-active-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.reservation-active-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.reservation-active-action-icon:active {
+  transform: scale(0.92);
+}
+
+.reservation-active-action-icon--view {
+  background-color: #2563eb;
+}
+
+.reservation-active-action-icon--view:hover {
+  background-color: #1d4ed8;
+}
+
+.reservation-active-action-icon--return {
+  background-color: #16a34a;
+}
+
+.reservation-active-action-icon--return:hover {
+  background-color: #15803d;
+}
+
+.reservation-active-action-icon--report {
+  background-color: #dc2626;
+}
+
+.reservation-active-action-icon--report:hover {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* EMPTY STATE                               */
+/* ========================================= */
+
+.reservation-active-table-empty-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.active-reservations-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .active-reservations-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .active-reservations-search-input {
+    width: 140px;
+  }
+
+  .active-reservations-page-heading {
+    font-size: 1.25rem;
+  }
+}

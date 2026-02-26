@@ -1,0 +1,4 @@
+# Import only health controller attributes
+health_controllers:
+  resource: '../../src/Controller/'
+  type: attribute

@@ -1,0 +1,74 @@
+name: "TechReserve"
+
+services:
+  db:
+    image: postgres:15
+    container_name: techreserve_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: techreserve_backend
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_EXTERNAL_PORT}:8000"
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?serverVersion=15&charset=utf8"
+    depends_on:
+      - db
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+        - action: sync+restart
+          path: ./backend/composer.json
+          target: /app/composer.json
+        - action: sync+restart
+          path: ./backend/composer.lock
+          target: /app/composer.lock
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: techreserve_frontend
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    env_file:
+      - .env
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "100"
+      VITE_API_BASE_URL: "http://backend:8000"
+    ports:
+      - "${FRONTEND_EXTERNAL_PORT}:5173"
+    depends_on:
+      - backend
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+        - action: sync+restart
+          path: ./frontend/package.json
+          target: /app/package.json
+        - action: sync+restart
+          path: ./frontend/package-lock.json
+          target: /app/package-lock.json
+
+volumes:
+  pgdata:
+  frontend_node_modules:

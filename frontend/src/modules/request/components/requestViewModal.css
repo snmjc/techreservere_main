@@ -1,0 +1,309 @@
+/* ===== AI GENERATED: RequestViewModal Styles ===== */
+/* Purpose: Styles for the request view modal overlay and content */
+/* Scope: RequestViewModalComponent.vue */
+
+/* ========================================= */
+/* OVERLAY                                   */
+/* ========================================= */
+
+.request-view-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+/* ========================================= */
+/* CONTAINER                                 */
+/* ========================================= */
+
+.request-view-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  animation: requestModalFadeIn 0.2s ease;
+}
+
+@keyframes requestModalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================= */
+/* CLOSE BUTTON                              */
+/* ========================================= */
+
+.request-view-modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.request-view-modal-close-button:hover {
+  background-color: #f0f0f0;
+  color: #333333;
+}
+
+/* ========================================= */
+/* HEADING                                   */
+/* ========================================= */
+
+.request-view-modal-heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #d97706;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* DETAILS                                   */
+/* ========================================= */
+
+.request-view-modal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.5rem;
+}
+
+.request-view-modal-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.request-view-modal-row--split {
+  justify-content: space-between;
+}
+
+.request-view-modal-row--split-bottom {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0.5rem;
+}
+
+.request-view-modal-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.request-view-modal-field--right {
+  text-align: right;
+}
+
+.request-view-modal-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.request-view-modal-value {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #555555;
+}
+
+.request-view-modal-value--status {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.request-view-modal-divider {
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 0.5rem 0;
+}
+
+/* ========================================= */
+/* RESERVATION SUMMARY TABLE                 */
+/* ========================================= */
+
+.request-view-modal-section-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 0.4rem;
+}
+
+.request-view-modal-reservation-summary {
+  flex: 1;
+}
+
+.request-view-modal-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.request-view-modal-summary-cell {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.request-view-modal-summary-cell--count {
+  text-align: right;
+  font-weight: 600;
+  width: 60px;
+}
+
+/* ========================================= */
+/* UPLOADED DOCUMENTS                        */
+/* ========================================= */
+
+.request-view-modal-uploaded-docs {
+  flex: 1;
+}
+
+.request-view-modal-doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.request-view-modal-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #1a8a4a;
+  cursor: pointer;
+}
+
+.request-view-modal-doc-item:hover {
+  text-decoration: underline;
+}
+
+.request-view-modal-doc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #16a34a;
+  flex-shrink: 0;
+}
+
+.request-view-modal-doc-name {
+  font-weight: 500;
+}
+
+/* ========================================= */
+/* ACTION BUTTONS                            */
+/* ========================================= */
+
+.request-view-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.request-view-modal-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.request-view-modal-action-button:active {
+  transform: scale(0.97);
+}
+
+/* Approve — green */
+.request-view-modal-action-button--approve {
+  background-color: #16a34a;
+}
+
+.request-view-modal-action-button--approve:hover {
+  background-color: #15803d;
+}
+
+/* Request Revisions — orange */
+.request-view-modal-action-button--revisions {
+  background-color: #d97706;
+}
+
+.request-view-modal-action-button--revisions:hover {
+  background-color: #b45309;
+}
+
+/* Reject — red */
+.request-view-modal-action-button--reject {
+  background-color: #dc2626;
+}
+
+.request-view-modal-action-button--reject:hover {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .request-view-modal-container {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .request-view-modal-row--split {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .request-view-modal-row--split-bottom {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .request-view-modal-actions {
+    flex-direction: column;
+  }
+
+  .request-view-modal-action-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

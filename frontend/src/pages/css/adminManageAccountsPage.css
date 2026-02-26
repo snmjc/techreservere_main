@@ -1,0 +1,408 @@
+/* ===== AI GENERATED: AdminManageAccountsPage Styles ===== */
+/* Purpose: Styles for admin manage accounts page and account table component */
+/* Scope: AdminManageAccountsPage.vue, AccountUserTableComponent.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.manage-accounts-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* TABS ROW                                  */
+/* ========================================= */
+
+.manage-accounts-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.manage-accounts-tab-button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #888888;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.manage-accounts-tab-button:hover {
+  color: #333333;
+}
+
+.manage-accounts-tab-button--active {
+  color: #1a6e3a;
+  border-bottom-color: #1a6e3a;
+}
+
+.manage-accounts-tab-count {
+  font-weight: 400;
+  color: inherit;
+}
+
+.manage-accounts-tab-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #cccccc;
+}
+
+/* ========================================= */
+/* TOOLBAR (Search + Showing + Edit List)    */
+/* ========================================= */
+
+.manage-accounts-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.manage-accounts-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-accounts-search-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.manage-accounts-search-input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s ease;
+}
+
+.manage-accounts-search-input:focus {
+  border-color: #1a8a4a;
+}
+
+.manage-accounts-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-accounts-showing-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.manage-accounts-showing-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 100px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.manage-accounts-showing-select:focus {
+  border-color: #1a8a4a;
+}
+
+.manage-accounts-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.manage-accounts-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+.manage-accounts-toolbar-spacer {
+  flex: 1;
+}
+
+.manage-accounts-edit-list-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #333333;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.manage-accounts-edit-list-button:hover {
+  background-color: #444444;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.account-user-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.account-user-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.account-user-table-header-row {
+  background-color: #3a3a4a;
+}
+
+.account-user-table-header-cell {
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.account-user-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.account-user-table-body-row:hover {
+  background-color: #f9fafb;
+}
+
+.account-user-table-body-row:last-child {
+  border-bottom: none;
+}
+
+.account-user-table-cell {
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  color: #444444;
+  vertical-align: middle;
+}
+
+.account-user-table-cell--id {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 140px;
+}
+
+.account-user-table-cell--name {
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.account-user-table-cell--role {
+  font-weight: 600;
+  color: #555555;
+  text-transform: uppercase;
+  width: 120px;
+}
+
+.account-user-table-cell--actions {
+  width: 140px;
+}
+
+.account-user-table-view-button {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1a8a4a;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.account-user-table-view-button:hover {
+  color: #145a30;
+  text-decoration: underline;
+}
+
+.account-user-table-empty-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* DELETE TOGGLE (Edit Mode)                 */
+/* ========================================= */
+
+.account-user-table-delete-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #cccccc;
+  background-color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  margin: 0 auto;
+}
+
+.account-user-table-delete-toggle:hover {
+  border-color: #999999;
+}
+
+.account-user-table-delete-toggle-inner {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.account-user-table-delete-toggle--selected {
+  border-color: #dc2626;
+  background-color: #ffffff;
+}
+
+.account-user-table-delete-toggle--selected .account-user-table-delete-toggle-inner {
+  background-color: #dc2626;
+}
+
+.account-user-table-delete-toggle--selected:hover {
+  border-color: #b91c1c;
+}
+
+.account-user-table-delete-toggle--selected:hover .account-user-table-delete-toggle-inner {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* FLOATING DELETE BAR                       */
+/* ========================================= */
+
+.manage-accounts-delete-floating-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 0.65rem 1rem 0.65rem 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  z-index: 200;
+  animation: deleteBarSlideUp 0.2s ease;
+}
+
+@keyframes deleteBarSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.manage-accounts-delete-selected-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #d97706;
+  white-space: nowrap;
+}
+
+.manage-accounts-delete-confirm-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.manage-accounts-delete-confirm-button:hover {
+  background-color: #b91c1c;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.manage-accounts-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .manage-accounts-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-accounts-toolbar-spacer {
+    display: none;
+  }
+
+  .manage-accounts-search-input {
+    width: 140px;
+  }
+
+  .manage-accounts-page-heading {
+    font-size: 1.25rem;
+  }
+}

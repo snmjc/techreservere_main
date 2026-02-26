@@ -1,0 +1,351 @@
+/* ===== AI GENERATED: ReservationDeploymentModal Styles ===== */
+/* Purpose: Styles for the process deployment modal overlay and content */
+/* Scope: ReservationDeploymentModalComponent.vue */
+
+/* ========================================= */
+/* OVERLAY                                   */
+/* ========================================= */
+
+.reservation-deployment-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+/* ========================================= */
+/* CONTAINER                                 */
+/* ========================================= */
+
+.reservation-deployment-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  animation: deploymentModalFadeIn 0.2s ease;
+}
+
+@keyframes deploymentModalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================= */
+/* CLOSE BUTTON                              */
+/* ========================================= */
+
+.reservation-deployment-modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.reservation-deployment-modal-close-button:hover {
+  background-color: #f0f0f0;
+  color: #333333;
+}
+
+/* ========================================= */
+/* HEADING                                   */
+/* ========================================= */
+
+.reservation-deployment-modal-heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #d97706;
+  margin-bottom: 1.25rem;
+}
+
+/* ========================================= */
+/* DETAILS                                   */
+/* ========================================= */
+
+.reservation-deployment-modal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.reservation-deployment-modal-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.reservation-deployment-modal-row--split {
+  justify-content: space-between;
+}
+
+.reservation-deployment-modal-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.reservation-deployment-modal-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.reservation-deployment-modal-field--right {
+  text-align: right;
+}
+
+.reservation-deployment-modal-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.reservation-deployment-modal-value {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #555555;
+}
+
+.reservation-deployment-modal-value--status {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.reservation-deployment-modal-divider {
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 0.5rem 0;
+}
+
+/* ========================================= */
+/* SECTION + SUMMARY TABLE                   */
+/* ========================================= */
+
+.reservation-deployment-modal-section {
+  margin-top: 0.25rem;
+}
+
+.reservation-deployment-modal-section-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 0.4rem;
+}
+
+.reservation-deployment-modal-summary-table {
+  width: 100%;
+  max-width: 400px;
+  border-collapse: collapse;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reservation-deployment-modal-summary-cell {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.reservation-deployment-modal-summary-cell--count {
+  text-align: right;
+  font-weight: 600;
+  width: 60px;
+}
+
+/* Recorded Badge */
+.reservation-deployment-recorded-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #d97706;
+  border-radius: 4px;
+}
+
+/* ========================================= */
+/* ACTION BUTTONS                            */
+/* ========================================= */
+
+.reservation-deployment-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.reservation-deployment-modal-actions--right {
+  justify-content: flex-end;
+}
+
+.reservation-deployment-modal-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.reservation-deployment-modal-action-button:active {
+  transform: scale(0.97);
+}
+
+/* Return Confirmation — green */
+.reservation-deployment-modal-action-button--return {
+  background-color: #16a34a;
+}
+
+.reservation-deployment-modal-action-button--return:hover {
+  background-color: #15803d;
+}
+
+/* Report — red */
+.reservation-deployment-modal-action-button--report {
+  background-color: #dc2626;
+}
+
+.reservation-deployment-modal-action-button--report:hover {
+  background-color: #b91c1c;
+}
+
+/* Done — green */
+.reservation-deployment-modal-action-button--done {
+  background-color: #16a34a;
+  padding: 0.55rem 2rem;
+}
+
+.reservation-deployment-modal-action-button--done:hover {
+  background-color: #15803d;
+}
+
+/* ========================================= */
+/* RETURN FORM                               */
+/* ========================================= */
+
+.reservation-deployment-return-section {
+  margin-bottom: 1.5rem;
+}
+
+.reservation-deployment-return-heading {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 0.75rem;
+}
+
+.reservation-deployment-return-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reservation-deployment-return-header-row {
+  background-color: #f5f5f5;
+}
+
+.reservation-deployment-return-header-cell {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #555555;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.reservation-deployment-return-body-row {
+  border-bottom: 1px solid #eeeeee;
+}
+
+.reservation-deployment-return-cell {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  vertical-align: middle;
+}
+
+/* Condition Badge */
+.reservation-deployment-condition-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.reservation-deployment-condition-badge--good {
+  background-color: #16a34a;
+}
+
+.reservation-deployment-condition-badge--damaged {
+  background-color: #dc2626;
+}
+
+.reservation-deployment-remarks-text {
+  font-size: 0.75rem;
+  color: #888888;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .reservation-deployment-modal-container {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .reservation-deployment-modal-row--split {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .reservation-deployment-modal-actions {
+    flex-direction: column;
+  }
+
+  .reservation-deployment-modal-action-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

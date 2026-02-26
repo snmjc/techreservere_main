@@ -1,0 +1,308 @@
+/* ===== AI GENERATED: BorrowerSubListPage Styles ===== */
+/* Purpose: Shared styles for borrower Active/Approved/Pending sub-list pages */
+/* Scope: BorrowerActiveReservationsPage, BorrowerApprovedRequestsPage, BorrowerPendingRequestsPage */
+
+/* ========================================= */
+/* PAGE HEADER                               */
+/* ========================================= */
+
+.borrower-sublist-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.borrower-sublist-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+}
+
+.borrower-sublist-go-back-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555555;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.borrower-sublist-go-back-link:hover {
+  color: #333333;
+}
+
+/* ========================================= */
+/* TOOLBAR                                   */
+/* ========================================= */
+
+.borrower-sublist-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.borrower-sublist-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.borrower-sublist-search-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.borrower-sublist-search-input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s ease;
+}
+
+.borrower-sublist-search-input:focus {
+  border-color: #1a8a4a;
+}
+
+.borrower-sublist-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.borrower-sublist-showing-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.borrower-sublist-showing-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.borrower-sublist-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.borrower-sublist-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.borrower-sublist-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.borrower-sublist-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.borrower-sublist-table-header-row {
+  background-color: #3a3a4a;
+}
+
+.borrower-sublist-table-header-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.borrower-sublist-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.borrower-sublist-table-body-row:hover {
+  background-color: #f9fafb;
+}
+
+.borrower-sublist-table-body-row:last-child {
+  border-bottom: none;
+}
+
+.borrower-sublist-table-cell {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.78rem;
+  color: #444444;
+  vertical-align: middle;
+}
+
+.borrower-sublist-table-cell--id {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 65px;
+}
+
+.borrower-sublist-table-cell--name {
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.borrower-sublist-table-cell--role {
+  white-space: nowrap;
+  width: 70px;
+}
+
+.borrower-sublist-table-cell--schedule {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.borrower-sublist-table-cell--facility {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  width: 80px;
+}
+
+.borrower-sublist-table-cell--quantity {
+  text-align: center;
+  width: 60px;
+}
+
+.borrower-sublist-table-cell--type {
+  width: 80px;
+}
+
+.borrower-sublist-table-cell--purpose {
+  font-size: 0.72rem;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.borrower-sublist-table-cell--status {
+  width: 120px;
+}
+
+/* Type Badges */
+.borrower-sublist-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.borrower-sublist-type-badge--venue {
+  background-color: #16a34a;
+}
+
+.borrower-sublist-type-badge--equipment {
+  background-color: #2563eb;
+}
+
+.borrower-sublist-type-badge--both {
+  background-color: #7c3aed;
+}
+
+/* Status Badges */
+.borrower-sublist-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.borrower-sublist-status-badge--active {
+  background-color: #2563eb;
+}
+
+.borrower-sublist-status-badge--approved {
+  background-color: #16a34a;
+}
+
+.borrower-sublist-status-badge--pending {
+  background-color: #d97706;
+}
+
+.borrower-sublist-status-badge--completed {
+  background-color: #16a34a;
+}
+
+/* Empty */
+.borrower-sublist-table-empty-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.borrower-sublist-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .borrower-sublist-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .borrower-sublist-search-input {
+    width: 140px;
+  }
+
+  .borrower-sublist-page-heading {
+    font-size: 1.25rem;
+  }
+}

@@ -1,0 +1,302 @@
+/* ===== AI GENERATED: BorrowerViewFacilitiesPage Styles ===== */
+/* Purpose: Styles for borrower view facilities page with venue/equipment tabs */
+/* Scope: BorrowerViewFacilitiesPage.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.view-facilities-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1rem;
+}
+
+/* ========================================= */
+/* TABS ROW (Venue | Equipment)              */
+/* ========================================= */
+
+.view-facilities-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.view-facilities-tab-button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #888888;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.view-facilities-tab-button:hover {
+  color: #333333;
+}
+
+.view-facilities-tab-button--active {
+  color: #1a6e3a;
+  border-bottom-color: #1a6e3a;
+}
+
+.view-facilities-tab-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #cccccc;
+}
+
+/* ========================================= */
+/* FILTER PILLS (All / Available / Unavail)  */
+/* ========================================= */
+
+.view-facilities-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.view-facilities-filter-pill {
+  padding: 0.4rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #cccccc;
+  border-radius: 20px;
+  background-color: #ffffff;
+  color: #555555;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.view-facilities-filter-pill:hover {
+  background-color: #f0f0f0;
+}
+
+.view-facilities-filter-pill--active {
+  background-color: #1a6e3a;
+  color: #ffffff;
+  border-color: #1a6e3a;
+}
+
+.view-facilities-filter-pill--active:hover {
+  background-color: #15803d;
+}
+
+/* ========================================= */
+/* SHOWING ROW + LEGEND                      */
+/* ========================================= */
+
+.view-facilities-showing-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.view-facilities-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-facilities-showing-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+}
+
+.view-facilities-showing-select {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.view-facilities-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.view-facilities-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+.view-facilities-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.view-facilities-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #555555;
+}
+
+.view-facilities-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.view-facilities-legend-dot--available {
+  background-color: #16a34a;
+}
+
+.view-facilities-legend-dot--unavailable {
+  background-color: #dc2626;
+}
+
+/* ========================================= */
+/* VENUE LIST (reuse facility chip styles)   */
+/* ========================================= */
+
+.view-facilities-venue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.view-facilities-venue-floor-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.view-facilities-venue-floor-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #777777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.view-facilities-venue-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.view-facilities-venue-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.view-facilities-venue-chip--available {
+  background-color: #16a34a;
+}
+
+.view-facilities-venue-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.view-facilities-venue-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ========================================= */
+/* EQUIPMENT GRID                            */
+/* ========================================= */
+
+.view-facilities-equipment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.view-facilities-equipment-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.view-facilities-equipment-chip--available {
+  background-color: #16a34a;
+}
+
+.view-facilities-equipment-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.view-facilities-equipment-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.view-facilities-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .view-facilities-showing-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-facilities-legend {
+    margin-left: 0;
+  }
+
+  .view-facilities-page-heading {
+    font-size: 1.25rem;
+  }
+}

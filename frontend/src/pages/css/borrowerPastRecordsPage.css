@@ -1,0 +1,270 @@
+/* ===== AI GENERATED: BorrowerPastRecordsPage Styles ===== */
+/* Purpose: Styles for borrower past records page with tabs and table */
+/* Scope: BorrowerPastRecordsPage.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.past-records-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1rem;
+}
+
+/* ========================================= */
+/* TABS ROW (All / Completed / Rejected / Cancelled) */
+/* ========================================= */
+
+.past-records-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.past-records-tab-button {
+  background: none;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #888888;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.past-records-tab-button:hover {
+  color: #333333;
+}
+
+.past-records-tab-button--active {
+  color: #1a6e3a;
+  border-bottom-color: #1a6e3a;
+}
+
+/* ========================================= */
+/* TOOLBAR                                   */
+/* ========================================= */
+
+.past-records-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.past-records-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.past-records-search-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+}
+
+.past-records-search-input {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 160px;
+  transition: border-color 0.15s ease;
+}
+
+.past-records-search-input:focus {
+  border-color: #1a8a4a;
+}
+
+.past-records-showing-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.past-records-showing-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+}
+
+.past-records-showing-select {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.past-records-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555555;
+  transition: background-color 0.15s ease;
+}
+
+.past-records-sort-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.past-records-table-wrapper {
+  overflow-x: auto;
+}
+
+.past-records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.past-records-table-header-row {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.past-records-table-header-cell {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  color: #444444;
+  white-space: nowrap;
+}
+
+.past-records-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.past-records-table-body-row:hover {
+  background-color: #fafafa;
+}
+
+.past-records-table-cell {
+  padding: 0.55rem 0.75rem;
+  color: #333333;
+  vertical-align: middle;
+}
+
+.past-records-table-cell--id {
+  font-weight: 600;
+  color: #1a6e3a;
+}
+
+.past-records-table-empty-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* ========================================= */
+/* TYPE BADGES                               */
+/* ========================================= */
+
+.past-records-type-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.past-records-type-badge--venue {
+  background-color: #1a6e3a;
+}
+
+.past-records-type-badge--equipment {
+  background-color: #2563eb;
+}
+
+.past-records-type-badge--both {
+  background-color: #7c3aed;
+}
+
+/* ========================================= */
+/* STATUS BADGES                             */
+/* ========================================= */
+
+.past-records-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.past-records-status-badge--completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.past-records-status-badge--rejected {
+  background-color: #fef2f2;
+  color: #991b1b;
+}
+
+.past-records-status-badge--cancelled {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.past-records-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .past-records-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .past-records-page-heading {
+    font-size: 1.25rem;
+  }
+
+  .past-records-tabs-row {
+    gap: 0.75rem;
+  }
+}

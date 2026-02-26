@@ -1,0 +1,268 @@
+/* ===== AI GENERATED: AdminSidebarLayout Styles ===== */
+/* Purpose: Styles for the shared admin sidebar layout (sidebar + topbar + content) */
+/* Scope: AdminSidebarLayoutComponent.vue */
+
+/* ========================================= */
+/* LAYOUT WRAPPER                            */
+/* ========================================= */
+
+.admin-layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #e8e8e8;
+}
+
+/* ========================================= */
+/* SIDEBAR                                   */
+/* ========================================= */
+
+.admin-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 100vh;
+  background-color: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+/* Brand Section */
+.admin-sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 1rem 0.75rem;
+  width: 100%;
+}
+
+.admin-sidebar-brand-university {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.admin-sidebar-logo {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.admin-sidebar-brand-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.admin-sidebar-brand-tech {
+  color: #ffffff;
+}
+
+.admin-sidebar-brand-reserve {
+  color: #f5b731;
+}
+
+/* Role Badge */
+.admin-sidebar-role-badge {
+  width: 85%;
+  padding: 0.4rem 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #333355;
+  border-radius: 4px;
+  letter-spacing: 1.5px;
+  margin-bottom: 1rem;
+}
+
+/* Navigation */
+.admin-sidebar-navigation {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0 0.5rem;
+  gap: 2px;
+}
+
+.admin-sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #b0b0c8;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+
+.admin-sidebar-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.admin-sidebar-nav-item--active {
+  background-color: #1a8a4a;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.admin-sidebar-nav-item--active:hover {
+  background-color: #1a8a4a;
+}
+
+.admin-sidebar-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-nav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-sidebar-nav-label {
+  white-space: nowrap;
+}
+
+/* ========================================= */
+/* MAIN AREA                                 */
+/* ========================================= */
+
+.admin-main-area {
+  margin-left: 240px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ========================================= */
+/* TOP BAR                                   */
+/* ========================================= */
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 1.5rem;
+  background-color: #16a34a;
+}
+
+.admin-topbar-spacer {
+  flex: 1;
+}
+
+.admin-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-topbar-icon-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.admin-topbar-icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.admin-topbar-avatar-button {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.admin-topbar-notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: #f59e0b;
+  border-radius: 50%;
+}
+
+/* Green Accent Bar */
+.admin-topbar-accent {
+  height: 4px;
+  background: linear-gradient(90deg, #16a34a, #22c55e, #16a34a);
+}
+
+/* ========================================= */
+/* CONTENT AREA                              */
+/* ========================================= */
+
+.admin-content-area {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 1024px) {
+  .admin-sidebar {
+    width: 200px;
+  }
+
+  .admin-main-area {
+    margin-left: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-sidebar {
+    width: 60px;
+  }
+
+  .admin-sidebar-brand-university,
+  .admin-sidebar-brand-title,
+  .admin-sidebar-role-badge {
+    display: none;
+  }
+
+  .admin-sidebar-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .admin-sidebar-nav-label {
+    display: none;
+  }
+
+  .admin-sidebar-nav-item {
+    justify-content: center;
+    padding: 0.65rem;
+  }
+
+  .admin-main-area {
+    margin-left: 60px;
+  }
+}

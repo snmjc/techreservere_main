@@ -1,0 +1,161 @@
+/* ===== AI GENERATED: BorrowerMyReservationsPage Styles ===== */
+/* Purpose: Styles for borrower my reservations page with create card and stat cards */
+/* Scope: BorrowerMyReservationsPage.vue */
+
+/* ========================================= */
+/* PAGE HEADING                              */
+/* ========================================= */
+
+.my-reservations-page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 1.5rem;
+}
+
+/* ========================================= */
+/* CREATE RESERVATION SECTION                */
+/* ========================================= */
+
+.my-reservations-create-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #777777;
+  margin-bottom: 0.5rem;
+}
+
+.my-reservations-create-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 180px;
+  height: 140px;
+  background: linear-gradient(135deg, #1a6e3a, #22c55e);
+  border-radius: 16px;
+  color: #ffffff;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin-bottom: 1.5rem;
+}
+
+.my-reservations-create-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26, 110, 58, 0.35);
+}
+
+.my-reservations-create-card-icon {
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.my-reservations-create-card-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ========================================= */
+/* TOTAL OVERVIEW                            */
+/* ========================================= */
+
+.my-reservations-overview-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #777777;
+  margin-bottom: 0.75rem;
+}
+
+.my-reservations-stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.my-reservations-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 110px;
+  border-radius: 16px;
+  color: #ffffff;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+}
+
+.my-reservations-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.my-reservations-stat-card--active {
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+}
+
+.my-reservations-stat-card--approved {
+  background: linear-gradient(135deg, #d97706, #fbbf24);
+}
+
+.my-reservations-stat-card--pending {
+  background: linear-gradient(135deg, #ea580c, #fb923c);
+}
+
+.my-reservations-stat-card--completed {
+  background: linear-gradient(135deg, #16a34a, #4ade80);
+}
+
+.my-reservations-stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.my-reservations-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 0.25rem;
+  line-height: 1.2;
+}
+
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.my-reservations-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #888888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 640px) {
+  .my-reservations-stats-grid {
+    justify-content: center;
+  }
+
+  .my-reservations-create-card {
+    width: 150px;
+    height: 120px;
+  }
+
+  .my-reservations-stat-card {
+    width: 120px;
+    height: 95px;
+  }
+}
