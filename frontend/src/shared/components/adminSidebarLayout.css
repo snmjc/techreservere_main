@@ -221,6 +221,26 @@
   flex: 1;
   padding: 1.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.admin-content-area::before {
+  content: '';
+  position: fixed;
+  top: 56px;
+  left: 240px;
+  right: 0;
+  bottom: 0;
+  background: url('../../assets/FEU_Tech_official_seal.png') center 55% / 70% no-repeat;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-content-area > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================= */
@@ -234,6 +254,10 @@
 
   .admin-main-area {
     margin-left: 200px;
+  }
+
+  .admin-content-area::before {
+    left: 200px;
   }
 }
 
@@ -264,5 +288,9 @@
 
   .admin-main-area {
     margin-left: 60px;
+  }
+
+  .admin-content-area::before {
+    left: 60px;
   }
 }

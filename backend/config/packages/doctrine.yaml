@@ -12,14 +12,56 @@ doctrine:
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
         identity_generation_preferences:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
-        auto_mapping: true
+        auto_mapping: false
         mappings:
-            App:
+            Account:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Entity'
-                prefix: 'App\Entity'
-                alias: App
+                dir: '%kernel.project_dir%/src/Domain/Account/Entity'
+                prefix: 'App\Domain\Account\Entity'
+                alias: Account
+            Equipment:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/Equipment/Entity'
+                prefix: 'App\Domain\Equipment\Entity'
+                alias: Equipment
+            Reservation:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/Reservation/Entity'
+                prefix: 'App\Domain\Reservation\Entity'
+                alias: Reservation
+            ReleaseReturn:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/ReleaseReturn/Entity'
+                prefix: 'App\Domain\ReleaseReturn\Entity'
+                alias: ReleaseReturn
+            Venue:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/Venue/Entity'
+                prefix: 'App\Domain\Venue\Entity'
+                alias: Venue
+            Task:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/Task/Entity'
+                prefix: 'App\Domain\Task\Entity'
+                alias: Task
+            AuditLog:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/AuditLog/Entity'
+                prefix: 'App\Domain\AuditLog\Entity'
+                alias: AuditLog
+            Notification:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Domain/Notification/Entity'
+                prefix: 'App\Domain\Notification\Entity'
+                alias: Notification
         controller_resolver:
             auto_mapping: false
 

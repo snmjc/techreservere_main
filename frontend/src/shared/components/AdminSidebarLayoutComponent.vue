@@ -6,7 +6,7 @@
       <div class="admin-sidebar-brand">
         <p class="admin-sidebar-brand-university">FEUTECH</p>
         <img
-          src="@/assets/techreserve-logo.svg"
+          src="@/assets/TechReserve_LogoB.png"
           alt="TechReserve Logo"
           class="admin-sidebar-logo"
         />

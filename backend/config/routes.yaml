@@ -11,3 +11,39 @@ controllers:
     # Import controllers using PHP 8 attributes (#[Route]) from src/Controller
     resource: "../src/Controller/"
     type: attribute
+
+domain_account_controllers:
+    resource: "../src/Domain/Account/Controller/"
+    type: attribute
+
+domain_equipment_controllers:
+    resource: "../src/Domain/Equipment/Controller/"
+    type: attribute
+
+domain_reservation_controllers:
+    resource: "../src/Domain/Reservation/Controller/"
+    type: attribute
+
+domain_release_return_controllers:
+    resource: "../src/Domain/ReleaseReturn/Controller/"
+    type: attribute
+
+domain_venue_controllers:
+    resource: "../src/Domain/Venue/Controller/"
+    type: attribute
+
+domain_task_controllers:
+    resource: "../src/Domain/Task/Controller/"
+    type: attribute
+
+domain_dashboard_controllers:
+    resource: "../src/Domain/Dashboard/Controller/"
+    type: attribute
+
+domain_audit_log_controllers:
+    resource: "../src/Domain/AuditLog/Controller/"
+    type: attribute
+
+domain_notification_controllers:
+    resource: "../src/Domain/Notification/Controller/"
+    type: attribute

@@ -29,7 +29,7 @@
 .login-page-branding-overlay {
   position: absolute;
   inset: 0;
-  background: url('../assets/feu-building-bg.jpg') center / cover no-repeat;
+  background: url('../../assets/Page-20-3.png') center / cover no-repeat;
   opacity: 0.15;
   pointer-events: none;
 }
@@ -103,14 +103,13 @@
 
 .login-page-form-watermark {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  border: 40px solid rgba(0, 100, 50, 0.04);
+  bottom: -10%;
+  right: -10%;
+  width: 480px;
+  height: auto;
+  opacity: 0.08;
   pointer-events: none;
+  z-index: 0;
 }
 
 .login-page-form-content {
@@ -332,8 +331,8 @@
   }
 
   .login-page-form-watermark {
-    width: 300px;
-    height: 300px;
-    border-width: 25px;
+    width: 250px;
+    bottom: -5%;
+    right: -5%;
   }
 }

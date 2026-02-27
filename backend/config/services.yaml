@@ -18,6 +18,56 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Domain/**/Entity/'
+            - '../src/Kernel.php'
+
+    # Domain Controllers
+    App\Domain\Account\Controller\:
+        resource: '../src/Domain/Account/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Equipment\Controller\:
+        resource: '../src/Domain/Equipment/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Reservation\Controller\:
+        resource: '../src/Domain/Reservation/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\ReleaseReturn\Controller\:
+        resource: '../src/Domain/ReleaseReturn/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Venue\Controller\:
+        resource: '../src/Domain/Venue/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Task\Controller\:
+        resource: '../src/Domain/Task/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Dashboard\Controller\:
+        resource: '../src/Domain/Dashboard/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\AuditLog\Controller\:
+        resource: '../src/Domain/AuditLog/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Domain\Notification\Controller\:
+        resource: '../src/Domain/Notification/Controller/'
+        tags: ['controller.service_arguments']
+
+    # Middleware event listeners
+    App\Middleware\AuthenticationMiddleware:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, priority: 256 }
+
+    App\Middleware\AuthorizationMiddleware:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, priority: 128 }
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

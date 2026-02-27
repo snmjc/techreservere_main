@@ -6,10 +6,10 @@
       <div class="login-page-branding-overlay"></div>
       <div class="login-page-branding-content">
         <img
-          src="@/assets/techreserve-logo.svg"
+          src="@/assets/TechReserve_LogoA.png"
           alt="TechReserve Logo"
           class="login-page-logo"
-        />
+/>
         <h1 class="login-page-brand-title">
           <span class="login-page-brand-tech">Tech</span><span class="login-page-brand-reserve">Reserve</span>
         </h1>
@@ -25,7 +25,11 @@
 
     <!-- Right Panel: Login Form -->
     <section class="login-page-form-panel">
-      <div class="login-page-form-watermark"></div>
+      <img
+          src="@/assets/FEU_Tech_official_seal.png"
+          alt="FEU Tech Seal Watermark"
+          class="login-page-form-watermark"
+        />
       <div class="login-page-form-content">
         <AuthenticationLoginFormComponent
           :login-submitting="loginSubmitting"
