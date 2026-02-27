@@ -139,6 +139,34 @@
   white-space: nowrap;
 }
 
+/* Logout Button */
+.admin-sidebar-logout {
+  margin-top: auto;
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+}
+
+.admin-sidebar-logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #b0b0c8;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-sidebar-logout-button:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
 /* ========================================= */
 /* MAIN AREA                                 */
 /* ========================================= */

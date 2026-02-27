@@ -6,7 +6,7 @@
       <div class="admin-sidebar-brand">
         <p class="admin-sidebar-brand-university">FEUTECH</p>
         <img
-          src="@/assets/TechReserve_LogoB.png"
+          src="@/assets/TechReserve_LogoA.png"
           alt="TechReserve Logo"
           class="admin-sidebar-logo"
         />
@@ -31,6 +31,19 @@
           <span class="admin-sidebar-nav-label">{{ navigationItem.label }}</span>
         </router-link>
       </nav>
+
+      <div class="admin-sidebar-logout">
+        <button class="admin-sidebar-logout-button" @click="handleLogout">
+          <span class="admin-sidebar-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </span>
+          <span class="admin-sidebar-nav-label">Logout</span>
+        </button>
+      </div>
     </aside>
 
     <!-- Main Content Area -->
@@ -73,7 +86,8 @@
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 /**
  * @typedef {Object} AdminSidebarLayoutProps
@@ -92,6 +106,8 @@ const props = defineProps({
 });
 
 const currentRoute = useRoute();
+const router = useRouter();
+const authStore = useAuthenticationStore();
 
 /**
  * @function isActiveRoute
@@ -101,5 +117,14 @@ const currentRoute = useRoute();
  */
 function isActiveRoute(routeName) {
   return currentRoute.name === routeName;
+}
+
+/**
+ * @function handleLogout
+ * @description Clears auth state and redirects to login page.
+ */
+function handleLogout() {
+  authStore.performLogout();
+  router.push({ name: 'loginPage' });
 }
 </script>

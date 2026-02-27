@@ -6,7 +6,7 @@
       <div class="login-page-branding-overlay"></div>
       <div class="login-page-branding-content">
         <img
-          src="@/assets/TechReserve_LogoA.png"
+          src="@/assets/TechReserve_LogoB.png"
           alt="TechReserve Logo"
           class="login-page-logo"
 />
@@ -46,8 +46,13 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import AuthenticationLoginFormComponent from '@/modules/authentication/components/AuthenticationLoginFormComponent.vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import './css/loginPage.css';
+
+const router = useRouter();
+const authStore = useAuthenticationStore();
 
 const loginSubmitting = ref(false);
 const loginErrorMessage = ref(null);
@@ -61,15 +66,25 @@ const loginErrorMessage = ref(null);
  * @param {boolean} credentialPayload.rememberSession
  * @returns {void}
  */
-function handleSubmitLoginCredentials(credentialPayload) {
+async function handleSubmitLoginCredentials(credentialPayload) {
   loginSubmitting.value = true;
   loginErrorMessage.value = null;
 
-  // TODO: Wire to authentication composable → service → backend
-  console.log('Login submitted:', credentialPayload);
+  try {
+    const account = await authStore.performLogin(
+      credentialPayload.usernameOrEmail,
+      credentialPayload.passwordText
+    );
 
-  setTimeout(() => {
+    if (account.roleDesignation === 'ROLE_ADMIN') {
+      router.push({ name: 'adminDashboardPage' });
+    } else {
+      router.push({ name: 'borrowerMyReservationsPage' });
+    }
+  } catch (error) {
+    loginErrorMessage.value = error.message || 'Login failed. Please try again.';
+  } finally {
     loginSubmitting.value = false;
-  }, 1500);
+  }
 }
 </script>

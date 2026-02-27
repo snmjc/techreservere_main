@@ -7,7 +7,6 @@
     <!-- Page Header -->
     <div class="create-reservation-page-header">
       <h2 class="create-reservation-page-heading">Create Reservation</h2>
-      <span class="create-reservation-next-link" @click="handleNextPage">Next Page</span>
     </div>
 
     <!-- Form Card -->
@@ -18,9 +17,8 @@
         <label class="create-reservation-form-label">Request Date:</label>
         <input
           v-model="reservationFormState.requestDate"
-          type="text"
-          class="create-reservation-form-input"
-          readonly
+          type="date"
+          class="create-reservation-form-input create-reservation-form-date"
         />
       </div>
 
@@ -28,9 +26,9 @@
         <label class="create-reservation-form-label">Activity Date:</label>
         <input
           v-model="reservationFormState.activityDate"
-          type="text"
-          class="create-reservation-form-input"
-          placeholder="March 08, 2026"
+          type="date"
+          class="create-reservation-form-input create-reservation-form-date"
+          :min="reservationFormState.requestDate"
         />
       </div>
 
@@ -95,6 +93,16 @@
           <option value="Both">Both</option>
         </select>
       </div>
+
+      <!-- Next Page Button -->
+      <div class="create-reservation-form-actions">
+        <button class="create-reservation-next-button" @click="handleNextPage">
+          Next Page
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -105,46 +113,52 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerCreateReservationPage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 
 const router = useRouter();
+const reservationFormStore = useReservationFormStore();
 
 /**
- * @function getCurrentDateFormatted
- * @description Returns today's date formatted as "Month DD, YYYY".
+ * @function getTodayISODate
+ * @description Returns today's date in ISO format (YYYY-MM-DD) for date input.
  * @returns {string}
  */
-function getCurrentDateFormatted() {
+function getTodayISODate() {
   const today = new Date();
-  return today.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  return today.toISOString().split('T')[0];
 }
 
 const reservationFormState = ref({
-  requestDate: getCurrentDateFormatted(),
-  activityDate: '',
-  activityTime: '',
-  activityNameTitle: '',
-  purposeText: '',
-  departmentName: '',
-  participantCount: '',
-  reservationType: 'Venue',
+  requestDate: reservationFormStore.requestDate || getTodayISODate(),
+  activityDate: reservationFormStore.activityDate || '',
+  activityTime: reservationFormStore.activityTime || '',
+  activityNameTitle: reservationFormStore.activityNameTitle || '',
+  purposeText: reservationFormStore.purposeText || '',
+  departmentName: reservationFormStore.departmentName || '',
+  participantCount: reservationFormStore.participantCount || '',
+  reservationType: reservationFormStore.reservationType || 'Venue',
 });
 
 /**
  * @function handleNextPage
- * @description Handles Next Page click (placeholder for future step navigation).
+ * @description Saves form state to the shared store and navigates to the next step.
  * @returns {void}
  */
 function handleNextPage() {
+  reservationFormStore.requestDate = reservationFormState.value.requestDate;
+  reservationFormStore.activityDate = reservationFormState.value.activityDate;
+  reservationFormStore.activityTime = reservationFormState.value.activityTime;
+  reservationFormStore.activityNameTitle = reservationFormState.value.activityNameTitle;
+  reservationFormStore.purposeText = reservationFormState.value.purposeText;
+  reservationFormStore.departmentName = reservationFormState.value.departmentName;
+  reservationFormStore.participantCount = reservationFormState.value.participantCount;
+  reservationFormStore.reservationType = reservationFormState.value.reservationType;
   router.push({ name: 'borrowerCreateReservationVenuePage' });
 }
 </script>

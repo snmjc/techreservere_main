@@ -87,6 +87,21 @@
   border-color: #1a8a4a;
 }
 
+.create-reservation-form-date {
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.create-reservation-form-date::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.create-reservation-form-date::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 .create-reservation-form-select {
   flex: 1;
   padding: 0.5rem 0.75rem;
@@ -98,6 +113,37 @@
   outline: none;
   max-width: 320px;
   cursor: pointer;
+}
+
+/* ========================================= */
+/* FORM ACTIONS                              */
+/* ========================================= */
+
+.create-reservation-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eeeeee;
+}
+
+.create-reservation-next-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #1a8a4a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.create-reservation-next-button:hover {
+  background-color: #15703d;
 }
 
 /* ========================================= */

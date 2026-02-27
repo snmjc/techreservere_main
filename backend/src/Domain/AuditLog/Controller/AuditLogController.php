@@ -8,7 +8,7 @@ use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/v1/audit-logs')]
 class AuditLogController extends AbstractController

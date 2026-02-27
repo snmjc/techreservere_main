@@ -20,12 +20,18 @@ services:
     container_name: techreserve_backend
     volumes:
       - ./backend:/app
+      - backend_var:/app/var
+      - backend_vendor:/app/vendor
     env_file:
       - .env
     ports:
       - "${BACKEND_EXTERNAL_PORT}:8000"
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?serverVersion=15&charset=utf8"
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      DATABASE_URL: "postgresql://postgres:seanace17@host.docker.internal:5432/AccountDB?serverVersion=15&charset=utf8"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - db
     develop:
@@ -72,3 +78,5 @@ services:
 volumes:
   pgdata:
   frontend_node_modules:
+  backend_var:
+  backend_vendor:

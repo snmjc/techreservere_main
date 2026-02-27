@@ -43,19 +43,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerMyReservationsPage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 
-const activeReservationsCount = ref(0);
-const approvedRequestsCount = ref(0);
-const pendingRequestsCount = ref(0);
-const completedReservationsCount = ref(0);
+const activeReservationsCount = computed(() => requestStore.activeCount);
+const approvedRequestsCount = computed(() => requestStore.approvedCount);
+const pendingRequestsCount = computed(() => requestStore.pendingCount);
+const completedReservationsCount = computed(() => requestStore.completedCount);
 
 /**
  * @function navigateToCreateReservation

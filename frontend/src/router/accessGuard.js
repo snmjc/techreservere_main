@@ -8,6 +8,8 @@
 // 3. Validate allowed roles
 // 4. Redirect if unauthorized
 
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+
 /**
  * @function evaluateRouteAccessGuard
  * @description Evaluates route access based on authentication and role requirements.
@@ -17,25 +19,26 @@
  */
 export function evaluateRouteAccessGuard(toRoute, fromRoute) {
   const requiresAuth = toRoute.meta?.requiresAuth ?? false;
+  const authStore = useAuthenticationStore();
 
   if (!requiresAuth) {
+    if (toRoute.name === 'loginPage' && authStore.isAuthenticated) {
+      if (authStore.userRole === 'ROLE_ADMIN') {
+        return { name: 'adminDashboardPage' };
+      }
+      return { name: 'borrowerMyReservationsPage' };
+    }
     return true;
   }
 
-  // TODO: Read authentication state from store once authenticationStore is implemented
-  // EXPERIMENTAL: Bypassing auth check during page development
-  const isAuthenticated = true;
-
-  if (!isAuthenticated) {
+  if (!authStore.isAuthenticated) {
     return { name: 'loginPage' };
   }
 
   const allowedRoles = toRoute.meta?.allowedRoles ?? null;
 
   if (allowedRoles !== null) {
-    // TODO: Read user role from store once authenticationStore is implemented
-    // EXPERIMENTAL: Bypassing role check during page development
-    const roleAllowed = true;
+    const roleAllowed = allowedRoles.includes(authStore.userRole);
 
     if (!roleAllowed) {
       return { name: 'loginPage' };

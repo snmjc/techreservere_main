@@ -172,6 +172,32 @@
   font-weight: 500;
 }
 
+.create-reservation-docs-file-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: #999999;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  margin-left: auto;
+}
+
+.create-reservation-docs-file-remove:hover {
+  color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+.create-reservation-docs-no-files {
+  font-size: 0.8rem;
+  color: #999999;
+  font-style: italic;
+}
+
 .create-reservation-docs-upload-button {
   display: inline-flex;
   align-items: center;
@@ -209,13 +235,34 @@
 }
 
 /* ========================================= */
-/* SUBMIT BUTTON                             */
+/* NAVIGATION & SUBMIT BUTTONS               */
 /* ========================================= */
 
-.create-reservation-docs-submit-row {
+.create-reservation-docs-form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eeeeee;
+}
+
+.create-reservation-docs-prev-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #6b7280;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.create-reservation-docs-prev-button:hover {
+  background-color: #4b5563;
 }
 
 .create-reservation-docs-submit-button {

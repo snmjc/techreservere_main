@@ -30,7 +30,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminDashboardPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   // Placeholder routes for admin sidebar navigation (pages to be built)
@@ -40,7 +40,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminManageAccountsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
@@ -49,7 +49,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminManageFacilitiesPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
@@ -58,7 +58,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminPendingRequestsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
@@ -67,7 +67,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminApprovedRequestsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
@@ -76,16 +76,16 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminActiveReservationsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
     path: '/admin/past-records',
     name: 'adminPastRecordsPage',
-    component: () => import('@/pages/AdminDashboardPage.vue'),
+    component: () => import('@/pages/AdminPastRecordsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   {
@@ -94,7 +94,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/AdminReportsAnalyticsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ['ROLE_ADMIN'],
     },
   },
   // Borrower/Requester routes
@@ -104,7 +104,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerMyReservationsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -113,7 +113,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerCreateReservationPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -122,7 +122,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerCreateReservationVenuePage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -131,7 +131,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerCreateReservationDocumentsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -140,7 +140,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerActiveReservationsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -149,7 +149,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerApprovedRequestsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -158,7 +158,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerPendingRequestsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -167,7 +167,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerViewFacilitiesPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
   {
@@ -176,7 +176,7 @@ export const routeDefinitions = [
     component: () => import('@/pages/BorrowerPastRecordsPage.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['borrower'],
+      allowedRoles: ['ROLE_BORROWER'],
     },
   },
 ];

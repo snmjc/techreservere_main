@@ -138,6 +138,18 @@
 }
 
 /* ========================================= */
+/* SECTION HEADING                           */
+/* ========================================= */
+
+.create-reservation-venue-section-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ========================================= */
 /* VENUE SELECTION AREA                      */
 /* ========================================= */
 
@@ -214,6 +226,135 @@
   color: #999999;
   font-style: italic;
   font-size: 0.85rem;
+}
+
+/* ========================================= */
+/* NAVIGATION BUTTONS                        */
+/* ========================================= */
+
+.create-reservation-venue-form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eeeeee;
+}
+
+.create-reservation-venue-prev-button,
+.create-reservation-venue-next-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.create-reservation-venue-prev-button {
+  background-color: #6b7280;
+}
+
+.create-reservation-venue-prev-button:hover {
+  background-color: #4b5563;
+}
+
+.create-reservation-venue-next-button {
+  background-color: #1a8a4a;
+}
+
+.create-reservation-venue-next-button:hover {
+  background-color: #15703d;
+}
+
+/* ========================================= */
+/* EQUIPMENT SELECTION AREA                  */
+/* ========================================= */
+
+.create-reservation-equipment-selection-area {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1rem;
+}
+
+.create-reservation-equipment-table-wrapper {
+  overflow-x: auto;
+}
+
+.create-reservation-equipment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.create-reservation-equipment-table-header-row {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.create-reservation-equipment-table-header-cell {
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  font-weight: 700;
+  color: #444444;
+  white-space: nowrap;
+}
+
+.create-reservation-equipment-table-body-row {
+  border-bottom: 1px solid #eeeeee;
+  transition: background-color 0.1s ease;
+}
+
+.create-reservation-equipment-table-body-row:hover {
+  background-color: #fafafa;
+}
+
+.create-reservation-equipment-table-cell {
+  padding: 0.55rem 0.8rem;
+  color: #333333;
+  vertical-align: middle;
+}
+
+.create-reservation-equipment-table-body-row--unavailable {
+  background-color: #fde8e8;
+}
+
+.create-reservation-equipment-table-body-row--unavailable .create-reservation-equipment-table-cell {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.create-reservation-equipment-table-body-row--unavailable:hover {
+  background-color: #fde8e8;
+}
+
+.create-reservation-equipment-qty-input:disabled {
+  background-color: #f3f3f3;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.create-reservation-equipment-qty-input {
+  width: 70px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.create-reservation-equipment-qty-input:focus {
+  border-color: #1a8a4a;
 }
 
 /* ========================================= */

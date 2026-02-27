@@ -15,17 +15,17 @@
     <!-- Stat Cards Row -->
     <div class="admin-dashboard-stat-cards-row">
       <DashboardStatCardComponent
-        :stat-count="9"
+        :stat-count="requestStore.pendingCount"
         stat-label="Pending Requests"
         card-background-color="#c49a1a"
       />
       <DashboardStatCardComponent
-        :stat-count="15"
+        :stat-count="requestStore.approvedCount"
         stat-label="Approved Requests"
         card-background-color="#15803d"
       />
       <DashboardStatCardComponent
-        :stat-count="4"
+        :stat-count="requestStore.activeCount"
         stat-label="Equipment Currently Deployed"
         card-background-color="#d97706"
       />
@@ -66,6 +66,9 @@ import DashboardQuickStatsComponent from '@/modules/dashboard/components/Dashboa
 import DashboardFacilityStatusComponent from '@/modules/dashboard/components/DashboardFacilityStatusComponent.vue';
 import DashboardResourceChartComponent from '@/modules/dashboard/components/DashboardResourceChartComponent.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+
+const requestStore = useRequestStore();
 
 /**
  * @constant {Array<Object>} facilityStatusList

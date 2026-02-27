@@ -7,72 +7,130 @@
     <!-- Page Header -->
     <div class="create-reservation-venue-page-header">
       <h2 class="create-reservation-venue-page-heading">Create Reservation</h2>
-      <div class="create-reservation-venue-nav-links">
-        <span class="create-reservation-venue-prev-link" @click="navigateToPreviousPage">Previous Page</span>
-        <span class="create-reservation-venue-next-link" @click="navigateToNextPage">Next Page</span>
-      </div>
     </div>
 
     <!-- Form Subtitle -->
-    <p class="create-reservation-venue-form-subtitle">Venue and Equipment Reservation Form</p>
+    <p class="create-reservation-venue-form-subtitle">{{ formSubtitle }}</p>
 
-    <!-- Toolbar: Showing + Legend -->
-    <div class="create-reservation-venue-toolbar">
-      <div class="create-reservation-venue-showing-group">
-        <label class="create-reservation-venue-showing-label" for="venueShowingSelect">Showing:</label>
-        <select
-          id="venueShowingSelect"
-          v-model="showingFilterValue"
-          class="create-reservation-venue-showing-select"
-        >
-          <option value="all">All</option>
-          <option value="available">Available</option>
-          <option value="unavailable">Unavailable</option>
-        </select>
-        <button class="create-reservation-venue-sort-button" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="create-reservation-venue-legend">
-        <span class="create-reservation-venue-legend-item">
-          <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--available"></span>
-          Available
-        </span>
-        <span class="create-reservation-venue-legend-item">
-          <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--unavailable"></span>
-          Unavailable
-        </span>
-      </div>
-    </div>
-
-    <!-- Venue Selection Area -->
-    <div class="create-reservation-venue-selection-area">
-      <div
-        v-for="floorGroup in filteredVenueFloorGroups"
-        :key="floorGroup.floorLabel"
-        class="create-reservation-venue-floor-group"
-      >
-        <p class="create-reservation-venue-floor-label">{{ floorGroup.floorLabel }}</p>
-        <div class="create-reservation-venue-chips-row">
-          <span
-            v-for="venueRecord in floorGroup.venueRecords"
-            :key="venueRecord.venueName"
-            class="create-reservation-venue-chip"
-            :class="{
-              'create-reservation-venue-chip--available': venueRecord.venueAvailable && selectedVenueName !== venueRecord.venueName,
-              'create-reservation-venue-chip--unavailable': !venueRecord.venueAvailable,
-              'create-reservation-venue-chip--selected': selectedVenueName === venueRecord.venueName,
-            }"
-            @click="handleVenueChipSelection(venueRecord)"
+    <!-- ===== VENUE SECTION (shown when type is Venue or Both) ===== -->
+    <template v-if="showVenueSection">
+      <!-- Toolbar: Showing + Legend -->
+      <h3 class="create-reservation-venue-section-heading">Venue Selection</h3>
+      <div class="create-reservation-venue-toolbar">
+        <div class="create-reservation-venue-showing-group">
+          <label class="create-reservation-venue-showing-label" for="venueShowingSelect">Showing:</label>
+          <select
+            id="venueShowingSelect"
+            v-model="showingFilterValue"
+            class="create-reservation-venue-showing-select"
           >
-            {{ venueRecord.venueName }}
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+          <button class="create-reservation-venue-sort-button" aria-label="Sort">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="create-reservation-venue-legend">
+          <span class="create-reservation-venue-legend-item">
+            <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--available"></span>
+            Available
+          </span>
+          <span class="create-reservation-venue-legend-item">
+            <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--unavailable"></span>
+            Unavailable
           </span>
         </div>
       </div>
-      <div v-if="filteredVenueFloorGroups.length === 0" class="create-reservation-venue-empty-state">
-        No venues found.
+
+      <!-- Venue Selection Area -->
+      <div class="create-reservation-venue-selection-area">
+        <div
+          v-for="floorGroup in filteredVenueFloorGroups"
+          :key="floorGroup.floorLabel"
+          class="create-reservation-venue-floor-group"
+        >
+          <p class="create-reservation-venue-floor-label">{{ floorGroup.floorLabel }}</p>
+          <div class="create-reservation-venue-chips-row">
+            <span
+              v-for="venueRecord in floorGroup.venueRecords"
+              :key="venueRecord.venueName"
+              class="create-reservation-venue-chip"
+              :class="{
+                'create-reservation-venue-chip--available': venueRecord.venueAvailable && selectedVenueName !== venueRecord.venueName,
+                'create-reservation-venue-chip--unavailable': !venueRecord.venueAvailable,
+                'create-reservation-venue-chip--selected': selectedVenueName === venueRecord.venueName,
+              }"
+              @click="handleVenueChipSelection(venueRecord)"
+            >
+              {{ venueRecord.venueName }}
+            </span>
+          </div>
+        </div>
+        <div v-if="filteredVenueFloorGroups.length === 0" class="create-reservation-venue-empty-state">
+          No venues found.
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== EQUIPMENT SECTION (shown when type is Equipment or Both) ===== -->
+    <template v-if="showEquipmentSection">
+      <h3 class="create-reservation-venue-section-heading">Equipment Selection</h3>
+      <div class="create-reservation-equipment-selection-area">
+        <div class="create-reservation-equipment-table-wrapper">
+          <table class="create-reservation-equipment-table">
+            <thead>
+              <tr class="create-reservation-equipment-table-header-row">
+                <th class="create-reservation-equipment-table-header-cell">Equipment</th>
+                <th class="create-reservation-equipment-table-header-cell">Available</th>
+                <th class="create-reservation-equipment-table-header-cell">Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="equipmentItem in equipmentItemsList"
+                :key="equipmentItem.equipmentName"
+                class="create-reservation-equipment-table-body-row"
+                :class="{ 'create-reservation-equipment-table-body-row--unavailable': equipmentItem.availableCount === 0 }"
+              >
+                <td class="create-reservation-equipment-table-cell">{{ equipmentItem.equipmentName }}</td>
+                <td class="create-reservation-equipment-table-cell">{{ equipmentItem.availableCount }}</td>
+                <td class="create-reservation-equipment-table-cell">
+                  <input
+                    v-model.number="equipmentItem.selectedQuantity"
+                    type="number"
+                    min="0"
+                    :max="equipmentItem.availableCount"
+                    class="create-reservation-equipment-qty-input"
+                    :disabled="equipmentItem.availableCount === 0"
+                    placeholder="0"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <!-- Navigation Buttons -->
+    <div class="create-reservation-venue-selection-area">
+      <div class="create-reservation-venue-form-actions">
+        <button class="create-reservation-venue-prev-button" @click="navigateToPreviousPage">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Previous Page
+        </button>
+        <button class="create-reservation-venue-next-button" @click="navigateToNextPage">
+          Next Page
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -90,10 +148,42 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerCreateReservationVenuePage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 
 const router = useRouter();
+const reservationFormStore = useReservationFormStore();
 const showingFilterValue = ref('all');
-const selectedVenueName = ref(null);
+const selectedVenueName = ref(reservationFormStore.selectedVenueName);
+
+const showVenueSection = computed(() =>
+  reservationFormStore.reservationType === 'Venue' || reservationFormStore.reservationType === 'Both'
+);
+const showEquipmentSection = computed(() =>
+  reservationFormStore.reservationType === 'Equipment' || reservationFormStore.reservationType === 'Both'
+);
+
+const formSubtitle = computed(() => {
+  const type = reservationFormStore.reservationType;
+  if (type === 'Venue') return 'Venue Reservation Form';
+  if (type === 'Equipment') return 'Equipment Reservation Form';
+  return 'Venue and Equipment Reservation Form';
+});
+
+/**
+ * @constant {Array<Object>} equipmentItemsList
+ * @description Static equipment data for reservation selection.
+ */
+const equipmentItemsList = ref([
+  { equipmentName: 'White Monobloc Chair', availableCount: 200, selectedQuantity: 0 },
+  { equipmentName: 'Table', availableCount: 50, selectedQuantity: 0 },
+  { equipmentName: 'Podium', availableCount: 5, selectedQuantity: 0 },
+  { equipmentName: 'Microphone', availableCount: 10, selectedQuantity: 0 },
+  { equipmentName: 'Extension Cord', availableCount: 20, selectedQuantity: 0 },
+  { equipmentName: 'Whiteboard', availableCount: 15, selectedQuantity: 0 },
+  { equipmentName: 'Projector', availableCount: 8, selectedQuantity: 0 },
+  { equipmentName: 'Stage', availableCount: 0, selectedQuantity: 0 },
+  { equipmentName: 'Sound System', availableCount: 0, selectedQuantity: 0 },
+]);
 
 /**
  * @constant {Array<Object>} venueFloorGroupsList
@@ -213,6 +303,10 @@ function navigateToPreviousPage() {
  * @returns {void}
  */
 function navigateToNextPage() {
+  reservationFormStore.selectedVenueName = selectedVenueName.value;
+  reservationFormStore.selectedEquipmentItems = equipmentItemsList.value
+    .filter((item) => item.selectedQuantity > 0)
+    .map((item) => ({ equipmentName: item.equipmentName, selectedQuantity: item.selectedQuantity }));
   router.push({ name: 'borrowerCreateReservationDocumentsPage' });
 }
 </script>

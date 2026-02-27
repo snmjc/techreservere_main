@@ -7,11 +7,10 @@
     <!-- Page Header -->
     <div class="create-reservation-docs-page-header">
       <h2 class="create-reservation-docs-page-heading">Create Reservation</h2>
-      <span class="create-reservation-docs-prev-link" @click="navigateToPreviousPage">Previous Page</span>
     </div>
 
     <!-- Form Subtitle -->
-    <p class="create-reservation-docs-form-subtitle">Venue and Equipment Reservation Form</p>
+    <p class="create-reservation-docs-form-subtitle">{{ formSubtitle }}</p>
 
     <!-- Form Card -->
     <div class="create-reservation-docs-form-card">
@@ -53,17 +52,24 @@
           <span class="create-reservation-docs-section-sublabel">List of Participants</span>
         </div>
         <div class="create-reservation-docs-section-content">
-          <div class="create-reservation-docs-file-list">
+          <div v-if="supportingDocumentsList.length > 0" class="create-reservation-docs-file-list">
             <div
-              v-for="supportingDocument in supportingDocumentsList"
+              v-for="(supportingDocument, index) in supportingDocumentsList"
               :key="supportingDocument.documentFileName"
               class="create-reservation-docs-file-item"
             >
               <span class="create-reservation-docs-file-bullet"></span>
               <span class="create-reservation-docs-file-name">{{ supportingDocument.documentFileName }}</span>
+              <button class="create-reservation-docs-file-remove" @click="removeSupportingDocument(index)" aria-label="Remove file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
           </div>
-          <button class="create-reservation-docs-upload-button" @click="handleUploadSupportingDocument">
+          <p v-else class="create-reservation-docs-no-files">No files uploaded yet.</p>
+          <input ref="supportingFileInput" type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png" style="display:none" @change="onSupportingFilesSelected" />
+          <button class="create-reservation-docs-upload-button" @click="$refs.supportingFileInput.click()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
             </svg>
@@ -79,17 +85,24 @@
           <span class="create-reservation-docs-section-sublabel">Director/Professor Recommendation</span>
         </div>
         <div class="create-reservation-docs-section-content">
-          <div class="create-reservation-docs-file-list">
+          <div v-if="recommendationDocumentsList.length > 0" class="create-reservation-docs-file-list">
             <div
-              v-for="recommendationDocument in recommendationDocumentsList"
+              v-for="(recommendationDocument, index) in recommendationDocumentsList"
               :key="recommendationDocument.documentFileName"
               class="create-reservation-docs-file-item"
             >
               <span class="create-reservation-docs-file-bullet"></span>
               <span class="create-reservation-docs-file-name">{{ recommendationDocument.documentFileName }}</span>
+              <button class="create-reservation-docs-file-remove" @click="removeRecommendationDocument(index)" aria-label="Remove file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
           </div>
-          <button class="create-reservation-docs-upload-button" @click="handleUploadRecommendationDocument">
+          <p v-else class="create-reservation-docs-no-files">No files uploaded yet.</p>
+          <input ref="recommendationFileInput" type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png" style="display:none" @change="onRecommendationFilesSelected" />
+          <button class="create-reservation-docs-upload-button" @click="$refs.recommendationFileInput.click()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
             </svg>
@@ -112,8 +125,14 @@
         </div>
       </div>
 
-      <!-- Submit Button -->
-      <div class="create-reservation-docs-submit-row">
+      <!-- Navigation & Submit Buttons -->
+      <div class="create-reservation-docs-form-actions">
+        <button class="create-reservation-docs-prev-button" @click="navigateToPreviousPage">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Previous Page
+        </button>
         <button class="create-reservation-docs-submit-button" @click="handleSubmitReservationRequest">
           <span class="create-reservation-docs-submit-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -133,14 +152,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerCreateReservationDocumentsPage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 
 const router = useRouter();
+const reservationFormStore = useReservationFormStore();
+
+const formSubtitle = computed(() => {
+  const type = reservationFormStore.reservationType;
+  if (type === 'Venue') return 'Venue Reservation Form';
+  if (type === 'Equipment') return 'Equipment Reservation Form';
+  return 'Venue and Equipment Reservation Form';
+});
 
 const documentsFormState = ref({
   securityGuardCount: 'None',
@@ -148,40 +176,31 @@ const documentsFormState = ref({
   documentType: 'Reservation',
 });
 
-/**
- * @constant {Array<Object>} supportingDocumentsList
- * @description Static supporting documents for demonstration.
- */
-const supportingDocumentsList = ref([
-  { documentFileName: 'DelaCruz_F704_APP.pdf' },
-  { documentFileName: 'DelaCruz_ListofMaterials.pdf' },
-  { documentFileName: 'DelaCruz_ListofParticipants.pdf' },
-]);
+const supportingDocumentsList = ref([]);
+const recommendationDocumentsList = ref([]);
 
-/**
- * @constant {Array<Object>} recommendationDocumentsList
- * @description Static recommendation documents for demonstration.
- */
-const recommendationDocumentsList = ref([
-  { documentFileName: 'DelaCruz_ProfRecommendation.pdf' },
-]);
-
-/**
- * @function handleUploadSupportingDocument
- * @description Handles uploading supporting documents (placeholder).
- * @returns {void}
- */
-function handleUploadSupportingDocument() {
-  console.log('Upload supporting document triggered');
+function onSupportingFilesSelected(event) {
+  const files = event.target.files;
+  for (const file of files) {
+    supportingDocumentsList.value.push({ documentFileName: file.name, file });
+  }
+  event.target.value = '';
 }
 
-/**
- * @function handleUploadRecommendationDocument
- * @description Handles uploading recommendation documents (placeholder).
- * @returns {void}
- */
-function handleUploadRecommendationDocument() {
-  console.log('Upload recommendation document triggered');
+function onRecommendationFilesSelected(event) {
+  const files = event.target.files;
+  for (const file of files) {
+    recommendationDocumentsList.value.push({ documentFileName: file.name, file });
+  }
+  event.target.value = '';
+}
+
+function removeSupportingDocument(index) {
+  supportingDocumentsList.value.splice(index, 1);
+}
+
+function removeRecommendationDocument(index) {
+  recommendationDocumentsList.value.splice(index, 1);
 }
 
 /**

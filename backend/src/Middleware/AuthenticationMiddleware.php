@@ -22,6 +22,8 @@ class AuthenticationMiddleware
     private const PUBLIC_ROUTES = [
         '/health',
         '/health/db',
+        '/api/v1/auth/login',
+        '/api/v1/auth/register',
     ];
 
     private ClerkTokenVerifier $clerkTokenVerifier;
