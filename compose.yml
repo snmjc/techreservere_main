@@ -5,6 +5,7 @@ services:
     image: postgres:15
     container_name: techreserve_db
     restart: always
+    shm_size: 128mb
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -13,6 +14,12 @@ services:
       - "${POSTGRES_EXTERNAL_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   backend:
     build:
@@ -20,20 +27,17 @@ services:
     container_name: techreserve_backend
     volumes:
       - ./backend:/app
-      - backend_var:/app/var
-      - backend_vendor:/app/vendor
     env_file:
       - .env
     ports:
       - "${BACKEND_EXTERNAL_PORT}:8000"
     environment:
-      APP_ENV: prod
-      APP_DEBUG: "0"
-      DATABASE_URL: "postgresql://postgres:seanace17@host.docker.internal:5432/AccountDB?serverVersion=15&charset=utf8"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      APP_ENV: dev
+      APP_DEBUG: "1"
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     develop:
       watch:
         - action: sync
@@ -78,5 +82,3 @@ services:
 volumes:
   pgdata:
   frontend_node_modules:
-  backend_var:
-  backend_vendor:

@@ -14,6 +14,5 @@ COPY . .
 
 EXPOSE 5173
 
-# Always install/update deps on container start so that sync+restart from
-# docker compose watch picks up package.json changes without a full rebuild.
-CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+# Only install deps if node_modules is missing or package.json changed, then start dev server
+CMD ["sh", "-c", "if [ ! -d node_modules/.package-lock.json ] || [ package.json -nt node_modules/.package-lock.json ]; then npm install; fi && npm run dev -- --host 0.0.0.0"]

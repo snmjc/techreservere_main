@@ -22,7 +22,7 @@ class AdminAccountFixture extends Fixture
     public function load(ObjectManager $manager): void
     {
         $existingAdmin = $manager->getRepository(AccountEntity::class)
-            ->findOneBy(['emailAddress' => 'admin@techreserve.edu.ph']);
+            ->findOneBy(['emailAddress' => 'admin@techreserve.feu.edu.ph']);
 
         if ($existingAdmin !== null) {
             return;
@@ -31,7 +31,7 @@ class AdminAccountFixture extends Fixture
         $adminAccount = new AccountEntity();
         $adminAccount->setLastName('Administrator');
         $adminAccount->setFirstName('System');
-        $adminAccount->setEmailAddress('admin@techreserve.edu.ph');
+        $adminAccount->setEmailAddress('admin@techreserve.feu.edu.ph');
         $adminAccount->setRoleDesignation(RoleConstants::ROLE_ADMIN);
         $adminAccount->setContactNumber('09000000000');
         $adminAccount->setClerkUserId('clerk_admin_placeholder');
