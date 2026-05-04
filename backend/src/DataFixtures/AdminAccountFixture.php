@@ -35,7 +35,7 @@ class AdminAccountFixture extends Fixture
         $adminAccount->setRoleDesignation(RoleConstants::ROLE_ADMIN);
         $adminAccount->setContactNumber('09000000000');
         $adminAccount->setClerkUserId('clerk_admin_placeholder');
-        $adminAccount->setPasswordHash(password_hash('admin123', PASSWORD_BCRYPT));
+        $adminAccount->setPasswordHash(password_hash('admin123', PASSWORD_BCRYPT, ['cost' => 4]));
         $adminAccount->setIsActive(true);
 
         $manager->persist($adminAccount);

@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/adminDashboardPage.css';
@@ -69,6 +69,10 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
 const requestStore = useRequestStore();
+
+onMounted(async () => {
+  await requestStore.fetchReservations();
+});
 
 /**
  * @constant {Array<Object>} facilityStatusList

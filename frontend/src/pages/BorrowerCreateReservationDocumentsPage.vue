@@ -12,6 +12,11 @@
     <!-- Form Subtitle -->
     <p class="create-reservation-docs-form-subtitle">{{ formSubtitle }}</p>
 
+    <!-- Error Message -->
+    <div v-if="submissionError" class="create-reservation-docs-error-message">
+      {{ submissionError }}
+    </div>
+
     <!-- Form Card -->
     <div class="create-reservation-docs-form-card">
 
@@ -127,19 +132,20 @@
 
       <!-- Navigation & Submit Buttons -->
       <div class="create-reservation-docs-form-actions">
-        <button class="create-reservation-docs-prev-button" @click="navigateToPreviousPage">
+        <button class="create-reservation-docs-prev-button" @click="navigateToPreviousPage" :disabled="isSubmitting">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
           Previous Page
         </button>
-        <button class="create-reservation-docs-submit-button" @click="handleSubmitReservationRequest">
+        <button class="create-reservation-docs-submit-button" @click="handleSubmitReservationRequest" :disabled="isSubmitting">
           <span class="create-reservation-docs-submit-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg v-if="!isSubmitting" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12" />
             </svg>
+            <span v-else class="create-reservation-docs-submit-spinner">⏳</span>
           </span>
-          Submit Request
+          {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
         </button>
       </div>
     </div>
@@ -159,9 +165,13 @@ import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerCreateReservationDocumentsPage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
+const requestStore = useRequestStore();
+const isSubmitting = ref(false);
+const submissionError = ref(null);
 
 const formSubtitle = computed(() => {
   const type = reservationFormStore.reservationType;
@@ -205,11 +215,47 @@ function removeRecommendationDocument(index) {
 
 /**
  * @function handleSubmitReservationRequest
- * @description Handles the reservation request submission (placeholder).
- * @returns {void}
+ * @description Submits the reservation request to the backend and updates dashboard.
+ * @returns {Promise<void>}
  */
-function handleSubmitReservationRequest() {
-  console.log('Submit reservation request:', documentsFormState.value);
+async function handleSubmitReservationRequest() {
+  try {
+    isSubmitting.value = true;
+    submissionError.value = null;
+
+    const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
+    const activityTimeRange = `${reservationFormStore.activityTimeFrom || '00:00'}-${reservationFormStore.activityTimeTo || '00:00'}`;
+    
+    const reservationData = {
+      organizationName: reservationFormStore.departmentName || 'Organization',
+      venueIdentifier: reservationFormStore.selectedVenueName ? 1 : null,
+      requestedEquipmentList: reservationFormStore.selectedEquipmentItems.map(item => ({
+        name: item.equipmentName,
+        quantity: item.selectedQuantity
+      })),
+      requestedQuantity: reservationFormStore.participantCount || 0,
+      eventDateTime: eventDateTime.toISOString(),
+      activityTimeRange: activityTimeRange,
+      purposeDescription: reservationFormStore.purposeText || 'Event',
+      activityType: reservationFormStore.activityNameTitle || 'Activity',
+      supportingDocuments: supportingDocumentsList.value.map(doc => doc.documentFileName)
+    };
+
+    const result = await requestStore.addNewReservation(reservationData);
+    
+    if (result) {
+      reservationFormStore.resetForm();
+      supportingDocumentsList.value = [];
+      recommendationDocumentsList.value = [];
+      
+      router.push({ name: 'borrowerMyReservationsPage' });
+    }
+  } catch (error) {
+    submissionError.value = error.message || 'Failed to submit reservation. Please try again.';
+    console.error('Reservation submission error:', error);
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 /**

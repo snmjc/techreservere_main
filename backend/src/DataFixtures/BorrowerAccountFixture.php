@@ -35,7 +35,7 @@ class BorrowerAccountFixture extends Fixture
         $borrowerAccount->setRoleDesignation(RoleConstants::ROLE_BORROWER);
         $borrowerAccount->setContactNumber('09000000001');
         $borrowerAccount->setClerkUserId('clerk_borrower_placeholder');
-        $borrowerAccount->setPasswordHash(password_hash('borrower123', PASSWORD_BCRYPT));
+        $borrowerAccount->setPasswordHash(password_hash('borrower123', PASSWORD_BCRYPT, ['cost' => 4]));
         $borrowerAccount->setIsActive(true);
 
         $manager->persist($borrowerAccount);

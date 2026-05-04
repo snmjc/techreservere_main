@@ -9,7 +9,8 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
   const reservationType = ref('Venue');
   const requestDate = ref('');
   const activityDate = ref('');
-  const activityTime = ref('');
+  const activityTimeFrom = ref('');
+  const activityTimeTo = ref('');
   const activityNameTitle = ref('');
   const purposeText = ref('');
   const departmentName = ref('');
@@ -21,7 +22,8 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     reservationType.value = 'Venue';
     requestDate.value = '';
     activityDate.value = '';
-    activityTime.value = '';
+    activityTimeFrom.value = '';
+    activityTimeTo.value = '';
     activityNameTitle.value = '';
     purposeText.value = '';
     departmentName.value = '';
@@ -34,7 +36,8 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     reservationType,
     requestDate,
     activityDate,
-    activityTime,
+    activityTimeFrom,
+    activityTimeTo,
     activityNameTitle,
     purposeText,
     departmentName,

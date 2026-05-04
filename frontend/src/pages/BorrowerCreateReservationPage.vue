@@ -34,12 +34,24 @@
 
       <div class="create-reservation-form-row">
         <label class="create-reservation-form-label">Activity Time:</label>
-        <input
-          v-model="reservationFormState.activityTime"
-          type="text"
-          class="create-reservation-form-input"
-          placeholder="15:00 - 16:50"
-        />
+        <div class="create-reservation-time-inputs">
+          <div class="create-reservation-time-group">
+            <label class="create-reservation-time-label">From:</label>
+            <input
+              v-model="reservationFormState.activityTimeFrom"
+              type="time"
+              class="create-reservation-form-input create-reservation-time-input"
+            />
+          </div>
+          <div class="create-reservation-time-group">
+            <label class="create-reservation-time-label">To:</label>
+            <input
+              v-model="reservationFormState.activityTimeTo"
+              type="time"
+              class="create-reservation-form-input create-reservation-time-input"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="create-reservation-form-row">
@@ -137,7 +149,8 @@ function getTodayISODate() {
 const reservationFormState = ref({
   requestDate: reservationFormStore.requestDate || getTodayISODate(),
   activityDate: reservationFormStore.activityDate || '',
-  activityTime: reservationFormStore.activityTime || '',
+  activityTimeFrom: reservationFormStore.activityTimeFrom || '',
+  activityTimeTo: reservationFormStore.activityTimeTo || '',
   activityNameTitle: reservationFormStore.activityNameTitle || '',
   purposeText: reservationFormStore.purposeText || '',
   departmentName: reservationFormStore.departmentName || '',
@@ -151,9 +164,22 @@ const reservationFormState = ref({
  * @returns {void}
  */
 function handleNextPage() {
+  // Validate that both time fields are filled
+  if (!reservationFormState.value.activityTimeFrom || !reservationFormState.value.activityTimeTo) {
+    alert('Please select both start and end times for the activity.');
+    return;
+  }
+
+  // Validate that end time is after start time
+  if (reservationFormState.value.activityTimeFrom >= reservationFormState.value.activityTimeTo) {
+    alert('End time must be after start time.');
+    return;
+  }
+
   reservationFormStore.requestDate = reservationFormState.value.requestDate;
   reservationFormStore.activityDate = reservationFormState.value.activityDate;
-  reservationFormStore.activityTime = reservationFormState.value.activityTime;
+  reservationFormStore.activityTimeFrom = reservationFormState.value.activityTimeFrom;
+  reservationFormStore.activityTimeTo = reservationFormState.value.activityTimeTo;
   reservationFormStore.activityNameTitle = reservationFormState.value.activityNameTitle;
   reservationFormStore.purposeText = reservationFormState.value.purposeText;
   reservationFormStore.departmentName = reservationFormState.value.departmentName;

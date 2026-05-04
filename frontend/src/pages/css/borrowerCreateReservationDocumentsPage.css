@@ -33,7 +33,7 @@
 }
 
 /* ========================================= */
-/* FORM SUBTITLE                             */
+/* FORM SUBTITLE & ERROR MESSAGE             */
 /* ========================================= */
 
 .create-reservation-docs-form-subtitle {
@@ -43,6 +43,17 @@
   margin-bottom: 1.25rem;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.create-reservation-docs-error-message {
+  background-color: #fee2e2;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 /* ========================================= */
@@ -261,8 +272,14 @@
   transition: background-color 0.15s ease;
 }
 
-.create-reservation-docs-prev-button:hover {
+.create-reservation-docs-prev-button:hover:not(:disabled) {
   background-color: #4b5563;
+}
+
+.create-reservation-docs-prev-button:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .create-reservation-docs-submit-button {
@@ -281,10 +298,27 @@
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
 }
 
-.create-reservation-docs-submit-button:hover {
+.create-reservation-docs-submit-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #15803d, #166534);
   box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
   transform: translateY(-1px);
+}
+
+.create-reservation-docs-submit-button:disabled {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  cursor: not-allowed;
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.create-reservation-docs-submit-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .create-reservation-docs-submit-button:active {

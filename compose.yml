@@ -27,13 +27,15 @@ services:
     container_name: techreserve_backend
     volumes:
       - ./backend:/app
+      - backend_var:/app/var
+      - backend_vendor:/app/vendor
     env_file:
       - .env
     ports:
       - "${BACKEND_EXTERNAL_PORT}:8000"
     environment:
-      APP_ENV: dev
-      APP_DEBUG: "1"
+      APP_ENV: prod
+      APP_DEBUG: "0"
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
     depends_on:
       db:
@@ -82,3 +84,5 @@ services:
 volumes:
   pgdata:
   frontend_node_modules:
+  backend_var:
+  backend_vendor:

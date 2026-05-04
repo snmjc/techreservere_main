@@ -147,7 +147,7 @@ class AuthenticationController extends AbstractController
         $accountEntity->setFirstName($firstName);
         $accountEntity->setLastName($lastName);
         $accountEntity->setEmailAddress($emailAddress);
-        $accountEntity->setPasswordHash(password_hash($passwordText, PASSWORD_BCRYPT));
+        $accountEntity->setPasswordHash(password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]));
         $accountEntity->setRoleDesignation('ROLE_BORROWER');
 
         $this->accountRepository->persistAccount($accountEntity);

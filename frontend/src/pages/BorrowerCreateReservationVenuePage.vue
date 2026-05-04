@@ -142,18 +142,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/borrowerCreateReservationVenuePage.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
+const { equipmentList, venueList, loadAllData } = useReservationData();
 const showingFilterValue = ref('all');
 const selectedVenueName = ref(reservationFormStore.selectedVenueName);
+
+onMounted(async () => {
+  await loadAllData();
+});
 
 const showVenueSection = computed(() =>
   reservationFormStore.reservationType === 'Venue' || reservationFormStore.reservationType === 'Both'
@@ -169,89 +175,89 @@ const formSubtitle = computed(() => {
   return 'Venue and Equipment Reservation Form';
 });
 
-/**
- * @constant {Array<Object>} equipmentItemsList
- * @description Static equipment data for reservation selection.
- */
 const equipmentItemsList = ref([
-  { equipmentName: 'White Monobloc Chair', availableCount: 200, selectedQuantity: 0 },
-  { equipmentName: 'Table', availableCount: 50, selectedQuantity: 0 },
-  { equipmentName: 'Podium', availableCount: 5, selectedQuantity: 0 },
-  { equipmentName: 'Microphone', availableCount: 10, selectedQuantity: 0 },
-  { equipmentName: 'Extension Cord', availableCount: 20, selectedQuantity: 0 },
-  { equipmentName: 'Whiteboard', availableCount: 15, selectedQuantity: 0 },
-  { equipmentName: 'Projector', availableCount: 8, selectedQuantity: 0 },
-  { equipmentName: 'Stage', availableCount: 0, selectedQuantity: 0 },
-  { equipmentName: 'Sound System', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 1, equipmentName: 'Chairs', availableCount: 200, selectedQuantity: 0 },
+  { equipmentIdentifier: 2, equipmentName: 'Tables', availableCount: 50, selectedQuantity: 0 },
+  { equipmentIdentifier: 3, equipmentName: 'Podium', availableCount: 5, selectedQuantity: 0 },
+  { equipmentIdentifier: 4, equipmentName: 'Microphone', availableCount: 10, selectedQuantity: 0 },
+  { equipmentIdentifier: 5, equipmentName: 'AUX Cord', availableCount: 20, selectedQuantity: 0 },
+  { equipmentIdentifier: 6, equipmentName: 'Sound System', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 7, equipmentName: 'Extension Cord', availableCount: 15, selectedQuantity: 0 },
+  { equipmentIdentifier: 8, equipmentName: 'Stage', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 9, equipmentName: 'Panel Board', availableCount: 8, selectedQuantity: 0 },
+  { equipmentIdentifier: 10, equipmentName: 'White Screen', availableCount: 12, selectedQuantity: 0 },
+  { equipmentIdentifier: 11, equipmentName: 'Philippine Flag', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 12, equipmentName: 'FEU Tech Flag', availableCount: 6, selectedQuantity: 0 },
+  { equipmentIdentifier: 13, equipmentName: 'LED Video Wall', availableCount: 2, selectedQuantity: 0 },
+  { equipmentIdentifier: 14, equipmentName: 'Others', availableCount: 5, selectedQuantity: 0 },
 ]);
 
-/**
- * @constant {Array<Object>} venueFloorGroupsList
- * @description Static venue data grouped by floor for reservation selection.
- */
-const venueFloorGroupsList = ref([
-  {
-    floorLabel: '18th Floor',
-    venueRecords: [
-      { venueName: '18F Roofdeck', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '17th Floor',
-    venueRecords: [
-      { venueName: '17F MPR', venueAvailable: true },
-      { venueName: 'Basketball without Aircon', venueAvailable: true },
-      { venueName: 'Basketball gym with Aircon', venueAvailable: true },
-      { venueName: 'Basketball gym with Aircon and Green Matting', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '16th Floor',
-    venueRecords: [
-      { venueName: 'F1603 Audio Visual Room', venueAvailable: false },
-      { venueName: 'F1604 Case Room', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '15th Floor',
-    venueRecords: [
-      { venueName: 'F1502 Multipurpose Room', venueAvailable: false },
-      { venueName: 'F1503 Multipurpose Room', venueAvailable: false },
-      { venueName: 'F1504 Multipurpose Room', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '8th Floor',
-    venueRecords: [
-      { venueName: '8F Exec. Lounge 1', venueAvailable: false },
-      { venueName: '8F Exec. Lounge 2', venueAvailable: true },
-      { venueName: '8F Exec. Lounge 1 and 2 Combined', venueAvailable: true },
-      { venueName: '8F Student Lounge', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '4th - 7th Floor',
-    venueRecords: [
-      { venueName: 'F407', venueAvailable: true },
-      { venueName: 'F503', venueAvailable: true },
-      { venueName: 'F608', venueAvailable: true },
-      { venueName: 'F704', venueAvailable: true },
-      { venueName: 'F711', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '3rd Floor',
-    venueRecords: [
-      { venueName: 'FEU Tech Swimming Pool', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '2nd Floor',
-    venueRecords: [
-      { venueName: '2F FIT Student Plaza', venueAvailable: false },
-    ],
-  },
-]);
+const venueFloorGroupsList = computed(() => {
+  const improvised = [
+    {
+      floorLabel: '18th Floor',
+      venueRecords: [
+        { venueIdentifier: 1, venueName: '18F Roofdeck', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '17th Floor',
+      venueRecords: [
+        { venueIdentifier: 2, venueName: '17F MPR', venueAvailable: true },
+        { venueIdentifier: 3, venueName: 'Basketball without Aircon', venueAvailable: true },
+        { venueIdentifier: 4, venueName: 'Basketball gym with Aircon', venueAvailable: false },
+        { venueIdentifier: 5, venueName: 'Basketball gym with Aircon and Green Matting', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '16th Floor',
+      venueRecords: [
+        { venueIdentifier: 6, venueName: 'F1603 Audio Visual Room', venueAvailable: false },
+        { venueIdentifier: 7, venueName: 'F1604 Case Room', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '15th Floor',
+      venueRecords: [
+        { venueIdentifier: 8, venueName: 'F1502 Multipurpose Room', venueAvailable: true },
+        { venueIdentifier: 9, venueName: 'F1503 Multipurpose Room', venueAvailable: false },
+        { venueIdentifier: 10, venueName: 'F1504 Multipurpose Room', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '8th Floor',
+      venueRecords: [
+        { venueIdentifier: 11, venueName: '8F Exec. Lounge 1', venueAvailable: false },
+        { venueIdentifier: 12, venueName: '8F Exec. Lounge 2', venueAvailable: true },
+        { venueIdentifier: 13, venueName: '8F Exec. Lounge 1 and 2 Combined', venueAvailable: true },
+        { venueIdentifier: 14, venueName: '8F Student Lounge', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '4th - 7th Floor',
+      venueRecords: [
+        { venueIdentifier: 15, venueName: 'F407', venueAvailable: true },
+        { venueIdentifier: 16, venueName: 'F503', venueAvailable: true },
+        { venueIdentifier: 17, venueName: 'F608', venueAvailable: true },
+        { venueIdentifier: 18, venueName: 'F704', venueAvailable: true },
+        { venueIdentifier: 19, venueName: 'F711', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '3rd Floor',
+      venueRecords: [
+        { venueIdentifier: 20, venueName: 'FEU Tech Swimming Pool', venueAvailable: true },
+      ],
+    },
+    {
+      floorLabel: '2nd Floor',
+      venueRecords: [
+        { venueIdentifier: 21, venueName: '2F FIT Student Plaza', venueAvailable: false },
+      ],
+    },
+  ];
+  return improvised;
+});
 
 /**
  * @function filteredVenueFloorGroups

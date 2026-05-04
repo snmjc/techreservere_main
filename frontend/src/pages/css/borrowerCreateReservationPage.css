@@ -102,6 +102,31 @@
   opacity: 1;
 }
 
+.create-reservation-time-inputs {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  max-width: 320px;
+}
+
+.create-reservation-time-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.create-reservation-time-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666666;
+}
+
+.create-reservation-time-input {
+  max-width: none !important;
+  flex: 1;
+}
+
 .create-reservation-form-select {
   flex: 1;
   padding: 0.5rem 0.75rem;

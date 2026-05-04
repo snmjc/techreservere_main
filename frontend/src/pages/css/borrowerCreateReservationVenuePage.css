@@ -322,16 +322,22 @@
 }
 
 .create-reservation-equipment-table-body-row--unavailable {
-  background-color: #fde8e8;
+  background-color: #fee2e2;
 }
 
 .create-reservation-equipment-table-body-row--unavailable .create-reservation-equipment-table-cell {
-  color: #b91c1c;
+  color: #dc2626;
   font-weight: 600;
 }
 
 .create-reservation-equipment-table-body-row--unavailable:hover {
-  background-color: #fde8e8;
+  background-color: #fee2e2;
+}
+
+.create-reservation-equipment-table-body-row--unavailable .create-reservation-equipment-qty-input {
+  background-color: #fecaca;
+  border-color: #dc2626;
+  color: #dc2626;
 }
 
 .create-reservation-equipment-qty-input:disabled {
