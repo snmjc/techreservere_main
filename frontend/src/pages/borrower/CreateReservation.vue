@@ -129,7 +129,7 @@ import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerCreateReservationPage.css';
+import './css/CreateReservation.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 

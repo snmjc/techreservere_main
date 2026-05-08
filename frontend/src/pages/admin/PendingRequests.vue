@@ -69,7 +69,7 @@
 import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminPendingRequestsPage.css';
+import './css/PendingRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import RequestViewModalComponent from '@/modules/request/components/RequestViewModalComponent.vue';

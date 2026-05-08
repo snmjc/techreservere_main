@@ -115,55 +115,66 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerPastRecordsPage.css';
+import './css/PastRecords.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
+const authStore = useAuthenticationStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const loading = ref(true);
 
-/**
- * @constant {Array<Object>} pastRecordsList
- * @description Static past records data for demonstration.
- */
-const pastRecordsList = ref([
-  {
-    requestIdentifier: 59327,
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestSchedule: 'March 08, 2026 15:00-16:50',
-    facilityName: 'F704',
-    requestQuantity: 'N/A',
-    requestType: 'Venue',
-    requestPurpose: 'Class',
-    recordStatus: 'Completed',
-  },
-  {
-    requestIdentifier: 59310,
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestSchedule: 'Feb 20, 2026 09:00-11:00',
-    facilityName: 'F503',
-    requestQuantity: 'N/A',
-    requestType: 'Venue',
-    requestPurpose: 'Meeting',
-    recordStatus: 'Rejected',
-  },
-  {
-    requestIdentifier: 59295,
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestSchedule: 'Feb 15, 2026 13:00-14:30',
-    facilityName: '8F Exec. Lounge 1',
-    requestQuantity: '5',
-    requestType: 'Equipment',
-    requestPurpose: 'Event',
-    recordStatus: 'Cancelled',
-  },
-]);
+const pastRecordsList = ref([]);
+
+onMounted(async () => {
+  await loadPastRecords();
+});
+
+async function loadPastRecords() {
+  loading.value = true;
+  try {
+    const response = await fetch('/api/v1/reservations', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to load reservations');
+    }
+
+    const data = await response.json();
+    console.log('Past Records API Response:', data);
+    const reservations = data.data?.reservations || [];
+    console.log('Past Records:', reservations);
+    
+    // Map all reservations for past records (completed, rejected, cancelled)
+    pastRecordsList.value = reservations
+      .filter(r => ['Completed', 'Returned', 'Rejected', 'Cancelled'].includes(r.currentStatus))
+      .map(r => ({
+        requestIdentifier: r.reservationIdentifier || r.id,
+        requesterFullName: r.organizationName || 'N/A',
+        requesterRole: 'Student',
+        requestSchedule: r.eventDateTime || 'N/A',
+        facilityName: r.venueIdentifier || 'N/A',
+        requestQuantity: r.requestedQuantity || 'N/A',
+        requestType: r.activityType || 'Venue',
+        requestPurpose: r.purposeDescription || 'N/A',
+        recordStatus: r.currentStatus === 'Returned' ? 'Completed' : r.currentStatus,
+      }));
+  } catch (error) {
+    console.error('Error loading past records:', error);
+    pastRecordsList.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
 
 /**
  * @function filteredRecordList

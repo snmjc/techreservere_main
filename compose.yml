@@ -52,6 +52,20 @@ services:
           path: ./backend/composer.lock
           target: /app/composer.lock
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: techreserve_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@techreserve.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "${PGADMIN_EXTERNAL_PORT:-5050}:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
   frontend:
     build:
       context: ./frontend
@@ -86,3 +100,4 @@ volumes:
   frontend_node_modules:
   backend_var:
   backend_vendor:
+  pgadmin_data:

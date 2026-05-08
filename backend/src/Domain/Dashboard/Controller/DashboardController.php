@@ -34,4 +34,18 @@ class DashboardController extends AbstractController
         $summaryData = $this->dashboardAggregationService->getAdminDashboardSummary();
         return $this->createSuccessResponse($summaryData);
     }
+
+    // ===== AI GENERATED: getBorrowerDashboardSummary =====
+    // Purpose: Return dashboard metrics for the authenticated borrower only
+    // Inputs: none (uses authenticated user from token)
+    // Returns: JsonResponse with borrower-specific dashboard data
+
+    #[Route('/borrower/summary', name: 'borrower_dashboard_summary', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_BORROWER])]
+    public function getBorrowerDashboardSummary(): JsonResponse
+    {
+        $user = $this->getUser();
+        $summaryData = $this->dashboardAggregationService->getBorrowerDashboardSummary($user);
+        return $this->createSuccessResponse($summaryData);
+    }
 }

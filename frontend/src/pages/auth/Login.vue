@@ -49,7 +49,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AuthenticationLoginFormComponent from '@/modules/authentication/components/AuthenticationLoginFormComponent.vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import './css/loginPage.css';
+import './css/Login.css';
 
 const router = useRouter();
 const authStore = useAuthenticationStore();
@@ -67,8 +67,14 @@ const loginErrorMessage = ref(null);
  * @returns {void}
  */
 async function handleSubmitLoginCredentials(credentialPayload) {
-  loginSubmitting.value = true;
   loginErrorMessage.value = null;
+
+  if (credentialPayload.validationError) {
+    loginErrorMessage.value = credentialPayload.validationError;
+    return;
+  }
+
+  loginSubmitting.value = true;
 
   try {
     const account = await authStore.performLogin(

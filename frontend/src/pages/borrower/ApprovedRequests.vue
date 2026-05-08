@@ -84,29 +84,66 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerSubListPage.css';
+import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
 const router = useRouter();
+const authStore = useAuthenticationStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const loading = ref(true);
 
-const approvedRecordsList = ref([
-  {
-    requestIdentifier: 59327,
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestSchedule: 'Reserved: March 08, 2026 15:00-16:50',
-    facilityName: 'F309',
-    requestQuantity: 'N/A',
-    requestType: 'Venue',
-    requestPurpose: 'Class',
-  },
-]);
+const approvedRecordsList = ref([]);
+
+onMounted(async () => {
+  await loadApprovedRequests();
+});
+
+async function loadApprovedRequests() {
+  loading.value = true;
+  try {
+    const response = await fetch('/api/v1/reservations', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to load reservations');
+    }
+
+    const data = await response.json();
+    console.log('Approved Requests API Response:', data);
+    const reservations = data.data?.reservations || [];
+    console.log('Approved Requests:', reservations);
+    
+    // Filter for approved requests only
+    approvedRecordsList.value = reservations
+      .filter(r => r.currentStatus === 'Approved')
+      .map(r => ({
+        requestIdentifier: r.reservationIdentifier || r.id,
+        requesterFullName: r.organizationName || 'N/A',
+        requesterRole: 'Student',
+        requestSchedule: r.eventDateTime || 'N/A',
+        facilityName: r.venueIdentifier || 'N/A',
+        requestQuantity: r.requestedQuantity || 'N/A',
+        requestType: r.activityType || 'Venue',
+        requestPurpose: r.purposeDescription || 'N/A',
+      }));
+  } catch (error) {
+    console.error('Error loading approved requests:', error);
+    approvedRecordsList.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
 
 const filteredRecordList = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();

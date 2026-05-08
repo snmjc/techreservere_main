@@ -35,13 +35,24 @@ export async function loginRequest(credentials) {
  * @param {string} registrationData.lastName
  * @param {string} registrationData.emailAddress
  * @param {string} registrationData.passwordText
+ * @param {File} registrationData.supportingDocument (optional)
  * @returns {Promise<Object>} Response with account data
  */
 export async function registerRequest(registrationData) {
+  const formData = new FormData();
+  formData.append('firstName', registrationData.firstName);
+  formData.append('lastName', registrationData.lastName);
+  formData.append('emailAddress', registrationData.emailAddress);
+  formData.append('passwordText', registrationData.passwordText);
+  
+  if (registrationData.supportingDocument) {
+    formData.append('supportingDocument', registrationData.supportingDocument);
+  }
+
   const response = await fetch('/api/v1/auth/register', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(registrationData),
+    headers: {}, // Let browser set Content-Type for FormData
+    body: formData,
   });
 
   const data = await response.json();

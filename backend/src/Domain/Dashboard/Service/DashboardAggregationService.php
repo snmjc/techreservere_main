@@ -45,4 +45,56 @@ class DashboardAggregationService
             'pendingReservations' => $pendingReservations,
         ];
     }
+
+    // ===== AI GENERATED: getBorrowerDashboardSummary =====
+    // Purpose: Aggregate dashboard metrics for authenticated borrower only
+    // Inputs: $user (authenticated user entity)
+    // Returns: array with borrower-specific summary counts
+    // Flow:
+    // 1. Get user's ID
+    // 2. Filter reservations by borrower_id
+    // 3. Count by status (Active, Approved, Pending, Completed)
+    // 4. Return summary array
+
+    public function getBorrowerDashboardSummary($user): array
+    {
+        $userId = $user->getId();
+        
+        // Get all reservations for this borrower
+        $userReservations = $this->reservationRepository->findByBorrowerAccountId($userId);
+        
+        // Count by status
+        $activeReservations = 0;
+        $approvedRequests = 0;
+        $pendingRequests = 0;
+        $completedReservations = 0;
+        
+        foreach ($userReservations as $reservation) {
+            $status = $reservation->getCurrentStatus();
+            switch ($status) {
+                case 'Active':
+                case 'Reserved':
+                    $activeReservations++;
+                    break;
+                case 'Approved':
+                    $approvedRequests++;
+                    break;
+                case 'Pending':
+                case 'Pending Review':
+                    $pendingRequests++;
+                    break;
+                case 'Completed':
+                case 'Returned':
+                    $completedReservations++;
+                    break;
+            }
+        }
+
+        return [
+            'activeReservations' => $activeReservations,
+            'approvedRequests' => $approvedRequests,
+            'pendingRequests' => $pendingRequests,
+            'completedReservations' => $completedReservations,
+        ];
+    }
 }

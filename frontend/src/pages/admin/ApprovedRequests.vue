@@ -69,7 +69,7 @@
 import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminApprovedRequestsPage.css';
+import './css/ApprovedRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import RequestApprovedTableComponent from '@/modules/request/components/RequestApprovedTableComponent.vue';
 import RequestWorkflowModalComponent from '@/modules/request/components/RequestWorkflowModalComponent.vue';

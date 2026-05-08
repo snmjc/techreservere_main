@@ -1,4 +1,4 @@
-<!-- ===== AI GENERATED: BorrowerPendingRequestsPage ===== -->
+<!-- ===== AI GENERATED: BorrowerActiveReservationsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
     :role-label="'DELA CRUZ, JUAN'"
@@ -6,16 +6,16 @@
   >
     <!-- Page Header -->
     <div class="borrower-sublist-page-header">
-      <h2 class="borrower-sublist-page-heading">Pending Requests</h2>
+      <h2 class="borrower-sublist-page-heading">Active Reservations</h2>
       <span class="borrower-sublist-go-back-link" @click="navigateBackToMyReservations">Go Back</span>
     </div>
 
     <!-- Toolbar -->
     <div class="borrower-sublist-toolbar">
       <div class="borrower-sublist-search-group">
-        <label class="borrower-sublist-search-label" for="borrowerPendingSearch">Search:</label>
+        <label class="borrower-sublist-search-label" for="borrowerActiveSearch">Search:</label>
         <input
-          id="borrowerPendingSearch"
+          id="borrowerActiveSearch"
           v-model="searchQueryText"
           type="text"
           class="borrower-sublist-search-input"
@@ -23,8 +23,8 @@
         />
       </div>
       <div class="borrower-sublist-showing-group">
-        <label class="borrower-sublist-showing-label" for="borrowerPendingShowing">Showing:</label>
-        <select id="borrowerPendingShowing" v-model="showingFilterValue" class="borrower-sublist-showing-select">
+        <label class="borrower-sublist-showing-label" for="borrowerActiveShowing">Showing:</label>
+        <select id="borrowerActiveShowing" v-model="showingFilterValue" class="borrower-sublist-showing-select">
           <option value="all">All</option>
         </select>
         <button class="borrower-sublist-sort-button" aria-label="Sort">
@@ -68,11 +68,11 @@
             </td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--purpose">{{ record.requestPurpose }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--status">
-              <span class="borrower-sublist-status-badge borrower-sublist-status-badge--pending">Pending Approval</span>
+              <span class="borrower-sublist-status-badge borrower-sublist-status-badge--active">Active</span>
             </td>
           </tr>
           <tr v-if="filteredRecordList.length === 0">
-            <td colspan="9" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No pending requests.</td>
+            <td colspan="9" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No active reservations.</td>
           </tr>
         </tbody>
       </table>
@@ -84,39 +84,87 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerSubListPage.css';
+import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
 const router = useRouter();
+const authStore = useAuthenticationStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const loading = ref(true);
 
-const pendingRecordsList = ref([
-  {
-    requestIdentifier: 59327,
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestSchedule: 'Reserved: March 08, 2026 15:00-16:50',
-    facilityName: 'F309',
-    requestQuantity: 'N/A',
-    requestType: 'Venue',
-    requestPurpose: 'Class',
-  },
-]);
+const activeRecordsList = ref([]);
 
+onMounted(async () => {
+  await loadActiveReservations();
+});
+
+async function loadActiveReservations() {
+  loading.value = true;
+  try {
+    const response = await fetch('/api/v1/reservations', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to load reservations');
+    }
+
+    const data = await response.json();
+    console.log('API Response:', data);
+    const reservations = data.data?.reservations || [];
+    console.log('Reservations:', reservations);
+    
+    // Filter for active reservations only
+    activeRecordsList.value = reservations
+      .filter(r => r.currentStatus === 'Active' || r.currentStatus === 'Reserved' || r.currentStatus === 'Prepared' || r.currentStatus === 'Deployed')
+      .map(r => ({
+        requestIdentifier: r.reservationIdentifier || r.id,
+        requesterFullName: r.organizationName || 'N/A',
+        requesterRole: 'Student',
+        requestSchedule: r.eventDateTime || 'N/A',
+        facilityName: r.venueIdentifier || 'N/A',
+        requestQuantity: r.requestedQuantity || 'N/A',
+        requestType: r.activityType || 'Venue',
+        requestPurpose: r.purposeDescription || 'N/A',
+      }));
+  } catch (error) {
+    console.error('Error loading active reservations:', error);
+    activeRecordsList.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+/**
+ * @function filteredRecordList
+ * @description Filters list by search query.
+ * @returns {Array<Object>}
+ */
 const filteredRecordList = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
-  if (!queryLower) return pendingRecordsList.value;
-  return pendingRecordsList.value.filter((record) =>
+  if (!queryLower) return activeRecordsList.value;
+  return activeRecordsList.value.filter((record) =>
     record.requesterFullName.toLowerCase().includes(queryLower) ||
     record.requestIdentifier.toString().includes(queryLower)
   );
 });
 
+/**
+ * @function getTypeBadgeClass
+ * @description Returns CSS class for type badge.
+ * @param {string} requestType
+ * @returns {string}
+ */
 function getTypeBadgeClass(requestType) {
   const typeLower = requestType.toLowerCase();
   if (typeLower === 'venue') return 'borrower-sublist-type-badge--venue';
@@ -125,6 +173,11 @@ function getTypeBadgeClass(requestType) {
   return '';
 }
 
+/**
+ * @function navigateBackToMyReservations
+ * @description Navigates back to My Reservations page.
+ * @returns {void}
+ */
 function navigateBackToMyReservations() {
   router.push({ name: 'borrowerMyReservationsPage' });
 }

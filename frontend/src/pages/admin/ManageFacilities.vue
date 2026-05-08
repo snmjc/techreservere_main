@@ -124,7 +124,7 @@
 import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminManageFacilitiesPage.css';
+import './css/ManageFacilities.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import FacilityVenueListComponent from '@/modules/facility/components/FacilityVenueListComponent.vue';
 import FacilityEquipmentGridComponent from '@/modules/facility/components/FacilityEquipmentGridComponent.vue';

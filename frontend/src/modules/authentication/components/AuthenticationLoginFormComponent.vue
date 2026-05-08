@@ -4,16 +4,16 @@
     <h1 class="login-form-heading">Welcome!</h1>
 
     <div class="login-form-field-group">
-      <label class="login-form-label" for="usernameOrEmailInput">
-        Username or Email
+      <label class="login-form-label" for="emailAddressInput">
+        Email
       </label>
       <input
-        id="usernameOrEmailInput"
-        v-model="usernameOrEmailValue"
-        type="text"
+        id="emailAddressInput"
+        v-model="emailAddressValue"
+        type="email"
         class="login-form-input"
-        placeholder="jdcruz"
-        autocomplete="username"
+        placeholder="jdelacruz@fit.edu.ph"
+        autocomplete="email"
         required
       />
     </div>
@@ -59,7 +59,7 @@
 
     <p class="login-form-signup-prompt">
       Don't have an account?
-      <a href="#" class="login-form-signup-link">Sign up</a>
+      <router-link :to="{ name: 'signUpPage' }" class="login-form-signup-link">Sign up</router-link>
     </p>
   </form>
 </template>
@@ -87,7 +87,7 @@ const props = defineProps({
 
 const emit = defineEmits(['submitLoginCredentials']);
 
-const usernameOrEmailValue = ref('');
+const emailAddressValue = ref('');
 const passwordValue = ref('');
 const rememberMeChecked = ref(false);
 const passwordVisible = ref(false);
@@ -97,9 +97,34 @@ const passwordVisible = ref(false);
  * @description Emits login credentials to parent on form submit.
  * @returns {void}
  */
+const ALLOWED_EMAIL_DOMAINS = ['@fit.edu.ph', '@feu.edu.ph', '@techreserve.feu.edu.ph'];
+
 function handleLoginSubmit() {
+  const trimmedEmail = emailAddressValue.value.trim().toLowerCase();
+
+  if (!trimmedEmail || !passwordValue.value) {
+    emit('submitLoginCredentials', {
+      usernameOrEmail: '',
+      passwordText: '',
+      rememberSession: rememberMeChecked.value,
+      validationError: 'Please enter both email and password.',
+    });
+    return;
+  }
+
+  const hasAllowedDomain = ALLOWED_EMAIL_DOMAINS.some((domain) => trimmedEmail.endsWith(domain));
+  if (!hasAllowedDomain) {
+    emit('submitLoginCredentials', {
+      usernameOrEmail: '',
+      passwordText: '',
+      rememberSession: rememberMeChecked.value,
+      validationError: 'Email must use an FEU institutional domain (e.g. @fit.edu.ph).',
+    });
+    return;
+  }
+
   emit('submitLoginCredentials', {
-    usernameOrEmail: usernameOrEmailValue.value,
+    usernameOrEmail: trimmedEmail,
     passwordText: passwordValue.value,
     rememberSession: rememberMeChecked.value,
   });

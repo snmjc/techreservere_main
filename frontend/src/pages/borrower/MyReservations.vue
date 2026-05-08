@@ -47,7 +47,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerMyReservationsPage.css';
+import './css/MyReservations.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 

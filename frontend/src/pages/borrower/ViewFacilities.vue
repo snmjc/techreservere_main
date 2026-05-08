@@ -137,7 +137,7 @@
 import { ref, computed } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/borrowerViewFacilitiesPage.css';
+import './css/ViewFacilities.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
 const activeFacilityTab = ref('venue');

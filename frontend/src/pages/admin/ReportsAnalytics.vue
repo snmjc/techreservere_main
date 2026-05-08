@@ -57,7 +57,7 @@
 import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminReportsAnalyticsPage.css';
+import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import AnalyticsHourlyDemandChartComponent from '@/modules/analytics/components/AnalyticsHourlyDemandChartComponent.vue';
 import AnalyticsMonthlyForecastChartComponent from '@/modules/analytics/components/AnalyticsMonthlyForecastChartComponent.vue';

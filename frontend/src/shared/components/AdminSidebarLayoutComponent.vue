@@ -16,7 +16,7 @@
       </div>
 
       <div class="admin-sidebar-role-badge">
-        {{ roleLabel }}
+        {{ displayedNameLabel }}
       </div>
 
       <nav class="admin-sidebar-navigation">
@@ -86,18 +86,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 /**
  * @typedef {Object} AdminSidebarLayoutProps
- * @property {string} roleLabel - Role display label (e.g. "ADMINISTRATOR")
+ * @property {string} roleLabel - Optional fallback label when no user is logged in
  * @property {Array<Object>} navigationItems - Sidebar navigation items
  */
 const props = defineProps({
   roleLabel: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
   },
   navigationItems: {
     type: Array,
@@ -108,6 +110,24 @@ const props = defineProps({
 const currentRoute = useRoute();
 const router = useRouter();
 const authStore = useAuthenticationStore();
+
+/**
+ * @function displayedNameLabel
+ * @description Builds a "LASTNAME, FIRSTNAME" label from the logged-in account.
+ *              Falls back to the roleLabel prop when no account is available.
+ */
+const displayedNameLabel = computed(() => {
+  const account = authStore.accountData;
+  if (account && (account.lastName || account.firstName)) {
+    const lastName = (account.lastName || '').toUpperCase();
+    const firstName = (account.firstName || '').toUpperCase();
+    if (lastName && firstName) {
+      return `${lastName}, ${firstName}`;
+    }
+    return lastName || firstName;
+  }
+  return props.roleLabel;
+});
 
 /**
  * @function isActiveRoute

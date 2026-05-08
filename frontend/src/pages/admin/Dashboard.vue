@@ -59,7 +59,7 @@
 import { ref, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminDashboardPage.css';
+import './css/Dashboard.css';
 
 import DashboardStatCardComponent from '@/modules/dashboard/components/DashboardStatCardComponent.vue';
 import DashboardQuickStatsComponent from '@/modules/dashboard/components/DashboardQuickStatsComponent.vue';

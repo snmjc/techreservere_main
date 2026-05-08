@@ -68,7 +68,7 @@
 import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminActiveReservationsPage.css';
+import './css/ActiveReservations.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import ReservationActiveTableComponent from '@/modules/reservation/components/ReservationActiveTableComponent.vue';
 import ReservationDeploymentModalComponent from '@/modules/reservation/components/ReservationDeploymentModalComponent.vue';

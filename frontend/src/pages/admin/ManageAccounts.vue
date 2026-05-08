@@ -114,7 +114,7 @@
 import { ref, computed } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/adminManageAccountsPage.css';
+import './css/ManageAccounts.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import AccountUserTableComponent from '@/modules/account/components/AccountUserTableComponent.vue';
 import AccountViewModalComponent from '@/modules/account/components/AccountViewModalComponent.vue';
