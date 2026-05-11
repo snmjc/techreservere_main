@@ -44,11 +44,12 @@ const props = defineProps({
  * @returns {Array<Object>}
  */
 const filteredEquipmentCategories = computed(() => {
+  const categories = props.equipmentCategories || [];
   if (props.availabilityFilter === 'all') {
-    return props.equipmentCategories;
+    return categories;
   }
   const isAvailableFilter = props.availabilityFilter === 'available';
-  return props.equipmentCategories.filter(
+  return categories.filter(
     (category) => category.categoryAvailable === isAvailableFilter
   );
 });

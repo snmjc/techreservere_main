@@ -42,10 +42,11 @@ class DashboardController extends AbstractController
 
     #[Route('/borrower/summary', name: 'borrower_dashboard_summary', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_BORROWER])]
-    public function getBorrowerDashboardSummary(): JsonResponse
+    public function getBorrowerDashboardSummary(\Symfony\Component\HttpFoundation\Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        $summaryData = $this->dashboardAggregationService->getBorrowerDashboardSummary($user);
+        $identity = $request->attributes->get('authenticatedIdentity');
+        $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
+        $summaryData = $this->dashboardAggregationService->getBorrowerDashboardSummary($borrowerAccountId);
         return $this->createSuccessResponse($summaryData);
     }
 }

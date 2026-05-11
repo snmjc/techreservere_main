@@ -24,9 +24,10 @@ function generateMockReservation(reservationData) {
 
 const reservationApi = {
   async createReservation(reservationData) {
-    const authToken = localStorage.getItem('authToken') || localStorage.getItem('clerkToken') || 'dev-token';
+    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     console.log('Creating reservation at:', `${API_BASE_URL}/reservations`);
     console.log('Reservation data:', reservationData);
+    console.log('Auth token exists:', !!authToken);
     
     try {
       const response = await axios.post(`${API_BASE_URL}/reservations`, reservationData, {
@@ -44,10 +45,14 @@ const reservationApi = {
   },
 
   async listReservations() {
+    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    console.log('Listing reservations with token exists:', !!authToken);
+    console.log('Token:', authToken ? authToken.substring(0, 20) + '...' : 'none');
+    
     try {
       const response = await axios.get(`${API_BASE_URL}/reservations`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${authToken}`
         }
       });
       return response.data;
@@ -59,9 +64,10 @@ const reservationApi = {
 
   async getReservationById(reservationIdentifier) {
     try {
+      const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken');
       const response = await axios.get(`${API_BASE_URL}/reservations/${reservationIdentifier}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${authToken}`
         }
       });
       return response.data;
@@ -73,6 +79,7 @@ const reservationApi = {
 
   async updateReservationStatus(reservationIdentifier, status, rejectionReason = null) {
     try {
+      const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken');
       const response = await axios.put(
         `${API_BASE_URL}/reservations/${reservationIdentifier}/status`,
         {
@@ -82,7 +89,7 @@ const reservationApi = {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            'Authorization': `Bearer ${authToken}`
           }
         }
       );

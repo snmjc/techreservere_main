@@ -248,6 +248,7 @@ async function handleSubmitReservationRequest() {
       supportingDocumentsList.value = [];
       recommendationDocumentsList.value = [];
       
+      // Navigate to borrower My Reservations which will automatically load fresh data
       router.push({ name: 'borrowerMyReservationsPage' });
     }
   } catch (error) {

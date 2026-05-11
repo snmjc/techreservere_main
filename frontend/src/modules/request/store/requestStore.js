@@ -12,88 +12,17 @@ export const useRequestStore = defineStore('requestStore', () => {
   // ==========================================
   // PENDING REQUESTS
   // ==========================================
-  const pendingRequestsList = ref([
-    {
-      requestIdentifier: 44031,
-      requesterFullName: 'Juan Dela Cruz',
-      requesterRole: 'Student',
-      requestSchedule: 'March 17, 2026 8:00 AM',
-      requestQuantity: 60,
-      requestType: 'Equipment',
-      requestPurpose: 'ACM General Assembly',
-      requesterDepartment: 'College of Engineering',
-      requestedDate: 'February 20, 2026',
-      activityTime: 'March 17, 2026',
-      activityNameTitle: 'ACM General Assembly',
-      participantCount: 60,
-      requestStatus: 'Pending for Approval',
-      reservationSummary: [
-        { itemName: 'White Monobloc Chair', itemCount: 60 },
-        { itemName: 'Table', itemCount: 5 },
-        { itemName: 'Podium', itemCount: 1 },
-      ],
-      uploadedDocuments: [
-        { fileName: 'ACM_APPandAPF.pdf' },
-        { fileName: 'ACM_FloorPlan.pdf' },
-      ],
-    },
-  ]);
+  const pendingRequestsList = ref([]);
 
   // ==========================================
   // APPROVED REQUESTS
   // ==========================================
-  const approvedRequestsList = ref([
-    {
-      requestIdentifier: 60021,
-      requesterFullName: 'Maria Lourdes Cruz',
-      requesterRole: 'Faculty',
-      requestSchedule: 'March 10, 2026 10:00 AM',
-      requestQuantity: 40,
-      requestType: 'Equipment',
-      requestPurpose: 'Seminar',
-      requesterDepartment: 'College of Engineering',
-      requestedDate: 'February 10, 2026',
-      activityTime: 'March 10, 2026',
-      activityEndTime: '10:00-12:00',
-      activityNameTitle: 'Engineering Seminar',
-      participantCount: 40,
-      requestStatus: 'Approved',
-      reservationSummary: [
-        { itemName: 'White Monobloc Chair', itemCount: 40 },
-        { itemName: 'Microphone', itemCount: 2 },
-      ],
-      assignedPersonnel: 'Mr. Carlos Reyes',
-    },
-  ]);
+  const approvedRequestsList = ref([]);
 
   // ==========================================
   // ACTIVE RESERVATIONS
   // ==========================================
-  const activeReservationsList = ref([
-    {
-      requestIdentifier: 60022,
-      requesterFullName: 'Maria Lourdes Cruz',
-      requesterRole: 'Faculty',
-      requestSchedule: 'March 10, 2026',
-      facilityName: 'N/A',
-      requestQuantity: 40,
-      requestType: 'Equipment',
-      requestPurpose: 'Seminar',
-      requesterDepartment: 'College of Engineering',
-      requestedDate: 'February 10, 2026',
-      activityDate: 'March 10, 2026',
-      activityEndTime: '10:00-12:00',
-      activityNameTitle: 'Engineering Seminar',
-      participantCount: 40,
-      deploymentStatus: 'Deployed/Released',
-      reservationSummary: [
-        { itemName: 'White Monobloc Chair', itemCount: 40, itemRecorded: false },
-        { itemName: 'Microphone', itemCount: 2, itemRecorded: false },
-      ],
-      assignedPersonnel: 'Mr. Carlos Reyes',
-      returnDateTime: 'March 10, 2026 10:00-12:00',
-    },
-  ]);
+  const activeReservationsList = ref([]);
 
   // ==========================================
   // PAST RECORDS
@@ -118,44 +47,27 @@ export const useRequestStore = defineStore('requestStore', () => {
   // ==========================================
 
   /**
-   * Approve a pending request → moves it to approved requests list.
+   * Approve a pending request → moves it to approved requests.
    */
-  function approvePendingRequest(requestRecord) {
-    const index = pendingRequestsList.value.findIndex(
-      (r) => r.requestIdentifier === requestRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = pendingRequestsList.value.splice(index, 1)[0];
-    approvedRequestsList.value.push({
-      ...record,
-      requestStatus: 'Approved',
-      assignedPersonnel: 'Pending Assignment',
-    });
+  async function approvePendingRequest(requestRecord) {
+    try {
+      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, 'Approved');
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to approve request:', error);
+    }
   }
 
   /**
    * Reject a pending request → moves it to past records with "Rejected" status.
    */
-  function rejectPendingRequest(requestRecord) {
-    const index = pendingRequestsList.value.findIndex(
-      (r) => r.requestIdentifier === requestRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = pendingRequestsList.value.splice(index, 1)[0];
-    pastRecordsList.value.push({
-      requestIdentifier: record.requestIdentifier,
-      requesterFullName: record.requesterFullName,
-      requesterRole: record.requesterRole,
-      requestedDate: record.requestedDate,
-      neededDate: record.requestSchedule,
-      facilityName: record.reservationSummary?.[0]?.itemName || 'N/A',
-      facilityImage: 'https://placehold.co/40x40/1a6e3a/ffffff?text=F',
-      requestQuantity: record.requestQuantity,
-      requestType: record.requestType,
-      requestPurpose: record.requestPurpose,
-      dateProcessed: getNowTimestamp(),
-      recordStatus: 'Rejected',
-    });
+  async function rejectPendingRequest(requestRecord, rejectionReason = null) {
+    try {
+      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, 'Rejected', rejectionReason);
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to reject request:', error);
+    }
   }
 
   // ==========================================
@@ -165,49 +77,25 @@ export const useRequestStore = defineStore('requestStore', () => {
   /**
    * Deploy/release an approved request → moves it to active reservations.
    */
-  function deployApprovedRequest(requestRecord) {
-    const index = approvedRequestsList.value.findIndex(
-      (r) => r.requestIdentifier === requestRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = approvedRequestsList.value.splice(index, 1)[0];
-    activeReservationsList.value.push({
-      ...record,
-      requestSchedule: record.activityTime || record.requestSchedule,
-      facilityName: record.reservationSummary?.[0]?.itemName || 'N/A',
-      activityDate: record.activityTime || record.requestSchedule,
-      deploymentStatus: 'Deployed/Released',
-      returnDateTime: `${record.activityTime || record.requestSchedule} ${record.activityEndTime || ''}`,
-      reservationSummary: (record.reservationSummary || []).map((item) => ({
-        ...item,
-        itemRecorded: false,
-      })),
-    });
+  async function deployApprovedRequest(requestRecord) {
+    try {
+      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, 'Deployed');
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to deploy request:', error);
+    }
   }
 
   /**
    * Cancel an approved request → moves it to past records with "Cancelled" status.
    */
-  function cancelApprovedRequest(requestRecord) {
-    const index = approvedRequestsList.value.findIndex(
-      (r) => r.requestIdentifier === requestRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = approvedRequestsList.value.splice(index, 1)[0];
-    pastRecordsList.value.push({
-      requestIdentifier: record.requestIdentifier,
-      requesterFullName: record.requesterFullName,
-      requesterRole: record.requesterRole,
-      requestedDate: record.requestedDate,
-      neededDate: record.requestSchedule,
-      facilityName: record.reservationSummary?.[0]?.itemName || 'N/A',
-      facilityImage: 'https://placehold.co/40x40/1a6e3a/ffffff?text=F',
-      requestQuantity: record.requestQuantity,
-      requestType: record.requestType,
-      requestPurpose: record.requestPurpose,
-      dateProcessed: getNowTimestamp(),
-      recordStatus: 'Cancelled',
-    });
+  async function cancelApprovedRequest(requestRecord) {
+    try {
+      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, 'Cancelled');
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+    }
   }
 
   // ==========================================
@@ -217,51 +105,25 @@ export const useRequestStore = defineStore('requestStore', () => {
   /**
    * Complete/return an active reservation → moves it to past records with "Completed" status.
    */
-  function completeActiveReservation(reservationRecord) {
-    const index = activeReservationsList.value.findIndex(
-      (r) => r.requestIdentifier === reservationRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = activeReservationsList.value.splice(index, 1)[0];
-    pastRecordsList.value.push({
-      requestIdentifier: record.requestIdentifier,
-      requesterFullName: record.requesterFullName,
-      requesterRole: record.requesterRole,
-      requestedDate: record.requestedDate,
-      neededDate: record.requestSchedule || record.activityDate,
-      facilityName: record.facilityName || 'N/A',
-      facilityImage: 'https://placehold.co/40x40/1a6e3a/ffffff?text=F',
-      requestQuantity: record.requestQuantity,
-      requestType: record.requestType,
-      requestPurpose: record.requestPurpose,
-      dateProcessed: getNowTimestamp(),
-      recordStatus: 'Completed',
-    });
+  async function completeActiveReservation(reservationRecord) {
+    try {
+      await reservationApi.updateReservationStatus(reservationRecord.requestIdentifier, 'Completed');
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to complete reservation:', error);
+    }
   }
 
   /**
    * Cancel an active reservation → moves it to past records with "Cancelled" status.
    */
-  function cancelActiveReservation(reservationRecord) {
-    const index = activeReservationsList.value.findIndex(
-      (r) => r.requestIdentifier === reservationRecord.requestIdentifier
-    );
-    if (index === -1) return;
-    const record = activeReservationsList.value.splice(index, 1)[0];
-    pastRecordsList.value.push({
-      requestIdentifier: record.requestIdentifier,
-      requesterFullName: record.requesterFullName,
-      requesterRole: record.requesterRole,
-      requestedDate: record.requestedDate,
-      neededDate: record.requestSchedule || record.activityDate,
-      facilityName: record.facilityName || 'N/A',
-      facilityImage: 'https://placehold.co/40x40/1a6e3a/ffffff?text=F',
-      requestQuantity: record.requestQuantity,
-      requestType: record.requestType,
-      requestPurpose: record.requestPurpose,
-      dateProcessed: getNowTimestamp(),
-      recordStatus: 'Cancelled',
-    });
+  async function cancelActiveReservation(reservationRecord) {
+    try {
+      await reservationApi.updateReservationStatus(reservationRecord.requestIdentifier, 'Cancelled');
+      await fetchReservations();
+    } catch (error) {
+      console.error('Failed to cancel reservation:', error);
+    }
   }
 
   // ==========================================
@@ -290,8 +152,21 @@ export const useRequestStore = defineStore('requestStore', () => {
   async function fetchReservations() {
     try {
       const response = await reservationApi.listReservations();
-      if (response && response.reservations) {
-        syncReservationsFromAPI(response.reservations);
+      console.log('fetchReservations response:', response);
+      
+      // Handle different response structures
+      let reservations = [];
+      if (response?.data?.reservations) {
+        reservations = response.data.reservations;
+      } else if (response?.reservations) {
+        reservations = response.reservations;
+      } else if (Array.isArray(response)) {
+        reservations = response;
+      }
+      
+      console.log('Reservations to sync:', reservations);
+      if (reservations?.length > 0) {
+        syncReservationsFromAPI(reservations);
       }
     } catch (error) {
       console.error('Failed to fetch reservations:', error);
@@ -302,43 +177,59 @@ export const useRequestStore = defineStore('requestStore', () => {
     pendingRequestsList.value = [];
     approvedRequestsList.value = [];
     activeReservationsList.value = [];
+    pastRecordsList.value = [];
 
-    apiReservations.forEach((res) => {
+    console.log('Syncing reservations from API:', apiReservations);
+
+    (apiReservations || []).forEach((res) => {
       const mappedRecord = {
-        requestIdentifier: res.reservationIdentifier,
-        requesterFullName: 'User',
+        requestIdentifier: res?.reservationIdentifier || 0,
+        requesterFullName: res?.organizationName || 'User',
         requesterRole: 'Borrower',
-        requestSchedule: res.eventDateTime,
-        requestQuantity: res.requestedQuantity,
-        requestType: res.requestedEquipmentList?.length > 0 ? 'Equipment' : 'Venue',
-        requestPurpose: res.purposeDescription,
-        requesterDepartment: res.organizationName,
-        requestedDate: res.submissionTimestamp,
-        activityTime: res.eventDateTime,
-        activityNameTitle: res.activityType,
-        participantCount: res.requestedQuantity,
-        requestStatus: res.currentStatus,
-        reservationSummary: res.requestedEquipmentList?.map((eq) => ({
-          itemName: eq.name || eq,
+        requestSchedule: res?.eventDateTime || 'N/A',
+        requestQuantity: res?.requestedQuantity || 0,
+        requestType: res?.requestedEquipmentList?.length > 0 ? 'Equipment' : 'Venue',
+        requestPurpose: res?.purposeDescription || 'N/A',
+        requesterDepartment: res?.organizationName || 'N/A',
+        requestedDate: res?.submissionTimestamp || 'N/A',
+        activityTime: res?.eventDateTime || 'N/A',
+        activityNameTitle: res?.activityType || 'N/A',
+        participantCount: res?.requestedQuantity || 0,
+        requestStatus: res?.currentStatus || 'Unknown',
+        reservationSummary: res?.requestedEquipmentList?.map((eq) => ({
+          itemName: eq?.name || eq,
           itemCount: 1,
         })) || [],
       };
 
-      if (res.currentStatus === 'Pending Review') {
+      console.log('Processing reservation:', res.reservationIdentifier, 'Status:', res.currentStatus);
+
+      const status = res?.currentStatus || '';
+      if (status === 'Pending Review' || status === 'Pending') {
         pendingRequestsList.value.push(mappedRecord);
-      } else if (res.currentStatus === 'Approved') {
+      } else if (status === 'Approved') {
         approvedRequestsList.value.push({
           ...mappedRecord,
           assignedPersonnel: 'Pending Assignment',
         });
-      } else if (['Deployed', 'Prepared'].includes(res.currentStatus)) {
+      } else if (['Deployed', 'Prepared', 'Active'].includes(status)) {
         activeReservationsList.value.push({
           ...mappedRecord,
           facilityName: 'N/A',
           deploymentStatus: 'Deployed/Released',
         });
+      } else if (['Completed', 'Rejected', 'Cancelled'].includes(status)) {
+        pastRecordsList.value.push({
+          ...mappedRecord,
+          recordStatus: status,
+        });
       }
     });
+
+    console.log('After sync - Pending:', pendingRequestsList.value.length, 
+                'Approved:', approvedRequestsList.value.length, 
+                'Active:', activeReservationsList.value.length, 
+                'Past:', pastRecordsList.value.length);
   }
 
   async function addNewReservation(reservationData) {
@@ -348,6 +239,8 @@ export const useRequestStore = defineStore('requestStore', () => {
       
       if (resData) {
         console.log('Reservation created successfully:', resData);
+        // Refetch reservations to update all lists
+        await fetchReservations();
         return resData;
       }
     } catch (error) {

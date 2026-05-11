@@ -115,10 +115,10 @@ const filteredAccountList = computed(() => {
  * @returns {boolean}
  */
 function isAccountSelected(accountRecord) {
-  return props.selectedForDeletion.some(
+  return (props.selectedForDeletion || []).some(
     (selected) =>
-      selected.accountIdNumber === accountRecord.accountIdNumber &&
-      selected.accountFullName === accountRecord.accountFullName
+      selected?.accountIdNumber === accountRecord?.accountIdNumber &&
+      selected?.accountFullName === accountRecord?.accountFullName
   );
 }
 

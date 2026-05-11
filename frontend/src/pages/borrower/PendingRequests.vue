@@ -84,74 +84,47 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const authStore = useAuthenticationStore();
+const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const loading = ref(true);
 
-const pendingRecordsList = ref([]);
+const pendingRecordsList = computed(() => requestStore.pendingRequestsList || []);
 
 onMounted(async () => {
-  await loadPendingRequests();
-});
-
-async function loadPendingRequests() {
-  loading.value = true;
   try {
-    const response = await fetch('/api/v1/reservations', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load reservations');
-    }
-
-    const data = await response.json();
-    console.log('Pending Requests API Response:', data);
-    const reservations = data.data?.reservations || [];
-    console.log('Pending Requests:', reservations);
-    
-    // Filter for pending requests only
-    pendingRecordsList.value = reservations
-      .filter(r => r.currentStatus === 'Pending' || r.currentStatus === 'Pending Review')
-      .map(r => ({
-        requestIdentifier: r.reservationIdentifier || r.id,
-        requesterFullName: r.organizationName || 'N/A',
-        requesterRole: 'Student',
-        requestSchedule: r.eventDateTime || 'N/A',
-        facilityName: r.venueIdentifier || 'N/A',
-        requestQuantity: r.requestedQuantity || 'N/A',
-        requestType: r.activityType || 'Venue',
-        requestPurpose: r.purposeDescription || 'N/A',
-      }));
+    await requestStore.fetchReservations();
+    const list = requestStore.pendingRequestsList || [];
+    console.log('Borrower Pending Requests - Count:', list.length);
   } catch (error) {
-    console.error('Error loading pending requests:', error);
-    pendingRecordsList.value = [];
-  } finally {
-    loading.value = false;
+    console.error('Error fetching pending requests:', error);
   }
-}
+});
 
 const filteredRecordList = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
-  if (!queryLower) return pendingRecordsList.value;
-  return pendingRecordsList.value.filter((record) =>
-    record.requesterFullName.toLowerCase().includes(queryLower) ||
-    record.requestIdentifier.toString().includes(queryLower)
+  const list = pendingRecordsList.value || [];
+  if (!queryLower) return list;
+  return list.filter((record) =>
+    record.requesterFullName?.toLowerCase().includes(queryLower) ||
+    record.requestIdentifier?.toString().includes(queryLower)
   );
+});
+
+const hasNoRecords = computed(() => {
+  const list = filteredRecordList.value || [];
+  return list.length === 0;
 });
 
 function getTypeBadgeClass(requestType) {

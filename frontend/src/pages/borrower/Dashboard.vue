@@ -114,6 +114,7 @@ async function loadDashboardData() {
     }
 
     const data = await response.json();
+    console.log('Dashboard API Response:', data);
     
     // Handle different response structures
     if (data.data) {
@@ -135,7 +136,7 @@ async function loadDashboardData() {
     recentActivity.value = [];
   } catch (error) {
     console.error('Error loading dashboard data:', error);
-    // Set to zeros when API fails
+    // Set to zeros when API fails or for new accounts with no data
     stats.value = {
       activeReservations: 0,
       approvedRequests: 0,
@@ -150,8 +151,10 @@ async function loadDashboardData() {
 
 function goToCreateReservation() {
   console.log('Navigating to create reservation...');
+  alert('Navigating to create reservation page...');
   router.push('/borrower/create-reservation').catch(err => {
     console.error('Navigation error:', err);
+    alert('Navigation error: ' + err.message);
   });
 }
 

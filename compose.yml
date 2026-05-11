@@ -34,8 +34,8 @@ services:
     ports:
       - "${BACKEND_EXTERNAL_PORT}:8000"
     environment:
-      APP_ENV: prod
-      APP_DEBUG: "0"
+      APP_ENV: dev
+      APP_DEBUG: "1"
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
     depends_on:
       db:
@@ -78,7 +78,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "100"
-      VITE_API_BASE_URL: "http://backend:8000"
+      VITE_API_BASE_URL: "http://localhost:8000"
     ports:
       - "${FRONTEND_EXTERNAL_PORT}:5173"
     depends_on:

@@ -122,14 +122,15 @@ const emit = defineEmits([
  * @returns {Array<Object>}
  */
 const filteredRequestList = computed(() => {
-  const queryLower = props.searchQueryText.toLowerCase().trim();
+  const queryLower = props.searchQueryText?.toLowerCase().trim() || '';
+  const list = props.requestList || [];
   if (!queryLower) {
-    return props.requestList;
+    return list;
   }
-  return props.requestList.filter((requestRecord) => {
+  return list.filter((requestRecord) => {
     return (
-      requestRecord.requesterFullName.toLowerCase().includes(queryLower) ||
-      requestRecord.requestIdentifier.toString().includes(queryLower)
+      requestRecord.requesterFullName?.toLowerCase().includes(queryLower) ||
+      requestRecord.requestIdentifier?.toString().includes(queryLower)
     );
   });
 });
@@ -141,7 +142,7 @@ const filteredRequestList = computed(() => {
  * @returns {string}
  */
 function getTypeBadgeClass(requestType) {
-  const typeLower = requestType.toLowerCase();
+  const typeLower = requestType?.toLowerCase() || '';
   if (typeLower === 'venue') return 'request-pending-type-badge--venue';
   if (typeLower === 'equipment') return 'request-pending-type-badge--equipment';
   if (typeLower === 'both') return 'request-pending-type-badge--both';

@@ -182,7 +182,7 @@ async function loadPastRecords() {
  * @returns {Array<Object>}
  */
 const filteredRecordList = computed(() => {
-  let recordsFiltered = pastRecordsList.value;
+  let recordsFiltered = pastRecordsList.value || [];
 
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {

@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ActiveReservations.css';
@@ -80,7 +80,17 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const selectedReservationRecord = ref(null);
 
-const activeReservationsList = requestStore.activeReservationsList;
+const activeReservationsList = computed(() => requestStore.activeReservationsList || []);
+
+onMounted(async () => {
+  try {
+    await requestStore.fetchReservations();
+    const list = requestStore.activeReservationsList || [];
+    console.log('Admin Active Reservations - Count:', list.length);
+  } catch (error) {
+    console.error('Error fetching active reservations:', error);
+  }
+});
 
 /**
  * @function handleViewDeploymentDetails

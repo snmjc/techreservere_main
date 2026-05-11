@@ -1,7 +1,7 @@
 <!-- ===== AI GENERATED: BorrowerMyReservationsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="userFullName"
     :navigation-items="borrowerNavigationItems"
   >
     <!-- Page Heading -->
@@ -43,21 +43,43 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/MyReservations.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
 const requestStore = useRequestStore();
+const authStore = useAuthenticationStore();
 
 const activeReservationsCount = computed(() => requestStore.activeCount);
 const approvedRequestsCount = computed(() => requestStore.approvedCount);
 const pendingRequestsCount = computed(() => requestStore.pendingCount);
 const completedReservationsCount = computed(() => requestStore.completedCount);
+
+const userFullName = computed(() => authStore.userFullName);
+
+onMounted(async () => {
+  try {
+    console.log('Auth token in localStorage:', localStorage.getItem('techreserve_auth_token') ? 'exists' : 'none');
+    console.log('Account data in localStorage:', localStorage.getItem('techreserve_auth_account'));
+    console.log('User is authenticated:', authStore.isAuthenticated);
+    console.log('User role:', authStore.userRole);
+    console.log('User account data:', authStore.accountData);
+    
+    await requestStore.fetchReservations();
+    const total = (requestStore.pendingRequestsList.value?.length || 0) + 
+                  (requestStore.approvedRequestsList.value?.length || 0) + 
+                  (requestStore.activeReservationsList.value?.length || 0);
+    console.log('My Reservations - Total:', total);
+  } catch (error) {
+    console.error('Error fetching reservations:', error);
+  }
+});
 
 /**
  * @function navigateToCreateReservation

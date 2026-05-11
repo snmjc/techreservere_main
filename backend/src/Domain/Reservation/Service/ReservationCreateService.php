@@ -32,9 +32,10 @@ class ReservationCreateService
         if (empty($requestDTO->organizationName)) {
             throw new DomainValidationException('Organization name is required.');
         }
-        if (empty($requestDTO->requestedEquipmentList)) {
-            throw new DomainValidationException('At least one equipment must be requested.');
-        }
+        // Allow empty equipment list for venue-only reservations
+        // if (empty($requestDTO->requestedEquipmentList)) {
+        //     throw new DomainValidationException('At least one equipment must be requested.');
+        // }
         if (empty($requestDTO->eventDateTime)) {
             throw new DomainValidationException('Event date and time is required.');
         }

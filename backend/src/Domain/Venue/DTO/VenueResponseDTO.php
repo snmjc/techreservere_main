@@ -12,17 +12,23 @@ class VenueResponseDTO
     public int $venueIdentifier;
     public string $venueName;
     public ?string $venueLocation;
+    public ?string $floorLevel;
     public ?int $capacityLimit;
     public string $availabilityStatus;
+    public ?string $description;
+    public ?string $imageUrl;
     public string $createdTimestamp;
 
-    public function __construct(int $venueIdentifier, string $venueName, ?string $venueLocation, ?int $capacityLimit, string $availabilityStatus, string $createdTimestamp)
+    public function __construct(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, string $availabilityStatus, ?string $description, ?string $imageUrl, string $createdTimestamp)
     {
         $this->venueIdentifier = $venueIdentifier;
         $this->venueName = $venueName;
         $this->venueLocation = $venueLocation;
+        $this->floorLevel = $floorLevel;
         $this->capacityLimit = $capacityLimit;
         $this->availabilityStatus = $availabilityStatus;
+        $this->description = $description;
+        $this->imageUrl = $imageUrl;
         $this->createdTimestamp = $createdTimestamp;
     }
 
@@ -32,8 +38,11 @@ class VenueResponseDTO
             'venueIdentifier' => $this->venueIdentifier,
             'venueName' => $this->venueName,
             'venueLocation' => $this->venueLocation,
+            'floorLevel' => $this->floorLevel,
             'capacityLimit' => $this->capacityLimit,
             'availabilityStatus' => $this->availabilityStatus,
+            'description' => $this->description,
+            'imageUrl' => $this->imageUrl,
             'createdTimestamp' => $this->createdTimestamp,
         ];
     }

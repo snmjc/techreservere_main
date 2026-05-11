@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
@@ -146,13 +146,23 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const sortOrderAscending = ref(true);
 
+onMounted(async () => {
+  try {
+    await requestStore.fetchReservations();
+    const list = requestStore.pastRecordsList || [];
+    console.log('Admin Past Records - Count:', list.length);
+  } catch (error) {
+    console.error('Error fetching past records:', error);
+  }
+});
+
 /**
  * @function filteredRecordList
  * @description Filters past records by active tab and search query.
  * @returns {Array<Object>}
  */
 const filteredRecordList = computed(() => {
-  let recordsFiltered = requestStore.pastRecordsList;
+  let recordsFiltered = requestStore.pastRecordsList || [];
 
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {
@@ -169,8 +179,8 @@ const filteredRecordList = computed(() => {
   if (queryLower) {
     recordsFiltered = recordsFiltered.filter(
       (record) =>
-        record.requesterFullName.toLowerCase().includes(queryLower) ||
-        record.requestIdentifier.toString().includes(queryLower)
+        record.requesterFullName?.toLowerCase().includes(queryLower) ||
+        record.requestIdentifier?.toString().includes(queryLower)
     );
   }
 

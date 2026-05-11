@@ -108,15 +108,6 @@ export const routeDefinitions = [
   },
   // Borrower/Requester routes
   {
-    path: '/borrower/dashboard',
-    name: 'borrowerDashboardPage',
-    component: () => import('@/pages/borrower/Dashboard.vue'),
-    meta: {
-      requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER'],
-    },
-  },
-  {
     path: '/borrower/my-reservations',
     name: 'borrowerMyReservationsPage',
     component: () => import('@/pages/borrower/MyReservations.vue'),

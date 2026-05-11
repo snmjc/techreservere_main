@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PendingRequests.css';
@@ -81,7 +81,17 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const selectedRequestRecord = ref(null);
 
-const pendingRequestsList = requestStore.pendingRequestsList;
+const pendingRequestsList = computed(() => requestStore.pendingRequestsList || []);
+
+onMounted(async () => {
+  try {
+    await requestStore.fetchReservations();
+    const list = requestStore.pendingRequestsList || [];
+    console.log('Admin Pending Requests - Count:', list.length);
+  } catch (error) {
+    console.error('Error fetching pending requests:', error);
+  }
+});
 
 /**
  * @function handleViewRequestDetails

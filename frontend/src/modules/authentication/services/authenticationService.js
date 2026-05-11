@@ -24,7 +24,18 @@ export async function loginRequest(credentials) {
     throw new Error(data.errorMessage || 'Login failed.');
   }
 
-  return data;
+  // Handle different response structures
+  // Backend returns: { success: true, data: { token, account } }
+  if (data.success && data.data) {
+    return data.data;
+  }
+
+  // Fallback for direct structure: { token, account }
+  if (data.token && data.account) {
+    return data;
+  }
+
+  throw new Error('Invalid response format from server.');
 }
 
 /**

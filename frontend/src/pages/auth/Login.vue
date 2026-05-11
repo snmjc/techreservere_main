@@ -82,6 +82,11 @@ async function handleSubmitLoginCredentials(credentialPayload) {
       credentialPayload.passwordText
     );
 
+    if (!account || !account.roleDesignation) {
+      loginErrorMessage.value = 'Invalid account data received from server.';
+      return;
+    }
+
     if (account.roleDesignation === 'ROLE_ADMIN') {
       router.push({ name: 'adminDashboardPage' });
     } else {

@@ -34,6 +34,12 @@ class RoleResolver
 
     public function resolveRoleFromIdentity(array $authenticatedIdentity): string
     {
+        // If roleDesignation is already in the identity (from ClerkTokenVerifier), use it
+        if (isset($authenticatedIdentity['roleDesignation']) && !empty($authenticatedIdentity['roleDesignation'])) {
+            return $authenticatedIdentity['roleDesignation'];
+        }
+
+        // Fallback: look up by email address
         $emailAddress = $authenticatedIdentity['emailAddress'] ?? '';
 
         if (empty($emailAddress)) {

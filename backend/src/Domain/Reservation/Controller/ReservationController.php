@@ -39,6 +39,9 @@ class ReservationController extends AbstractController
         $identity = $request->attributes->get('authenticatedIdentity');
         $requestBody = json_decode($request->getContent(), true) ?? [];
 
+        error_log('Reservation Creation - Identity: ' . json_encode($identity));
+        error_log('Reservation Creation - Request Body: ' . json_encode($requestBody));
+
         $createDTO = new ReservationCreateRequestDTO(
             organizationName: $requestBody['organizationName'] ?? '',
             venueIdentifier: $requestBody['venueIdentifier'] ?? null,
@@ -51,7 +54,10 @@ class ReservationController extends AbstractController
         );
 
         $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
+        error_log('Reservation Creation - Borrower Account ID: ' . $borrowerAccountId);
+        
         $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
+        error_log('Reservation Creation - Created Reservation ID: ' . $responseDTO->reservationIdentifier);
 
         return $this->createSuccessResponse($responseDTO->toResponseArray(), 201);
     }
@@ -68,12 +74,18 @@ class ReservationController extends AbstractController
         $resolvedRole = $request->attributes->get('resolvedRole', '');
         $identity = $request->attributes->get('authenticatedIdentity');
 
+        error_log('Reservation List - Resolved Role: ' . $resolvedRole);
+        error_log('Reservation List - Identity: ' . json_encode($identity));
+
         if ($resolvedRole === RoleConstants::ROLE_BORROWER) {
             $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
+            error_log('Reservation List - Borrower Account ID: ' . $borrowerAccountId);
             $dtos = $this->reservationReviewService->getReservationsByBorrower($borrowerAccountId);
         } else {
             $dtos = $this->reservationReviewService->getAllReservations();
         }
+
+        error_log('Reservation List - Total Reservations Found: ' . count($dtos));
 
         $responseList = array_map(fn($dto) => $dto->toResponseArray(), $dtos); // DTO → array map
         return $this->createSuccessResponse(['reservations' => $responseList]);

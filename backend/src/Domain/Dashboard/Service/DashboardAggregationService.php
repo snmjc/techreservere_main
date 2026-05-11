@@ -48,20 +48,21 @@ class DashboardAggregationService
 
     // ===== AI GENERATED: getBorrowerDashboardSummary =====
     // Purpose: Aggregate dashboard metrics for authenticated borrower only
-    // Inputs: $user (authenticated user entity)
+    // Inputs: $borrowerAccountId (int - authenticated borrower's account ID)
     // Returns: array with borrower-specific summary counts
     // Flow:
-    // 1. Get user's ID
-    // 2. Filter reservations by borrower_id
-    // 3. Count by status (Active, Approved, Pending, Completed)
-    // 4. Return summary array
+    // 1. Filter reservations by borrower_account_id
+    // 2. Count by status (Prepared/Deployed, Approved, Pending Review, Completed/Returned)
+    // 3. Return summary array
 
-    public function getBorrowerDashboardSummary($user): array
+    public function getBorrowerDashboardSummary(int $borrowerAccountId): array
     {
-        $userId = $user->getId();
-        
         // Get all reservations for this borrower
-        $userReservations = $this->reservationRepository->findByBorrowerAccountId($userId);
+        $userReservations = $this->reservationRepository->findByBorrowerAccountId($borrowerAccountId);
+        
+        // Debug logging
+        error_log('Dashboard: Borrower Account ID: ' . $borrowerAccountId);
+        error_log('Dashboard: Total reservations found: ' . count($userReservations));
         
         // Count by status
         $activeReservations = 0;
@@ -71,9 +72,10 @@ class DashboardAggregationService
         
         foreach ($userReservations as $reservation) {
             $status = $reservation->getCurrentStatus();
+            error_log('Dashboard: Reservation status: ' . $status);
             switch ($status) {
-                case 'Active':
-                case 'Reserved':
+                case 'Prepared':
+                case 'Deployed':
                     $activeReservations++;
                     break;
                 case 'Approved':
@@ -89,6 +91,8 @@ class DashboardAggregationService
                     break;
             }
         }
+
+        error_log('Dashboard: Final counts - Active: ' . $activeReservations . ', Approved: ' . $approvedRequests . ', Pending: ' . $pendingRequests . ', Completed: ' . $completedReservations);
 
         return [
             'activeReservations' => $activeReservations,

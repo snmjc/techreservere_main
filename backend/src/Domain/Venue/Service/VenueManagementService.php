@@ -31,7 +31,7 @@ class VenueManagementService
         return array_map(fn($e) => $this->transformEntityToDTO($e), $entities);
     }
 
-    public function createVenue(string $venueName, ?string $venueLocation, ?int $capacityLimit): VenueResponseDTO
+    public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
         if (empty($venueName)) {
             throw new DomainValidationException('Venue name is required.');
@@ -39,9 +39,43 @@ class VenueManagementService
         $entity = new VenueEntity();
         $entity->setVenueName($venueName);
         $entity->setVenueLocation($venueLocation);
+        $entity->setFloorLevel($floorLevel);
         $entity->setCapacityLimit($capacityLimit);
+        $entity->setDescription($description);
+        $entity->setImageUrl($imageUrl);
         $this->venueRepository->persistVenue($entity);
         return $this->transformEntityToDTO($entity);
+    }
+
+    public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $description, ?string $imageUrl, ?string $availabilityStatus): VenueResponseDTO
+    {
+        $entity = $this->venueRepository->find($venueIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
+        }
+        if (empty($venueName)) {
+            throw new DomainValidationException('Venue name is required.');
+        }
+        $entity->setVenueName($venueName);
+        $entity->setVenueLocation($venueLocation);
+        $entity->setFloorLevel($floorLevel);
+        $entity->setCapacityLimit($capacityLimit);
+        $entity->setDescription($description);
+        $entity->setImageUrl($imageUrl);
+        if ($availabilityStatus !== null) {
+            $entity->setAvailabilityStatus($availabilityStatus);
+        }
+        $this->venueRepository->persistVenue($entity);
+        return $this->transformEntityToDTO($entity);
+    }
+
+    public function deleteVenue(int $venueIdentifier): void
+    {
+        $entity = $this->venueRepository->find($venueIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
+        }
+        $this->venueRepository->removeVenue($entity);
     }
 
     private function transformEntityToDTO(VenueEntity $entity): VenueResponseDTO
@@ -50,8 +84,11 @@ class VenueManagementService
             venueIdentifier: $entity->getVenueIdentifier(),
             venueName: $entity->getVenueName(),
             venueLocation: $entity->getVenueLocation(),
+            floorLevel: $entity->getFloorLevel(),
             capacityLimit: $entity->getCapacityLimit(),
             availabilityStatus: $entity->getAvailabilityStatus(),
+            description: $entity->getDescription(),
+            imageUrl: $entity->getImageUrl(),
             createdTimestamp: $entity->getCreatedTimestamp()->format(\DateTime::ATOM)
         );
     }

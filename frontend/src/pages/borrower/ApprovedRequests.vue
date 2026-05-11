@@ -84,74 +84,47 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const authStore = useAuthenticationStore();
+const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const loading = ref(true);
 
-const approvedRecordsList = ref([]);
+const approvedRecordsList = computed(() => requestStore.approvedRequestsList || []);
 
 onMounted(async () => {
-  await loadApprovedRequests();
-});
-
-async function loadApprovedRequests() {
-  loading.value = true;
   try {
-    const response = await fetch('/api/v1/reservations', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load reservations');
-    }
-
-    const data = await response.json();
-    console.log('Approved Requests API Response:', data);
-    const reservations = data.data?.reservations || [];
-    console.log('Approved Requests:', reservations);
-    
-    // Filter for approved requests only
-    approvedRecordsList.value = reservations
-      .filter(r => r.currentStatus === 'Approved')
-      .map(r => ({
-        requestIdentifier: r.reservationIdentifier || r.id,
-        requesterFullName: r.organizationName || 'N/A',
-        requesterRole: 'Student',
-        requestSchedule: r.eventDateTime || 'N/A',
-        facilityName: r.venueIdentifier || 'N/A',
-        requestQuantity: r.requestedQuantity || 'N/A',
-        requestType: r.activityType || 'Venue',
-        requestPurpose: r.purposeDescription || 'N/A',
-      }));
+    await requestStore.fetchReservations();
+    const list = requestStore.approvedRequestsList || [];
+    console.log('Borrower Approved Requests - Count:', list.length);
   } catch (error) {
-    console.error('Error loading approved requests:', error);
-    approvedRecordsList.value = [];
-  } finally {
-    loading.value = false;
+    console.error('Error fetching approved requests:', error);
   }
-}
+});
 
 const filteredRecordList = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
-  if (!queryLower) return approvedRecordsList.value;
-  return approvedRecordsList.value.filter((record) =>
-    record.requesterFullName.toLowerCase().includes(queryLower) ||
-    record.requestIdentifier.toString().includes(queryLower)
+  const list = approvedRecordsList.value || [];
+  if (!queryLower) return list;
+  return list.filter((record) =>
+    record.requesterFullName?.toLowerCase().includes(queryLower) ||
+    record.requestIdentifier?.toString().includes(queryLower)
   );
+});
+
+const hasNoRecords = computed(() => {
+  const list = filteredRecordList.value || [];
+  return list.length === 0;
 });
 
 function getTypeBadgeClass(requestType) {

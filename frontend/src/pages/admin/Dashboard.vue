@@ -34,14 +34,14 @@
     <!-- Middle Row: Overdue + Quick Stats -->
     <div class="admin-dashboard-middle-row">
       <DashboardStatCardComponent
-        :stat-count="2"
+        :stat-count="requestStore.overdueCount"
         stat-label="Overdue Equipment"
         card-background-color="#dc2626"
       />
       <DashboardQuickStatsComponent
-        equipment-utilization="76.8%"
-        :active-users-count="482"
-        average-session-time="1.2 hrs"
+        equipment-utilization="0%"
+        :active-users-count="0"
+        average-session-time="0 hrs"
       />
     </div>
 
@@ -71,16 +71,16 @@ import { useRequestStore } from '@/modules/request/store/requestStore.js';
 const requestStore = useRequestStore();
 
 onMounted(async () => {
-  await requestStore.fetchReservations();
+  try {
+    await requestStore.fetchReservations();
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+  }
 });
 
 /**
  * @constant {Array<Object>} facilityStatusList
  * @description Static facility status data for display.
  */
-const facilityStatusList = ref([
-  { facilityName: 'Classrooms', currentCount: 17, totalCount: 30, barColor: '#60a5fa' },
-  { facilityName: 'Multipurpose Rooms', currentCount: 1, totalCount: 3, barColor: '#60a5fa' },
-  { facilityName: 'Chairs', currentCount: 85, totalCount: 100, barColor: '#60a5fa' },
-]);
+const facilityStatusList = ref([]);
 </script>

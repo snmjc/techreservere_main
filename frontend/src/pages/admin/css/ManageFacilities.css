@@ -144,6 +144,86 @@
 }
 
 /* ========================================= */
+/* SEARCH AND SORT ROW                       */
+/* ========================================= */
+
+.manage-facilities-search-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.manage-facilities-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.manage-facilities-search-group svg {
+  color: #888888;
+  flex-shrink: 0;
+}
+
+.manage-facilities-search-input {
+  flex: 1;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+}
+
+.manage-facilities-search-input:focus {
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 2px rgba(26, 110, 58, 0.1);
+}
+
+.manage-facilities-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-facilities-sort-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+}
+
+.manage-facilities-sort-select {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  color: #333333;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.manage-facilities-sort-select:focus {
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 2px rgba(26, 110, 58, 0.1);
+}
+
+/* ========================================= */
+/* LOADING STATE                             */
+/* ========================================= */
+
+.manage-facilities-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #888888;
+  font-size: 0.9rem;
+}
+
+/* ========================================= */
 /* SHOWING ROW + LEGEND                      */
 /* ========================================= */
 
@@ -252,9 +332,96 @@
 }
 
 .facility-venue-chips-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.facility-venue-card {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.facility-venue-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.facility-venue-card--available {
+  border-color: #16a34a;
+}
+
+.facility-venue-card--available:hover {
+  border-color: #15803d;
+}
+
+.facility-venue-card--unavailable {
+  border-color: #dc2626;
+}
+
+.facility-venue-card--unavailable:hover {
+  border-color: #b91c1c;
+}
+
+.facility-venue-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.facility-venue-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.facility-venue-card-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.facility-venue-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.15s ease;
+}
+
+.facility-venue-card-action:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.facility-venue-card-action--delete:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.facility-venue-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.facility-venue-card-detail {
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .facility-venue-chip {

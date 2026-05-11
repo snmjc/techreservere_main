@@ -227,6 +227,24 @@ function handleDocumentSelection(eventObject) {
 async function handleSubmitSignUp() {
   signUpErrorMessage.value = null;
 
+  // Validate required fields
+  if (!signUpFormState.firstName || !signUpFormState.firstName.trim()) {
+    signUpErrorMessage.value = 'First name is required.';
+    return;
+  }
+  if (!signUpFormState.lastName || !signUpFormState.lastName.trim()) {
+    signUpErrorMessage.value = 'Last name is required.';
+    return;
+  }
+  if (!signUpFormState.emailAddress || !signUpFormState.emailAddress.trim()) {
+    signUpErrorMessage.value = 'Email address is required.';
+    return;
+  }
+  if (!signUpFormState.password || !signUpFormState.password.trim()) {
+    signUpErrorMessage.value = 'Password is required.';
+    return;
+  }
+
   if (signUpFormState.password !== signUpFormState.confirmPassword) {
     signUpErrorMessage.value = 'Passwords do not match.';
     return;

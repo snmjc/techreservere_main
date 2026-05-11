@@ -84,79 +84,47 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const authStore = useAuthenticationStore();
+const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const loading = ref(true);
 
-const activeRecordsList = ref([]);
+const activeRecordsList = computed(() => requestStore.activeReservationsList || []);
 
 onMounted(async () => {
-  await loadActiveReservations();
+  try {
+    await requestStore.fetchReservations();
+    const list = requestStore.activeReservationsList || [];
+    console.log('Borrower Active Reservations - Count:', list.length);
+  } catch (error) {
+    console.error('Error fetching active reservations:', error);
+  }
 });
 
-async function loadActiveReservations() {
-  loading.value = true;
-  try {
-    const response = await fetch('/api/v1/reservations', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load reservations');
-    }
-
-    const data = await response.json();
-    console.log('API Response:', data);
-    const reservations = data.data?.reservations || [];
-    console.log('Reservations:', reservations);
-    
-    // Filter for active reservations only
-    activeRecordsList.value = reservations
-      .filter(r => r.currentStatus === 'Active' || r.currentStatus === 'Reserved' || r.currentStatus === 'Prepared' || r.currentStatus === 'Deployed')
-      .map(r => ({
-        requestIdentifier: r.reservationIdentifier || r.id,
-        requesterFullName: r.organizationName || 'N/A',
-        requesterRole: 'Student',
-        requestSchedule: r.eventDateTime || 'N/A',
-        facilityName: r.venueIdentifier || 'N/A',
-        requestQuantity: r.requestedQuantity || 'N/A',
-        requestType: r.activityType || 'Venue',
-        requestPurpose: r.purposeDescription || 'N/A',
-      }));
-  } catch (error) {
-    console.error('Error loading active reservations:', error);
-    activeRecordsList.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
-
-/**
- * @function filteredRecordList
- * @description Filters list by search query.
- * @returns {Array<Object>}
- */
 const filteredRecordList = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
-  if (!queryLower) return activeRecordsList.value;
-  return activeRecordsList.value.filter((record) =>
-    record.requesterFullName.toLowerCase().includes(queryLower) ||
-    record.requestIdentifier.toString().includes(queryLower)
+  const list = activeRecordsList.value || [];
+  if (!queryLower) return list;
+  return list.filter((record) =>
+    record.requesterFullName?.toLowerCase().includes(queryLower) ||
+    record.requestIdentifier?.toString().includes(queryLower)
   );
+});
+
+const hasNoRecords = computed(() => {
+  const list = filteredRecordList.value || [];
+  return list.length === 0;
 });
 
 /**

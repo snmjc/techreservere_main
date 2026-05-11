@@ -62,8 +62,9 @@ class ReservationReviewService
             throw new DomainValidationException('Invalid status: ' . $newStatus);
         }
 
+        // Rejection reason is optional - use default if not provided
         if ($newStatus === 'Rejected' && empty($rejectionReason)) {
-            throw new DomainValidationException('Rejection reason is mandatory.');
+            $rejectionReason = 'Rejected by administrator';
         }
 
         $entity->setCurrentStatus($newStatus);

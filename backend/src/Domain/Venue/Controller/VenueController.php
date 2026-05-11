@@ -44,8 +44,37 @@ class VenueController extends AbstractController
         $dto = $this->venueManagementService->createVenue(
             $body['venueName'] ?? '',
             $body['venueLocation'] ?? null,
-            isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null
+            $body['floorLevel'] ?? null,
+            isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
+            $body['description'] ?? null,
+            $body['imageUrl'] ?? null
         );
         return $this->createSuccessResponse($dto->toResponseArray(), 201);
+    }
+
+    #[Route('/{venueIdentifier}', name: 'venue_update', methods: ['PUT'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function updateVenue(int $venueIdentifier, Request $request): JsonResponse
+    {
+        $body = json_decode($request->getContent(), true) ?? [];
+        $dto = $this->venueManagementService->updateVenue(
+            $venueIdentifier,
+            $body['venueName'] ?? '',
+            $body['venueLocation'] ?? null,
+            $body['floorLevel'] ?? null,
+            isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
+            $body['description'] ?? null,
+            $body['imageUrl'] ?? null,
+            $body['availabilityStatus'] ?? null
+        );
+        return $this->createSuccessResponse($dto->toResponseArray());
+    }
+
+    #[Route('/{venueIdentifier}', name: 'venue_delete', methods: ['DELETE'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function deleteVenue(int $venueIdentifier): JsonResponse
+    {
+        $this->venueManagementService->deleteVenue($venueIdentifier);
+        return $this->createSuccessResponse(['message' => 'Venue deleted successfully']);
     }
 }

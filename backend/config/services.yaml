@@ -61,6 +61,11 @@ services:
         tags: ['controller.service_arguments']
 
     # Middleware event listeners
+    App\Middleware\CorsMiddleware:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, priority: 1024 }
+            - { name: kernel.event_listener, event: kernel.response, priority: -1024 }
+
     App\Middleware\AuthenticationMiddleware:
         tags:
             - { name: kernel.event_listener, event: kernel.request, priority: 256 }

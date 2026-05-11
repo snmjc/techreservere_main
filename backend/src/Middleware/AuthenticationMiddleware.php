@@ -24,11 +24,9 @@ class AuthenticationMiddleware
         '/health/db',
         '/api/v1/auth/login',
         '/api/v1/auth/register',
-        '/api/v1/reservations',
-        '/api/v1/equipment',
-        '/api/v1/venues',
-        '/api/v1/dashboard/summary',
     ];
+
+    private const PUBLIC_ROUTE_PREFIXES = [];
 
     private ClerkTokenVerifier $clerkTokenVerifier;
 
@@ -59,15 +57,6 @@ class AuthenticationMiddleware
         $authorizationHeader = $request->headers->get('Authorization', '');
 
         if (empty($authorizationHeader) || !str_starts_with($authorizationHeader, 'Bearer ')) {
-            // Development mode: allow requests without auth token
-            if ($_ENV['APP_ENV'] === 'dev') {
-                $request->attributes->set('authenticatedIdentity', [
-                    'accountIdentifier' => 1,
-                    'userEmail' => 'dev@example.com',
-                    'userRole' => 'borrower',
-                ]);
-                return;
-            }
             $requestEvent->setResponse(new JsonResponse([
                 'errorCode' => 'AuthenticationRequired',
                 'errorMessage' => 'Missing or invalid Authorization header.',
@@ -80,7 +69,9 @@ class AuthenticationMiddleware
         try {
             $normalizedIdentity = $this->clerkTokenVerifier->verifyTokenAndGetIdentity($bearerToken);
             $request->attributes->set('authenticatedIdentity', $normalizedIdentity);
+            error_log('Authentication successful for account: ' . ($normalizedIdentity['accountIdentifier'] ?? 'unknown'));
         } catch (ClerkVerificationFailedException $exception) {
+            error_log('Token verification failed: ' . $exception->getMessage());
             $requestEvent->setResponse(new JsonResponse([
                 'errorCode' => 'AuthenticationFailed',
                 'errorMessage' => 'Token verification failed.',
@@ -92,6 +83,12 @@ class AuthenticationMiddleware
     {
         foreach (self::PUBLIC_ROUTES as $publicRoute) {
             if ($currentPath === $publicRoute) {
+                return true;
+            }
+        }
+
+        foreach (self::PUBLIC_ROUTE_PREFIXES as $publicPrefix) {
+            if (str_starts_with($currentPath, $publicPrefix)) {
                 return true;
             }
         }

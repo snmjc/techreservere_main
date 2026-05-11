@@ -21,11 +21,20 @@ class VenueEntity
     #[ORM\Column(type: Types::STRING, length: 200, nullable: true)]
     private ?string $venueLocation = null;
 
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
+    private ?string $floorLevel = null;
+
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $capacityLimit = null;
 
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $availabilityStatus = 'Available';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $description = null;
+
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $imageUrl = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdTimestamp;
@@ -47,10 +56,16 @@ class VenueEntity
     public function setVenueName(string $venueName): self { $this->venueName = $venueName; return $this; }
     public function getVenueLocation(): ?string { return $this->venueLocation; }
     public function setVenueLocation(?string $venueLocation): self { $this->venueLocation = $venueLocation; return $this; }
+    public function getFloorLevel(): ?string { return $this->floorLevel; }
+    public function setFloorLevel(?string $floorLevel): self { $this->floorLevel = $floorLevel; return $this; }
     public function getCapacityLimit(): ?int { return $this->capacityLimit; }
     public function setCapacityLimit(?int $capacityLimit): self { $this->capacityLimit = $capacityLimit; return $this; }
     public function getAvailabilityStatus(): string { return $this->availabilityStatus; }
     public function setAvailabilityStatus(string $availabilityStatus): self { $this->availabilityStatus = $availabilityStatus; return $this; }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): self { $this->description = $description; return $this; }
+    public function getImageUrl(): ?string { return $this->imageUrl; }
+    public function setImageUrl(?string $imageUrl): self { $this->imageUrl = $imageUrl; return $this; }
     public function getCreatedTimestamp(): \DateTimeInterface { return $this->createdTimestamp; }
     public function getUpdatedTimestamp(): \DateTimeInterface { return $this->updatedTimestamp; }
 }

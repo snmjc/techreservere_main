@@ -16,7 +16,18 @@ const STORAGE_KEY_ACCOUNT = 'techreserve_auth_account';
  */
 export const useAuthenticationStore = defineStore('authentication', () => {
   const authToken = ref(localStorage.getItem(STORAGE_KEY_TOKEN) || null);
-  const accountData = ref(JSON.parse(localStorage.getItem(STORAGE_KEY_ACCOUNT) || 'null'));
+  
+  const accountString = localStorage.getItem(STORAGE_KEY_ACCOUNT);
+  let accountDataValue = null;
+  if (accountString && accountString !== 'undefined') {
+    try {
+      accountDataValue = JSON.parse(accountString);
+    } catch (e) {
+      console.error('Failed to parse account data from localStorage:', e);
+      accountDataValue = null;
+    }
+  }
+  const accountData = ref(accountDataValue);
 
   const isAuthenticated = computed(() => authToken.value !== null && accountData.value !== null);
   const userRole = computed(() => accountData.value?.roleDesignation || null);

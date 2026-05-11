@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ApprovedRequests.css';
@@ -81,7 +81,17 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const selectedRequestRecord = ref(null);
 
-const approvedRequestsList = requestStore.approvedRequestsList;
+const approvedRequestsList = computed(() => requestStore.approvedRequestsList || []);
+
+onMounted(async () => {
+  try {
+    await requestStore.fetchReservations();
+    const list = requestStore.approvedRequestsList || [];
+    console.log('Admin Approved Requests - Count:', list.length);
+  } catch (error) {
+    console.error('Error fetching approved requests:', error);
+  }
+});
 
 /**
  * @function handleViewWorkflowDetails

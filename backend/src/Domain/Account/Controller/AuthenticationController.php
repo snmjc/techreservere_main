@@ -110,12 +110,22 @@ class AuthenticationController extends AbstractController
     #[Route('/register', name: 'auth_register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-
-        $firstName = trim($requestBody['firstName'] ?? '');
-        $lastName = trim($requestBody['lastName'] ?? '');
-        $emailAddress = trim($requestBody['emailAddress'] ?? '');
-        $passwordText = $requestBody['passwordText'] ?? '';
+        // Handle both JSON and FormData
+        $contentType = $request->headers->get('Content-Type');
+        
+        if (strpos($contentType, 'application/json') !== false) {
+            $requestBody = json_decode($request->getContent(), true) ?? [];
+            $firstName = trim($requestBody['firstName'] ?? '');
+            $lastName = trim($requestBody['lastName'] ?? '');
+            $emailAddress = trim($requestBody['emailAddress'] ?? '');
+            $passwordText = $requestBody['passwordText'] ?? '';
+        } else {
+            // Handle FormData
+            $firstName = trim($request->request->get('firstName', ''));
+            $lastName = trim($request->request->get('lastName', ''));
+            $emailAddress = trim($request->request->get('emailAddress', ''));
+            $passwordText = $request->request->get('passwordText', '');
+        }
 
         if (empty($firstName) || empty($lastName) || empty($emailAddress) || empty($passwordText)) {
             return $this->createErrorResponse(

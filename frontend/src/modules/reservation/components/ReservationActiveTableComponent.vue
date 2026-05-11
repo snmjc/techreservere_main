@@ -127,14 +127,15 @@ const emit = defineEmits([
  * @returns {Array<Object>}
  */
 const filteredReservationList = computed(() => {
-  const queryLower = props.searchQueryText.toLowerCase().trim();
+  const queryLower = props.searchQueryText?.toLowerCase().trim() || '';
+  const list = props.reservationList || [];
   if (!queryLower) {
-    return props.reservationList;
+    return list;
   }
-  return props.reservationList.filter((reservationRecord) => {
+  return list.filter((reservationRecord) => {
     return (
-      reservationRecord.requesterFullName.toLowerCase().includes(queryLower) ||
-      reservationRecord.requestIdentifier.toString().includes(queryLower)
+      reservationRecord.requesterFullName?.toLowerCase().includes(queryLower) ||
+      reservationRecord.requestIdentifier?.toString().includes(queryLower)
     );
   });
 });
@@ -146,7 +147,7 @@ const filteredReservationList = computed(() => {
  * @returns {string}
  */
 function getTypeBadgeClass(requestType) {
-  const typeLower = requestType.toLowerCase();
+  const typeLower = requestType?.toLowerCase() || '';
   if (typeLower === 'venue') return 'reservation-active-type-badge--venue';
   if (typeLower === 'equipment') return 'reservation-active-type-badge--equipment';
   if (typeLower === 'both') return 'reservation-active-type-badge--both';

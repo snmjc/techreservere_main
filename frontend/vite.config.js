@@ -7,7 +7,7 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   // Load env variables from frontend directory
   const env = loadEnv(mode, path.resolve(__dirname), '');
-  const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8067';
+  const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   return {
     // Load env files from the frontend directory so frontend/.env is used
@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy API requests to the backend to avoid CORS during local dev
         '/api': {
-          target: apiBase,
+          target: 'http://backend:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (p) => p.replace(/^\/api/, '/api'),
