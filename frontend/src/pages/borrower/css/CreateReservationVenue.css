@@ -1,243 +1,390 @@
-/* ===== AI GENERATED: BorrowerCreateReservationVenuePage Styles ===== */
-/* Purpose: Styles for venue selection step in borrower create reservation flow */
-/* Scope: BorrowerCreateReservationVenuePage.vue */
-
-/* ========================================= */
-/* PAGE HEADER                               */
-/* ========================================= */
+/* ===== Create Reservation Venue Page Styles ===== */
 
 .create-reservation-venue-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.25rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .create-reservation-venue-page-heading {
-  font-size: 1.5rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  color: #1a6e3a;
+  color: #1f2937;
+  margin: 0;
 }
-
-.create-reservation-venue-nav-links {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.create-reservation-venue-prev-link,
-.create-reservation-venue-next-link {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #d97706;
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.create-reservation-venue-prev-link:hover,
-.create-reservation-venue-next-link:hover {
-  color: #b45309;
-}
-
-/* ========================================= */
-/* FORM SUBTITLE                             */
-/* ========================================= */
 
 .create-reservation-venue-form-subtitle {
   font-size: 0.95rem;
   font-weight: 700;
   color: #333333;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-/* ========================================= */
-/* TOOLBAR (Showing + Legend)                 */
-/* ========================================= */
+/* ===== Tabs Section ===== */
 
-.create-reservation-venue-toolbar {
+.create-reservation-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.create-reservation-tab {
+  padding: 1rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-reservation-tab:hover {
+  color: #374151;
+}
+
+.create-reservation-tab--active {
+  color: #10b981;
+  border-bottom-color: #10b981;
+}
+
+/* ===== Toolbar Section ===== */
+
+.create-reservation-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.create-reservation-filter-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.create-reservation-venue-showing-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.create-reservation-venue-showing-label {
-  font-size: 0.8rem;
+.create-reservation-filter-label {
   font-weight: 600;
-  color: #555555;
+  color: #374151;
 }
 
-.create-reservation-venue-showing-select {
-  padding: 0.4rem 0.65rem;
-  font-size: 0.8rem;
-  color: #333333;
-  background-color: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  outline: none;
-  min-width: 80px;
+.create-reservation-filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+  background-color: white;
   cursor: pointer;
+  transition: border-color 0.2s ease;
 }
 
-.create-reservation-venue-sort-button {
+.create-reservation-filter-select:hover {
+  border-color: #9ca3af;
+}
+
+.create-reservation-filter-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.create-reservation-sort-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: none;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #374151;
   cursor: pointer;
-  color: #555555;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
-.create-reservation-venue-sort-button:hover {
-  background-color: #f0f0f0;
+.create-reservation-sort-button:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #10b981;
 }
 
-.create-reservation-venue-legend {
+/* ===== Legend Section ===== */
+
+.create-reservation-legend {
+  display: flex;
+  gap: 2rem;
+}
+
+.create-reservation-legend-item {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.create-reservation-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.create-reservation-legend-dot--available {
+  background-color: #10b981;
+}
+
+.create-reservation-legend-dot--unavailable {
+  background-color: #ef4444;
+}
+
+/* ===== Venue Grid ===== */
+
+.create-reservation-venues-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.create-reservation-floor-section {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
-.create-reservation-venue-legend-item {
+.create-reservation-floor-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  padding: 0.75rem 0;
+  border-left: 4px solid #3b82f6;
+  padding-left: 1rem;
+}
+
+.create-reservation-venue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* ===== Venue Card ===== */
+
+.create-reservation-venue-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-left: 5px solid;
+  cursor: pointer;
+}
+
+.create-reservation-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
+}
+
+.create-reservation-venue-card--available {
+  background-color: #f0fdf4;
+  border-left-color: #10b981;
+}
+
+.create-reservation-venue-card--unavailable {
+  background-color: #fef2f2;
+  border-left-color: #ef4444;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-reservation-venue-card--selected {
+  background-color: #ecfdf5;
+  border-left-color: #059669;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.create-reservation-venue-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.create-reservation-venue-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  flex: 1;
+}
+
+.create-reservation-venue-status {
+  margin-left: 0.5rem;
+}
+
+.create-reservation-status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.create-reservation-status-badge.available {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.create-reservation-status-badge.unavailable {
+  background-color: #fee2e2;
+  color: #7f1d1d;
+}
+
+/* ===== Equipment Table ===== */
+
+.create-reservation-equipment-selection-area {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.create-reservation-equipment-table-wrapper {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.create-reservation-equipment-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.create-reservation-equipment-table-header-row {
+  background-color: #f3f4f6;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.create-reservation-equipment-table-header-cell {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.create-reservation-equipment-table-body-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.create-reservation-equipment-table-body-row:hover {
+  background-color: #f9fafb;
+}
+
+.create-reservation-equipment-table-body-row--unavailable {
+  opacity: 0.6;
+  background-color: #fef2f2;
+}
+
+.create-reservation-equipment-table-cell {
+  padding: 1rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.create-reservation-equipment-table-cell input {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+  width: 100px;
+}
+
+.create-reservation-equipment-table-cell input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* ===== Empty State ===== */
+
+.create-reservation-empty-state {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #555555;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-radius: 0.75rem;
 }
 
-.create-reservation-venue-legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+.create-reservation-empty-state p {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
-.create-reservation-venue-legend-dot--available {
-  background-color: #16a34a;
+/* ===== Responsive Design ===== */
+
+@media (max-width: 1024px) {
+  .create-reservation-venue-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 }
 
-.create-reservation-venue-legend-dot--unavailable {
-  background-color: #dc2626;
+@media (max-width: 768px) {
+  .create-reservation-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .create-reservation-legend {
+    width: 100%;
+  }
+
+  .create-reservation-venue-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-reservation-equipment-table-cell {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .create-reservation-equipment-table-cell input {
+    width: 80px;
+  }
 }
 
-/* ========================================= */
-/* SECTION HEADING                           */
-/* ========================================= */
-
-.create-reservation-venue-section-heading {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1a6e3a;
-  margin-bottom: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-/* ========================================= */
-/* VENUE SELECTION AREA                      */
-/* ========================================= */
+/* ===== Navigation Buttons ===== */
 
 .create-reservation-venue-selection-area {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  background-color: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  margin-bottom: 0;
 }
-
-.create-reservation-venue-floor-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.create-reservation-venue-floor-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #777777;
-  letter-spacing: 0.3px;
-}
-
-.create-reservation-venue-chips-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.create-reservation-venue-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #ffffff;
-  border-radius: 6px;
-  white-space: nowrap;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  min-width: 72px;
-  text-align: center;
-}
-
-.create-reservation-venue-chip--available {
-  background-color: #16a34a;
-}
-
-.create-reservation-venue-chip--unavailable {
-  background-color: #dc2626;
-  cursor: not-allowed;
-  opacity: 0.85;
-}
-
-.create-reservation-venue-chip--selected {
-  background-color: #d97706;
-  border-color: #b45309;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
-  transform: scale(1.04);
-}
-
-.create-reservation-venue-chip--available:hover:not(.create-reservation-venue-chip--selected) {
-  border-color: #d97706;
-}
-
-.create-reservation-venue-empty-state {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #999999;
-  font-style: italic;
-  font-size: 0.85rem;
-}
-
-/* ========================================= */
-/* NAVIGATION BUTTONS                        */
-/* ========================================= */
 
 .create-reservation-venue-form-actions {
   display: flex;
   justify-content: space-between;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eeeeee;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  gap: 1rem;
 }
 
 .create-reservation-venue-prev-button,
@@ -245,127 +392,37 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1.5rem;
-  font-size: 0.85rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #ffffff;
+  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 0.5rem;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .create-reservation-venue-prev-button {
   background-color: #6b7280;
+  order: -1;
 }
 
 .create-reservation-venue-prev-button:hover {
   background-color: #4b5563;
+  transform: translateX(-2px);
 }
 
 .create-reservation-venue-next-button {
-  background-color: #1a8a4a;
+  background-color: #10b981;
+  margin-left: auto;
 }
 
 .create-reservation-venue-next-button:hover {
-  background-color: #15703d;
+  background-color: #059669;
+  transform: translateX(2px);
 }
 
-/* ========================================= */
-/* EQUIPMENT SELECTION AREA                  */
-/* ========================================= */
-
-.create-reservation-equipment-selection-area {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  margin-bottom: 1rem;
-}
-
-.create-reservation-equipment-table-wrapper {
-  overflow-x: auto;
-}
-
-.create-reservation-equipment-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-
-.create-reservation-equipment-table-header-row {
-  background-color: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.create-reservation-equipment-table-header-cell {
-  padding: 0.65rem 0.8rem;
-  text-align: left;
-  font-weight: 700;
-  color: #444444;
-  white-space: nowrap;
-}
-
-.create-reservation-equipment-table-body-row {
-  border-bottom: 1px solid #eeeeee;
-  transition: background-color 0.1s ease;
-}
-
-.create-reservation-equipment-table-body-row:hover {
-  background-color: #fafafa;
-}
-
-.create-reservation-equipment-table-cell {
-  padding: 0.55rem 0.8rem;
-  color: #333333;
-  vertical-align: middle;
-}
-
-.create-reservation-equipment-table-body-row--unavailable {
-  background-color: #fee2e2;
-}
-
-.create-reservation-equipment-table-body-row--unavailable .create-reservation-equipment-table-cell {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.create-reservation-equipment-table-body-row--unavailable:hover {
-  background-color: #fee2e2;
-}
-
-.create-reservation-equipment-table-body-row--unavailable .create-reservation-equipment-qty-input {
-  background-color: #fecaca;
-  border-color: #dc2626;
-  color: #dc2626;
-}
-
-.create-reservation-equipment-qty-input:disabled {
-  background-color: #f3f3f3;
-  color: #999999;
-  cursor: not-allowed;
-}
-
-.create-reservation-equipment-qty-input {
-  width: 70px;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.82rem;
-  color: #333333;
-  background-color: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  outline: none;
-  text-align: center;
-  transition: border-color 0.15s ease;
-}
-
-.create-reservation-equipment-qty-input:focus {
-  border-color: #1a8a4a;
-}
-
-/* ========================================= */
-/* FOOTER                                    */
-/* ========================================= */
+/* ===== Footer ===== */
 
 .create-reservation-venue-page-footer {
   margin-top: auto;
@@ -375,31 +432,4 @@
   color: #888888;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-}
-
-/* ========================================= */
-/* RESPONSIVE                                */
-/* ========================================= */
-
-@media (max-width: 640px) {
-  .create-reservation-venue-toolbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .create-reservation-venue-legend {
-    margin-left: 0;
-  }
-
-  .create-reservation-venue-selection-area {
-    padding: 1rem;
-  }
-
-  .create-reservation-venue-nav-links {
-    gap: 1rem;
-  }
-
-  .create-reservation-venue-page-heading {
-    font-size: 1.25rem;
-  }
 }

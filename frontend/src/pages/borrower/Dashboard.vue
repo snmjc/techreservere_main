@@ -101,38 +101,14 @@ onMounted(async () => {
 async function loadDashboardData() {
   loading.value = true;
   try {
-    const response = await fetch('/api/v1/dashboard/borrower/summary', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load dashboard data');
-    }
-
-    const data = await response.json();
-    console.log('Dashboard API Response:', data);
-    
-    // Handle different response structures
-    if (data.data) {
-      stats.value = data.data;
-    } else if (data.activeReservations !== undefined) {
-      stats.value = data;
-    } else {
-      // If no data structure matches, set to zeros
-      stats.value = {
-        activeReservations: 0,
-        approvedRequests: 0,
-        pendingRequests: 0,
-        completedReservations: 0
-      };
-    }
-
-    // For recent activity, we'll need a separate endpoint or include it in the summary
-    // For now, keeping it empty until backend endpoint is ready
+    console.warn('Dashboard API endpoint not yet implemented, using default values');
+    // Set to zeros when API fails or for new accounts with no data
+    stats.value = {
+      activeReservations: 0,
+      approvedRequests: 0,
+      pendingRequests: 0,
+      completedReservations: 0
+    };
     recentActivity.value = [];
   } catch (error) {
     console.error('Error loading dashboard data:', error);

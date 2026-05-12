@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/postcss": "^4.1.18",
     "axios": "^1.6.0",
     "pinia": "^3.0.4",

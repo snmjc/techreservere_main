@@ -12,73 +12,127 @@
     <!-- Form Subtitle -->
     <p class="create-reservation-venue-form-subtitle">{{ formSubtitle }}</p>
 
+    <!-- Tabs Section -->
+    <div class="create-reservation-tabs">
+      <button
+        v-if="showVenueSection"
+        class="create-reservation-tab"
+        :class="{ 'create-reservation-tab--active': activeTab === 'venue' }"
+        @click="activeTab = 'venue'"
+      >
+        Venue
+      </button>
+      <button
+        v-if="showEquipmentSection"
+        class="create-reservation-tab"
+        :class="{ 'create-reservation-tab--active': activeTab === 'equipment' }"
+        @click="activeTab = 'equipment'"
+      >
+        Equipment
+      </button>
+    </div>
+
     <!-- ===== VENUE SECTION (shown when type is Venue or Both) ===== -->
-    <template v-if="showVenueSection">
-      <!-- Toolbar: Showing + Legend -->
-      <h3 class="create-reservation-venue-section-heading">Venue Selection</h3>
-      <div class="create-reservation-venue-toolbar">
-        <div class="create-reservation-venue-showing-group">
-          <label class="create-reservation-venue-showing-label" for="venueShowingSelect">Showing:</label>
+    <template v-if="showVenueSection && activeTab === 'venue'">
+      <!-- Toolbar: Filter + Legend -->
+      <div class="create-reservation-toolbar">
+        <div class="create-reservation-filter-group">
+          <label class="create-reservation-filter-label" for="venueShowingSelect">Filter:</label>
           <select
             id="venueShowingSelect"
             v-model="showingFilterValue"
-            class="create-reservation-venue-showing-select"
+            class="create-reservation-filter-select"
           >
             <option value="all">All</option>
             <option value="available">Available</option>
             <option value="unavailable">Unavailable</option>
           </select>
-          <button class="create-reservation-venue-sort-button" aria-label="Sort">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button class="create-reservation-sort-button" @click="toggleSortOrder" :title="sortOrderValue === 'asc' ? 'Sort A-Z' : 'Sort Z-A'" aria-label="Sort">
+            <svg v-if="sortOrderValue === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
             </svg>
           </button>
         </div>
-        <div class="create-reservation-venue-legend">
-          <span class="create-reservation-venue-legend-item">
-            <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--available"></span>
+        <div class="create-reservation-legend">
+          <span class="create-reservation-legend-item">
+            <span class="create-reservation-legend-dot create-reservation-legend-dot--available"></span>
             Available
           </span>
-          <span class="create-reservation-venue-legend-item">
-            <span class="create-reservation-venue-legend-dot create-reservation-venue-legend-dot--unavailable"></span>
+          <span class="create-reservation-legend-item">
+            <span class="create-reservation-legend-dot create-reservation-legend-dot--unavailable"></span>
             Unavailable
           </span>
         </div>
       </div>
 
       <!-- Venue Selection Area -->
-      <div class="create-reservation-venue-selection-area">
+      <div class="create-reservation-venues-grid">
         <div
           v-for="floorGroup in filteredVenueFloorGroups"
           :key="floorGroup.floorLabel"
-          class="create-reservation-venue-floor-group"
+          class="create-reservation-floor-section"
         >
-          <p class="create-reservation-venue-floor-label">{{ floorGroup.floorLabel }}</p>
-          <div class="create-reservation-venue-chips-row">
-            <span
+          <h3 class="create-reservation-floor-heading">{{ floorGroup.floorLabel }}</h3>
+          <div class="create-reservation-venue-grid">
+            <div
               v-for="venueRecord in floorGroup.venueRecords"
               :key="venueRecord.venueName"
-              class="create-reservation-venue-chip"
+              class="create-reservation-venue-card"
               :class="{
-                'create-reservation-venue-chip--available': venueRecord.venueAvailable && selectedVenueName !== venueRecord.venueName,
-                'create-reservation-venue-chip--unavailable': !venueRecord.venueAvailable,
-                'create-reservation-venue-chip--selected': selectedVenueName === venueRecord.venueName,
+                'create-reservation-venue-card--available': venueRecord.venueAvailable && selectedVenueName !== venueRecord.venueName,
+                'create-reservation-venue-card--unavailable': !venueRecord.venueAvailable,
+                'create-reservation-venue-card--selected': selectedVenueName === venueRecord.venueName,
               }"
               @click="handleVenueChipSelection(venueRecord)"
             >
-              {{ venueRecord.venueName }}
-            </span>
+              <div class="create-reservation-venue-card-header">
+                <h4 class="create-reservation-venue-name">{{ venueRecord.venueName }}</h4>
+                <div class="create-reservation-venue-status">
+                  <span class="create-reservation-status-badge" :class="venueRecord.venueAvailable ? 'available' : 'unavailable'">
+                    {{ venueRecord.venueAvailable ? 'Available' : 'Unavailable' }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div v-if="filteredVenueFloorGroups.length === 0" class="create-reservation-venue-empty-state">
+        <div v-if="filteredVenueFloorGroups.length === 0" class="create-reservation-empty-state">
           No venues found.
         </div>
       </div>
     </template>
 
     <!-- ===== EQUIPMENT SECTION (shown when type is Equipment or Both) ===== -->
-    <template v-if="showEquipmentSection">
-      <h3 class="create-reservation-venue-section-heading">Equipment Selection</h3>
+    <template v-if="showEquipmentSection && activeTab === 'equipment'">
+      <!-- Toolbar: Filter + Legend -->
+      <div class="create-reservation-toolbar">
+        <div class="create-reservation-filter-group">
+          <label class="create-reservation-filter-label" for="equipmentFilter">Filter:</label>
+          <select
+            id="equipmentFilter"
+            v-model="equipmentFilterValue"
+            class="create-reservation-filter-select"
+          >
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+        </div>
+        <div class="create-reservation-legend">
+          <span class="create-reservation-legend-item">
+            <span class="create-reservation-legend-dot create-reservation-legend-dot--available"></span>
+            Available
+          </span>
+          <span class="create-reservation-legend-item">
+            <span class="create-reservation-legend-dot create-reservation-legend-dot--unavailable"></span>
+            Unavailable
+          </span>
+        </div>
+      </div>
+
       <div class="create-reservation-equipment-selection-area">
         <div class="create-reservation-equipment-table-wrapper">
           <table class="create-reservation-equipment-table">
@@ -91,7 +145,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="equipmentItem in equipmentItemsList"
+                v-for="equipmentItem in filteredEquipmentList"
                 :key="equipmentItem.equipmentName"
                 class="create-reservation-equipment-table-body-row"
                 :class="{ 'create-reservation-equipment-table-body-row--unavailable': equipmentItem.availableCount === 0 }"
@@ -154,7 +208,10 @@ import { useReservationData } from '@/modules/reservation/composables/useReserva
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
 const { equipmentList, venueList, loadAllData } = useReservationData();
+const activeTab = ref('venue');
 const showingFilterValue = ref('all');
+const equipmentFilterValue = ref('all');
+const sortOrderValue = ref('asc');
 const selectedVenueName = ref(reservationFormStore.selectedVenueName);
 
 onMounted(async () => {
@@ -188,8 +245,10 @@ const equipmentItemsList = ref([
   { equipmentIdentifier: 10, equipmentName: 'White Screen', availableCount: 12, selectedQuantity: 0 },
   { equipmentIdentifier: 11, equipmentName: 'Philippine Flag', availableCount: 0, selectedQuantity: 0 },
   { equipmentIdentifier: 12, equipmentName: 'FEU Tech Flag', availableCount: 6, selectedQuantity: 0 },
-  { equipmentIdentifier: 13, equipmentName: 'LED Video Wall', availableCount: 2, selectedQuantity: 0 },
-  { equipmentIdentifier: 14, equipmentName: 'Others', availableCount: 5, selectedQuantity: 0 },
+  { equipmentIdentifier: 13, equipmentName: 'LED Video Wall', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 14, equipmentName: 'Projector', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 15, equipmentName: 'Flood Board', availableCount: 0, selectedQuantity: 0 },
+  { equipmentIdentifier: 16, equipmentName: 'Others', availableCount: 5, selectedQuantity: 0 },
 ]);
 
 const venueFloorGroupsList = computed(() => {
@@ -261,23 +320,68 @@ const venueFloorGroupsList = computed(() => {
 
 /**
  * @function filteredVenueFloorGroups
- * @description Filters venue floor groups based on showing filter value.
+ * @description Filters and sorts venue floor groups based on showing filter value and sort order.
  * @returns {Array<Object>}
  */
 const filteredVenueFloorGroups = computed(() => {
-  if (showingFilterValue.value === 'all') {
-    return venueFloorGroupsList.value;
+  let filtered = venueFloorGroupsList.value;
+  
+  // Apply availability filter
+  if (showingFilterValue.value !== 'all') {
+    const isAvailableFilter = showingFilterValue.value === 'available';
+    filtered = filtered
+      .map((floorGroup) => ({
+        ...floorGroup,
+        venueRecords: floorGroup.venueRecords.filter(
+          (venue) => venue.venueAvailable === isAvailableFilter
+        ),
+      }))
+      .filter((floorGroup) => floorGroup.venueRecords.length > 0);
   }
-  const isAvailableFilter = showingFilterValue.value === 'available';
-  return venueFloorGroupsList.value
-    .map((floorGroup) => ({
-      ...floorGroup,
-      venueRecords: floorGroup.venueRecords.filter(
-        (venue) => venue.venueAvailable === isAvailableFilter
-      ),
-    }))
-    .filter((floorGroup) => floorGroup.venueRecords.length > 0);
+  
+  // Apply sorting to venue names within each floor group
+  return filtered.map((floorGroup) => ({
+    ...floorGroup,
+    venueRecords: [...floorGroup.venueRecords].sort((a, b) => {
+      const nameA = a.venueName.toLowerCase();
+      const nameB = b.venueName.toLowerCase();
+      if (sortOrderValue.value === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    }),
+  }));
 });
+
+/**
+ * @function filteredEquipmentList
+ * @description Filters equipment based on availability filter.
+ * @returns {Array<Object>}
+ */
+const filteredEquipmentList = computed(() => {
+  let filtered = equipmentItemsList.value;
+  
+  // Apply availability filter
+  if (equipmentFilterValue.value !== 'all') {
+    const isAvailableFilter = equipmentFilterValue.value === 'available';
+    filtered = filtered.filter((equipment) => {
+      const isAvailable = equipment.availableCount > 0;
+      return isAvailable === isAvailableFilter;
+    });
+  }
+  
+  return filtered;
+});
+
+/**
+ * @function toggleSortOrder
+ * @description Toggles between ascending (A-Z) and descending (Z-A) sort order.
+ * @returns {void}
+ */
+function toggleSortOrder() {
+  sortOrderValue.value = sortOrderValue.value === 'asc' ? 'desc' : 'asc';
+}
 
 /**
  * @function handleVenueChipSelection

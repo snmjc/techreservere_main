@@ -4,125 +4,150 @@
     :role-label="'DELA CRUZ, JUAN'"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="view-facilities-page-heading">View Facilities</h2>
+    <!-- Page Header -->
+    <div class="view-facilities-page-header">
+      <h2 class="view-facilities-page-heading">Facilities</h2>
+    </div>
 
-    <!-- Tabs: Venue | Equipment -->
-    <div class="view-facilities-tabs-row">
+    <!-- Tabs Section -->
+    <div class="view-facilities-tabs">
       <button
-        class="view-facilities-tab-button"
-        :class="{ 'view-facilities-tab-button--active': activeFacilityTab === 'venue' }"
-        @click="handleFacilityTabChange('venue')"
+        class="view-facilities-tab"
+        :class="{ 'view-facilities-tab--active': activeFacilityTab === 'venue' }"
+        @click="activeFacilityTab = 'venue'"
       >
         Venue
       </button>
-      <div class="view-facilities-tab-divider"></div>
       <button
-        class="view-facilities-tab-button"
-        :class="{ 'view-facilities-tab-button--active': activeFacilityTab === 'equipment' }"
-        @click="handleFacilityTabChange('equipment')"
+        class="view-facilities-tab"
+        :class="{ 'view-facilities-tab--active': activeFacilityTab === 'equipment' }"
+        @click="activeFacilityTab = 'equipment'"
       >
         Equipment
       </button>
     </div>
 
-    <!-- Filter Pills -->
-    <div class="view-facilities-filter-row">
-      <button
-        class="view-facilities-filter-pill"
-        :class="{ 'view-facilities-filter-pill--active': availabilityFilter === 'all' }"
-        @click="availabilityFilter = 'all'"
-      >
-        All
-      </button>
-      <button
-        class="view-facilities-filter-pill"
-        :class="{ 'view-facilities-filter-pill--active': availabilityFilter === 'available' }"
-        @click="availabilityFilter = 'available'"
-      >
-        Available
-      </button>
-      <button
-        class="view-facilities-filter-pill"
-        :class="{ 'view-facilities-filter-pill--active': availabilityFilter === 'unavailable' }"
-        @click="availabilityFilter = 'unavailable'"
-      >
-        Unavailable
-      </button>
-    </div>
-
-    <!-- Showing Row + Legend -->
-    <div class="view-facilities-showing-row">
-      <div class="view-facilities-showing-group">
-        <label class="view-facilities-showing-label" for="viewFacilityShowingSelect">Showing:</label>
-        <select
-          id="viewFacilityShowingSelect"
-          v-model="showingFilterValue"
-          class="view-facilities-showing-select"
-        >
-          <option value="all">All</option>
-        </select>
-        <button class="view-facilities-sort-button" aria-label="Sort">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <polyline points="19 12 12 19 5 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="view-facilities-legend">
-        <span class="view-facilities-legend-item">
-          <span class="view-facilities-legend-dot view-facilities-legend-dot--available"></span>
-          Available
-        </span>
-        <span class="view-facilities-legend-item">
-          <span class="view-facilities-legend-dot view-facilities-legend-dot--unavailable"></span>
-          Unavailable
-        </span>
-      </div>
-    </div>
-
     <!-- Venue Tab Content -->
-    <div v-if="activeFacilityTab === 'venue'" class="view-facilities-venue-list">
-      <div
-        v-for="floorGroup in filteredVenueFloorGroups"
-        :key="floorGroup.floorLabel"
-        class="view-facilities-venue-floor-group"
-      >
-        <p class="view-facilities-venue-floor-label">{{ floorGroup.floorLabel }}</p>
-        <div class="view-facilities-venue-chips-row">
-          <span
-            v-for="venueRecord in floorGroup.venueRecords"
-            :key="venueRecord.venueName"
-            class="view-facilities-venue-chip"
-            :class="{
-              'view-facilities-venue-chip--available': venueRecord.venueAvailable,
-              'view-facilities-venue-chip--unavailable': !venueRecord.venueAvailable,
-            }"
-          >
-            {{ venueRecord.venueName }}
+    <div v-if="activeFacilityTab === 'venue'" class="view-facilities-content">
+      <!-- Filter & Legend Section -->
+      <div class="view-facilities-toolbar">
+        <div class="view-facilities-filter-group">
+          <label for="venueFilter" class="view-facilities-filter-label">Filter:</label>
+          <select v-model="venueFilterValue" id="venueFilter" class="view-facilities-filter-select">
+            <option value="all">All Venues</option>
+            <option value="available">Available Only</option>
+            <option value="unavailable">Unavailable Only</option>
+          </select>
+          <button class="view-facilities-sort-button" @click="venueSortOrder = venueSortOrder === 'asc' ? 'desc' : 'asc'" :title="venueSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
+            <svg v-if="venueSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div class="view-facilities-legend">
+          <span class="view-facilities-legend-item">
+            <span class="view-facilities-legend-dot view-facilities-legend-dot--available"></span>
+            Available
+          </span>
+          <span class="view-facilities-legend-item">
+            <span class="view-facilities-legend-dot view-facilities-legend-dot--unavailable"></span>
+            Unavailable
           </span>
         </div>
       </div>
-      <div v-if="filteredVenueFloorGroups.length === 0" class="view-facilities-venue-empty-state">
-        No venues found.
+
+      <!-- Venues Grid by Floor -->
+      <div class="view-facilities-venues-grid">
+        <div
+          v-for="floorGroup in filteredVenueFloorGroups"
+          :key="floorGroup.floorLabel"
+          class="view-facilities-floor-section"
+        >
+          <h3 class="view-facilities-floor-heading">{{ floorGroup.floorLabel }}</h3>
+          <div class="view-facilities-venue-grid">
+            <div
+              v-for="venue in floorGroup.venueRecords"
+              :key="venue.venueName"
+              class="view-facilities-venue-card"
+              :class="{
+                'view-facilities-venue-card--available': venue.venueAvailable,
+                'view-facilities-venue-card--unavailable': !venue.venueAvailable,
+              }"
+            >
+              <div class="view-facilities-venue-card-header">
+                <h4 class="view-facilities-venue-name">{{ venue.venueName }}</h4>
+                <div class="view-facilities-venue-status">
+                  <span class="view-facilities-status-badge" :class="venue.venueAvailable ? 'available' : 'unavailable'">
+                    {{ venue.venueAvailable ? 'Available' : 'Unavailable' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="filteredVenueFloorGroups.length === 0" class="view-facilities-empty-state">
+          <p>No venues found matching your filter.</p>
+        </div>
       </div>
     </div>
 
     <!-- Equipment Tab Content -->
-    <div v-if="activeFacilityTab === 'equipment'" class="view-facilities-equipment-grid">
-      <span
-        v-for="equipmentCategory in filteredEquipmentCategories"
-        :key="equipmentCategory.categoryName"
-        class="view-facilities-equipment-chip"
-        :class="{
-          'view-facilities-equipment-chip--available': equipmentCategory.categoryAvailable,
-          'view-facilities-equipment-chip--unavailable': !equipmentCategory.categoryAvailable,
-        }"
-      >
-        {{ equipmentCategory.categoryName }}
-      </span>
-      <div v-if="filteredEquipmentCategories.length === 0" class="view-facilities-equipment-empty-state">
-        No equipment found.
+    <div v-if="activeFacilityTab === 'equipment'" class="view-facilities-content">
+      <!-- Toolbar -->
+      <div class="view-facilities-toolbar">
+        <div class="view-facilities-filter-group">
+          <label for="equipmentFilter" class="view-facilities-filter-label">Filter:</label>
+          <select v-model="equipmentFilterValue" id="equipmentFilter" class="view-facilities-filter-select">
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+          <button class="view-facilities-sort-button" @click="equipmentSortOrder = equipmentSortOrder === 'asc' ? 'desc' : 'asc'" :title="equipmentSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
+            <svg v-if="equipmentSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div class="view-facilities-legend">
+          <span class="view-facilities-legend-item">
+            <span class="view-facilities-legend-dot view-facilities-legend-dot--available"></span>
+            Available
+          </span>
+          <span class="view-facilities-legend-item">
+            <span class="view-facilities-legend-dot view-facilities-legend-dot--unavailable"></span>
+            Unavailable
+          </span>
+        </div>
+      </div>
+
+      <!-- Equipment Grid -->
+      <div class="view-facilities-equipment-grid">
+        <div
+          v-for="equipment in filteredEquipment"
+          :key="equipment.categoryName"
+          class="view-facilities-equipment-chip"
+          :class="{
+            'view-facilities-equipment-chip--available': equipment.categoryAvailable,
+            'view-facilities-equipment-chip--unavailable': !equipment.categoryAvailable,
+          }"
+        >
+          <span class="view-facilities-equipment-chip-name">{{ equipment.categoryName }}</span>
+        </div>
+      </div>
+
+      <div v-if="filteredEquipment.length === 0" class="view-facilities-empty-state">
+        <p>No equipment found matching your filter.</p>
       </div>
     </div>
 
@@ -141,19 +166,10 @@ import './css/ViewFacilities.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
 const activeFacilityTab = ref('venue');
-const availabilityFilter = ref('all');
-const showingFilterValue = ref('all');
-
-/**
- * @function handleFacilityTabChange
- * @description Switches active tab and resets filters.
- * @param {string} tabName - 'venue' or 'equipment'
- * @returns {void}
- */
-function handleFacilityTabChange(tabName) {
-  activeFacilityTab.value = tabName;
-  availabilityFilter.value = 'all';
-}
+const venueFilterValue = ref('all');
+const venueSortOrder = ref('asc');
+const equipmentFilterValue = ref('all');
+const equipmentSortOrder = ref('asc');
 
 /**
  * @constant {Array<Object>} venueFloorGroupsList
@@ -246,36 +262,65 @@ const equipmentCategoriesList = ref([
 
 /**
  * @function filteredVenueFloorGroups
- * @description Filters venue floor groups based on availability filter.
+ * @description Filters venue floor groups based on availability filter and applies sorting.
  * @returns {Array<Object>}
  */
 const filteredVenueFloorGroups = computed(() => {
-  if (availabilityFilter.value === 'all') {
-    return venueFloorGroupsList.value;
+  let filtered = venueFloorGroupsList.value;
+  
+  // Apply availability filter
+  if (venueFilterValue.value !== 'all') {
+    const isAvailableFilter = venueFilterValue.value === 'available';
+    filtered = filtered
+      .map((floorGroup) => ({
+        ...floorGroup,
+        venueRecords: floorGroup.venueRecords.filter(
+          (venue) => venue.venueAvailable === isAvailableFilter
+        ),
+      }))
+      .filter((floorGroup) => floorGroup.venueRecords.length > 0);
   }
-  const isAvailableFilter = availabilityFilter.value === 'available';
-  return venueFloorGroupsList.value
-    .map((floorGroup) => ({
-      ...floorGroup,
-      venueRecords: floorGroup.venueRecords.filter(
-        (venue) => venue.venueAvailable === isAvailableFilter
-      ),
-    }))
-    .filter((floorGroup) => floorGroup.venueRecords.length > 0);
+  
+  // Apply sorting to venue names within each floor group
+  return filtered.map((floorGroup) => ({
+    ...floorGroup,
+    venueRecords: [...floorGroup.venueRecords].sort((a, b) => {
+      const nameA = a.venueName.toLowerCase();
+      const nameB = b.venueName.toLowerCase();
+      if (venueSortOrder.value === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    }),
+  }));
 });
 
 /**
- * @function filteredEquipmentCategories
- * @description Filters equipment categories based on availability filter.
+ * @function filteredEquipment
+ * @description Filters equipment categories based on availability filter and applies sorting.
  * @returns {Array<Object>}
  */
-const filteredEquipmentCategories = computed(() => {
-  if (availabilityFilter.value === 'all') {
-    return equipmentCategoriesList.value;
+const filteredEquipment = computed(() => {
+  let filtered = equipmentCategoriesList.value;
+  
+  // Apply availability filter
+  if (equipmentFilterValue.value !== 'all') {
+    const isAvailableFilter = equipmentFilterValue.value === 'available';
+    filtered = filtered.filter(
+      (category) => category.categoryAvailable === isAvailableFilter
+    );
   }
-  const isAvailableFilter = availabilityFilter.value === 'available';
-  return equipmentCategoriesList.value.filter(
-    (category) => category.categoryAvailable === isAvailableFilter
-  );
+  
+  // Apply sorting to equipment names
+  return [...filtered].sort((a, b) => {
+    const nameA = a.categoryName.toLowerCase();
+    const nameB = b.categoryName.toLowerCase();
+    if (equipmentSortOrder.value === 'asc') {
+      return nameA.localeCompare(nameB);
+    } else {
+      return nameB.localeCompare(nameA);
+    }
+  });
 });
 </script>

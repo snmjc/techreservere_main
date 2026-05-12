@@ -1,0 +1,283 @@
+/* ===== Equipment Page Styles ===== */
+
+.equipment-page-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.equipment-page-heading {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #f59e0b;
+  margin: 0;
+}
+
+/* ===== Tabs Section ===== */
+
+.equipment-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.equipment-tab {
+  padding: 1rem 1.5rem;
+  background-color: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.equipment-tab:hover {
+  color: #374151;
+}
+
+.equipment-tab--active {
+  color: #10b981;
+  border-bottom-color: #10b981;
+}
+
+/* ===== Toolbar Section ===== */
+
+.equipment-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.equipment-toolbar-left {
+  display: flex;
+  gap: 1rem;
+}
+
+.equipment-edit-button,
+.equipment-add-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.equipment-edit-button {
+  background-color: #6b7280;
+  color: white;
+}
+
+.equipment-edit-button:hover {
+  background-color: #4b5563;
+}
+
+.equipment-add-button {
+  background-color: #10b981;
+  color: white;
+}
+
+.equipment-add-button:hover {
+  background-color: #059669;
+}
+
+.equipment-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.equipment-filter-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.equipment-filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.equipment-filter-select:hover {
+  border-color: #9ca3af;
+}
+
+.equipment-filter-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* ===== Legend Section ===== */
+
+.equipment-legend {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.equipment-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.equipment-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.equipment-legend-dot--available {
+  background-color: #10b981;
+}
+
+.equipment-legend-dot--unavailable {
+  background-color: #ef4444;
+}
+
+/* ===== Equipment Grid ===== */
+
+.equipment-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.equipment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* ===== Equipment Chip ===== */
+
+.equipment-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.equipment-chip--available {
+  background-color: #10b981;
+  color: white;
+}
+
+.equipment-chip--available:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.equipment-chip--unavailable {
+  background-color: #ef4444;
+  color: white;
+}
+
+.equipment-chip--unavailable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.equipment-chip-name {
+  white-space: nowrap;
+}
+
+/* ===== Empty State ===== */
+
+.equipment-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-radius: 0.75rem;
+}
+
+.equipment-empty-state p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* ===== Placeholder ===== */
+
+.equipment-placeholder {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.75rem;
+  margin: 0;
+}
+
+/* ===== Responsive Design ===== */
+
+@media (max-width: 768px) {
+  .equipment-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .equipment-toolbar-left {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .equipment-edit-button,
+  .equipment-add-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .equipment-filter-group {
+    width: 100%;
+  }
+
+  .equipment-filter-select {
+    flex: 1;
+  }
+
+  .equipment-legend {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .equipment-grid {
+    justify-content: center;
+  }
+
+  .equipment-chip {
+    min-width: 120px;
+  }
+}

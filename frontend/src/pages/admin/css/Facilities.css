@@ -1,12 +1,12 @@
-/* ===== View Facilities Page Styles ===== */
+/* ===== Facilities Page Styles ===== */
 
-.view-facilities-page-header {
+.facilities-page-header {
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 2px solid #e5e7eb;
 }
 
-.view-facilities-page-heading {
+.facilities-page-heading {
   font-size: 1.875rem;
   font-weight: 700;
   color: #1f2937;
@@ -15,14 +15,14 @@
 
 /* ===== Tabs Section ===== */
 
-.view-facilities-tabs {
+.facilities-tabs {
   display: flex;
   gap: 0;
   margin-bottom: 2rem;
   border-bottom: 2px solid #e5e7eb;
 }
 
-.view-facilities-tab {
+.facilities-tab {
   padding: 1rem 1.5rem;
   background-color: transparent;
   border: none;
@@ -34,18 +34,37 @@
   transition: all 0.2s ease;
 }
 
-.view-facilities-tab:hover {
+.facilities-tab:hover {
   color: #374151;
 }
 
-.view-facilities-tab--active {
+.facilities-tab--active {
   color: #10b981;
   border-bottom-color: #10b981;
 }
 
+.facilities-add-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.facilities-add-button:hover {
+  background-color: #059669;
+}
+
 /* ===== Toolbar Section ===== */
 
-.view-facilities-toolbar {
+.facilities-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -55,18 +74,42 @@
   border-radius: 0.5rem;
 }
 
-.view-facilities-filter-group {
+.facilities-toolbar-left {
+  display: flex;
+  gap: 1rem;
+}
+
+.facilities-edit-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.facilities-edit-button:hover {
+  background-color: #4b5563;
+}
+
+.facilities-filter-group {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.view-facilities-filter-label {
+.facilities-filter-label {
   font-weight: 600;
   color: #374151;
 }
 
-.view-facilities-filter-select {
+.facilities-filter-select {
   padding: 0.5rem 1rem;
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
@@ -76,17 +119,17 @@
   transition: border-color 0.2s ease;
 }
 
-.view-facilities-filter-select:hover {
+.facilities-filter-select:hover {
   border-color: #9ca3af;
 }
 
-.view-facilities-filter-select:focus {
+.facilities-filter-select:focus {
   outline: none;
   border-color: #10b981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-.view-facilities-sort-button {
+.facilities-sort-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,73 +142,66 @@
   transition: all 0.2s ease;
 }
 
-.view-facilities-sort-button:hover {
+.facilities-sort-button:hover {
   background-color: #f3f4f6;
   border-color: #9ca3af;
   color: #10b981;
 }
 
-/* ===== Legend Section ===== */
-
-.view-facilities-legend {
+.facilities-legend {
   display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border-radius: 0.5rem;
+  gap: 1.5rem;
 }
 
-.view-facilities-legend-item {
+.facilities-legend-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.95rem;
   color: #374151;
-  font-weight: 500;
 }
 
-.view-facilities-legend-dot {
-  width: 14px;
-  height: 14px;
+.facilities-legend-dot {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
 }
 
-.view-facilities-legend-dot--available {
+.facilities-legend-dot--available {
   background-color: #10b981;
 }
 
-.view-facilities-legend-dot--unavailable {
+.facilities-legend-dot--unavailable {
   background-color: #ef4444;
 }
 
 /* ===== Content Section ===== */
 
-.view-facilities-content {
+.facilities-content {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.view-facilities-venues-grid {
+.facilities-venues-grid {
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
-.view-facilities-equipment-grid {
+.facilities-equipment-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.view-facilities-floor-section {
+.facilities-floor-section {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.view-facilities-floor-heading {
+.facilities-floor-heading {
   font-size: 1.25rem;
   font-weight: 700;
   color: #1f2937;
@@ -175,7 +211,7 @@
   padding-left: 1rem;
 }
 
-.view-facilities-venue-grid {
+.facilities-venue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
@@ -183,7 +219,7 @@
 
 /* ===== Venue Card ===== */
 
-.view-facilities-venue-card {
+.facilities-venue-card {
   display: flex;
   flex-direction: column;
   border-radius: 0.75rem;
@@ -193,22 +229,22 @@
   border-left: 5px solid;
 }
 
-.view-facilities-venue-card:hover {
+.facilities-venue-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
 }
 
-.view-facilities-venue-card--available {
+.facilities-venue-card--available {
   background-color: #f0fdf4;
   border-left-color: #10b981;
 }
 
-.view-facilities-venue-card--unavailable {
+.facilities-venue-card--unavailable {
   background-color: #fef2f2;
   border-left-color: #ef4444;
 }
 
-.view-facilities-venue-card-header {
+.facilities-venue-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -216,7 +252,7 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.view-facilities-venue-name {
+.facilities-venue-name {
   font-size: 1.1rem;
   font-weight: 700;
   color: #1f2937;
@@ -224,11 +260,11 @@
   flex: 1;
 }
 
-.view-facilities-venue-status {
+.facilities-venue-status {
   margin-left: 0.5rem;
 }
 
-.view-facilities-status-badge {
+.facilities-status-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
@@ -237,19 +273,79 @@
   white-space: nowrap;
 }
 
-.view-facilities-status-badge.available {
+.facilities-status-badge.available {
   background-color: #d1fae5;
   color: #065f46;
 }
 
-.view-facilities-status-badge.unavailable {
+.facilities-status-badge.unavailable {
   background-color: #fee2e2;
   color: #7f1d1d;
 }
 
+.facilities-venue-card-body {
+  padding: 1rem;
+  flex: 1;
+}
+
+.facilities-venue-detail {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.facilities-detail-label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.facilities-venue-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.facilities-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.facilities-action-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.facilities-action-btn--edit:hover {
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.facilities-action-btn--toggle:hover {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.facilities-action-btn--delete:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
 /* ===== Equipment Chip ===== */
 
-.view-facilities-equipment-chip {
+.facilities-equipment-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -262,33 +358,33 @@
   border: 2px solid transparent;
 }
 
-.view-facilities-equipment-chip--available {
+.facilities-equipment-chip--available {
   background-color: #10b981;
   color: white;
 }
 
-.view-facilities-equipment-chip--available:hover {
+.facilities-equipment-chip--available:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-.view-facilities-equipment-chip--unavailable {
+.facilities-equipment-chip--unavailable {
   background-color: #ef4444;
   color: white;
 }
 
-.view-facilities-equipment-chip--unavailable:hover {
+.facilities-equipment-chip--unavailable:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-.view-facilities-equipment-chip-name {
+.facilities-equipment-chip-name {
   white-space: nowrap;
 }
 
 /* ===== Empty State ===== */
 
-.view-facilities-empty-state {
+.facilities-empty-state {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -299,49 +395,37 @@
   border-radius: 0.75rem;
 }
 
-.view-facilities-empty-state p {
+.facilities-empty-state p {
   margin: 0;
   font-size: 1.1rem;
-}
-
-/* ===== Footer ===== */
-
-.view-facilities-page-footer {
-  margin-top: auto;
-  padding-top: 2rem;
-  text-align: center;
-  font-size: 0.7rem;
-  color: #888888;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 /* ===== Responsive Design ===== */
 
 @media (max-width: 1024px) {
-  .view-facilities-venue-grid {
+  .facilities-venue-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .view-facilities-page-header {
+  .facilities-page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
-  .view-facilities-toolbar {
+  .facilities-toolbar {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
-  .view-facilities-legend {
+  .facilities-legend {
     width: 100%;
   }
 
-  .view-facilities-venue-grid {
+  .facilities-venue-grid {
     grid-template-columns: 1fr;
   }
 }

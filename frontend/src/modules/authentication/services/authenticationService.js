@@ -12,30 +12,41 @@
  * @returns {Promise<Object>} Response with token and account data
  */
 export async function loginRequest(credentials) {
-  const response = await fetch('/api/v1/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials),
-  });
+  try {
+    const response = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
 
-  const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Failed to parse login response as JSON:', jsonError);
+      throw new Error('Login API returned invalid response. Backend may not be ready.');
+    }
 
-  if (!response.ok) {
-    throw new Error(data.errorMessage || 'Login failed.');
+    if (!response.ok) {
+      throw new Error(data.errorMessage || 'Login failed.');
+    }
+
+    // Handle different response structures
+    // Backend returns: { success: true, data: { token, account } }
+    if (data.success && data.data) {
+      return data.data;
+    }
+
+    // Fallback for direct structure: { token, account }
+    if (data.token && data.account) {
+      return data;
+    }
+
+    throw new Error('Invalid response format from server.');
+  } catch (error) {
+    console.error('Login request error:', error);
+    throw error;
   }
-
-  // Handle different response structures
-  // Backend returns: { success: true, data: { token, account } }
-  if (data.success && data.data) {
-    return data.data;
-  }
-
-  // Fallback for direct structure: { token, account }
-  if (data.token && data.account) {
-    return data;
-  }
-
-  throw new Error('Invalid response format from server.');
 }
 
 /**
@@ -50,27 +61,38 @@ export async function loginRequest(credentials) {
  * @returns {Promise<Object>} Response with account data
  */
 export async function registerRequest(registrationData) {
-  const formData = new FormData();
-  formData.append('firstName', registrationData.firstName);
-  formData.append('lastName', registrationData.lastName);
-  formData.append('emailAddress', registrationData.emailAddress);
-  formData.append('passwordText', registrationData.passwordText);
-  
-  if (registrationData.supportingDocument) {
-    formData.append('supportingDocument', registrationData.supportingDocument);
+  try {
+    const formData = new FormData();
+    formData.append('firstName', registrationData.firstName);
+    formData.append('lastName', registrationData.lastName);
+    formData.append('emailAddress', registrationData.emailAddress);
+    formData.append('passwordText', registrationData.passwordText);
+    
+    if (registrationData.supportingDocument) {
+      formData.append('supportingDocument', registrationData.supportingDocument);
+    }
+
+    const response = await fetch('/api/v1/auth/register', {
+      method: 'POST',
+      headers: {}, // Let browser set Content-Type for FormData
+      body: formData,
+    });
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Failed to parse registration response as JSON:', jsonError);
+      throw new Error('Registration API returned invalid response. Backend may not be ready.');
+    }
+
+    if (!response.ok) {
+      throw new Error(data.errorMessage || 'Registration failed.');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Registration request error:', error);
+    throw error;
   }
-
-  const response = await fetch('/api/v1/auth/register', {
-    method: 'POST',
-    headers: {}, // Let browser set Content-Type for FormData
-    body: formData,
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.errorMessage || 'Registration failed.');
-  }
-
-  return data;
 }

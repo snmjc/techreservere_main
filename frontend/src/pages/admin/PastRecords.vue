@@ -146,6 +146,150 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const sortOrderAscending = ref(true);
 
+// Mock past records data
+const mockPastRecords = ref([
+  {
+    requestIdentifier: 'RES-001',
+    requesterFullName: 'Maria Santos',
+    requesterRole: 'Faculty',
+    requestedDate: '2026-04-15',
+    neededDate: '2026-05-10',
+    facilityName: '18F Roofdeck',
+    facilityImage: 'https://via.placeholder.com/80?text=Roofdeck',
+    requestQuantity: 150,
+    requestType: 'Venue',
+    requestPurpose: 'Graduation Ceremony',
+    dateProcessed: '2026-05-10',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-002',
+    requesterFullName: 'Juan Dela Cruz',
+    requesterRole: 'Staff',
+    requestedDate: '2026-04-20',
+    neededDate: '2026-05-05',
+    facilityName: 'Chairs',
+    facilityImage: 'https://via.placeholder.com/80?text=Chairs',
+    requestQuantity: 200,
+    requestType: 'Equipment',
+    requestPurpose: 'Conference Setup',
+    dateProcessed: '2026-05-05',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-003',
+    requesterFullName: 'Ana Garcia',
+    requesterRole: 'Student',
+    requestedDate: '2026-04-10',
+    neededDate: '2026-04-25',
+    facilityName: 'F407',
+    facilityImage: 'https://via.placeholder.com/80?text=F407',
+    requestQuantity: 50,
+    requestType: 'Venue',
+    requestPurpose: 'Club Meeting',
+    dateProcessed: '2026-04-25',
+    recordStatus: 'Rejected',
+  },
+  {
+    requestIdentifier: 'RES-004',
+    requesterFullName: 'Pedro Reyes',
+    requesterRole: 'Faculty',
+    requestedDate: '2026-04-12',
+    neededDate: '2026-05-01',
+    facilityName: 'Microphone & Podium',
+    facilityImage: 'https://via.placeholder.com/80?text=Microphone',
+    requestQuantity: 5,
+    requestType: 'Equipment',
+    requestPurpose: 'Seminar',
+    dateProcessed: '2026-05-01',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-005',
+    requesterFullName: 'Rosa Mendoza',
+    requesterRole: 'Student',
+    requestedDate: '2026-04-18',
+    neededDate: '2026-05-08',
+    facilityName: 'F503 & Tables',
+    facilityImage: 'https://via.placeholder.com/80?text=F503',
+    requestQuantity: 80,
+    requestType: 'Venue and Equipment',
+    requestPurpose: 'Workshop',
+    dateProcessed: '2026-05-08',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-006',
+    requesterFullName: 'Carlos Lopez',
+    requesterRole: 'Staff',
+    requestedDate: '2026-04-22',
+    neededDate: '2026-05-02',
+    facilityName: 'LED Video Wall',
+    facilityImage: 'https://via.placeholder.com/80?text=LED',
+    requestQuantity: 1,
+    requestType: 'Equipment',
+    requestPurpose: 'Presentation',
+    dateProcessed: '2026-05-02',
+    recordStatus: 'Cancelled',
+  },
+  {
+    requestIdentifier: 'RES-007',
+    requesterFullName: 'Lisa Wong',
+    requesterRole: 'Faculty',
+    requestedDate: '2026-04-08',
+    neededDate: '2026-04-28',
+    facilityName: 'F608',
+    facilityImage: 'https://via.placeholder.com/80?text=F608',
+    requestQuantity: 60,
+    requestType: 'Venue',
+    requestPurpose: 'Exam',
+    dateProcessed: '2026-04-28',
+    recordStatus: 'Rejected',
+  },
+  {
+    requestIdentifier: 'RES-008',
+    requesterFullName: 'Miguel Torres',
+    requesterRole: 'Student',
+    requestedDate: '2026-04-25',
+    neededDate: '2026-05-09',
+    facilityName: 'Stage & Sound System',
+    facilityImage: 'https://via.placeholder.com/80?text=Stage',
+    requestQuantity: 1,
+    requestType: 'Equipment',
+    requestPurpose: 'Concert',
+    dateProcessed: '2026-05-09',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-009',
+    requesterFullName: 'Sofia Gutierrez',
+    requesterRole: 'Staff',
+    requestedDate: '2026-04-16',
+    neededDate: '2026-05-03',
+    facilityName: 'F704',
+    facilityImage: 'https://via.placeholder.com/80?text=F704',
+    requestQuantity: 40,
+    requestType: 'Venue',
+    requestPurpose: 'Training',
+    dateProcessed: '2026-05-03',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-010',
+    requesterFullName: 'Antonio Morales',
+    requesterRole: 'Faculty',
+    requestedDate: '2026-04-19',
+    neededDate: '2026-05-06',
+    facilityName: 'Chairs & Tables',
+    facilityImage: 'https://via.placeholder.com/80?text=Furniture',
+    requestQuantity: 120,
+    requestType: 'Equipment',
+    requestPurpose: 'Banquet',
+    dateProcessed: '2026-05-06',
+    recordStatus: 'Cancelled',
+  },
+]);
+
 onMounted(async () => {
   try {
     await requestStore.fetchReservations();
@@ -158,12 +302,13 @@ onMounted(async () => {
 
 /**
  * @function filteredRecordList
- * @description Filters past records by active tab and search query.
+ * @description Filters past records by active tab, search query, and applies sorting.
  * @returns {Array<Object>}
  */
 const filteredRecordList = computed(() => {
-  let recordsFiltered = requestStore.pastRecordsList || [];
+  let recordsFiltered = mockPastRecords.value;
 
+  // Filter by tab status
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {
       completed: 'Completed',
@@ -175,14 +320,27 @@ const filteredRecordList = computed(() => {
     );
   }
 
+  // Filter by search query
   const queryLower = searchQueryText.value.toLowerCase().trim();
   if (queryLower) {
     recordsFiltered = recordsFiltered.filter(
       (record) =>
         record.requesterFullName?.toLowerCase().includes(queryLower) ||
-        record.requestIdentifier?.toString().includes(queryLower)
+        record.requestIdentifier?.toString().includes(queryLower) ||
+        record.facilityName?.toLowerCase().includes(queryLower)
     );
   }
+
+  // Apply sorting by name
+  recordsFiltered.sort((a, b) => {
+    const nameA = a.requesterFullName.toLowerCase();
+    const nameB = b.requesterFullName.toLowerCase();
+    if (sortOrderAscending.value) {
+      return nameA.localeCompare(nameB);
+    } else {
+      return nameB.localeCompare(nameA);
+    }
+  });
 
   return recordsFiltered;
 });

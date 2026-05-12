@@ -110,67 +110,76 @@ class AuthenticationController extends AbstractController
     #[Route('/register', name: 'auth_register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
     {
-        // Handle both JSON and FormData
-        $contentType = $request->headers->get('Content-Type');
-        
-        if (strpos($contentType, 'application/json') !== false) {
-            $requestBody = json_decode($request->getContent(), true) ?? [];
-            $firstName = trim($requestBody['firstName'] ?? '');
-            $lastName = trim($requestBody['lastName'] ?? '');
-            $emailAddress = trim($requestBody['emailAddress'] ?? '');
-            $passwordText = $requestBody['passwordText'] ?? '';
-        } else {
-            // Handle FormData
-            $firstName = trim($request->request->get('firstName', ''));
-            $lastName = trim($request->request->get('lastName', ''));
-            $emailAddress = trim($request->request->get('emailAddress', ''));
-            $passwordText = $request->request->get('passwordText', '');
-        }
+        try {
+            // Handle both JSON and FormData
+            $contentType = $request->headers->get('Content-Type');
+            
+            if (strpos($contentType, 'application/json') !== false) {
+                $requestBody = json_decode($request->getContent(), true) ?? [];
+                $firstName = trim($requestBody['firstName'] ?? '');
+                $lastName = trim($requestBody['lastName'] ?? '');
+                $emailAddress = trim($requestBody['emailAddress'] ?? '');
+                $passwordText = $requestBody['passwordText'] ?? '';
+            } else {
+                // Handle FormData
+                $firstName = trim($request->request->get('firstName', ''));
+                $lastName = trim($request->request->get('lastName', ''));
+                $emailAddress = trim($request->request->get('emailAddress', ''));
+                $passwordText = $request->request->get('passwordText', '');
+            }
 
-        if (empty($firstName) || empty($lastName) || empty($emailAddress) || empty($passwordText)) {
+            if (empty($firstName) || empty($lastName) || empty($emailAddress) || empty($passwordText)) {
+                return $this->createErrorResponse(
+                    'ValidationError',
+                    'First name, last name, email address, and password are required.',
+                    400
+                );
+            }
+
+            if (strlen($passwordText) < 8) {
+                return $this->createErrorResponse(
+                    'ValidationError',
+                    'Password must be at least 8 characters long.',
+                    400
+                );
+            }
+
+            $existingAccount = $this->accountRepository->findOneByEmailAddress($emailAddress);
+
+            if ($existingAccount !== null) {
+                return $this->createErrorResponse(
+                    'DuplicateAccount',
+                    'An account with this email address already exists.',
+                    409
+                );
+            }
+
+            $accountEntity = new \App\Domain\Account\Entity\AccountEntity();
+            $accountEntity->setFirstName($firstName);
+            $accountEntity->setLastName($lastName);
+            $accountEntity->setEmailAddress($emailAddress);
+            $accountEntity->setPasswordHash(password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]));
+            $accountEntity->setRoleDesignation('ROLE_BORROWER');
+
+            $this->accountRepository->persistAccount($accountEntity);
+
+            return $this->createSuccessResponse([
+                'message' => 'Account registered successfully.',
+                'account' => [
+                    'accountIdentifier' => $accountEntity->getAccountIdentifier(),
+                    'firstName' => $accountEntity->getFirstName(),
+                    'lastName' => $accountEntity->getLastName(),
+                    'emailAddress' => $accountEntity->getEmailAddress(),
+                    'roleDesignation' => $accountEntity->getRoleDesignation(),
+                ],
+            ], 201);
+        } catch (\Exception $exception) {
+            error_log('Registration error: ' . $exception->getMessage());
             return $this->createErrorResponse(
-                'ValidationError',
-                'First name, last name, email address, and password are required.',
-                400
+                'RegistrationError',
+                'An error occurred during registration. Please try again.',
+                500
             );
         }
-
-        if (strlen($passwordText) < 8) {
-            return $this->createErrorResponse(
-                'ValidationError',
-                'Password must be at least 8 characters long.',
-                400
-            );
-        }
-
-        $existingAccount = $this->accountRepository->findOneByEmailAddress($emailAddress);
-
-        if ($existingAccount !== null) {
-            return $this->createErrorResponse(
-                'DuplicateAccount',
-                'An account with this email address already exists.',
-                409
-            );
-        }
-
-        $accountEntity = new \App\Domain\Account\Entity\AccountEntity();
-        $accountEntity->setFirstName($firstName);
-        $accountEntity->setLastName($lastName);
-        $accountEntity->setEmailAddress($emailAddress);
-        $accountEntity->setPasswordHash(password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]));
-        $accountEntity->setRoleDesignation('ROLE_BORROWER');
-
-        $this->accountRepository->persistAccount($accountEntity);
-
-        return $this->createSuccessResponse([
-            'message' => 'Account registered successfully.',
-            'account' => [
-                'accountIdentifier' => $accountEntity->getAccountIdentifier(),
-                'firstName' => $accountEntity->getFirstName(),
-                'lastName' => $accountEntity->getLastName(),
-                'emailAddress' => $accountEntity->getEmailAddress(),
-                'roleDesignation' => $accountEntity->getRoleDesignation(),
-            ],
-        ], 201);
     }
 }

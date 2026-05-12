@@ -1,26 +1,6 @@
 name: "TechReserve"
 
 services:
-  db:
-    image: postgres:15
-    container_name: techreserve_db
-    restart: always
-    shm_size: 128mb
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_EXTERNAL_PORT}:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 3s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
-
   backend:
     build:
       context: ./backend
@@ -36,10 +16,7 @@ services:
     environment:
       APP_ENV: dev
       APP_DEBUG: "1"
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
-    depends_on:
-      db:
-        condition: service_healthy
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
     develop:
       watch:
         - action: sync
@@ -61,8 +38,6 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "${PGADMIN_EXTERNAL_PORT:-5050}:80"
-    depends_on:
-      - db
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
@@ -96,7 +71,6 @@ services:
           target: /app/package-lock.json
 
 volumes:
-  pgdata:
   frontend_node_modules:
   backend_var:
   backend_vendor:

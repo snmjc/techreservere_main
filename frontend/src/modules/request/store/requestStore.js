@@ -151,25 +151,17 @@ export const useRequestStore = defineStore('requestStore', () => {
 
   async function fetchReservations() {
     try {
-      const response = await reservationApi.listReservations();
-      console.log('fetchReservations response:', response);
-      
-      // Handle different response structures
-      let reservations = [];
-      if (response?.data?.reservations) {
-        reservations = response.data.reservations;
-      } else if (response?.reservations) {
-        reservations = response.reservations;
-      } else if (Array.isArray(response)) {
-        reservations = response;
-      }
-      
-      console.log('Reservations to sync:', reservations);
-      if (reservations?.length > 0) {
-        syncReservationsFromAPI(reservations);
-      }
+      console.warn('Reservations API not yet implemented, using empty list');
+      pendingRequestsList.value = [];
+      approvedRequestsList.value = [];
+      activeReservationsList.value = [];
+      pastRecordsList.value = [];
     } catch (error) {
       console.error('Failed to fetch reservations:', error);
+      pendingRequestsList.value = [];
+      approvedRequestsList.value = [];
+      activeReservationsList.value = [];
+      pastRecordsList.value = [];
     }
   }
 

@@ -55,7 +55,16 @@ export const routeDefinitions = [
   {
     path: '/admin/manage-facilities',
     name: 'adminManageFacilitiesPage',
-    component: () => import('@/pages/admin/ManageFacilities.vue'),
+    component: () => import('@/pages/admin/Facilities.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/admin/manage-equipment',
+    name: 'adminManageEquipmentPage',
+    component: () => import('@/pages/admin/Equipment.vue'),
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
