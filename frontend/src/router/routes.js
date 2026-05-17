@@ -13,12 +13,21 @@
 export const routeDefinitions = [
   {
     path: '/',
-    redirect: '/login',
+    redirect: '/clerk-login',
   },
   {
     path: '/login',
     name: 'loginPage',
     component: () => import('@/pages/auth/Login.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/clerk-login',
+    name: 'clerkLoginPage',
+    component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -34,6 +43,33 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/request-pending',
+    name: 'requestPendingPage',
+    component: () => import('@/pages/auth/RequestPending.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/custom-signup',
+    name: 'customSignUpPage',
+    component: () => import('@/pages/auth/CustomSignUp.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/student-registration',
+    name: 'studentRegistrationPage',
+    component: () => import('@/pages/auth/StudentRegistration.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
     path: '/admin/dashboard',
     name: 'adminDashboardPage',
     component: () => import('@/pages/admin/Dashboard.vue'),
@@ -42,7 +78,34 @@ export const routeDefinitions = [
       allowedRoles: ['ROLE_ADMIN'],
     },
   },
+  {
+    path: '/admin/requestor-approval',
+    name: 'requestorApprovalPage',
+    component: () => import('@/pages/admin/RequestorApproval.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+    },
+  },
   // Placeholder routes for admin sidebar navigation (pages to be built)
+  {
+    path: '/admin/users',
+    name: 'adminUsersPage',
+    component: () => import('@/pages/admin/AdminUsers.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/admin/invitations',
+    name: 'adminInvitationsPage',
+    component: () => import('@/pages/admin/AdminInvitations.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+    },
+  },
   {
     path: '/admin/manage-accounts',
     name: 'adminManageAccountsPage',
@@ -192,6 +255,115 @@ export const routeDefinitions = [
     path: '/borrower/past-records',
     name: 'borrowerPastRecordsPage',
     component: () => import('@/pages/borrower/PastRecords.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/borrower/view-reservation-list',
+    name: 'borrowerViewReservationListPage',
+    component: () => import('@/pages/borrower/ViewReservationList.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/borrower/active-reservations-logs',
+    name: 'borrowerActiveReservationsLogsPage',
+    component: () => import('@/pages/borrower/ActiveReservationsLogs.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/borrower/approved-requests-logs',
+    name: 'borrowerApprovedRequestsLogsPage',
+    component: () => import('@/pages/borrower/ApprovedRequestsLogs.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/borrower/pending-requests-logs',
+    name: 'borrowerPendingRequestsLogsPage',
+    component: () => import('@/pages/borrower/PendingRequestsLogs.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/borrower/completed-reservations-logs',
+    name: 'borrowerCompletedReservationsLogsPage',
+    component: () => import('@/pages/borrower/CompletedReservationsLogs.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  {
+    path: '/notifications',
+    name: 'notificationPage',
+    component: () => import('@/pages/notifications/NotificationPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/borrower/notifications',
+    name: 'borrowerNotificationsPage',
+    component: () => import('@/pages/borrower/BorrowerNotifications.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+    },
+  },
+  // Settings routes
+  {
+    path: '/settings',
+    name: 'settingsPage',
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/settings/account',
+    name: 'accountSettingsPage',
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/settings/security',
+    name: 'securitySettingsPage',
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/settings/preferences',
+    name: 'preferencesSettingsPage',
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
+    path: '/borrower/settings',
+    name: 'borrowerSettingsPage',
+    component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],

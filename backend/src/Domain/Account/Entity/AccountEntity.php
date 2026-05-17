@@ -54,6 +54,16 @@ class AccountEntity
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $passwordHash = null;
 
+    #[ORM\Column(type: Types::STRING, length: 20)]
+    private string $status = 'pending';
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $isApproved = false;
+
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'invited_by', referencedColumnName: 'accountIdentifier', nullable: true)]
+    private ?self $invitedBy = null;
+
     public function __construct()
     {
         $this->createdTimestamp = new \DateTime();
@@ -199,6 +209,39 @@ class AccountEntity
     public function setPasswordHash(?string $passwordHash): self
     {
         $this->passwordHash = $passwordHash;
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): self
+    {
+        $this->status = $status;
+        return $this;
+    }
+
+    public function getIsApproved(): bool
+    {
+        return $this->isApproved;
+    }
+
+    public function setIsApproved(bool $isApproved): self
+    {
+        $this->isApproved = $isApproved;
+        return $this;
+    }
+
+    public function getInvitedBy(): ?self
+    {
+        return $this->invitedBy;
+    }
+
+    public function setInvitedBy(?self $invitedBy): self
+    {
+        $this->invitedBy = $invitedBy;
         return $this;
     }
 }

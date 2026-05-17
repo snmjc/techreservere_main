@@ -1,0 +1,262 @@
+/* ===== AI GENERATED: BorrowerViewReservationListPage Styles ===== */
+/* Purpose: Styles for borrower view reservation list page with search, sorting, and table */
+/* Scope: BorrowerViewReservationListPage.vue */
+
+/* ========================================= */
+/* PAGE HEADER                               */
+/* ========================================= */
+
+.view-reservation-list-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.view-reservation-list-page-heading {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #1a6e3a !important;
+  margin: 0;
+}
+
+.view-reservation-list-go-back-button {
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #555555;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.view-reservation-list-go-back-button:hover {
+  background-color: #f0f0f0;
+  color: #1a6e3a;
+}
+
+/* ========================================= */
+/* CONTROLS (Search + Sort)                  */
+/* ========================================= */
+
+.view-reservation-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.view-reservation-list-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 250px;
+}
+
+.view-reservation-list-search-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.view-reservation-list-search-input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-reservation-list-search-input:focus {
+  outline: none;
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.1);
+}
+
+.view-reservation-list-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-reservation-list-sort-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.view-reservation-list-sort-select {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.view-reservation-list-sort-select:focus {
+  outline: none;
+  border-color: #1a6e3a;
+}
+
+.view-reservation-list-sort-toggle {
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #1a6e3a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.view-reservation-list-sort-toggle:hover {
+  background-color: #145a30;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.view-reservation-list-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.view-reservation-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+}
+
+.view-reservation-list-th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #1a6e3a;
+  border-bottom: 2px solid #145a30;
+  white-space: nowrap;
+}
+
+.view-reservation-list-tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.view-reservation-list-tr:hover {
+  background-color: #f9fafb;
+}
+
+.view-reservation-list-tr:last-child {
+  border-bottom: none;
+}
+
+.view-reservation-list-td {
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: #333333;
+}
+
+/* ========================================= */
+/* BADGES                                    */
+/* ========================================= */
+
+.view-reservation-list-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.view-reservation-list-badge--student {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.view-reservation-list-badge--faculty {
+  background-color: #fce7f3;
+  color: #be185d;
+}
+
+.view-reservation-list-badge--venue {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.view-reservation-list-badge--equipment {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.view-reservation-list-status-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.view-reservation-list-status-badge--deployed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+/* ========================================= */
+/* FACILITY CELL                             */
+/* ========================================= */
+
+.view-reservation-list-facility {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.view-reservation-list-facility-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* NO RESULTS MESSAGE                        */
+/* ========================================= */
+
+.view-reservation-list-no-results {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #888888;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+/* ========================================= */
+/* PAGE FOOTER                               */
+/* ========================================= */
+
+.view-reservation-list-page-footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.8rem;
+  color: #888888;
+}

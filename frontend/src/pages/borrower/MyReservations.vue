@@ -17,19 +17,19 @@
     <!-- Total Overview -->
     <p class="my-reservations-overview-label">Total Overview</p>
     <div class="my-reservations-stats-grid">
-      <button class="my-reservations-stat-card my-reservations-stat-card--active" @click="navigateToSubList('borrowerActiveReservationsPage')">
+      <button class="my-reservations-stat-card my-reservations-stat-card--active" @click="navigateToViewReservationList">
         <span class="my-reservations-stat-value">{{ activeReservationsCount }}</span>
         <span class="my-reservations-stat-label">Active<br/>Reservations</span>
       </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--approved" @click="navigateToSubList('borrowerApprovedRequestsPage')">
+      <button class="my-reservations-stat-card my-reservations-stat-card--approved" @click="navigateToApprovedRequestsLogs">
         <span class="my-reservations-stat-value">{{ approvedRequestsCount }}</span>
         <span class="my-reservations-stat-label">Approved<br/>Requests</span>
       </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--pending" @click="navigateToSubList('borrowerPendingRequestsPage')">
+      <button class="my-reservations-stat-card my-reservations-stat-card--pending" @click="navigateToPendingRequestsLogs">
         <span class="my-reservations-stat-value">{{ pendingRequestsCount }}</span>
         <span class="my-reservations-stat-label">Pending<br/>Requests</span>
       </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--completed">
+      <button class="my-reservations-stat-card my-reservations-stat-card--completed" @click="navigateToCompletedReservationsLogs">
         <span class="my-reservations-stat-value">{{ completedReservationsCount }}</span>
         <span class="my-reservations-stat-label">Completed</span>
       </button>
@@ -98,5 +98,50 @@ function navigateToCreateReservation() {
  */
 function navigateToSubList(routeName) {
   router.push({ name: routeName });
+}
+
+/**
+ * @function navigateToViewReservationList
+ * @description Navigates to the view reservation list page.
+ * @returns {void}
+ */
+function navigateToViewReservationList() {
+  router.push({ name: 'borrowerViewReservationListPage' });
+}
+
+/**
+ * @function navigateToApprovedRequestsLogs
+ * @description Navigates to the approved requests logs page.
+ * @returns {void}
+ */
+function navigateToApprovedRequestsLogs() {
+  router.push({ name: 'borrowerApprovedRequestsLogsPage' });
+}
+
+/**
+ * @function navigateToPendingRequestsLogs
+ * @description Navigates to the pending requests logs page.
+ * @returns {void}
+ */
+function navigateToPendingRequestsLogs() {
+  router.push({ name: 'borrowerPendingRequestsLogsPage' });
+}
+
+/**
+ * @function navigateToCompletedReservationsLogs
+ * @description Navigates to the completed reservations logs page.
+ * @returns {void}
+ */
+function navigateToCompletedReservationsLogs() {
+  router.push({ name: 'borrowerCompletedReservationsLogsPage' });
+}
+
+/**
+ * @function navigateToPastRecords
+ * @description Navigates to the borrower past records page.
+ * @returns {void}
+ */
+function navigateToPastRecords() {
+  router.push({ name: 'borrowerPastRecordsPage' });
 }
 </script>

@@ -5,7 +5,7 @@
     :navigation-items="adminNavigationItems"
   >
     <!-- Page Heading -->
-    <h2 class="manage-accounts-page-heading">User Accounts</h2>
+    <h2 class="manage-accounts-page-heading">Accounts</h2>
 
     <!-- Tabs: Admin | User -->
     <div class="manage-accounts-tabs-row">

@@ -58,19 +58,19 @@
 }
 
 .admin-dashboard-stat-card--pending {
-  background: linear-gradient(135deg, #c49a1a 0%, #d4a82a 100%);
+  background: linear-gradient(135deg, #8b7500 0%, #a68f1a 100%);
 }
 
 .admin-dashboard-stat-card--approved {
-  background: linear-gradient(135deg, #15803d 0%, #1d9d4d 100%);
+  background: linear-gradient(135deg, #2d5a3d 0%, #3d7a4d 100%);
 }
 
 .admin-dashboard-stat-card--deployed {
-  background: linear-gradient(135deg, #d97706 0%, #ea8c16 100%);
+  background: linear-gradient(135deg, #b8860b 0%, #d4a017 100%);
 }
 
 .admin-dashboard-stat-card--overdue {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  background: linear-gradient(135deg, #8b3a3a 0%, #a85a5a 100%);
 }
 
 .admin-dashboard-stat-card-count {
@@ -190,11 +190,11 @@
 /* ========================================= */
 
 .admin-dashboard-facility-status {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3d5a7f 0%, #2d4a6f 100%);
   border-radius: 20px;
   padding: 1.75rem;
   color: #ffffff;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 16px rgba(61, 90, 127, 0.3);
 }
 
 .admin-dashboard-facility-status-title {

@@ -1,7 +1,7 @@
 <!-- ===== AI GENERATED: BorrowerPastRecordsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="userFullName"
     :navigation-items="borrowerNavigationItems"
   >
     <!-- Page Heading -->
@@ -48,15 +48,24 @@
           v-model="searchQueryText"
           type="text"
           class="past-records-search-input"
-          placeholder="Name"
+          placeholder="Search by name or ID"
         />
       </div>
       <div class="past-records-showing-group">
+        <label class="past-records-showing-label" for="pastRecordsOrdering">Order By:</label>
+        <select id="pastRecordsOrdering" v-model="orderByValue" class="past-records-showing-select">
+          <option value="date">Requested Date</option>
+          <option value="name">Name</option>
+          <option value="status">Status</option>
+        </select>
         <label class="past-records-showing-label" for="pastRecordsShowing">Showing:</label>
         <select id="pastRecordsShowing" v-model="showingFilterValue" class="past-records-showing-select">
           <option value="all">All</option>
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
         </select>
-        <button class="past-records-sort-button" aria-label="Sort">
+        <button class="past-records-sort-button" @click="toggleSortOrder" :title="sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'" aria-label="Sort">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
           </svg>
@@ -72,11 +81,11 @@
             <th class="past-records-table-header-cell">ID</th>
             <th class="past-records-table-header-cell">Name</th>
             <th class="past-records-table-header-cell">Role</th>
-            <th class="past-records-table-header-cell">Schedule</th>
+            <th class="past-records-table-header-cell">Requested Date</th>
+            <th class="past-records-table-header-cell">Needed Date</th>
             <th class="past-records-table-header-cell">Facility</th>
             <th class="past-records-table-header-cell">Quantity</th>
             <th class="past-records-table-header-cell">Type</th>
-            <th class="past-records-table-header-cell">Purpose</th>
             <th class="past-records-table-header-cell">Status</th>
           </tr>
         </thead>
@@ -89,13 +98,13 @@
             <td class="past-records-table-cell past-records-table-cell--id">{{ record.requestIdentifier }}</td>
             <td class="past-records-table-cell">{{ record.requesterFullName }}</td>
             <td class="past-records-table-cell">{{ record.requesterRole }}</td>
-            <td class="past-records-table-cell">{{ record.requestSchedule }}</td>
+            <td class="past-records-table-cell">{{ record.requestedDate }}</td>
+            <td class="past-records-table-cell">{{ record.neededDate }}</td>
             <td class="past-records-table-cell">{{ record.facilityName }}</td>
             <td class="past-records-table-cell">{{ record.requestQuantity }}</td>
             <td class="past-records-table-cell">
               <span class="past-records-type-badge" :class="getTypeBadgeClass(record.requestType)">{{ record.requestType }}</span>
             </td>
-            <td class="past-records-table-cell">{{ record.requestPurpose }}</td>
             <td class="past-records-table-cell">
               <span class="past-records-status-badge" :class="getStatusBadgeClass(record.recordStatus)">{{ record.recordStatus }}</span>
             </td>
@@ -126,9 +135,104 @@ const authStore = useAuthenticationStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const loading = ref(true);
+const sortOrder = ref('desc');
+const orderByValue = ref('date');
+const loading = ref(false);
 
 const pastRecordsList = ref([]);
+
+const userFullName = computed(() => authStore.userFullName || 'USER');
+
+const mockPastRecords = [
+  {
+    requestIdentifier: 'RES-001',
+    requesterFullName: 'Juan Dela Cruz',
+    requesterRole: 'Student',
+    requestedDate: '2024-05-01',
+    neededDate: '2024-05-15',
+    facilityName: 'Classroom A',
+    requestQuantity: 1,
+    requestType: 'Venue',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-002',
+    requesterFullName: 'Maria Santos',
+    requesterRole: 'Faculty',
+    requestedDate: '2024-04-28',
+    neededDate: '2024-05-10',
+    facilityName: 'Multipurpose Room',
+    requestQuantity: 2,
+    requestType: 'Equipment',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-003',
+    requesterFullName: 'Pedro Garcia',
+    requesterRole: 'Student',
+    requestedDate: '2024-04-20',
+    neededDate: '2024-05-05',
+    facilityName: 'Projector',
+    requestQuantity: 1,
+    requestType: 'Equipment',
+    recordStatus: 'Rejected',
+  },
+  {
+    requestIdentifier: 'RES-004',
+    requesterFullName: 'Ana Reyes',
+    requesterRole: 'Faculty',
+    requestedDate: '2024-04-15',
+    neededDate: '2024-04-25',
+    facilityName: 'Classroom B',
+    requestQuantity: 1,
+    requestType: 'Venue',
+    recordStatus: 'Cancelled',
+  },
+  {
+    requestIdentifier: 'RES-005',
+    requesterFullName: 'Carlos Mendoza',
+    requesterRole: 'Student',
+    requestedDate: '2024-04-10',
+    neededDate: '2024-04-22',
+    facilityName: 'Conference Room',
+    requestQuantity: 3,
+    requestType: 'Venue and Equipment',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-006',
+    requesterFullName: 'Rosa Flores',
+    requesterRole: 'Faculty',
+    requestedDate: '2024-04-05',
+    neededDate: '2024-04-18',
+    facilityName: 'LED Screen',
+    requestQuantity: 2,
+    requestType: 'Equipment',
+    recordStatus: 'Rejected',
+  },
+  {
+    requestIdentifier: 'RES-007',
+    requesterFullName: 'Miguel Torres',
+    requesterRole: 'Student',
+    requestedDate: '2024-03-28',
+    neededDate: '2024-04-10',
+    facilityName: 'Auditorium',
+    requestQuantity: 1,
+    requestType: 'Venue',
+    recordStatus: 'Completed',
+  },
+  {
+    requestIdentifier: 'RES-008',
+    requesterFullName: 'Sofia Ramirez',
+    requesterRole: 'Faculty',
+    requestedDate: '2024-03-20',
+    neededDate: '2024-04-02',
+    facilityName: 'Microphone Set',
+    requestQuantity: 1,
+    requestType: 'Equipment',
+    recordStatus: 'Cancelled',
+  },
+];
 
 onMounted(async () => {
   await loadPastRecords();
@@ -137,43 +241,17 @@ onMounted(async () => {
 async function loadPastRecords() {
   loading.value = true;
   try {
-    const response = await fetch('/api/v1/reservations', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authStore.authToken ? `Bearer ${authStore.authToken}` : ''
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load reservations');
-    }
-
-    const data = await response.json();
-    console.log('Past Records API Response:', data);
-    const reservations = data.data?.reservations || [];
-    console.log('Past Records:', reservations);
-    
-    // Map all reservations for past records (completed, rejected, cancelled)
-    pastRecordsList.value = reservations
-      .filter(r => ['Completed', 'Returned', 'Rejected', 'Cancelled'].includes(r.currentStatus))
-      .map(r => ({
-        requestIdentifier: r.reservationIdentifier || r.id,
-        requesterFullName: r.organizationName || 'N/A',
-        requesterRole: 'Student',
-        requestSchedule: r.eventDateTime || 'N/A',
-        facilityName: r.venueIdentifier || 'N/A',
-        requestQuantity: r.requestedQuantity || 'N/A',
-        requestType: r.activityType || 'Venue',
-        requestPurpose: r.purposeDescription || 'N/A',
-        recordStatus: r.currentStatus === 'Returned' ? 'Completed' : r.currentStatus,
-      }));
+    pastRecordsList.value = mockPastRecords;
   } catch (error) {
     console.error('Error loading past records:', error);
-    pastRecordsList.value = [];
+    pastRecordsList.value = mockPastRecords;
   } finally {
     loading.value = false;
   }
+}
+
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
 }
 
 /**
@@ -184,6 +262,7 @@ async function loadPastRecords() {
 const filteredRecordList = computed(() => {
   let recordsFiltered = pastRecordsList.value || [];
 
+  // Filter by status tab
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {
       completed: 'Completed',
@@ -195,13 +274,44 @@ const filteredRecordList = computed(() => {
     );
   }
 
+  // Filter by search query
   const queryLower = searchQueryText.value.toLowerCase().trim();
   if (queryLower) {
     recordsFiltered = recordsFiltered.filter(
       (record) =>
         record.requesterFullName.toLowerCase().includes(queryLower) ||
-        record.requestIdentifier.toString().includes(queryLower)
+        record.requestIdentifier.toLowerCase().includes(queryLower)
     );
+  }
+
+  // Sort by selected field
+  recordsFiltered.sort((a, b) => {
+    let compareA, compareB;
+
+    if (orderByValue.value === 'date') {
+      compareA = new Date(a.requestedDate);
+      compareB = new Date(b.requestedDate);
+    } else if (orderByValue.value === 'name') {
+      compareA = a.requesterFullName.toLowerCase();
+      compareB = b.requesterFullName.toLowerCase();
+    } else if (orderByValue.value === 'status') {
+      compareA = a.recordStatus.toLowerCase();
+      compareB = b.recordStatus.toLowerCase();
+    }
+
+    if (typeof compareA === 'string' && typeof compareB === 'string') {
+      return sortOrder.value === 'asc' 
+        ? compareA.localeCompare(compareB)
+        : compareB.localeCompare(compareA);
+    } else {
+      return sortOrder.value === 'asc' ? compareA - compareB : compareB - compareA;
+    }
+  });
+
+  // Limit showing records
+  if (showingFilterValue.value !== 'all') {
+    const limit = parseInt(showingFilterValue.value);
+    recordsFiltered = recordsFiltered.slice(0, limit);
   }
 
   return recordsFiltered;
@@ -215,9 +325,9 @@ const filteredRecordList = computed(() => {
  */
 function getTypeBadgeClass(requestType) {
   const typeLower = requestType.toLowerCase();
+  if (typeLower.includes('venue') && typeLower.includes('equipment')) return 'past-records-type-badge--both';
   if (typeLower === 'venue') return 'past-records-type-badge--venue';
   if (typeLower === 'equipment') return 'past-records-type-badge--equipment';
-  if (typeLower === 'both') return 'past-records-type-badge--both';
   return '';
 }
 

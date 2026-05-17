@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@clerk/clerk-js": "^6.11.1",
+    "@clerk/vue": "^2.2.4"
+  }
+}

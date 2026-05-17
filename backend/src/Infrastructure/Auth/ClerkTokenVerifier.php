@@ -93,6 +93,21 @@ class ClerkTokenVerifier
                 throw new ClerkVerificationFailedException('Account not found for clerkUserId: ' . $clerkUserId);
             }
 
+            // Check if account is approved
+            if (!$account->getIsApproved()) {
+                throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
+            }
+
+            // Check account status
+            if ($account->getStatus() !== 'approved') {
+                throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only approved accounts can access the system.');
+            }
+
+            // Check if account is active
+            if (!$account->getIsActive()) {
+                throw new ClerkVerificationFailedException('Account is disabled. Please contact an administrator.');
+            }
+
             return [
                 'accountIdentifier' => $account->getAccountIdentifier(),
                 'clerkUserId' => $clerkUserId,
@@ -100,6 +115,8 @@ class ClerkTokenVerifier
                 'firstName' => $userData['first_name'] ?? $account->getFirstName(),
                 'lastName' => $userData['last_name'] ?? $account->getLastName(),
                 'roleDesignation' => $account->getRoleDesignation(),
+                'status' => $account->getStatus(),
+                'isApproved' => $account->getIsApproved(),
             ];
         } catch (ClerkVerificationFailedException $exception) {
             throw $exception;

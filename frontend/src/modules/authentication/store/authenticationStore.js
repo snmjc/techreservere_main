@@ -80,6 +80,20 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   }
 
   /**
+   * @function setClerkAuth
+   * @description Sets authentication data from Clerk authentication.
+   * @param {string} token - Clerk session token
+   * @param {Object} account - Account data from Clerk user
+   */
+  function setClerkAuth(token, account) {
+    authToken.value = token;
+    accountData.value = account;
+
+    localStorage.setItem(STORAGE_KEY_TOKEN, token);
+    localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(account));
+  }
+
+  /**
    * @function performLogout
    * @description Clears authentication state and local storage.
    */
@@ -97,6 +111,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     userRole,
     userFullName,
     performLogin,
+    setClerkAuth,
     performLogout,
   };
 });

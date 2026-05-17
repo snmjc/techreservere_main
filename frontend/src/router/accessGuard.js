@@ -22,7 +22,7 @@ export function evaluateRouteAccessGuard(toRoute, fromRoute) {
   const authStore = useAuthenticationStore();
 
   if (!requiresAuth) {
-    if (toRoute.name === 'loginPage' && authStore.isAuthenticated) {
+    if ((toRoute.name === 'loginPage' || toRoute.name === 'clerkLoginPage') && authStore.isAuthenticated) {
       if (authStore.userRole === 'ROLE_ADMIN') {
         return { name: 'adminDashboardPage' };
       }
@@ -32,7 +32,7 @@ export function evaluateRouteAccessGuard(toRoute, fromRoute) {
   }
 
   if (!authStore.isAuthenticated) {
-    return { name: 'loginPage' };
+    return { name: 'clerkLoginPage' };
   }
 
   const allowedRoles = toRoute.meta?.allowedRoles ?? null;
@@ -41,7 +41,7 @@ export function evaluateRouteAccessGuard(toRoute, fromRoute) {
     const roleAllowed = allowedRoles.includes(authStore.userRole);
 
     if (!roleAllowed) {
-      return { name: 'loginPage' };
+      return { name: 'clerkLoginPage' };
     }
   }
 

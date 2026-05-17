@@ -1,6 +1,23 @@
 name: "TechReserve"
 
 services:
+  database:
+    image: postgres:15-alpine
+    container_name: techreserve_database
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -16,7 +33,11 @@ services:
     environment:
       APP_ENV: dev
       APP_DEBUG: "1"
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
+      POSTGRES_HOST: database
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8"
+    depends_on:
+      database:
+        condition: service_healthy
     develop:
       watch:
         - action: sync
@@ -40,6 +61,9 @@ services:
       - "${PGADMIN_EXTERNAL_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      database:
+        condition: service_healthy
 
   frontend:
     build:
@@ -54,6 +78,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "100"
       VITE_API_BASE_URL: "http://localhost:8000"
+      VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY}"
     ports:
       - "${FRONTEND_EXTERNAL_PORT}:5173"
     depends_on:
@@ -71,6 +96,7 @@ services:
           target: /app/package-lock.json
 
 volumes:
+  postgres_data:
   frontend_node_modules:
   backend_var:
   backend_vendor:

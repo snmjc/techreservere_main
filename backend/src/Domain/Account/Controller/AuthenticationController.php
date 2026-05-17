@@ -4,13 +4,12 @@ namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\Repository\AccountRepository;
 use App\Shared\Traits\JsonResponseTrait;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/v1/auth')]
-class AuthenticationController extends AbstractController
+class AuthenticationController
 {
     use JsonResponseTrait;
 

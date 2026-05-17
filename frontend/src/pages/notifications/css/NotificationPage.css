@@ -1,0 +1,237 @@
+/* ===== Notification Page Styles ===== */
+
+.notification-page-container {
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+  position: relative;
+  contain: layout style;
+}
+
+.notification-page-watermark {
+  display: none;
+}
+
+.notification-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  padding: 1.5rem 2rem 0 2rem;
+}
+
+.notification-page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.notification-page-controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.notification-page-mark-all-read {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #1a6e3a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.notification-page-mark-all-read:hover:not(:disabled) {
+  background-color: #145a30;
+}
+
+.notification-page-mark-all-read:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* ===== Filters ===== */
+
+.notification-page-filters {
+  background-color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 0;
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.notification-page-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.notification-page-search-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.notification-page-search-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.notification-page-search-input:focus {
+  outline: none;
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.1);
+}
+
+.notification-page-filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.notification-page-filter-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333333;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.notification-page-filter-tab:hover {
+  background-color: transparent;
+  border-color: transparent;
+  color: #1a6e3a;
+}
+
+.notification-page-filter-tab--active {
+  color: #ffffff;
+  background-color: #1a6e3a;
+  border-color: transparent;
+  border-radius: 4px;
+}
+
+/* ===== Notifications List ===== */
+
+.notification-page-list-wrapper {
+  background-color: #ffffff;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+  margin-bottom: 0;
+  contain: layout style;
+}
+
+.notification-page-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-bottom: none;
+  contain: layout style paint;
+}
+
+.notification-page-item:last-child {
+  border-bottom: none;
+}
+
+.notification-page-item:hover {
+  background-color: #ffffff;
+}
+
+.notification-page-item--unread {
+  background-color: #ffffff;
+}
+
+.notification-page-item-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+}
+
+.notification-page-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-page-item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 0.2rem 0;
+  word-break: break-word;
+}
+
+.notification-page-item-description {
+  font-size: 0.8rem;
+  color: #666666;
+  margin: 0;
+  word-break: break-word;
+}
+
+.notification-page-item-time {
+  font-size: 0.8rem;
+  color: #999999;
+  min-width: 50px;
+  text-align: right;
+  margin-right: 1rem;
+}
+
+.notification-page-item-read-indicator {
+  width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10px;
+}
+
+.notification-page-read-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #1a6e3a;
+  border-radius: 50%;
+}
+
+/* ===== Empty State ===== */
+
+.notification-page-empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #999999;
+  font-size: 1rem;
+}
+
+
+@media (max-width: 768px) {
+  .notification-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .notification-page-filters {
+    padding: 1rem;
+  }
+
+  .notification-page-filter-tab {
+    font-size: 0.85rem;
+  }
+}

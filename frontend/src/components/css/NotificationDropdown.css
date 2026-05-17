@@ -1,0 +1,262 @@
+/* ===== Notification Dropdown Styles ===== */
+
+.notification-dropdown-wrapper {
+  position: relative;
+}
+
+/* ===== Notification Icon Button ===== */
+
+.notification-icon-button {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: color 0.3s ease;
+}
+
+.notification-icon-button:hover {
+  color: #ffffff;
+}
+
+.notification-icon-button--active {
+  color: #ffffff;
+}
+
+.notification-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ===== Notification Badge ===== */
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #d32f2f;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+}
+
+/* ===== Notification Dropdown Panel ===== */
+
+.notification-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 380px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 600px;
+}
+
+/* ===== Dropdown Header ===== */
+
+.notification-dropdown-header {
+  padding: 1rem;
+  border-bottom: 1px solid #eeeeee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.notification-dropdown-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333333;
+  margin: 0;
+}
+
+.notification-mark-all-read {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1a6e3a;
+  background-color: transparent;
+  border: 1px solid #1a6e3a;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.notification-mark-all-read:hover:not(:disabled) {
+  background-color: #1a6e3a;
+  color: #ffffff;
+}
+
+.notification-mark-all-read:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Notifications List ===== */
+
+.notification-dropdown-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.notification-empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #999999;
+  font-size: 0.9rem;
+}
+
+/* ===== Notification Item ===== */
+
+.notification-dropdown-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.notification-dropdown-item:hover {
+  background-color: #f9f9f9;
+}
+
+.notification-dropdown-item--unread {
+  background-color: #f5f5f5;
+}
+
+.notification-dropdown-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: #f0f0f0;
+}
+
+.notification-dropdown-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-dropdown-item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 0.25rem 0;
+  word-break: break-word;
+}
+
+.notification-dropdown-item-description {
+  font-size: 0.8rem;
+  color: #666666;
+  margin: 0 0 0.5rem 0;
+  word-break: break-word;
+}
+
+.notification-dropdown-item-time {
+  font-size: 0.75rem;
+  color: #999999;
+}
+
+.notification-dropdown-unread-dot {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  background-color: #1a6e3a;
+  border-radius: 50%;
+  margin-top: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.notification-dropdown-unread-dot:hover {
+  background-color: #145a30;
+}
+
+/* ===== Dropdown Footer ===== */
+
+.notification-dropdown-footer {
+  padding: 1rem;
+  border-top: 1px solid #eeeeee;
+  text-align: center;
+}
+
+.notification-view-all-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a6e3a;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.notification-view-all-link:hover {
+  color: #145a30;
+  text-decoration: underline;
+}
+
+/* ===== Dropdown Overlay ===== */
+
+.notification-dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* ===== Transitions ===== */
+
+.notification-dropdown-fade-enter-active,
+.notification-dropdown-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.notification-dropdown-fade-enter-from,
+.notification-dropdown-fade-leave-to {
+  opacity: 0;
+}
+
+/* ===== Scrollbar Styling ===== */
+
+.notification-dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-dropdown-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notification-dropdown-list::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 3px;
+}
+
+.notification-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}

@@ -1,0 +1,286 @@
+/* ===== AI GENERATED: BorrowerLogsPages Styles ===== */
+/* Purpose: Shared styles for all logs pages (Active, Approved, Pending, Completed) */
+/* Scope: ActiveReservationsLogs, ApprovedRequestsLogs, PendingRequestsLogs, CompletedReservationsLogs */
+
+/* ========================================= */
+/* PAGE HEADER                               */
+/* ========================================= */
+
+.logs-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 3px solid #1a6e3a;
+}
+
+.logs-page-heading {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #1a6e3a !important;
+  margin: 0;
+}
+
+.logs-go-back-button {
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666666;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.logs-go-back-button:hover {
+  background-color: #f5f5f5;
+  color: #1a6e3a;
+}
+
+/* ========================================= */
+/* CONTROLS (Search & Sort)                  */
+/* ========================================= */
+
+.logs-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.logs-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 250px;
+}
+
+.logs-search-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.logs-search-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  background-color: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.logs-search-input:focus {
+  outline: none;
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 2px rgba(26, 110, 58, 0.1);
+}
+
+/* ========================================= */
+/* SORT CONTROLS                             */
+/* ========================================= */
+
+.logs-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logs-sort-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.logs-sort-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.logs-sort-select:focus {
+  outline: none;
+  border-color: #1a6e3a;
+}
+
+.logs-sort-toggle {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: #1a6e3a;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.logs-sort-toggle:hover {
+  background-color: #145a30;
+}
+
+/* ========================================= */
+/* TABLE                                     */
+/* ========================================= */
+
+.logs-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  font-size: 0.85rem;
+}
+
+.logs-th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #1a6e3a;
+  border-bottom: 2px solid #145a30;
+  white-space: nowrap;
+}
+
+.logs-tr {
+  border-bottom: 1px solid #e8e8e8;
+  transition: background-color 0.15s ease;
+}
+
+.logs-tr:hover {
+  background-color: #f9fafb;
+}
+
+.logs-tr:last-child {
+  border-bottom: none;
+}
+
+.logs-td {
+  padding: 0.75rem 1rem;
+  color: #333333;
+  vertical-align: middle;
+}
+
+/* ========================================= */
+/* FACILITY CELL                             */
+/* ========================================= */
+
+.logs-facility {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logs-facility-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  background-color: #f0f0f0;
+}
+
+/* ========================================= */
+/* BADGES                                    */
+/* ========================================= */
+
+.logs-badge {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.logs-badge--student {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.logs-badge--faculty {
+  background-color: #fce7f3;
+  color: #be185d;
+}
+
+.logs-badge--venue {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.logs-badge--equipment {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.logs-status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.logs-status-badge--active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.logs-status-badge--approved {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.logs-status-badge--pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.logs-status-badge--completed {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+/* ========================================= */
+/* NO RESULTS MESSAGE                        */
+/* ========================================= */
+
+.logs-no-results {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #888888;
+  background-color: #f9fafb;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+}
+
+/* ========================================= */
+/* PAGE FOOTER                               */
+/* ========================================= */
+
+.logs-page-footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.75rem;
+  color: #999999;
+}

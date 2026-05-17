@@ -7,9 +7,9 @@
 }
 
 .equipment-page-heading {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: #f59e0b;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #1a6e3a !important;
   margin: 0;
 }
 
