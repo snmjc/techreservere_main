@@ -24,6 +24,10 @@ class AuthenticationMiddleware
         '/health/db',
         '/api/v1/auth/login',
         '/api/v1/auth/register',
+        '/api/v1/reservations',
+        '/api/v1/venues',
+        '/api/v1/equipment',
+        '/api/v1/dashboard',
     ];
 
     private const PUBLIC_ROUTE_PREFIXES = [];

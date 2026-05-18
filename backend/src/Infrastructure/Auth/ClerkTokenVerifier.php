@@ -19,6 +19,7 @@ class ClerkTokenVerifier
 
     private string $clerkSecretKey;
     private string $clerkApiBaseUrl;
+    private string $clerkJwtIssuer;
     private HttpClientInterface $httpClient;
     private AccountRepository $accountRepository;
 
@@ -28,6 +29,10 @@ class ClerkTokenVerifier
         $this->accountRepository = $accountRepository;
         $this->clerkSecretKey = $_ENV['CLERK_SECRET_KEY'] ?? '';
         $this->clerkApiBaseUrl = $_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com';
+        $this->clerkJwtIssuer = $_ENV['CLERK_JWT_ISSUER'] ?? 'https://primary-rooster-80.clerk.accounts.dev';
+        
+        error_log('ClerkTokenVerifier initialized with API base: ' . $this->clerkApiBaseUrl);
+        error_log('Clerk JWT Issuer: ' . $this->clerkJwtIssuer);
     }
 
     // ===== AI GENERATED: verifyTokenAndGetIdentity =====

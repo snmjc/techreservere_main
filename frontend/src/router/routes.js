@@ -52,6 +52,15 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/dashboard',
+    name: 'dashboardPage',
+    component: () => import('@/pages/borrower/MyReservations.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+    },
+  },
+  {
     path: '/custom-signup',
     name: 'customSignUpPage',
     component: () => import('@/pages/auth/CustomSignUp.vue'),
