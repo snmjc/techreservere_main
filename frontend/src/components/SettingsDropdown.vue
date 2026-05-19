@@ -42,7 +42,7 @@
       <div class="dropdown-divider"></div>
 
       <!-- Logout -->
-      <button @click="handleLogout" class="dropdown-item logout-item">
+      <button type="button" @click.prevent.stop="handleLogout" class="dropdown-item logout-item">
         <span class="item-icon">🚪</span>
         <span class="item-text">Logout</span>
       </button>
@@ -56,8 +56,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '@clerk/vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
+const { signOut } = useAuth();
+const authStore = useAuthenticationStore();
 const isOpen = ref(false);
 
 const toggleDropdown = () => {
@@ -69,13 +73,26 @@ const closeDropdown = () => {
 };
 
 const handleLogout = async () => {
-  // Clear authentication
+  closeDropdown();
+
+  // Always clear app state and route away immediately; Clerk signOut may be slow/unavailable in dev.
+  authStore.performLogout();
   localStorage.removeItem('authToken');
   localStorage.removeItem('userRole');
   localStorage.removeItem('userData');
-  
-  // Redirect to Clerk login
-  router.push('/clerk-login');
+  localStorage.removeItem('clerkToken');
+
+  console.log('[SettingsDropdown] logout clicked; navigating to clerkLoginPage');
+  // Ensure Clerk session is actually cleared; otherwise the Clerk login page will auto-redirect back to dashboard.
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+  try {
+    await Promise.race([signOut(), timeoutPromise]);
+  } catch (e) {
+    // ignore
+  } finally {
+    // Hard navigation ensures in-memory app state is reset.
+    window.location.href = '/clerk-login';
+  }
 };
 
 // Close dropdown when clicking outside

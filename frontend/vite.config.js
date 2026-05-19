@@ -22,6 +22,21 @@ export default defineConfig(({ mode }) => {
       // Bind to all interfaces so the dev server is reachable from the host
       host: true,
       port: 5173,
+      // Dev-only CSP: allows Vue/DevTools and some dependencies that use eval in development.
+      // Remove/replace with a strict CSP for production builds.
+      headers: {
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          // Vite dev + some tooling may rely on eval/inline; keep this dev-only.
+          "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data:",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:",
+          // Allow API + HMR websocket + Clerk (if enabled)
+          `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev`,
+          "font-src 'self' data:",
+          "frame-ancestors 'self'",
+        ].join('; ')
+      },
       // Use polling to reliably detect file changes when files are mounted from the host into Docker
       watch: {
         usePolling: true,

@@ -44,8 +44,17 @@ class AuthorizationMiddleware
             return;
         }
 
-        $resolvedRole = $this->roleResolver->resolveRoleFromIdentity($authenticatedIdentity);
-        $request->attributes->set('resolvedRole', $resolvedRole);
+        try {
+            $resolvedRole = $this->roleResolver->resolveRoleFromIdentity($authenticatedIdentity);
+            $request->attributes->set('resolvedRole', $resolvedRole);
+        } catch (\Throwable $exception) {
+            error_log('AuthorizationMiddleware - role resolution failed: ' . $exception->getMessage());
+            $requestEvent->setResponse(new JsonResponse([
+                'errorCode' => 'AuthorizationError',
+                'errorMessage' => 'Failed to resolve user role.',
+            ], 500, ['Access-Control-Allow-Origin' => '*']));
+            return;
+        }
 
         $controllerCallable = $request->attributes->get('_controller');
 

@@ -57,7 +57,8 @@ class PendingUserController
             $phone = trim($body['phone'] ?? '');
 
             if (empty($email) || empty($fullName)) {
-                return $this->createErrorResponse('ValidationError', 'Email and full name are required.', 400);
+                // 422 Unprocessable Entity is commonly used for semantic validation errors.
+                return $this->createErrorResponse('ValidationError', 'Email and full name are required.', 422);
             }
 
             // Check if email already exists

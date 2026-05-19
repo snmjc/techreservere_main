@@ -32,13 +32,20 @@ cd techreservere_main
 
 ## Step 2: Create the `.env` File
 
-Create a `.env` file in the project root (`techreservere_main/.env`) with the following variables:
+Copy `example.env` to `.env` in the project root, then adjust values as needed:
+
+```bash
+copy example.env .env
+```
+
+Your `.env` should contain variables like:
 
 ```env
 # === Ports ===
 FRONTEND_EXTERNAL_PORT=5173
 BACKEND_EXTERNAL_PORT=8000
 PGADMIN_EXTERNAL_PORT=5050
+POSTGRES_EXTERNAL_PORT=5432
 
 # === PostgreSQL Database ===
 POSTGRES_HOST=database

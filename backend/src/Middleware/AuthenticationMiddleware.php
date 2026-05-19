@@ -20,6 +20,8 @@ class AuthenticationMiddleware
     // 4. Attach normalized identity to request attributes
 
     private const PUBLIC_ROUTES = [
+        '/',
+        '/favicon.ico',
         '/health',
         '/health/db',
         '/api/v1/auth/login',
@@ -28,6 +30,14 @@ class AuthenticationMiddleware
         '/api/v1/venues',
         '/api/v1/equipment',
         '/api/v1/dashboard',
+    ];
+
+    /**
+     * Public routes limited to specific HTTP methods.
+     * Keep this small to avoid accidentally exposing protected reads/actions.
+     */
+    private const PUBLIC_ROUTE_METHODS = [
+        '/api/v1/pending-users' => ['POST'],
     ];
 
     private const PUBLIC_ROUTE_PREFIXES = [];
@@ -53,17 +63,41 @@ class AuthenticationMiddleware
     {
         $request = $requestEvent->getRequest();
         $currentPath = $request->getPathInfo();
+        $httpMethod = $request->getMethod();
 
-        if ($this->isPublicRoute($currentPath)) {
+        // Always allow CORS preflight requests through (handled by CorsMiddleware).
+        if ($httpMethod === 'OPTIONS') {
+            return;
+        }
+
+        // Normalize path so public route matching works across front-controller setups
+        // (e.g. when requests come through "/index.php/...") and with trailing slashes.
+        $normalizedPath = $currentPath;
+        if (str_starts_with($normalizedPath, '/index.php')) {
+            $normalizedPath = substr($normalizedPath, strlen('/index.php')) ?: '/';
+        }
+        if ($normalizedPath !== '/') {
+            $normalizedPath = rtrim($normalizedPath, '/');
+        }
+
+        if ($this->isPublicRoute($normalizedPath, $httpMethod)) {
             return;
         }
 
         $authorizationHeader = $request->headers->get('Authorization', '');
 
         if (empty($authorizationHeader) || !str_starts_with($authorizationHeader, 'Bearer ')) {
+            error_log(sprintf(
+                'AuthenticationRequired: Missing/invalid Authorization header for %s %s (Origin: %s)',
+                $httpMethod,
+                $normalizedPath,
+                $request->headers->get('Origin', 'n/a')
+            ));
             $requestEvent->setResponse(new JsonResponse([
                 'errorCode' => 'AuthenticationRequired',
                 'errorMessage' => 'Missing or invalid Authorization header.',
+                'path' => $normalizedPath,
+                'method' => $httpMethod,
             ], 401, ['Access-Control-Allow-Origin' => '*']));
             return;
         }
@@ -83,10 +117,23 @@ class AuthenticationMiddleware
         }
     }
 
-    private function isPublicRoute(string $currentPath): bool
+    private function isPublicRoute(string $currentPath, string $httpMethod): bool
     {
+        // Normalize for comparisons (defensive; caller already normalizes).
+        if ($currentPath !== '/') {
+            $currentPath = rtrim($currentPath, '/');
+        }
+
         foreach (self::PUBLIC_ROUTES as $publicRoute) {
             if ($currentPath === $publicRoute) {
+                return true;
+            }
+        }
+
+        foreach (self::PUBLIC_ROUTE_METHODS as $publicRoute => $allowedMethods) {
+            // Handle common variations like trailing slashes.
+            $normalizedPublicRoute = $publicRoute !== '/' ? rtrim($publicRoute, '/') : $publicRoute;
+            if ($currentPath === $normalizedPublicRoute && in_array($httpMethod, $allowedMethods, true)) {
                 return true;
             }
         }

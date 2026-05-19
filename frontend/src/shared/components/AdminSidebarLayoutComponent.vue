@@ -59,6 +59,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import NotificationDropdown from '@/components/NotificationDropdown.vue';
 import SettingsDropdown from '@/components/SettingsDropdown.vue';
@@ -83,6 +84,7 @@ const props = defineProps({
 const currentRoute = useRoute();
 const router = useRouter();
 const authStore = useAuthenticationStore();
+const { signOut } = useAuth();
 
 /**
  * @function displayedNameLabel
@@ -116,8 +118,21 @@ function isActiveRoute(routeName) {
  * @function handleLogout
  * @description Clears auth state and redirects to login page.
  */
-function handleLogout() {
+async function handleLogout() {
   authStore.performLogout();
-  router.push({ name: 'loginPage' });
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userData');
+  localStorage.removeItem('clerkToken');
+
+  console.log('[AdminSidebarLayout] logout clicked; navigating to clerkLoginPage');
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+  try {
+    await Promise.race([signOut(), timeoutPromise]);
+  } catch (e) {
+    // ignore
+  } finally {
+    window.location.href = '/clerk-login';
+  }
 }
 </script>

@@ -28,6 +28,12 @@ const reservationApi = {
     console.log('Creating reservation at:', `${API_BASE_URL}/reservations`);
     console.log('Reservation data:', reservationData);
     console.log('Auth token exists:', !!authToken);
+
+    // If the user is logged out, avoid calling protected endpoints.
+    if (!authToken) {
+      console.warn('No auth token available; using mock reservation response.');
+      return generateMockReservation(reservationData);
+    }
     
     try {
       const response = await axios.post(`${API_BASE_URL}/reservations`, reservationData, {
@@ -48,6 +54,11 @@ const reservationApi = {
     const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     console.log('Listing reservations with token exists:', !!authToken);
     console.log('Token:', authToken ? authToken.substring(0, 20) + '...' : 'none');
+
+    // If the user is logged out, avoid calling protected endpoints.
+    if (!authToken) {
+      return { reservations: [] };
+    }
     
     try {
       const response = await axios.get(`${API_BASE_URL}/reservations`, {

@@ -4,34 +4,33 @@
     :role-label="'NOTIFICATIONS'"
     :navigation-items="adminNavigationItems"
   >
-    <div style="padding: 2rem; background-color: #f5f5f5; min-height: 100vh;">
+    <div class="notification-page">
       <!-- Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">Notifications</h1>
+      <div class="notification-header">
+        <h1 class="notification-title">Notifications</h1>
         <button
           @click="markAllAsRead"
           :disabled="unreadCount === 0"
-          style="padding: 0.75rem 1.5rem; background-color: #1a6e3a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem;"
-          :style="{ backgroundColor: unreadCount === 0 ? '#ccc' : '#1a6e3a', cursor: unreadCount === 0 ? 'not-allowed' : 'pointer' }"
+          class="notification-mark-all"
         >
           Mark all as read
         </button>
       </div>
 
       <!-- Search and Filters -->
-      <div style="background-color: white; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 8px;">
-        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-          <label style="font-weight: 600; color: #333;">Search:</label>
+      <div class="notification-controls">
+        <div class="notification-controls-row">
+          <label class="notification-label">Search:</label>
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Name"
-            style="flex: 1; padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem;"
+            class="notification-input"
           />
-          <label style="font-weight: 600; color: #333;">Showing:</label>
+          <label class="notification-label">Showing:</label>
           <select
             v-model="activeFilter"
-            style="padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; background-color: white;"
+            class="notification-select"
           >
             <option value="all">All</option>
             <option value="unread">Unread</option>
@@ -41,13 +40,13 @@
         </div>
 
         <!-- Filter Tabs -->
-        <div style="display: flex; gap: 1rem; border-bottom: 2px solid #eee;">
+        <div class="notification-tabs">
           <button
             v-for="tab in filterTabs"
             :key="tab.value"
             @click="activeFilter = tab.value"
-            style="padding: 1rem 0; border: none; background: none; cursor: pointer; font-weight: 600; font-size: 0.95rem; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s ease;"
-            :style="{ color: activeFilter === tab.value ? '#1a6e3a' : '#666', borderBottomColor: activeFilter === tab.value ? '#1a6e3a' : 'transparent' }"
+            class="notification-tab"
+            :class="{ 'notification-tab--active': activeFilter === tab.value }"
           >
             {{ tab.label }}
           </button>
@@ -55,42 +54,40 @@
       </div>
 
       <!-- Notifications List -->
-      <div style="background-color: white; border-radius: 8px; overflow: hidden;">
-        <div v-if="filteredNotifications.length === 0" style="padding: 3rem; text-align: center; color: #999;">
+      <div class="notification-list">
+        <div v-if="filteredNotifications.length === 0" class="notification-empty">
           <p>No notifications found</p>
         </div>
 
         <div
           v-for="(notification, index) in filteredNotifications"
           :key="notification.id"
-          style="display: flex; align-items: center; gap: 1rem; padding: 1.5rem; border-bottom: 1px solid #eee; transition: background-color 0.2s ease;"
-          :style="{ backgroundColor: !notification.isRead ? '#f9f9f9' : '#fff' }"
-          @mouseenter="$event.target.style.backgroundColor = '#f5f5f5'"
-          @mouseleave="$event.target.style.backgroundColor = !notification.isRead ? '#f9f9f9' : '#fff'"
+          class="notification-item"
+          :class="{ 'notification-item--unread': !notification.isRead }"
         >
           <!-- Icon -->
-          <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <div class="notification-icon">
             <component :is="getNotificationIcon(notification.type)" />
           </div>
 
           <!-- Content -->
-          <div style="flex: 1; min-width: 0;">
-            <h4 style="font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 0 0.25rem 0;">{{ notification.title }}</h4>
-            <p style="font-size: 0.85rem; color: #666; margin: 0;">{{ notification.description }}</p>
+          <div class="notification-content">
+            <h4 class="notification-item-title">{{ notification.title }}</h4>
+            <p class="notification-item-desc">{{ notification.description }}</p>
           </div>
 
           <!-- Time -->
-          <div style="font-size: 0.85rem; color: #999; min-width: 60px; text-align: right;">
+          <div class="notification-time">
             {{ formatTime(notification.timestamp) }}
           </div>
 
           <!-- Unread Indicator -->
-          <div v-if="!notification.isRead" style="width: 8px; height: 8px; background-color: #1a6e3a; border-radius: 50%; flex-shrink: 0;"></div>
+          <div v-if="!notification.isRead" class="notification-unread-dot"></div>
 
           <!-- Delete Button -->
           <button
             @click="deleteNotification(notification.id)"
-            style="padding: 0.5rem 1rem; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; flex-shrink: 0;"
+            class="notification-delete"
             title="Delete notification"
           >
             🗑️
@@ -330,4 +327,8 @@ function goBack() {
   router.back();
 }
 </script>
+
+<style scoped>
+@import './css/NotificationPage.css';
+</style>
 

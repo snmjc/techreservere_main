@@ -65,6 +65,11 @@ const userFullName = computed(() => authStore.userFullName);
 
 onMounted(async () => {
   try {
+    if (!authStore.isAuthenticated) {
+      router.push({ name: 'clerkLoginPage' });
+      return;
+    }
+
     console.log('Auth token in localStorage:', localStorage.getItem('techreserve_auth_token') ? 'exists' : 'none');
     console.log('Account data in localStorage:', localStorage.getItem('techreserve_auth_account'));
     console.log('User is authenticated:', authStore.isAuthenticated);
