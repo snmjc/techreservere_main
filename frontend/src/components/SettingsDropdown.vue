@@ -75,24 +75,32 @@ const closeDropdown = () => {
 const handleLogout = async () => {
   closeDropdown();
 
-  // Always clear app state and route away immediately; Clerk signOut may be slow/unavailable in dev.
+  // Sign out from Clerk first to clear the httpOnly session cookie
+  console.log('[SettingsDropdown] Calling Clerk signOut...');
+  try {
+    await signOut();
+  } catch (e) {
+    console.warn('[SettingsDropdown] Clerk signOut error:', e);
+  }
+
+  // Clear app state
   authStore.performLogout();
   localStorage.removeItem('authToken');
   localStorage.removeItem('userRole');
   localStorage.removeItem('userData');
   localStorage.removeItem('clerkToken');
 
-  console.log('[SettingsDropdown] logout clicked; navigating to clerkLoginPage');
-  // Ensure Clerk session is actually cleared; otherwise the Clerk login page will auto-redirect back to dashboard.
-  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
-  try {
-    await Promise.race([signOut(), timeoutPromise]);
-  } catch (e) {
-    // ignore
-  } finally {
-    // Hard navigation ensures in-memory app state is reset.
-    window.location.href = '/clerk-login';
-  }
+  // Clear all Clerk-related localStorage keys
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('__clerk') || key.includes('clerk')) {
+      localStorage.removeItem(key);
+    }
+  });
+
+  console.log('[SettingsDropdown] logout complete; redirecting to login');
+
+  // Redirect to login page
+  window.location.href = '/clerk-login';
 };
 
 // Close dropdown when clicking outside

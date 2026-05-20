@@ -17,17 +17,39 @@ export const routeDefinitions = [
   },
   {
     path: '/login',
-    name: 'loginPage',
-    component: () => import('@/pages/auth/Login.vue'),
+    redirect: '/clerk-login',
+  },
+  {
+    path: '/clerk-login',
+    name: 'clerkLoginPage',
+    component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,
     },
   },
   {
-    path: '/clerk-login',
-    name: 'clerkLoginPage',
+    path: '/clerk-login/factor-two',
+    name: 'clerkLoginFactorTwo',
     component: () => import('@/pages/auth/ClerkLogin.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/handle-sign-in',
+    name: 'handleSignInPage',
+    component: () => import('@/pages/auth/HandleSignIn.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/auth-callback',
+    name: 'authCallbackPage',
+    component: () => import('@/pages/auth/AuthCallback.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,

@@ -9,6 +9,7 @@ import { loginRequest } from '../services/authenticationService.js';
 
 const STORAGE_KEY_TOKEN = 'techreserve_auth_token';
 const STORAGE_KEY_ACCOUNT = 'techreserve_auth_account';
+const STORAGE_KEY_CLERK_ACCOUNT = 'techreserve_clerk_account';
 
 /**
  * @function useAuthenticationStore
@@ -35,6 +36,106 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     if (!accountData.value) return '';
     return `${accountData.value.firstName} ${accountData.value.lastName}`;
   });
+
+  // ── Clerk bridge ──────────────────────────────────────────────────────────
+  const clerkAccountString = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
+  let clerkAccountValue = null;
+  if (clerkAccountString && clerkAccountString !== 'undefined') {
+    try { clerkAccountValue = JSON.parse(clerkAccountString); } catch (_) {}
+  }
+  const clerkAccountData = ref(clerkAccountValue);
+
+  const clerkIsSignedIn = computed(() => clerkAccountData.value !== null);
+  const clerkAccountStatus = computed(() => clerkAccountData.value?.status ?? null);
+  const clerkUserRole = computed(() => clerkAccountData.value?.roleDesignation ?? null);
+  const clerkUserFullName = computed(() => {
+    if (!clerkAccountData.value) return '';
+    return `${clerkAccountData.value.firstName} ${clerkAccountData.value.lastName}`.trim();
+  });
+
+  async function loadClerkAccount(getTokenFn) {
+    try {
+      console.log('[loadClerkAccount] Starting...');
+      const token = await getTokenFn();
+      console.log('[loadClerkAccount] Token received:', token ? 'YES' : 'NO');
+      
+      // If no token available, try to load from localStorage as fallback
+      if (!token) {
+        console.log('[loadClerkAccount] No token, checking localStorage...');
+        const storedAccount = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
+        if (storedAccount) {
+          console.log('[loadClerkAccount] Using fallback from localStorage');
+          clerkAccountData.value = JSON.parse(storedAccount);
+          return clerkAccountData.value;
+        }
+        console.log('[loadClerkAccount] No token and no stored account');
+        return null;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/me`;
+      console.log('[loadClerkAccount] Fetching from:', apiUrl);
+      
+      const response = await fetch(
+        apiUrl,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+
+      console.log('[loadClerkAccount] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('[loadClerkAccount] Response not OK:', response.status, errorText);
+        clerkAccountData.value = null;
+        localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+        
+        // Don't throw error, just return null for auth failures
+        if (response.status === 401 || response.status === 403) {
+          console.log('[loadClerkAccount] Authentication failed, user may need to log in again');
+        }
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[loadClerkAccount] Response data:', data);
+      
+      if (!data.data || !data.data.account) {
+        console.log('[loadClerkAccount] No account data in response');
+        clerkAccountData.value = null;
+        localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+        return null;
+      }
+      
+      clerkAccountData.value = data.data.account;
+      console.log('[loadClerkAccount] Account loaded successfully:', {
+        id: clerkAccountData.value.accountIdentifier,
+        status: clerkAccountData.value.status,
+        role: clerkAccountData.value.roleDesignation
+      });
+      
+      localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(clerkAccountData.value));
+      return clerkAccountData.value;
+    } catch (err) {
+      console.error('[loadClerkAccount] Network error:', err);
+      // Try fallback from localStorage on error
+      const storedAccount = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
+      if (storedAccount) {
+        console.log('[loadClerkAccount] Using fallback from localStorage after error');
+        clerkAccountData.value = JSON.parse(storedAccount);
+        return clerkAccountData.value;
+      }
+      return null;
+    }
+  }
+
+  function setClerkSignedOut() {
+    clerkAccountData.value = null;
+    localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+  }
 
   /**
    * @function performLogin
@@ -100,8 +201,10 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   function performLogout() {
     authToken.value = null;
     accountData.value = null;
+    clerkAccountData.value = null;
     localStorage.removeItem(STORAGE_KEY_TOKEN);
     localStorage.removeItem(STORAGE_KEY_ACCOUNT);
+    localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
   }
 
   return {
@@ -113,5 +216,12 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     performLogin,
     setClerkAuth,
     performLogout,
+    clerkAccountData,
+    clerkIsSignedIn,
+    clerkAccountStatus,
+    clerkUserRole,
+    clerkUserFullName,
+    loadClerkAccount,
+    setClerkSignedOut,
   };
 });

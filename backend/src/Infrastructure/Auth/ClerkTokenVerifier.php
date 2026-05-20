@@ -75,21 +75,19 @@ class ClerkTokenVerifier
             // Not a custom token, try Clerk verification
         }
         
-        // Try Clerk token verification
+        // Decode Clerk session JWT to extract sub (Clerk user ID)
         try {
-            $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl . '/v1/users/me', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $bearerToken,
-                ],
-            ]);
+            $payload = $this->decodeJwtPayload($bearerToken);
+            $clerkUserId = $payload['sub'] ?? '';
 
-            $statusCode = $response->getStatusCode();
-            if ($statusCode !== 200) {
-                throw new ClerkVerificationFailedException('Clerk token verification returned status: ' . $statusCode);
+            if (empty($clerkUserId)) {
+                throw new ClerkVerificationFailedException('JWT missing sub claim (Clerk user ID).');
             }
 
-            $userData = $response->toArray();
-            $clerkUserId = $userData['id'] ?? '';
+            // Check token expiry
+            if (isset($payload['exp']) && $payload['exp'] < time()) {
+                throw new ClerkVerificationFailedException('Clerk session token has expired.');
+            }
 
             // Look up account in database by clerkUserId
             $account = $this->accountRepository->findOneByClerkUserId($clerkUserId);
@@ -115,13 +113,13 @@ class ClerkTokenVerifier
 
             return [
                 'accountIdentifier' => $account->getAccountIdentifier(),
-                'clerkUserId' => $clerkUserId,
-                'emailAddress' => $userData['email_addresses'][0]['email_address'] ?? $account->getEmailAddress(),
-                'firstName' => $userData['first_name'] ?? $account->getFirstName(),
-                'lastName' => $userData['last_name'] ?? $account->getLastName(),
-                'roleDesignation' => $account->getRoleDesignation(),
-                'status' => $account->getStatus(),
-                'isApproved' => $account->getIsApproved(),
+                'clerkUserId'       => $clerkUserId,
+                'emailAddress'      => $account->getEmailAddress(),
+                'firstName'         => $account->getFirstName(),
+                'lastName'          => $account->getLastName(),
+                'roleDesignation'   => $account->getRoleDesignation(),
+                'status'            => $account->getStatus(),
+                'isApproved'        => $account->getIsApproved(),
             ];
         } catch (ClerkVerificationFailedException $exception) {
             throw $exception;
@@ -131,5 +129,19 @@ class ClerkTokenVerifier
                 $exception
             );
         }
+    }
+
+    private function decodeJwtPayload(string $token): array
+    {
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            throw new ClerkVerificationFailedException('Invalid JWT format.');
+        }
+        $padded  = strtr($parts[1], '-_', '+/') . str_repeat('=', (4 - strlen($parts[1]) % 4) % 4);
+        $payload = json_decode(base64_decode($padded), true);
+        if (!is_array($payload)) {
+            throw new ClerkVerificationFailedException('Failed to decode JWT payload.');
+        }
+        return $payload;
     }
 }

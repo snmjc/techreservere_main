@@ -28,9 +28,9 @@ export default defineConfig(({ mode }) => {
         'Content-Security-Policy': [
           "default-src 'self'",
           // Vite dev + some tooling may rely on eval/inline; keep this dev-only.
-          "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data:",
+          "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://*.clerk.accounts.dev https://*.clerk.dev",
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob:",
+          "img-src 'self' data: blob: https://*.clerk.accounts.dev https://*.clerk.dev https://img.clerk.com",
           // Allow API + HMR websocket + Clerk (if enabled)
           `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev`,
           "font-src 'self' data:",

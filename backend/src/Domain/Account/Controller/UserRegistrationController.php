@@ -5,10 +5,12 @@ namespace App\Domain\Account\Controller;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Entity\AccountEntity;
 use App\Shared\Traits\JsonResponseTrait;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/api/v1/users')]
 class UserRegistrationController extends AbstractController
@@ -16,10 +18,14 @@ class UserRegistrationController extends AbstractController
     use JsonResponseTrait;
 
     private AccountRepository $accountRepository;
+    private HttpClientInterface $httpClient;
+    private Connection $connection;
 
-    public function __construct(AccountRepository $accountRepository)
+    public function __construct(AccountRepository $accountRepository, HttpClientInterface $httpClient, Connection $connection)
     {
         $this->accountRepository = $accountRepository;
+        $this->httpClient = $httpClient;
+        $this->connection = $connection;
     }
 
     #[Route('/register', name: 'user_register', methods: ['POST'])]
@@ -33,6 +39,7 @@ class UserRegistrationController extends AbstractController
         $emailAddress = trim($requestBody['emailAddress'] ?? '');
         $role = trim($requestBody['role'] ?? 'ROLE_BORROWER');
         $contactNumber = trim($requestBody['contactNumber'] ?? '');
+        $department = trim($requestBody['department'] ?? '');
         $invitedBy = $requestBody['invitedBy'] ?? null;
 
         if (empty($clerkUserId) || empty($firstName) || empty($lastName) || empty($emailAddress)) {
@@ -62,46 +69,114 @@ class UserRegistrationController extends AbstractController
             );
         }
 
-        // Create new account
-        $account = new AccountEntity();
-        $account->setClerkUserId($clerkUserId);
-        $account->setFirstName($firstName);
-        $account->setLastName($lastName);
-        $account->setEmailAddress($emailAddress);
-        $account->setRoleDesignation($role);
-        $account->setContactNumber($contactNumber);
-        $account->setIsActive(true);
+        // Create new account via DBAL raw SQL
+        try {
+            $now = (new \DateTime())->format('Y-m-d H:i:s');
+            $status = $invitedBy ? 'approved' : 'pending';
+            $isApproved = $invitedBy ? true : false;
 
-        // Set approval status based on whether it's an invitation
-        if ($invitedBy) {
-            $account->setStatus('approved');
-            $account->setIsApproved(true);
-            
-            // Set invited by relationship
-            $inviterAccount = $this->accountRepository->find($invitedBy);
-            if ($inviterAccount) {
-                $account->setInvitedBy($inviterAccount);
-            }
-        } else {
-            $account->setStatus('pending');
-            $account->setIsApproved(false);
+            $this->connection->executeStatement(
+                'INSERT INTO accounts
+                    (last_name, first_name, email_address, role_designation, department,
+                     contact_number, clerk_user_id, status, is_approved, is_active,
+                     failed_login_attempts, created_timestamp, updated_timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $lastName, $firstName, $emailAddress, $role, $department,
+                    $contactNumber, $clerkUserId, $status, $isApproved, true,
+                    0, $now, $now,
+                ]
+            );
+
+            $newId = $this->connection->lastInsertId();
+
+            return $this->createSuccessResponse([
+                'message' => 'Account registered successfully.',
+                'account' => [
+                    'accountIdentifier' => (int)$newId,
+                    'clerkUserId' => $clerkUserId,
+                    'firstName' => $firstName,
+                    'lastName' => $lastName,
+                    'emailAddress' => $emailAddress,
+                    'roleDesignation' => $role,
+                    'status' => $status,
+                    'isApproved' => $isApproved,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+            return $this->createErrorResponse(
+                'RegistrationFailed',
+                'Failed to register account: ' . $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    #[Route('/me', name: 'get_my_account', methods: ['GET'])]
+    public function me(Request $request): JsonResponse
+    {
+        $authHeader = $request->headers->get('Authorization', '');
+        if (!str_starts_with($authHeader, 'Bearer ')) {
+            return $this->createErrorResponse('AuthRequired', 'Authorization header required.', 401);
         }
 
-        $this->accountRepository->persistAccount($account);
+        $bearerToken = substr($authHeader, 7);
+
+        try {
+            $parts = explode('.', $bearerToken);
+            if (count($parts) !== 3) {
+                error_log('JWT decode: Invalid format, parts=' . count($parts));
+                return $this->createErrorResponse('InvalidToken', 'Invalid JWT format.', 401);
+            }
+            $padded  = strtr($parts[1], '-_', '+/') . str_repeat('=', (4 - strlen($parts[1]) % 4) % 4);
+            $payload = json_decode(base64_decode($padded), true);
+            error_log('JWT decode: payload=' . json_encode($payload));
+            if (!is_array($payload) || empty($payload['sub'])) {
+                error_log('JWT decode: Missing sub claim');
+                return $this->createErrorResponse('InvalidToken', 'JWT missing sub claim.', 401);
+            }
+            if (isset($payload['exp']) && $payload['exp'] < time()) {
+                error_log('JWT decode: Token expired');
+                return $this->createErrorResponse('TokenExpired', 'Clerk session token has expired.', 401);
+            }
+            $clerkUserId = $payload['sub'];
+            error_log('JWT decode: Success, clerkUserId=' . $clerkUserId);
+        } catch (\Throwable $e) {
+            error_log('JWT decode error: ' . $e->getMessage());
+            return $this->createErrorResponse('InvalidToken', 'Clerk token verification failed.', 401);
+        }
+
+        try {
+            $account = $this->connection->fetchAssociative(
+                'SELECT * FROM accounts WHERE clerk_user_id = ?',
+                [$clerkUserId]
+            );
+            error_log('DBAL query result: ' . ($account === false ? 'false' : json_encode($account)));
+        } catch (\Throwable $e) {
+            error_log('DBAL query error: ' . $e->getMessage());
+            return $this->createErrorResponse('DatabaseError', 'Failed to query database: ' . $e->getMessage(), 500);
+        }
+
+        if ($account === false) {
+            return $this->createErrorResponse('AccountNotFound', 'No account registered for this Clerk user.', 404);
+        }
 
         return $this->createSuccessResponse([
-            'message' => 'Account registered successfully.',
             'account' => [
-                'accountIdentifier' => $account->getAccountIdentifier(),
-                'clerkUserId' => $account->getClerkUserId(),
-                'firstName' => $account->getFirstName(),
-                'lastName' => $account->getLastName(),
-                'emailAddress' => $account->getEmailAddress(),
-                'roleDesignation' => $account->getRoleDesignation(),
-                'status' => $account->getStatus(),
-                'isApproved' => $account->getIsApproved(),
+                'accountIdentifier' => (int)$account['account_identifier'],
+                'clerkUserId'       => $account['clerk_user_id'],
+                'firstName'         => $account['first_name'],
+                'lastName'          => $account['last_name'],
+                'emailAddress'      => $account['email_address'],
+                'roleDesignation'   => $account['role_designation'],
+                'department'        => $account['department'],
+                'contactNumber'     => $account['contact_number'],
+                'status'            => $account['status'],
+                'isApproved'        => (bool)$account['is_approved'],
+                'isActive'          => (bool)$account['is_active'],
+                'createdTimestamp'  => $account['created_timestamp'],
             ],
-        ], 201);
+        ]);
     }
 
     #[Route('/pending', name: 'list_pending_users', methods: ['GET'])]

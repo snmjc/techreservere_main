@@ -72,41 +72,36 @@ onMounted(() => {
 });
 
 async function handleLogout() {
-  await signOut();
+  await signOut.value();
   authStore.performLogout();
+  authStore.setClerkSignedOut();
   router.push({ name: 'clerkLoginPage' });
 }
 
 async function checkApprovalStatus() {
   isChecking.value = true;
   try {
-    // In a real implementation, you would check the user's approval status via API
-    // For now, we'll simulate a check
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user is approved (this would come from the API in production)
-    const token = await authStore.authToken;
-    if (token) {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isApproved && data.status === 'approved') {
-          // User is approved, redirect to appropriate dashboard
-          if (data.roleDesignation === 'ROLE_ADMIN') {
-            router.push({ name: 'adminDashboardPage' });
-          } else {
-            router.push({ name: 'borrowerMyReservationsPage' });
-          }
-          return;
-        }
-      }
+    const account = await authStore.loadClerkAccount(getToken.value);
+
+    if (!account) {
+      alert('Unable to verify your account. Please try again later.');
+      return;
     }
-    
+
+    if (account.status === 'approved') {
+      if (account.roleDesignation === 'ROLE_ADMIN') {
+        router.push({ name: 'adminDashboardPage' });
+      } else {
+        router.push({ name: 'borrowerMyReservationsPage' });
+      }
+      return;
+    }
+
+    if (account.status === 'rejected') {
+      alert('Your registration has been rejected. Please contact the administrator.');
+      return;
+    }
+
     alert('Your account is still pending approval. Please check back later.');
   } catch (error) {
     console.error('Error checking approval status:', error);

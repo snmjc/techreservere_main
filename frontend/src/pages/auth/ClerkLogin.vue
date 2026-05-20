@@ -3,93 +3,80 @@
   <div class="login-wrapper">
     <!-- Left Panel - Branding -->
     <div class="left-panel">
+      <div class="left-overlay"></div>
       <div class="left-content">
-        <img src="@/assets/TechReserve_LogoA.png" alt="TechReserve Logo" class="logo-image" />
-        
+        <img src="@/assets/TechReserve_LogoB.png" alt="TechReserve Logo" class="logo-image" />
         <h1 class="brand-title">
           <span class="tech-text">Tech</span><span class="reserve-text">Reserve</span>
         </h1>
-
-        <h2 class="tagline">Analytics-Driven Equipment Readiness and Reservation System</h2>
-
-        <p class="description">Supporting efficient resource coordination and institutional resource-sharing in FEU Institute of Technology</p>
+        <h2 class="tagline">Analytics-Driven Equipment Readiness and<br/>Reservation System</h2>
+        <p class="description">Supporting efficient equipment coordination and institutional<br/>resource planning at <strong>FEU Institute of Technology</strong>.</p>
       </div>
     </div>
 
     <!-- Right Panel - Login Form -->
     <div class="right-panel">
+      <!-- FEU Seal Watermark -->
+      <img src="@/assets/FEU_Tech_official_seal.png" alt="FEU Tech Seal" class="seal-watermark" />
+
       <div class="right-content">
         <h2 class="welcome-heading">Welcome!</h2>
 
-        <!-- Clerk Sign In (Modal) -->
-        <div class="login-form">
-          <SignInButton mode="modal">
-            <button class="sign-in-btn">Sign in with Clerk</button>
-          </SignInButton>
+        <!-- Clerk Embedded Sign In -->
+        <div class="clerk-signin-wrapper">
+          <SignIn 
+            :appearance="clerkAppearance" 
+            sign-up-url="/signup"
+            path="/clerk-login"
+            routing="path"
+          />
         </div>
 
         <!-- Sign Up Link -->
-        <div class="signup-prompt">
-          <p>Don't have an account? <router-link to="/custom-signup" class="signup-link">Sign up</router-link></p>
-        </div>
+        <p class="signup-prompt">
+          Don't have an account?
+          <router-link to="/signup" class="signup-link">Sign up</router-link>
+        </p>
 
         <!-- Footer -->
-        <div class="login-footer">
-          <p>© 2025 TECHRESERVE. DATABASE MANAGEMENT</p>
-        </div>
+        <p class="login-footer">© 2026 TECHRESERVE. DATAMS MANAGEMENT.</p>
       </div>
-
-      <!-- Background Pattern -->
-      <div class="background-pattern"></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { watch } from 'vue';
+import { watch, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { SignInButton, useUser, useAuth } from '@clerk/vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { SignIn, useUser } from '@clerk/vue';
+
+const clerkAppearance = {
+  elements: {
+    footerAction__signIn: { display: 'none' },
+  },
+};
 
 const router = useRouter();
-const { isSignedIn, user } = useUser();
-const { getToken } = useAuth();
-const authStore = useAuthenticationStore();
+const { isSignedIn } = useUser();
+const hasRedirected = ref(false);
 
-// Watch for successful Clerk sign-in, sync auth store, and redirect
-watch(isSignedIn, async (signedIn) => {
-  if (signedIn && user.value) {
-    // Get Clerk session token
-    const token = await getToken.value();
-
-    // Sync Clerk user data into the auth store using the new setClerkAuth function
-    authStore.setClerkAuth(token, {
-      accountIdentifier: user.value.id,
-      firstName: user.value.firstName || '',
-      lastName: user.value.lastName || '',
-      emailAddress: user.value.primaryEmailAddress?.emailAddress || '',
-      roleDesignation: user.value.publicMetadata?.role || 'ROLE_BORROWER',
-      contactNumber: user.value.publicMetadata?.contactNumber || '',
-      isActive: true,
-    });
-
-    // Redirect based on role
-    const role = user.value.publicMetadata?.role;
-    if (role === 'ROLE_ADMIN') {
-      router.push({ name: 'adminDashboardPage' });
-    } else {
-      router.push({ name: 'borrowerMyReservationsPage' });
-    }
+// Simple redirect after sign-in
+watch(isSignedIn, (signedIn) => {
+  console.log('[ClerkLogin] isSignedIn changed:', signedIn, 'hasRedirected:', hasRedirected.value);
+  
+  if (signedIn && !hasRedirected.value) {
+    hasRedirected.value = true;
+    console.log('[ClerkLogin] User signed in, redirecting to dashboard...');
+    
+    // Use window.location for a hard redirect to avoid router issues
+    console.log('[ClerkLogin] Using window.location to redirect...');
+    window.location.href = '/borrower/my-reservations';
   }
-}, { immediate: true });
+});
 </script>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 .login-wrapper {
   display: flex;
@@ -100,31 +87,23 @@ watch(isSignedIn, async (signedIn) => {
 
 /* ===== LEFT PANEL ===== */
 .left-panel {
-  width: 50%;
-  background: linear-gradient(135deg, #1a6e3a 0%, #0f5a2a 100%);
+  width: 45%;
+  background-image: url('@/assets/Page-20-3.png');
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4rem 3rem;
+  padding: 2rem;
   position: relative;
   overflow: hidden;
+  min-height: 100vh;
 }
 
-.left-panel::before {
-  content: '';
+.left-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.03) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.03) 75%);
-  background-size: 60px 60px;
-  background-position: 0 0, 0 30px, 30px -30px, -30px 0px;
-  opacity: 0.5;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(10, 120, 60, 0.82) 0%, rgba(5, 80, 35, 0.88) 100%);
 }
 
 .left-content {
@@ -132,277 +111,215 @@ watch(isSignedIn, async (signedIn) => {
   z-index: 2;
   text-align: center;
   color: white;
-  max-width: 300px;
+  max-width: 320px;
 }
 
 .logo-image {
-  width: 120px;
-  height: 120px;
-  margin-bottom: 1.5rem;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+  display: block;
+  width: 130px;
+  height: 130px;
+  margin: 0 auto 1.25rem;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
 }
 
 .brand-title {
-  font-size: 2.5rem;
+  font-size: 2.6rem;
   font-weight: 700;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   letter-spacing: -0.5px;
-  line-height: 1.2;
 }
 
-.tech-text {
-  color: white;
-}
-
-.reserve-text {
-  color: #fbbf24;
-}
+.tech-text  { color: white; }
+.reserve-text { color: #f5c518; }
 
 .tagline {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
   line-height: 1.4;
   color: white;
 }
 
 .description {
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.88);
 }
 
 /* ===== RIGHT PANEL ===== */
 .right-panel {
-  width: 50%;
-  background: linear-gradient(135deg, #f0f0f0 0%, #e5e5e5 100%);
+  width: 55%;
+  background-color: #f2f2f2;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: 3rem 2.5rem;
   position: relative;
-  overflow: hidden;
 }
 
-.background-pattern {
+.seal-watermark {
   position: absolute;
-  top: -150px;
-  right: -150px;
-  width: 500px;
-  height: 500px;
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="pattern" width="20" height="20" patternUnits="userSpaceOnUse"><text x="10" y="15" font-size="10" fill="rgba(0,0,0,0.06)" text-anchor="middle">TECHRESERVE</text></pattern></defs><rect width="100" height="100" fill="url(%23pattern)"/></svg>');
-  background-size: 200px 200px;
-  opacity: 0.5;
-  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1000px;
+  height: 1000px;
+  object-fit: contain;
+  opacity: 0.1;
+  pointer-events: none;
+  user-select: none;
 }
 
 .right-content {
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 380px;
+  max-width: 360px;
 }
 
 .welcome-heading {
-  font-size: 2rem;
+  font-size: 2.1rem;
   font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 2rem;
+  color: #111;
+  margin-bottom: 1.5rem;
   text-align: center;
 }
 
-/* ===== FORM STYLING ===== */
-.login-form {
-  width: 100%;
+/* ===== CLERK COMPONENT WRAPPER ===== */
+.clerk-signin-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
+.loading-text {
+  color: #555;
   font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
+}
+
+.logged-out-message {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+  max-width: 360px;
+}
+
+.logged-out-message h3 {
+  font-size: 1.5rem;
   margin-bottom: 0.5rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  background-color: white;
-  transition: all 0.3s ease;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #1a6e3a;
-  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.1);
-}
-
-.form-input::placeholder {
-  color: #999;
-}
-
-/* ===== FORM OPTIONS ===== */
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
   color: #333;
-  font-weight: 500;
 }
 
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.forgot-password {
-  color: #1a6e3a;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.3s ease;
-}
-
-.forgot-password:hover {
-  color: #145a30;
-  text-decoration: underline;
-}
-
-/* ===== SIGN IN BUTTON ===== */
-.sign-in-btn {
-  width: 100%;
-  padding: 0.875rem 2rem;
-  background-color: #1a6e3a;
-  color: white;
-  border: none;
-  border-radius: 24px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.logged-out-message p {
+  color: #666;
   margin-bottom: 1.5rem;
+  font-size: 0.95rem;
 }
 
-.sign-in-btn:hover:not(:disabled) {
-  background-color: #145a30;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 110, 58, 0.3);
+.logged-out-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-.sign-in-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.cookie-note {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 0.5rem;
 }
 
-/* ===== SIGNUP SECTION ===== */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: #0a783c;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #086332;
+}
+
+.btn-secondary {
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background-color: #dee2e6;
+}
+
+.signed-in-notice {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+  max-width: 360px;
+}
+
+.signed-in-notice p {
+  color: #555;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.dashboard-link {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #0a783c;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background-color 0.2s;
+}
+
+.dashboard-link:hover {
+  background-color: #086332;
+}
+
+/* ===== SIGNUP PROMPT ===== */
 .signup-prompt {
   text-align: center;
-  margin: 1rem 0;
   font-size: 0.85rem;
-  color: #666;
+  color: #555;
+  margin-top: 0.75rem;
 }
 
 .signup-link {
   color: #1a6e3a;
-  text-decoration: none;
+  font-style: italic;
   font-weight: 600;
-  transition: all 0.3s ease;
+  text-decoration: none;
 }
 
-.signup-link:hover {
-  color: #145a30;
-  text-decoration: underline;
-}
+.signup-link:hover { text-decoration: underline; }
 
 /* ===== FOOTER ===== */
 .login-footer {
   text-align: center;
-  font-size: 0.75rem;
-  color: #999;
+  font-size: 0.72rem;
+  color: #aaa;
   margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #ddd;
-}
-
-.login-footer p {
-  margin: 0;
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 1024px) {
-  .left-panel {
-    width: 45%;
-    padding: 3rem 2rem;
-  }
-
-  .right-panel {
-    width: 55%;
-    padding: 3rem 2rem;
-  }
-
-  .logo-image {
-    width: 100px;
-    height: 100px;
-  }
-
-  .brand-title {
-    font-size: 2rem;
-  }
-
-  .tagline {
-    font-size: 1rem;
-  }
-}
-
 @media (max-width: 768px) {
-  .login-wrapper {
-    flex-direction: column;
-  }
-
-  .left-panel {
-    width: 100%;
-    padding: 3rem 2rem;
-    min-height: 50vh;
-  }
-
-  .right-panel {
-    width: 100%;
-    padding: 3rem 2rem;
-    min-height: 50vh;
-  }
-
-  .logo-image {
-    width: 80px;
-    height: 80px;
-  }
-
-  .brand-title {
-    font-size: 1.75rem;
-  }
-
-  .tagline {
-    font-size: 0.95rem;
-  }
-
-  .welcome-heading {
-    font-size: 1.5rem;
-  }
+  .login-wrapper { flex-direction: column; }
+  .left-panel  { width: 100%; min-height: 40vh; }
+  .right-panel { width: 100%; min-height: 60vh; }
+  .seal-watermark { width: 260px; height: 260px; }
+  .brand-title { font-size: 2rem; }
+  .welcome-heading { font-size: 1.6rem; }
 }
 </style>
