@@ -72,10 +72,23 @@ const closeDropdown = () => {
 const handleLogout = async () => {
   closeDropdown();
 
+<<<<<<< HEAD
+=======
+  // Sign out from Clerk first to clear the httpOnly session cookie
+  console.log('[SettingsDropdown] Calling Clerk signOut...');
+  try {
+    await signOut();
+  } catch (e) {
+    console.warn('[SettingsDropdown] Clerk signOut error:', e);
+  }
+
+  // Clear app state
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
   authStore.performLogout();
   localStorage.removeItem('techreserve_auth_token');
   localStorage.removeItem('techreserve_auth_account');
 
+<<<<<<< HEAD
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
     await Promise.race([signOutClerk(signOut), timeoutPromise]);
@@ -84,6 +97,19 @@ const handleLogout = async () => {
   } finally {
     window.location.href = '/clerk-login';
   }
+=======
+  // Clear all Clerk-related localStorage keys
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('__clerk') || key.includes('clerk')) {
+      localStorage.removeItem(key);
+    }
+  });
+
+  console.log('[SettingsDropdown] logout complete; redirecting to login');
+
+  // Redirect to login page
+  window.location.href = '/clerk-login';
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 };
 
 const handleClickOutside = (event) => {

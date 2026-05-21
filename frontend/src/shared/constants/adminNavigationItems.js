@@ -10,11 +10,14 @@ export const adminNavigationItems = [
     iconSvg: `<svg ${iconAttributes}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
   },
   {
+<<<<<<< HEAD
     routeName: 'adminWishlistPage',
     label: 'Wishlist',
     iconSvg: `<svg ${iconAttributes}><path d="M4 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z"/><path d="m8 10 2 2 5-5"/></svg>`,
   },
   {
+=======
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     routeName: 'adminManageAccountsPage',
     label: 'Manage Accounts',
     iconSvg: `<svg ${iconAttributes}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`,

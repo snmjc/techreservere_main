@@ -5,8 +5,11 @@ namespace App\Domain\Account\Controller;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Entity\AccountEntity;
 use App\Shared\Traits\JsonResponseTrait;
+<<<<<<< HEAD
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
+=======
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,6 +22,7 @@ class UserRegistrationController extends AbstractController
 {
     use JsonResponseTrait;
 
+<<<<<<< HEAD
     private const ADMIN_EMAIL_ALLOWLIST = [
         'smmojica@fit.edu.ph',
     ];
@@ -27,6 +31,12 @@ class UserRegistrationController extends AbstractController
     private HttpClientInterface $httpClient;
     private Connection $connection;
 
+=======
+    private AccountRepository $accountRepository;
+    private HttpClientInterface $httpClient;
+    private Connection $connection;
+
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     public function __construct(AccountRepository $accountRepository, HttpClientInterface $httpClient, Connection $connection)
     {
         $this->accountRepository = $accountRepository;
@@ -46,7 +56,10 @@ class UserRegistrationController extends AbstractController
         $role = trim($requestBody['role'] ?? 'ROLE_BORROWER');
         $contactNumber = trim($requestBody['contactNumber'] ?? '');
         $department = trim($requestBody['department'] ?? '');
+<<<<<<< HEAD
         $idNumber = trim($requestBody['idNumber'] ?? $requestBody['studentIdNumber'] ?? $contactNumber);
+=======
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
         $invitedBy = $requestBody['invitedBy'] ?? null;
         $role = $this->resolveRole($role, $emailAddress);
         $isAdminEmail = $this->isAdminEmail($emailAddress);
@@ -184,6 +197,52 @@ class UserRegistrationController extends AbstractController
         }
     }
 
+<<<<<<< HEAD
+=======
+        // Create new account via DBAL raw SQL
+        try {
+            $now = (new \DateTime())->format('Y-m-d H:i:s');
+            $status = $invitedBy ? 'approved' : 'pending';
+            $isApproved = $invitedBy ? true : false;
+
+            $this->connection->executeStatement(
+                'INSERT INTO accounts
+                    (last_name, first_name, email_address, role_designation, department,
+                     contact_number, clerk_user_id, status, is_approved, is_active,
+                     failed_login_attempts, created_timestamp, updated_timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $lastName, $firstName, $emailAddress, $role, $department,
+                    $contactNumber, $clerkUserId, $status, $isApproved, true,
+                    0, $now, $now,
+                ]
+            );
+
+            $newId = $this->connection->lastInsertId();
+
+            return $this->createSuccessResponse([
+                'message' => 'Account registered successfully.',
+                'account' => [
+                    'accountIdentifier' => (int)$newId,
+                    'clerkUserId' => $clerkUserId,
+                    'firstName' => $firstName,
+                    'lastName' => $lastName,
+                    'emailAddress' => $emailAddress,
+                    'roleDesignation' => $role,
+                    'status' => $status,
+                    'isApproved' => $isApproved,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+            return $this->createErrorResponse(
+                'RegistrationFailed',
+                'Failed to register account: ' . $e->getMessage(),
+                500
+            );
+        }
+    }
+
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     #[Route('/me', name: 'get_my_account', methods: ['GET'])]
     public function me(Request $request): JsonResponse
     {
@@ -218,14 +277,30 @@ class UserRegistrationController extends AbstractController
             return $this->createErrorResponse('InvalidToken', 'Clerk token verification failed.', 401);
         }
 
+<<<<<<< HEAD
         $account = $this->accountRepository->findOneByClerkUserId($clerkUserId);
 
         if ($account === null) {
+=======
+        try {
+            $account = $this->connection->fetchAssociative(
+                'SELECT * FROM accounts WHERE clerk_user_id = ?',
+                [$clerkUserId]
+            );
+            error_log('DBAL query result: ' . ($account === false ? 'false' : json_encode($account)));
+        } catch (\Throwable $e) {
+            error_log('DBAL query error: ' . $e->getMessage());
+            return $this->createErrorResponse('DatabaseError', 'Failed to query database: ' . $e->getMessage(), 500);
+        }
+
+        if ($account === false) {
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
             return $this->createErrorResponse('AccountNotFound', 'No account registered for this Clerk user.', 404);
         }
 
         return $this->createSuccessResponse([
             'account' => [
+<<<<<<< HEAD
                 'accountIdentifier' => $account->getAccountIdentifier(),
                 'clerkUserId'       => $account->getClerkUserId(),
                 'firstName'         => $account->getFirstName(),
@@ -238,6 +313,20 @@ class UserRegistrationController extends AbstractController
                 'isApproved'        => $account->getIsApproved(),
                 'isActive'          => $account->getIsActive(),
                 'createdTimestamp'  => $account->getCreatedTimestamp()->format('Y-m-d H:i:s'),
+=======
+                'accountIdentifier' => (int)$account['account_identifier'],
+                'clerkUserId'       => $account['clerk_user_id'],
+                'firstName'         => $account['first_name'],
+                'lastName'          => $account['last_name'],
+                'emailAddress'      => $account['email_address'],
+                'roleDesignation'   => $account['role_designation'],
+                'department'        => $account['department'],
+                'contactNumber'     => $account['contact_number'],
+                'status'            => $account['status'],
+                'isApproved'        => (bool)$account['is_approved'],
+                'isActive'          => (bool)$account['is_active'],
+                'createdTimestamp'  => $account['created_timestamp'],
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
             ],
         ]);
     }

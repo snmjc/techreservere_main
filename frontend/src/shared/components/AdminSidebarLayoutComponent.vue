@@ -161,10 +161,19 @@ function isActiveRoute(routeName) {
  * @description Clears auth state and redirects to login page.
  */
 async function handleLogout() {
+  // Sign out from Clerk first to clear the httpOnly session cookie
+  console.log('[AdminSidebarLayout] Calling Clerk signOut...');
+  try {
+    await signOut();
+  } catch (e) {
+    console.warn('[AdminSidebarLayout] Clerk signOut error:', e);
+  }
+
   authStore.performLogout();
   localStorage.removeItem('techreserve_auth_token');
   localStorage.removeItem('techreserve_auth_account');
 
+<<<<<<< HEAD
   console.log('[AdminSidebarLayout] logout clicked; navigating to clerkLoginPage');
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
@@ -174,5 +183,18 @@ async function handleLogout() {
   } finally {
     window.location.href = '/clerk-login';
   }
+=======
+  // Clear all Clerk-related localStorage keys
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('__clerk') || key.includes('clerk')) {
+      localStorage.removeItem(key);
+    }
+  });
+
+  console.log('[AdminSidebarLayout] logout complete; redirecting to login');
+
+  // Redirect to login page
+  window.location.href = '/clerk-login';
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 }
 </script>

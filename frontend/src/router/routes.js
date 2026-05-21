@@ -39,15 +39,10 @@ export const routeDefinitions = [
   },
   {
     path: '/login',
-    name: 'loginPage',
-    component: () => import('@/pages/auth/Login.vue'),
-    meta: {
-      requiresAuth: false,
-      allowedRoles: null,
-    },
+    redirect: '/clerk-login',
   },
   {
-    path: '/clerk-login/:pathMatch(.*)*',
+    path: '/clerk-login',
     name: 'clerkLoginPage',
     component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
@@ -56,9 +51,38 @@ export const routeDefinitions = [
     },
   },
   {
+<<<<<<< HEAD
+    path: '/clerk-login/:pathMatch(.*)*',
+    name: 'clerkLoginPage',
+=======
+    path: '/clerk-login/factor-two',
+    name: 'clerkLoginFactorTwo',
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
+    component: () => import('@/pages/auth/ClerkLogin.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+<<<<<<< HEAD
     path: '/auth/post-login',
     name: 'postLoginPage',
     component: () => import('@/pages/auth/PostLogin.vue'),
+=======
+    path: '/handle-sign-in',
+    name: 'handleSignInPage',
+    component: () => import('@/pages/auth/HandleSignIn.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/auth-callback',
+    name: 'authCallbackPage',
+    component: () => import('@/pages/auth/AuthCallback.vue'),
+>>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     meta: {
       requiresAuth: false,
       allowedRoles: null,
