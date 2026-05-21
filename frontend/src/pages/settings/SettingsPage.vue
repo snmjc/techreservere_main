@@ -290,16 +290,11 @@ const formData = ref({
 });
 
 const userRole = computed(() => {
-  const account = authStore.accountData;
-  if (account && account.role) {
-    return account.role === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : 'BORROWER';
-  }
-  return 'USER';
+  return authStore.userRole === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : 'BORROWER';
 });
 
 const navigationItems = computed(() => {
-  const account = authStore.accountData;
-  if (account && account.role === 'ROLE_ADMIN') {
+  if (authStore.userRole === 'ROLE_ADMIN') {
     return adminNavigationItems;
   }
   return borrowerNavigationItems;

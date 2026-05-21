@@ -30,6 +30,9 @@ class AccountEntity
     #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
     private ?string $contactNumber = null;
 
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $department = null;
+
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $clerkUserId = null;
 
@@ -133,6 +136,17 @@ class AccountEntity
     public function setContactNumber(?string $contactNumber): self
     {
         $this->contactNumber = $contactNumber;
+        return $this;
+    }
+
+    public function getDepartment(): ?string
+    {
+        return $this->department;
+    }
+
+    public function setDepartment(?string $department): self
+    {
+        $this->department = $department;
         return $this;
     }
 

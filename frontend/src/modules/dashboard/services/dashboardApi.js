@@ -5,9 +5,13 @@ const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8
 const dashboardApi = {
   async getDashboardSummary() {
     try {
+      const authToken =
+        localStorage.getItem('techreserve_auth_token') ||
+        localStorage.getItem('authToken') ||
+        localStorage.getItem('clerkToken');
       const response = await axios.get(`${API_BASE_URL}/dashboard/summary`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${authToken}`
         }
       });
       return response.data;

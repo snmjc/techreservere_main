@@ -9,6 +9,7 @@
 // 4. Redirect if unauthorized
 
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { canAccessRbac } from '@/shared/constants/rbacPermissions.js';
 
 /**
  * @function evaluateRouteAccessGuard
@@ -21,6 +22,7 @@ export function evaluateRouteAccessGuard(toRoute, fromRoute) {
   const requiresAuth = toRoute.meta?.requiresAuth ?? false;
   const authStore = useAuthenticationStore();
 
+  // If a Clerk-signed-in user hits the login route, push them to their default dashboard.
   if (!requiresAuth) {
     if ((toRoute.name === 'loginPage' || toRoute.name === 'clerkLoginPage') && authStore.isAuthenticated) {
       if (authStore.userRole === 'ROLE_ADMIN') {
@@ -41,8 +43,24 @@ export function evaluateRouteAccessGuard(toRoute, fromRoute) {
     const roleAllowed = allowedRoles.includes(authStore.userRole);
 
     if (!roleAllowed) {
+      if (authStore.userRole === 'ROLE_ADMIN') {
+        return { name: 'adminDashboardPage' };
+      }
+      if (authStore.userRole === 'ROLE_BORROWER') {
+        return { name: 'borrowerMyReservationsPage' };
+      }
       return { name: 'clerkLoginPage' };
     }
+  }
+
+  if (!canAccessRbac(authStore.userRole, toRoute.meta?.rbac)) {
+    if (authStore.userRole === 'ROLE_ADMIN') {
+      return { name: 'adminDashboardPage' };
+    }
+    if (authStore.userRole === 'ROLE_BORROWER') {
+      return { name: 'borrowerMyReservationsPage' };
+    }
+    return { name: 'clerkLoginPage' };
   }
 
   return true;

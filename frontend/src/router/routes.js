@@ -6,6 +6,11 @@
 // 1. Define route objects with path, name, component, meta
 // 2. Export as array
 
+import { RBAC_ACTION, RBAC_CAPABILITY, RBAC_SCOPE } from '@/shared/constants/rbacPermissions.js';
+
+const rbacAny = (...permissions) => ({ any: permissions });
+const permission = (capability, action, scope = RBAC_SCOPE.ALL) => ({ capability, action, scope });
+
 /**
  * @constant {Array<Object>} routeDefinitions
  * @description Centralized route definitions for TechReserve application.
@@ -13,7 +18,24 @@
 export const routeDefinitions = [
   {
     path: '/',
-    redirect: '/clerk-login',
+    redirect: () => {
+      // Avoid bouncing signed-in users back to the login screen (Clerk may redirect to `/` after sign-in).
+      // We intentionally use localStorage here because the Pinia store may not be initialized yet.
+      try {
+        const accountString = localStorage.getItem('techreserve_auth_account');
+        if (accountString) {
+          const account = JSON.parse(accountString);
+          const rawRole = account?.roleDesignation ?? account?.role ?? null;
+          const role = rawRole ? String(rawRole).trim().toUpperCase() : null;
+          if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: 'adminDashboardPage' };
+          if (role === 'ROLE_BORROWER' || role === 'BORROWER') return { name: 'borrowerMyReservationsPage' };
+          return { name: 'borrowerMyReservationsPage' };
+        }
+      } catch (e) {
+        // ignore parse errors and fall through to login
+      }
+      return { name: 'clerkLoginPage' };
+    },
   },
   {
     path: '/login',
@@ -25,9 +47,18 @@ export const routeDefinitions = [
     },
   },
   {
-    path: '/clerk-login',
+    path: '/clerk-login/:pathMatch(.*)*',
     name: 'clerkLoginPage',
     component: () => import('@/pages/auth/ClerkLogin.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/auth/post-login',
+    name: 'postLoginPage',
+    component: () => import('@/pages/auth/PostLogin.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -57,7 +88,8 @@ export const routeDefinitions = [
     component: () => import('@/pages/borrower/MyReservations.vue'),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -85,6 +117,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_DASHBOARD, RBAC_ACTION.READ)),
     },
   },
   {
@@ -94,9 +127,19 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
-  // Placeholder routes for admin sidebar navigation (pages to be built)
+  {
+    path: '/admin/wishlist',
+    name: 'adminWishlistPage',
+    component: () => import('@/pages/admin/AdminWishlist.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
+    },
+  },
   {
     path: '/admin/users',
     name: 'adminUsersPage',
@@ -104,6 +147,17 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
+    },
+  },
+  {
+    path: '/admin/employees-management',
+    name: 'adminEmployeesManagementPage',
+    component: () => import('@/pages/admin/AdminUsers.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
     },
   },
   {
@@ -113,6 +167,22 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.CREATE)),
+    },
+  },
+  {
+    path: '/admin/task-assignments',
+    name: 'adminTaskAssignmentsPage',
+    component: () => import('@/pages/admin/AdminInvitations.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(
+        permission(RBAC_CAPABILITY.READ_TASK, RBAC_ACTION.READ),
+        permission(RBAC_CAPABILITY.CREATE_TASK, RBAC_ACTION.CREATE),
+        permission(RBAC_CAPABILITY.UPDATE_TASK, RBAC_ACTION.UPDATE, RBAC_SCOPE.SPECIFIC_ASSIGNED_ADMIN),
+        permission(RBAC_CAPABILITY.ASSIGN_TASK, RBAC_ACTION.UPDATE),
+      ),
     },
   },
   {
@@ -122,6 +192,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
     },
   },
   {
@@ -131,6 +202,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.MANAGE_VENUE, RBAC_ACTION.READ)),
     },
   },
   {
@@ -140,6 +212,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.MANAGE_EQUIPMENT, RBAC_ACTION.READ)),
     },
   },
   {
@@ -149,6 +222,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ)),
     },
   },
   {
@@ -158,6 +232,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.UPDATE_RESERVATION_STATUS, RBAC_ACTION.UPDATE)),
     },
   },
   {
@@ -167,6 +242,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.PROCESS_DEPLOYMENT_RETURN, RBAC_ACTION.READ)),
     },
   },
   {
@@ -176,6 +252,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ)),
     },
   },
   {
@@ -185,6 +262,11 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(
+        permission(RBAC_CAPABILITY.VIEW_FORECAST_RISK, RBAC_ACTION.READ),
+        permission(RBAC_CAPABILITY.EXPORT_REPORTS, RBAC_ACTION.READ),
+        permission(RBAC_CAPABILITY.ANALYTICS_CONFIGURATION, RBAC_ACTION.READ),
+      ),
     },
   },
   // Borrower/Requester routes
@@ -195,6 +277,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -204,6 +287,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.SUBMIT_RESERVATION, RBAC_ACTION.CREATE)),
     },
   },
   {
@@ -213,6 +297,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.SUBMIT_RESERVATION, RBAC_ACTION.CREATE)),
     },
   },
   {
@@ -222,6 +307,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.SUBMIT_RESERVATION, RBAC_ACTION.CREATE)),
     },
   },
   {
@@ -231,6 +317,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -240,6 +327,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -249,6 +337,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -258,6 +347,10 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(
+        permission(RBAC_CAPABILITY.MANAGE_VENUE, RBAC_ACTION.READ, RBAC_SCOPE.AVAILABILITY_ONLY),
+        permission(RBAC_CAPABILITY.MANAGE_EQUIPMENT, RBAC_ACTION.READ, RBAC_SCOPE.AVAILABILITY_ONLY),
+      ),
     },
   },
   {
@@ -267,6 +360,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -276,6 +370,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -285,6 +380,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -294,6 +390,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -303,6 +400,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -312,6 +410,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ, RBAC_SCOPE.OWN)),
     },
   },
   {
@@ -321,6 +420,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
     },
   },
   {
@@ -330,6 +430,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
     },
   },
   // Settings routes
@@ -340,6 +441,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
     },
   },
   {
@@ -349,6 +451,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
   {
@@ -358,6 +461,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
   {
@@ -367,6 +471,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
   {
@@ -376,6 +481,7 @@ export const routeDefinitions = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
 ];

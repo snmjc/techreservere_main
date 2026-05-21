@@ -4,46 +4,112 @@
     :role-label="userFullName"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="my-reservations-page-heading">My Reservations</h2>
+    <section class="my-reservations-page">
+      <div class="my-reservations-hero">
+        <div>
+          <p class="my-reservations-kicker">Borrower workspace</p>
+          <h1>My Reservations</h1>
+          <p class="my-reservations-subtitle">
+            Create requests, track approvals, and review reservation activity in one place.
+          </p>
+        </div>
+        <button class="my-reservations-primary-action" type="button" @click="navigateToCreateReservation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
+          New Reservation
+        </button>
+      </div>
 
-    <!-- Create a Reservation -->
-    <p class="my-reservations-create-label">Create a Reservation</p>
-    <button class="my-reservations-create-card" @click="navigateToCreateReservation">
-      <span class="my-reservations-create-card-icon">+</span>
-      <span class="my-reservations-create-card-text">Create New<br/>Reservation</span>
-    </button>
+      <div class="my-reservations-overview">
+        <button
+          v-for="stat in reservationStats"
+          :key="stat.label"
+          type="button"
+          class="my-reservations-stat-card"
+          :class="stat.className"
+          @click="stat.action"
+        >
+          <span class="my-reservations-stat-icon" v-html="stat.icon"></span>
+          <span class="my-reservations-stat-copy">
+            <strong>{{ stat.value }}</strong>
+            <span>{{ stat.label }}</span>
+          </span>
+        </button>
+      </div>
 
-    <!-- Total Overview -->
-    <p class="my-reservations-overview-label">Total Overview</p>
-    <div class="my-reservations-stats-grid">
-      <button class="my-reservations-stat-card my-reservations-stat-card--active" @click="navigateToViewReservationList">
-        <span class="my-reservations-stat-value">{{ activeReservationsCount }}</span>
-        <span class="my-reservations-stat-label">Active<br/>Reservations</span>
-      </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--approved" @click="navigateToApprovedRequestsLogs">
-        <span class="my-reservations-stat-value">{{ approvedRequestsCount }}</span>
-        <span class="my-reservations-stat-label">Approved<br/>Requests</span>
-      </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--pending" @click="navigateToPendingRequestsLogs">
-        <span class="my-reservations-stat-value">{{ pendingRequestsCount }}</span>
-        <span class="my-reservations-stat-label">Pending<br/>Requests</span>
-      </button>
-      <button class="my-reservations-stat-card my-reservations-stat-card--completed" @click="navigateToCompletedReservationsLogs">
-        <span class="my-reservations-stat-value">{{ completedReservationsCount }}</span>
-        <span class="my-reservations-stat-label">Completed</span>
-      </button>
-    </div>
+      <div class="my-reservations-content-grid">
+        <section class="my-reservations-panel my-reservations-panel--wide">
+          <div class="my-reservations-panel-heading">
+            <div>
+              <h2>Reservation Flow</h2>
+              <p>Follow each request from submission to completion.</p>
+            </div>
+          </div>
+          <div class="my-reservations-timeline">
+            <div class="my-reservations-timeline-step is-complete">
+              <span>1</span>
+              <div>
+                <strong>Submit</strong>
+                <p>Send reservation details and required documents.</p>
+              </div>
+            </div>
+            <div class="my-reservations-timeline-step is-current">
+              <span>2</span>
+              <div>
+                <strong>Review</strong>
+                <p>Administrator checks availability and request details.</p>
+              </div>
+            </div>
+            <div class="my-reservations-timeline-step">
+              <span>3</span>
+              <div>
+                <strong>Use</strong>
+                <p>Claim approved equipment or venue on schedule.</p>
+              </div>
+            </div>
+            <div class="my-reservations-timeline-step">
+              <span>4</span>
+              <div>
+                <strong>Return</strong>
+                <p>Complete the reservation and close the record.</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-    <!-- Footer -->
-    <div class="my-reservations-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+        <section class="my-reservations-panel">
+          <div class="my-reservations-panel-heading">
+            <div>
+              <h2>Quick Actions</h2>
+              <p>Common tasks for borrowers.</p>
+            </div>
+          </div>
+          <div class="my-reservations-action-list">
+            <button type="button" @click="navigateToCreateReservation">
+              <span>+</span>
+              Create new request
+            </button>
+            <button type="button" @click="navigateToViewReservationList">
+              <span>&gt;</span>
+              View active reservations
+            </button>
+            <button type="button" @click="navigateToPastRecords">
+              <span>R</span>
+              Check past records
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <p class="my-reservations-page-footer">2026 TechReserve Reservation Management</p>
+    </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -63,6 +129,37 @@ const completedReservationsCount = computed(() => requestStore.completedCount);
 
 const userFullName = computed(() => authStore.userFullName);
 
+const reservationStats = computed(() => [
+  {
+    label: 'Active Reservations',
+    value: activeReservationsCount.value,
+    className: 'is-active',
+    action: navigateToViewReservationList,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
+  },
+  {
+    label: 'Approved Requests',
+    value: approvedRequestsCount.value,
+    className: 'is-approved',
+    action: navigateToApprovedRequestsLogs,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
+  },
+  {
+    label: 'Pending Requests',
+    value: pendingRequestsCount.value,
+    className: 'is-pending',
+    action: navigateToPendingRequestsLogs,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  },
+  {
+    label: 'Completed',
+    value: completedReservationsCount.value,
+    className: 'is-completed',
+    action: navigateToCompletedReservationsLogs,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>',
+  },
+]);
+
 onMounted(async () => {
   try {
     if (!authStore.isAuthenticated) {
@@ -70,82 +167,32 @@ onMounted(async () => {
       return;
     }
 
-    console.log('Auth token in localStorage:', localStorage.getItem('techreserve_auth_token') ? 'exists' : 'none');
-    console.log('Account data in localStorage:', localStorage.getItem('techreserve_auth_account'));
-    console.log('User is authenticated:', authStore.isAuthenticated);
-    console.log('User role:', authStore.userRole);
-    console.log('User account data:', authStore.accountData);
-    
     await requestStore.fetchReservations();
-    const total = (requestStore.pendingRequestsList.value?.length || 0) + 
-                  (requestStore.approvedRequestsList.value?.length || 0) + 
-                  (requestStore.activeReservationsList.value?.length || 0);
-    console.log('My Reservations - Total:', total);
   } catch (error) {
     console.error('Error fetching reservations:', error);
   }
 });
 
-/**
- * @function navigateToCreateReservation
- * @description Navigates to the create reservation form page.
- * @returns {void}
- */
 function navigateToCreateReservation() {
   router.push({ name: 'borrowerCreateReservationPage' });
 }
 
-/**
- * @function navigateToSubList
- * @description Navigates to a borrower sub-list page by route name.
- * @param {string} routeName - The target route name
- * @returns {void}
- */
-function navigateToSubList(routeName) {
-  router.push({ name: routeName });
-}
-
-/**
- * @function navigateToViewReservationList
- * @description Navigates to the view reservation list page.
- * @returns {void}
- */
 function navigateToViewReservationList() {
   router.push({ name: 'borrowerViewReservationListPage' });
 }
 
-/**
- * @function navigateToApprovedRequestsLogs
- * @description Navigates to the approved requests logs page.
- * @returns {void}
- */
 function navigateToApprovedRequestsLogs() {
   router.push({ name: 'borrowerApprovedRequestsLogsPage' });
 }
 
-/**
- * @function navigateToPendingRequestsLogs
- * @description Navigates to the pending requests logs page.
- * @returns {void}
- */
 function navigateToPendingRequestsLogs() {
   router.push({ name: 'borrowerPendingRequestsLogsPage' });
 }
 
-/**
- * @function navigateToCompletedReservationsLogs
- * @description Navigates to the completed reservations logs page.
- * @returns {void}
- */
 function navigateToCompletedReservationsLogs() {
   router.push({ name: 'borrowerCompletedReservationsLogsPage' });
 }
 
-/**
- * @function navigateToPastRecords
- * @description Navigates to the borrower past records page.
- * @returns {void}
- */
 function navigateToPastRecords() {
   router.push({ name: 'borrowerPastRecordsPage' });
 }

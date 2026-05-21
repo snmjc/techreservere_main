@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => {
   // Load env variables from frontend directory
   const env = loadEnv(mode, path.resolve(__dirname), '');
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const clerkSources = [
+    'https://*.clerk.accounts.dev',
+    'https://*.clerk.dev',
+    'https://*.clerk.com',
+    'https://clerk.com',
+    'https://cdn.clerk.com',
+    'https://api.clerk.com',
+    'https://img.clerk.com',
+    'https://images.clerk.dev',
+  ].join(' ');
 
   return {
     // Load env files from the frontend directory so frontend/.env is used
@@ -28,12 +38,15 @@ export default defineConfig(({ mode }) => {
         'Content-Security-Policy': [
           "default-src 'self'",
           // Vite dev + some tooling may rely on eval/inline; keep this dev-only.
-          "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data:",
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob:",
+          `script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: ${clerkSources}`,
+          `script-src-elem 'self' 'unsafe-inline' blob: data: ${clerkSources}`,
+          `style-src 'self' 'unsafe-inline' ${clerkSources}`,
+          `img-src 'self' data: blob: ${clerkSources}`,
           // Allow API + HMR websocket + Clerk (if enabled)
-          `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.dev`,
-          "font-src 'self' data:",
+          `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 ${clerkSources}`,
+          `frame-src 'self' ${clerkSources}`,
+          "font-src 'self' data: https://fonts.gstatic.com",
+          "worker-src 'self' blob:",
           "frame-ancestors 'self'",
         ].join('; ')
       },

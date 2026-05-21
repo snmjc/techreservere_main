@@ -48,6 +48,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUser, useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 
 const router = useRouter();
 const { user, isSignedIn } = useUser();
@@ -72,9 +73,12 @@ onMounted(() => {
 });
 
 async function handleLogout() {
-  await signOut();
-  authStore.performLogout();
-  router.push({ name: 'clerkLoginPage' });
+  try {
+    await signOutClerk(signOut);
+  } finally {
+    authStore.performLogout();
+    router.push({ name: 'clerkLoginPage' });
+  }
 }
 
 async function checkApprovalStatus() {

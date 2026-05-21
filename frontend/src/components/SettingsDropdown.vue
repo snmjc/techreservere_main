@@ -1,16 +1,19 @@
 <!-- ===== Settings Dropdown Component ===== -->
 <template>
   <div class="settings-dropdown-wrapper">
-    <!-- Settings Icon Button -->
     <button
       class="settings-icon-btn"
+      type="button"
       @click="toggleDropdown"
       title="Settings"
+      aria-label="Settings"
     >
-      ⚙️
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.4.6.7 1 .7h.6a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.3Z" />
+      </svg>
     </button>
 
-    <!-- Dropdown Menu -->
     <div v-if="isOpen" class="settings-dropdown-menu">
       <div class="dropdown-header">
         <h3>Settings</h3>
@@ -20,46 +23,40 @@
       <div class="dropdown-divider"></div>
 
       <div class="dropdown-content">
-        <!-- Account Settings -->
         <router-link to="/settings/account" class="dropdown-item">
-          <span class="item-icon">👤</span>
+          <span class="item-icon">A</span>
           <span class="item-text">Account Settings</span>
         </router-link>
 
-        <!-- Security -->
         <router-link to="/settings/security" class="dropdown-item">
-          <span class="item-icon">🔒</span>
+          <span class="item-icon">S</span>
           <span class="item-text">Security</span>
         </router-link>
 
-        <!-- Preferences -->
         <router-link to="/settings/preferences" class="dropdown-item">
-          <span class="item-icon">⚙️</span>
+          <span class="item-icon">P</span>
           <span class="item-text">Preferences</span>
         </router-link>
       </div>
 
       <div class="dropdown-divider"></div>
 
-      <!-- Logout -->
       <button type="button" @click.prevent.stop="handleLogout" class="dropdown-item logout-item">
-        <span class="item-icon">🚪</span>
+        <span class="item-icon">L</span>
         <span class="item-text">Logout</span>
       </button>
     </div>
 
-    <!-- Overlay to close dropdown -->
     <div v-if="isOpen" class="dropdown-overlay" @click="closeDropdown"></div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 
-const router = useRouter();
 const { signOut } = useAuth();
 const authStore = useAuthenticationStore();
 const isOpen = ref(false);
@@ -75,27 +72,20 @@ const closeDropdown = () => {
 const handleLogout = async () => {
   closeDropdown();
 
-  // Always clear app state and route away immediately; Clerk signOut may be slow/unavailable in dev.
   authStore.performLogout();
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userData');
-  localStorage.removeItem('clerkToken');
+  localStorage.removeItem('techreserve_auth_token');
+  localStorage.removeItem('techreserve_auth_account');
 
-  console.log('[SettingsDropdown] logout clicked; navigating to clerkLoginPage');
-  // Ensure Clerk session is actually cleared; otherwise the Clerk login page will auto-redirect back to dashboard.
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
-    await Promise.race([signOut(), timeoutPromise]);
+    await Promise.race([signOutClerk(signOut), timeoutPromise]);
   } catch (e) {
-    // ignore
+    // Ignore logout network errors and still return the user to login.
   } finally {
-    // Hard navigation ensures in-memory app state is reset.
     window.location.href = '/clerk-login';
   }
 };
 
-// Close dropdown when clicking outside
 const handleClickOutside = (event) => {
   const dropdown = document.querySelector('.settings-dropdown-wrapper');
   if (dropdown && !dropdown.contains(event.target)) {
@@ -119,48 +109,36 @@ onUnmounted(() => {
 }
 
 .settings-icon-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.settings-icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
+.settings-icon-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .settings-dropdown-menu {
   position: absolute;
   top: 100%;
   right: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   min-width: 280px;
   margin-top: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #dce8e2;
+  border-radius: 8px;
+  box-shadow: 0 18px 45px rgba(20, 51, 41, 0.14);
   z-index: 1000;
   overflow: hidden;
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .dropdown-header {
@@ -168,65 +146,63 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
 }
 
 .dropdown-header h3 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #333;
   margin: 0;
+  color: #17211d;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .view-all-link {
-  font-size: 0.85rem;
-  color: #1a6e3a;
+  color: #08734f;
+  font-size: 0.78rem;
+  font-weight: 800;
   text-decoration: none;
-  font-weight: 600;
-  transition: color 0.3s ease;
-}
-
-.view-all-link:hover {
-  color: #145a30;
-  text-decoration: underline;
 }
 
 .dropdown-divider {
   height: 1px;
-  background-color: #eee;
+  background-color: #e8efeb;
 }
 
 .dropdown-content {
-  padding: 0.5rem 0;
+  padding: 0.4rem;
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  color: #333;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  color: #17211d;
+  text-align: left;
   text-decoration: none;
   background: none;
   border: none;
+  border-radius: 8px;
   cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .dropdown-item:hover {
-  background-color: #f5f5f5;
-  padding-left: 1.25rem;
+  background: #f5f8f6;
 }
 
 .item-icon {
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: #08734f;
+  background: #d1fae5;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 850;
 }
 
 .item-text {
@@ -234,22 +210,18 @@ onUnmounted(() => {
 }
 
 .logout-item {
-  color: #d32f2f;
-  padding: 0.875rem 1rem;
-  margin-top: 0.5rem;
+  margin: 0.4rem;
+  color: #b91c1c;
 }
 
-.logout-item:hover {
-  background-color: #ffebee;
-  padding-left: 1.25rem;
+.logout-item .item-icon {
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .dropdown-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 999;
 }
 

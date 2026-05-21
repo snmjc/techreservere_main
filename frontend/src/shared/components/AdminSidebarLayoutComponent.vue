@@ -1,22 +1,23 @@
 <!-- ===== AI GENERATED: AdminSidebarLayoutComponent ===== -->
 <template>
   <div class="admin-layout-wrapper">
-    <!-- Sidebar -->
     <aside class="admin-sidebar">
       <div class="admin-sidebar-brand">
-        <p class="admin-sidebar-brand-university">FEUTECH</p>
         <img
           src="@/assets/TechReserve_LogoA.png"
           alt="TechReserve Logo"
           class="admin-sidebar-logo"
         />
-        <h1 class="admin-sidebar-brand-title">
-          <span class="admin-sidebar-brand-tech">Tech</span><span class="admin-sidebar-brand-reserve">Reserve</span>
-        </h1>
+        <div class="admin-sidebar-brand-copy">
+          <p class="admin-sidebar-brand-university">FEU Tech</p>
+          <h1 class="admin-sidebar-brand-title">
+            <span class="admin-sidebar-brand-tech">Tech</span><span class="admin-sidebar-brand-reserve">Reserve</span>
+          </h1>
+        </div>
       </div>
 
       <div class="admin-sidebar-role-badge">
-        {{ displayedNameLabel }}
+        {{ portalLabel }}
       </div>
 
       <nav class="admin-sidebar-navigation">
@@ -32,23 +33,38 @@
         </router-link>
       </nav>
 
+      <div class="admin-sidebar-help-card">
+        <p class="admin-sidebar-help-title">Need help?</p>
+        <p class="admin-sidebar-help-text">Contact the system administrator for account and reservation support.</p>
+      </div>
     </aside>
 
-    <!-- Main Content Area -->
     <div class="admin-main-area">
-      <!-- Top Bar -->
       <header class="admin-topbar">
-        <div class="admin-topbar-spacer"></div>
+        <div class="admin-topbar-page">
+          <button class="admin-topbar-menu-button" type="button" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h16" />
+              <path d="M4 12h16" />
+              <path d="M4 18h16" />
+            </svg>
+          </button>
+          <div>
+            <p class="admin-topbar-eyebrow">{{ portalSubtitle }}</p>
+            <h2 class="admin-topbar-title">{{ currentPageTitle }}</h2>
+          </div>
+        </div>
+
         <div class="admin-topbar-actions">
           <NotificationDropdown />
+          <div class="admin-topbar-user">
+            <span class="admin-topbar-avatar">{{ userInitials }}</span>
+            <span class="admin-topbar-user-text">{{ displayedNameLabel }}</span>
+          </div>
           <SettingsDropdown />
         </div>
       </header>
 
-      <!-- Green Accent Bar -->
-      <div class="admin-topbar-accent"></div>
-
-      <!-- Page Content -->
       <main class="admin-content-area">
         <slot />
       </main>
@@ -61,8 +77,10 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import NotificationDropdown from '@/components/NotificationDropdown.vue';
 import SettingsDropdown from '@/components/SettingsDropdown.vue';
+import './adminSidebarLayout.css';
 
 /**
  * @typedef {Object} AdminSidebarLayoutProps
@@ -86,6 +104,20 @@ const router = useRouter();
 const authStore = useAuthenticationStore();
 const { signOut } = useAuth();
 
+const currentNavigationItem = computed(() => {
+  return props.navigationItems.find((item) => item.routeName === currentRoute.name);
+});
+
+const isAdminPortal = computed(() => {
+  return props.navigationItems.some((item) => String(item.routeName).startsWith('admin'));
+});
+
+const portalLabel = computed(() => (isAdminPortal.value ? 'Admin Portal' : 'Borrower Portal'));
+
+const portalSubtitle = computed(() => (isAdminPortal.value ? 'System administrator' : 'Reservation workspace'));
+
+const currentPageTitle = computed(() => currentNavigationItem.value?.label || currentRoute.meta?.title || 'TechReserve');
+
 /**
  * @function displayedNameLabel
  * @description Builds a "LASTNAME, FIRSTNAME" label from the logged-in account.
@@ -104,6 +136,16 @@ const displayedNameLabel = computed(() => {
   return props.roleLabel;
 });
 
+const userInitials = computed(() => {
+  const label = displayedNameLabel.value || portalLabel.value;
+  return label
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+});
+
 /**
  * @function isActiveRoute
  * @description Checks if given route name matches the current active route.
@@ -120,15 +162,13 @@ function isActiveRoute(routeName) {
  */
 async function handleLogout() {
   authStore.performLogout();
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userData');
-  localStorage.removeItem('clerkToken');
+  localStorage.removeItem('techreserve_auth_token');
+  localStorage.removeItem('techreserve_auth_account');
 
   console.log('[AdminSidebarLayout] logout clicked; navigating to clerkLoginPage');
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
-    await Promise.race([signOut(), timeoutPromise]);
+    await Promise.race([signOutClerk(signOut), timeoutPromise]);
   } catch (e) {
     // ignore
   } finally {

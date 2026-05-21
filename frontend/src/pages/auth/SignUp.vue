@@ -36,9 +36,11 @@
           
           <div class="clerk-signup-wrapper">
             <SignUp 
-              :afterSignUpUrl="afterSignUpUrl"
+              path="/signup"
+              routing="path"
               :signInUrl="signInUrl"
-              redirectUrl="/request-pending"
+              :forceRedirectUrl="afterSignUpUrl"
+              :fallbackRedirectUrl="afterSignUpUrl"
             />
           </div>
 
@@ -60,6 +62,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { SignUp } from '@clerk/vue';
 import { useUser, useAuth } from '@clerk/vue';
+import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import './css/SignUp.css';
 
 const router = useRouter();
@@ -73,7 +76,7 @@ const signInUrl = '/clerk-login';
 const saveUserToBackend = async () => {
   if (user.value) {
     try {
-      const token = await getToken.value();
+      const token = await getClerkToken(getToken);
       
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/register`, {
         method: 'POST',
