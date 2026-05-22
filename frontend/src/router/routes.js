@@ -51,13 +51,8 @@ export const routeDefinitions = [
     },
   },
   {
-<<<<<<< HEAD
     path: '/clerk-login/:pathMatch(.*)*',
     name: 'clerkLoginPage',
-=======
-    path: '/clerk-login/factor-two',
-    name: 'clerkLoginFactorTwo',
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
       requiresAuth: false,
@@ -65,24 +60,9 @@ export const routeDefinitions = [
     },
   },
   {
-<<<<<<< HEAD
     path: '/auth/post-login',
     name: 'postLoginPage',
     component: () => import('@/pages/auth/PostLogin.vue'),
-=======
-    path: '/handle-sign-in',
-    name: 'handleSignInPage',
-    component: () => import('@/pages/auth/HandleSignIn.vue'),
-    meta: {
-      requiresAuth: true,
-      allowedRoles: null,
-    },
-  },
-  {
-    path: '/auth-callback',
-    name: 'authCallbackPage',
-    component: () => import('@/pages/auth/AuthCallback.vue'),
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -117,13 +97,17 @@ export const routeDefinitions = [
     },
   },
   {
-    path: '/custom-signup',
+    path: '/sign-up',
     name: 'customSignUpPage',
     component: () => import('@/pages/auth/CustomSignUp.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,
     },
+  },
+  {
+    path: '/custom-signup',
+    redirect: '/sign-up',
   },
   {
     path: '/student-registration',
@@ -167,16 +151,6 @@ export const routeDefinitions = [
   {
     path: '/admin/users',
     name: 'adminUsersPage',
-    component: () => import('@/pages/admin/AdminUsers.vue'),
-    meta: {
-      requiresAuth: true,
-      allowedRoles: ['ROLE_ADMIN'],
-      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
-    },
-  },
-  {
-    path: '/admin/employees-management',
-    name: 'adminEmployeesManagementPage',
     component: () => import('@/pages/admin/AdminUsers.vue'),
     meta: {
       requiresAuth: true,
@@ -463,6 +437,7 @@ export const routeDefinitions = [
     name: 'settingsPage',
     component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
+      title: 'Settings',
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
@@ -473,6 +448,7 @@ export const routeDefinitions = [
     name: 'accountSettingsPage',
     component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
+      title: 'Settings',
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
@@ -483,6 +459,7 @@ export const routeDefinitions = [
     name: 'securitySettingsPage',
     component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
+      title: 'Settings',
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
@@ -493,6 +470,7 @@ export const routeDefinitions = [
     name: 'preferencesSettingsPage',
     component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
+      title: 'Settings',
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
@@ -503,6 +481,7 @@ export const routeDefinitions = [
     name: 'borrowerSettingsPage',
     component: () => import('@/pages/settings/SettingsPage.vue'),
     meta: {
+      title: 'Settings',
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),

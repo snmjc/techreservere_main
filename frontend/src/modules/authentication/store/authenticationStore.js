@@ -67,6 +67,12 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   if (clerkAccountString && clerkAccountString !== 'undefined') {
     try { clerkAccountValue = JSON.parse(clerkAccountString); } catch (_) {}
   }
+
+  if (!clerkAccountValue && accountDataValue?.authProvider === 'clerk') {
+    clerkAccountValue = accountDataValue;
+    localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(clerkAccountValue));
+  }
+
   const clerkAccountData = ref(clerkAccountValue);
 
   const clerkIsSignedIn = computed(() => clerkAccountData.value !== null);
@@ -214,19 +220,23 @@ export const useAuthenticationStore = defineStore('authentication', () => {
    * @param {Object} account - Account data from Clerk user
    */
   function setClerkAuth(token, account) {
-    authToken.value = token || null;
-    accountData.value = {
+    const normalizedAccount = {
       ...account,
       roleDesignation: normalizeRole(account?.roleDesignation ?? account?.role),
       authProvider: 'clerk',
     };
+
+    authToken.value = token || null;
+    accountData.value = normalizedAccount;
+    clerkAccountData.value = normalizedAccount;
 
     if (token) {
       localStorage.setItem(STORAGE_KEY_TOKEN, token);
     } else {
       localStorage.removeItem(STORAGE_KEY_TOKEN);
     }
-    localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(accountData.value));
+    localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(normalizedAccount));
+    localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(normalizedAccount));
   }
 
   /**

@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
     'https://api.clerk.com',
     'https://img.clerk.com',
     'https://images.clerk.dev',
+    'https://cdn.jsdelivr.net',
+    'https://*.jsdelivr.net',
+    'https://challenges.cloudflare.com',
   ].join(' ');
 
   return {
@@ -38,16 +41,10 @@ export default defineConfig(({ mode }) => {
         'Content-Security-Policy': [
           "default-src 'self'",
           // Vite dev + some tooling may rely on eval/inline; keep this dev-only.
-<<<<<<< HEAD
           `script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: ${clerkSources}`,
           `script-src-elem 'self' 'unsafe-inline' blob: data: ${clerkSources}`,
           `style-src 'self' 'unsafe-inline' ${clerkSources}`,
           `img-src 'self' data: blob: ${clerkSources}`,
-=======
-          "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://*.clerk.accounts.dev https://*.clerk.dev",
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https://*.clerk.accounts.dev https://*.clerk.dev https://img.clerk.com",
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
           // Allow API + HMR websocket + Clerk (if enabled)
           `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 ${clerkSources}`,
           `frame-src 'self' ${clerkSources}`,

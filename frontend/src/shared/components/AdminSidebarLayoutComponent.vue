@@ -42,13 +42,6 @@
     <div class="admin-main-area">
       <header class="admin-topbar">
         <div class="admin-topbar-page">
-          <button class="admin-topbar-menu-button" type="button" aria-label="Menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 6h16" />
-              <path d="M4 12h16" />
-              <path d="M4 18h16" />
-            </svg>
-          </button>
           <div>
             <p class="admin-topbar-eyebrow">{{ portalSubtitle }}</p>
             <h2 class="admin-topbar-title">{{ currentPageTitle }}</h2>
@@ -173,7 +166,6 @@ async function handleLogout() {
   localStorage.removeItem('techreserve_auth_token');
   localStorage.removeItem('techreserve_auth_account');
 
-<<<<<<< HEAD
   console.log('[AdminSidebarLayout] logout clicked; navigating to clerkLoginPage');
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
@@ -183,18 +175,5 @@ async function handleLogout() {
   } finally {
     window.location.href = '/clerk-login';
   }
-=======
-  // Clear all Clerk-related localStorage keys
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('__clerk') || key.includes('clerk')) {
-      localStorage.removeItem(key);
-    }
-  });
-
-  console.log('[AdminSidebarLayout] logout complete; redirecting to login');
-
-  // Redirect to login page
-  window.location.href = '/clerk-login';
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 }
 </script>

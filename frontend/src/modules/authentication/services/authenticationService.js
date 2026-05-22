@@ -95,27 +95,6 @@ export async function registerRequest(registrationData) {
     return data;
   } catch (error) {
     console.error('Registration request error:', error);
-    console.warn('Backend registration failed, using mock registration for development');
-    
-    // Mock registration for development when backend is not available
-    const mockToken = 'mock_token_' + Date.now();
-    const mockAccount = {
-      accountIdentifier: Math.floor(Math.random() * 10000),
-      firstName: registrationData.firstName,
-      lastName: registrationData.lastName,
-      emailAddress: registrationData.emailAddress,
-      roleDesignation: 'ROLE_BORROWER',
-      contactNumber: '+63-912-345-6789',
-      isActive: true
-    };
-
-    return {
-      success: true,
-      message: 'Registration successful (mock)',
-      data: {
-        token: mockToken,
-        account: mockAccount
-      }
-    };
+    throw error;
   }
 }

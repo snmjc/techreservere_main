@@ -64,7 +64,7 @@ class AccountEntity
     private bool $isApproved = false;
 
     #[ORM\ManyToOne(targetEntity: self::class)]
-    #[ORM\JoinColumn(name: 'invited_by', referencedColumnName: 'accountIdentifier', nullable: true)]
+    #[ORM\JoinColumn(name: 'invited_by', referencedColumnName: 'account_identifier', nullable: true)]
     private ?self $invitedBy = null;
 
     public function __construct()

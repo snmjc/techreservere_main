@@ -41,6 +41,7 @@ class AuthenticationMiddleware
     private const PUBLIC_ROUTE_METHODS = [
         '/api/v1/pending-users' => ['POST'],
         '/api/v1/users/register' => ['POST'],
+        '/api/v1/users/signup-requests' => ['POST'],
     ];
 
     private const PUBLIC_ROUTE_PREFIXES = [
@@ -155,6 +156,10 @@ class AuthenticationMiddleware
             }
 
             if (preg_match('#^/api/v1/users/[^/]+/(approve|reject)$#', $currentPath) === 1) {
+                return true;
+            }
+
+            if (str_starts_with($currentPath, '/api/v1/accounts')) {
                 return true;
             }
         }

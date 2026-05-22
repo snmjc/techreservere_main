@@ -34,6 +34,7 @@ class UserApprovalMiddleware implements EventSubscriberInterface
             '/api/v1/venues',
             '/api/v1/dashboard/summary',
             '/api/v1/users/register',
+            '/api/v1/users/signup-requests',
         ];
 
         foreach ($publicRoutes as $route) {

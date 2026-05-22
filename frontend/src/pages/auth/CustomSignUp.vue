@@ -1,4 +1,3 @@
-<!-- ===== Custom Sign Up Page ===== -->
 <template>
   <div class="custom-signup-page">
     <section class="custom-signup-branding-panel">
@@ -8,24 +7,26 @@
         class="custom-signup-branding-image"
       />
       <div class="custom-signup-branding-content">
-        <img
-          src="@/assets/TechReserve_LogoB.png"
-          alt="TechReserve Logo"
-          class="custom-signup-logo"
-        />
+        <div class="custom-signup-brand-mark">
+          <img
+            src="@/assets/TechReserve_LogoB.png"
+            alt="TechReserve Logo"
+            class="custom-signup-logo"
+          />
+          <h1 class="custom-signup-brand-title">
+            <span class="custom-signup-brand-tech">Tech</span><span class="custom-signup-brand-reserve">Reserve</span>
+          </h1>
+        </div>
 
-        <h1 class="custom-signup-brand-title">
-          <span class="custom-signup-brand-tech">Tech</span><span class="custom-signup-brand-reserve">Reserve</span>
-        </h1>
-
-        <h2 class="custom-signup-brand-subtitle">
-          Analytics-Driven Equipment Readiness and Reservation System
-        </h2>
-
-        <p class="custom-signup-brand-description">
-          Supporting efficient equipment coordination and institutional resource planning at
-          <strong>FEU Institute of Technology</strong>.
-        </p>
+        <div class="custom-signup-brand-copy">
+          <p class="custom-signup-kicker">Account Request</p>
+          <h2 class="custom-signup-brand-subtitle">
+            Request access to the reservation workspace.
+          </h2>
+          <p class="custom-signup-brand-description">
+            Submit your institutional details so the Facilities Office can verify your TechReserve account.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -37,172 +38,216 @@
       />
 
       <div class="custom-signup-form-content">
-        <h1 class="custom-signup-heading">Sign Up</h1>
-
-        <form v-if="!awaitingVerification" class="custom-signup-form" @submit.prevent="handleSignUp">
-          <div class="custom-signup-row">
-            <label for="accountType">Account Type:</label>
-            <select id="accountType" v-model="formData.accountType" class="custom-signup-select">
-              <option value="Admin">Admin</option>
-              <option value="Borrower">Borrower</option>
-            </select>
+        <div class="custom-signup-card">
+          <div class="custom-signup-card-header">
+            <p class="custom-signup-card-kicker">Create Account</p>
+            <h1 class="custom-signup-heading">{{ awaitingVerification ? 'Verify your email' : 'Sign up' }}</h1>
+            <p class="custom-signup-card-copy">
+              {{ awaitingVerification ? 'Enter the code Clerk sent to complete your request.' : 'Use your official FIT email and institutional details.' }}
+            </p>
           </div>
 
-          <div class="custom-signup-row">
-            <label for="lastName">Last Name:</label>
-            <input
-              id="lastName"
-              v-model="formData.lastName"
-              type="text"
-              required
-              autocomplete="family-name"
-            />
-          </div>
+          <form v-if="!awaitingVerification" class="custom-signup-form" @submit.prevent="handleSignUp">
+            <div class="custom-signup-field-grid">
+              <div class="custom-signup-row">
+                <label for="accountType">Account Type</label>
+                <input id="accountType" v-model="formData.accountType" readonly />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="firstName">First Name:</label>
-            <input
-              id="firstName"
-              v-model="formData.firstName"
-              type="text"
-              required
-              autocomplete="given-name"
-            />
-          </div>
+              <div class="custom-signup-row">
+                <label for="role">Role</label>
+                <select id="role" v-model="formData.role" class="custom-signup-select">
+                  <option value="Student">Student</option>
+                  <option value="Faculty">Faculty</option>
+                </select>
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="idNumber">ID Number:</label>
-            <input
-              id="idNumber"
-              v-model="formData.idNumber"
-              type="text"
-              required
-            />
-          </div>
+              <div class="custom-signup-row">
+                <label for="firstName">First Name</label>
+                <input
+                  id="firstName"
+                  v-model="formData.firstName"
+                  type="text"
+                  required
+                  autocomplete="given-name"
+                />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="fitEmailAddress">FIT Email Address:</label>
-            <input
-              id="fitEmailAddress"
-              v-model="formData.fitEmailAddress"
-              type="email"
-              required
-              autocomplete="email"
-            />
-          </div>
+              <div class="custom-signup-row">
+                <label for="lastName">Last Name</label>
+                <input
+                  id="lastName"
+                  v-model="formData.lastName"
+                  type="text"
+                  required
+                  autocomplete="family-name"
+                />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="department">Department:</label>
-            <input
-              id="department"
-              v-model="formData.department"
-              type="text"
-              required
-            />
-          </div>
+              <div class="custom-signup-row">
+                <label for="idNumber">ID Number</label>
+                <input
+                  id="idNumber"
+                  v-model="formData.idNumber"
+                  type="text"
+                  required
+                />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="role">Role:</label>
-            <select id="role" v-model="formData.role" class="custom-signup-select">
-              <option value="FO Admin">FO Admin</option>
-              <option value="Faculty">Faculty</option>
-              <option value="Student">Student</option>
-              <option value="Staff">Staff</option>
-            </select>
-          </div>
+              <div class="custom-signup-row">
+                <label for="department">Department</label>
+                <input
+                  id="department"
+                  v-model="formData.department"
+                  type="text"
+                  required
+                />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="password">Password:</label>
-            <input
-              id="password"
-              v-model="formData.password"
-              type="password"
-              required
-              autocomplete="new-password"
-            />
-          </div>
+              <div class="custom-signup-row custom-signup-row-wide">
+                <label for="fitEmailAddress">FIT Email Address</label>
+                <input
+                  id="fitEmailAddress"
+                  v-model="formData.fitEmailAddress"
+                  type="email"
+                  required
+                  autocomplete="email"
+                />
+              </div>
 
-          <div class="custom-signup-row">
-            <label for="confirmPassword">Confirm Password:</label>
-            <input
-              id="confirmPassword"
-              v-model="formData.confirmPassword"
-              type="password"
-              required
-              autocomplete="new-password"
-            />
-          </div>
+              <div class="custom-signup-row">
+                <label for="password">Password</label>
+                <div class="custom-signup-password-control">
+                  <input
+                    id="password"
+                    v-model="formData.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    required
+                    autocomplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    class="custom-signup-password-toggle"
+                    :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                    :title="showPassword ? 'Hide password' : 'Show password'"
+                    @click="showPassword = !showPassword"
+                  >
+                    <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 12s3.5-7 10-7c2.1 0 3.9.72 5.35 1.71" />
+                      <path d="M22 12s-3.5 7-10 7c-2.1 0-3.9-.72-5.35-1.71" />
+                      <path d="M3 3l18 18" />
+                      <path d="M9.88 9.88a3 3 0 0 0 4.24 4.24" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
-          <label class="custom-signup-confirmation">
-            <input
-              v-model="formData.acceptTerms"
-              type="checkbox"
-              required
-            />
-            <span>
-              I confirm that this account will be used solely for institutional equipment
-              reservation purposes and is subject to Facilities Office policies.
-            </span>
-          </label>
+              <div class="custom-signup-row">
+                <label for="confirmPassword">Confirm Password</label>
+                <div class="custom-signup-password-control">
+                  <input
+                    id="confirmPassword"
+                    v-model="formData.confirmPassword"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    required
+                    autocomplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    class="custom-signup-password-toggle"
+                    :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+                    :title="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    <svg v-if="!showConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 12s3.5-7 10-7c2.1 0 3.9.72 5.35 1.71" />
+                      <path d="M22 12s-3.5 7-10 7c-2.1 0-3.9-.72-5.35-1.71" />
+                      <path d="M3 3l18 18" />
+                      <path d="M9.88 9.88a3 3 0 0 0 4.24 4.24" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-          <div v-if="firstErrorMessage" class="custom-signup-error-box">
-            {{ firstErrorMessage }}
-          </div>
+            <label class="custom-signup-confirmation">
+              <input
+                v-model="formData.acceptTerms"
+                type="checkbox"
+                required
+              />
+              <span>
+                I confirm that the information provided is accurate and consent to its use for TechReserve account verification.
+              </span>
+            </label>
 
-          <div v-if="successMessage" class="custom-signup-success-box">
-            {{ successMessage }}
-          </div>
+            <div v-if="firstErrorMessage" class="custom-signup-error-box">
+              {{ firstErrorMessage }}
+            </div>
 
-          <button
-            type="submit"
-            class="custom-signup-submit"
-            :disabled="isLoading"
-          >
-            {{ isLoading ? 'Registering...' : 'Register' }}
-          </button>
-        </form>
+            <div v-if="successMessage" class="custom-signup-success-box">
+              {{ successMessage }}
+            </div>
 
-        <form v-else class="custom-signup-form custom-signup-verification-form" @submit.prevent="handleVerifyEmail">
-          <p class="custom-signup-verification-copy">
-            Clerk sent a verification code to <strong>{{ formData.fitEmailAddress }}</strong>.
-          </p>
+            <button
+              type="submit"
+              class="custom-signup-submit"
+              :disabled="isLoading"
+            >
+              {{ isLoading ? 'Creating account...' : 'Create account' }}
+            </button>
+          </form>
 
-          <div class="custom-signup-row">
-            <label for="verificationCode">Verification Code:</label>
-            <input
-              id="verificationCode"
-              v-model.trim="verificationCode"
-              type="text"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              required
-            />
-          </div>
+          <form v-else class="custom-signup-form custom-signup-verification-form" @submit.prevent="handleVerifyEmail">
+            <p class="custom-signup-verification-copy">
+              Clerk sent a verification code to <strong>{{ formData.fitEmailAddress }}</strong>.
+            </p>
 
-          <div v-if="firstErrorMessage" class="custom-signup-error-box">
-            {{ firstErrorMessage }}
-          </div>
+            <div class="custom-signup-row custom-signup-row-wide">
+              <label for="verificationCode">Verification Code</label>
+              <input
+                id="verificationCode"
+                v-model.trim="verificationCode"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                required
+              />
+            </div>
 
-          <div v-if="successMessage" class="custom-signup-success-box">
-            {{ successMessage }}
-          </div>
+            <div v-if="firstErrorMessage" class="custom-signup-error-box">
+              {{ firstErrorMessage }}
+            </div>
 
-          <button
-            type="submit"
-            class="custom-signup-submit"
-            :disabled="isLoading"
-          >
-            {{ isLoading ? 'Verifying...' : 'Verify Email' }}
-          </button>
+            <div v-if="successMessage" class="custom-signup-success-box">
+              {{ successMessage }}
+            </div>
 
-          <button type="button" class="custom-signup-secondary-action" @click="awaitingVerification = false">
-            Edit registration details
-          </button>
-        </form>
+            <button
+              type="submit"
+              class="custom-signup-submit"
+              :disabled="isLoading"
+            >
+              {{ isLoading ? 'Verifying...' : 'Verify email' }}
+            </button>
 
-        <router-link class="custom-signup-back-link" to="/clerk-login">
-          Back to Login
-        </router-link>
+            <button type="button" class="custom-signup-secondary-action" @click="awaitingVerification = false">
+              Edit registration details
+            </button>
+          </form>
+
+          <router-link class="custom-signup-back-link" to="/clerk-login">
+            Already have an account? Sign in
+          </router-link>
+        </div>
       </div>
 
       <footer class="custom-signup-page-footer">
@@ -215,20 +260,16 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useSignUp } from '@clerk/vue';
-import { isAdminEmail } from '@/modules/authentication/utils/roleUtils.js';
-
 const router = useRouter();
-const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
 
 const formData = ref({
-  accountType: 'Admin',
+  accountType: 'User',
   lastName: '',
   firstName: '',
   idNumber: '',
   fitEmailAddress: '',
   department: '',
-  role: 'FO Admin',
+  role: 'Student',
   password: '',
   confirmPassword: '',
   acceptTerms: false,
@@ -239,18 +280,37 @@ const isLoading = ref(false);
 const successMessage = ref('');
 const awaitingVerification = ref(false);
 const verificationCode = ref('');
+const signupRequestCreated = ref(false);
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
+
+function isValidName(value) {
+  return /^[A-Za-z][A-Za-z .'-]*$/.test(value.trim());
+}
+
+function isFitEmail(value) {
+  return /^[^\s@]+@fit\.edu\.ph$/i.test(value.trim());
+}
+
+function isStrongPassword(value) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+}
 
 function validateForm() {
   errors.value = {};
 
   if (!formData.value.lastName.trim()) {
     errors.value.lastName = 'Last name is required.';
+  } else if (!isValidName(formData.value.lastName)) {
+    errors.value.lastName = 'Last name must contain letters only. Do not enter email, numbers, or symbols.';
   }
 
   if (!formData.value.firstName.trim()) {
     errors.value.firstName = 'First name is required.';
+  } else if (!isValidName(formData.value.firstName)) {
+    errors.value.firstName = 'First name must contain letters only. Do not enter email, numbers, or symbols.';
   }
 
   if (!formData.value.idNumber.trim()) {
@@ -259,16 +319,18 @@ function validateForm() {
 
   if (!formData.value.fitEmailAddress.trim()) {
     errors.value.fitEmailAddress = 'FIT email address is required.';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.fitEmailAddress)) {
-    errors.value.fitEmailAddress = 'Please enter a valid FIT email address.';
+  } else if (!isFitEmail(formData.value.fitEmailAddress)) {
+    errors.value.fitEmailAddress = 'Please use your official @fit.edu.ph email address.';
   }
 
   if (!formData.value.department.trim()) {
     errors.value.department = 'Department is required.';
   }
 
-  if (formData.value.password.length < 8) {
-    errors.value.password = 'Password must be at least 8 characters.';
+  if (!formData.value.password) {
+    errors.value.password = 'Password is required.';
+  } else if (!isStrongPassword(formData.value.password)) {
+    errors.value.password = 'Password must be at least 8 characters and include uppercase letters, lowercase letters, and numbers.';
   }
 
   if (formData.value.password !== formData.value.confirmPassword) {
@@ -282,69 +344,34 @@ function validateForm() {
   return Object.keys(errors.value).length === 0;
 }
 
-function getClerkErrorMessage(error) {
-  return error?.errors?.[0]?.longMessage
-    || error?.errors?.[0]?.message
-    || error?.message
-    || 'Unable to complete Clerk sign up. Please try again.';
-}
-
-function getRoleDesignation() {
-  if (isAdminEmail(formData.value.fitEmailAddress)) return 'ROLE_ADMIN';
-  return formData.value.accountType === 'Admin' ? 'ROLE_ADMIN' : 'ROLE_BORROWER';
-}
-
-async function registerBackendAccount(clerkUserId) {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/register`, {
+async function createSignupRequest() {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/signup-requests`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      clerkUserId,
       firstName: formData.value.firstName.trim(),
       lastName: formData.value.lastName.trim(),
       emailAddress: formData.value.fitEmailAddress.trim(),
-      role: getRoleDesignation(),
       idNumber: formData.value.idNumber.trim(),
-      contactNumber: formData.value.idNumber.trim(),
       department: formData.value.department.trim(),
+      role: formData.value.role,
+      passwordText: formData.value.password,
+      confirmPasswordText: formData.value.confirmPassword,
+      acceptedPrivacy: formData.value.acceptTerms,
     }),
   });
 
   const result = await response.json().catch(() => ({}));
-
-  if (!response.ok && response.status !== 409) {
-    throw new Error(result.errorMessage || 'Clerk account was created, but backend registration failed.');
-  }
-}
-
-async function completeRegistration(signUpAttempt) {
-  const clerkUserId = signUpAttempt?.createdUserId || signUp.value?.createdUserId;
-
-  if (signUpAttempt?.createdSessionId && setActive.value) {
-    await setActive.value({ session: signUpAttempt.createdSessionId });
+  if (!response.ok) {
+    throw new Error(result.errorMessage || result.message || 'Unable to submit signup request.');
   }
 
-  if (!clerkUserId) {
-    throw new Error('Clerk did not return a user ID for this registration.');
-  }
-
-  await registerBackendAccount(clerkUserId);
-  successMessage.value = 'Clerk account created. Your access is pending administrator approval.';
-
-  setTimeout(() => {
-    router.push('/request-pending');
-  }, 1200);
+  signupRequestCreated.value = true;
+  return result.data;
 }
 
 async function handleSignUp() {
   if (!validateForm()) {
-    return;
-  }
-
-  if (!signUpLoaded.value || !signUp.value) {
-    errors.value.submit = 'Clerk is still loading. Please try again.';
     return;
   }
 
@@ -353,65 +380,23 @@ async function handleSignUp() {
   successMessage.value = '';
 
   try {
-    const signUpAttempt = await signUp.value.create({
-      emailAddress: formData.value.fitEmailAddress.trim(),
-      password: formData.value.password,
-      firstName: formData.value.firstName.trim(),
-      lastName: formData.value.lastName.trim(),
-      unsafeMetadata: {
-        accountType: formData.value.accountType,
-        idNumber: formData.value.idNumber.trim(),
-        department: formData.value.department.trim(),
-        role: formData.value.role,
-        roleDesignation: getRoleDesignation(),
-      },
-    });
-
-    if (signUpAttempt.status === 'complete') {
-      await completeRegistration(signUpAttempt);
-      return;
+    if (!signupRequestCreated.value) {
+      await createSignupRequest();
     }
 
-    await signUp.value.prepareEmailAddressVerification({ strategy: 'email_code' });
-    awaitingVerification.value = true;
-    successMessage.value = 'Enter the verification code Clerk sent to your email.';
+    successMessage.value = 'Your request was submitted. Please wait for an administrator to send your Clerk invitation.';
+    setTimeout(() => {
+      router.push('/request-pending');
+    }, 1200);
   } catch (error) {
-    errors.value.submit = getClerkErrorMessage(error);
+    errors.value.submit = error?.message || 'Unable to submit signup request. Please try again.';
   } finally {
     isLoading.value = false;
   }
 }
 
 async function handleVerifyEmail() {
-  if (!verificationCode.value) {
-    errors.value.verificationCode = 'Verification code is required.';
-    return;
-  }
-
-  if (!signUpLoaded.value || !signUp.value) {
-    errors.value.submit = 'Clerk is still loading. Please try again.';
-    return;
-  }
-
-  isLoading.value = true;
-  errors.value = {};
-
-  try {
-    const signUpAttempt = await signUp.value.attemptEmailAddressVerification({
-      code: verificationCode.value,
-    });
-
-    if (signUpAttempt.status !== 'complete') {
-      errors.value.submit = 'Email verification is incomplete. Please check the code and try again.';
-      return;
-    }
-
-    await completeRegistration(signUpAttempt);
-  } catch (error) {
-    errors.value.submit = getClerkErrorMessage(error);
-  } finally {
-    isLoading.value = false;
-  }
+  errors.value.submit = 'Please use the Clerk invitation email sent by the administrator.';
 }
 </script>
 
@@ -421,7 +406,7 @@ async function handleVerifyEmail() {
   min-height: 100vh;
   width: 100%;
   overflow: hidden;
-  background: #efefef;
+  background: #f4f6f3;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
@@ -430,9 +415,9 @@ async function handleVerifyEmail() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52%;
+  width: 46%;
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(4, 115, 68, 0.97), rgba(13, 151, 84, 0.94));
+  background: #064b33;
   overflow: hidden;
 }
 
@@ -451,18 +436,19 @@ async function handleVerifyEmail() {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(rgba(4, 129, 76, 0.84), rgba(4, 129, 76, 0.84));
+  background:
+    linear-gradient(135deg, rgba(3, 70, 47, 0.96), rgba(8, 120, 74, 0.82)),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.28), transparent 55%);
 }
 
 .custom-signup-branding-panel::after {
   content: '';
   position: absolute;
-  top: 3.5%;
-  right: 37%;
-  width: 1px;
-  height: 88%;
-  background: rgba(0, 0, 0, 0.14);
-  box-shadow: 1px 0 rgba(255, 255, 255, 0.08);
+  right: 0;
+  top: 0;
+  width: 18%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.18));
   z-index: 2;
 }
 
@@ -471,25 +457,30 @@ async function handleVerifyEmail() {
   z-index: 3;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  width: min(78%, 520px);
+  min-height: 72vh;
+  color: #ffffff;
+}
+
+.custom-signup-brand-mark {
+  display: flex;
   align-items: center;
-  width: min(78%, 460px);
-  text-align: center;
+  gap: 1rem;
 }
 
 .custom-signup-logo {
-  width: clamp(190px, 19vw, 260px);
-  height: clamp(190px, 19vw, 260px);
+  width: 82px;
+  height: 82px;
   object-fit: contain;
-  margin-bottom: 1.15rem;
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.34));
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.28));
 }
 
 .custom-signup-brand-title {
-  margin: 0 0 2.3rem;
-  font-size: clamp(2.6rem, 4.3vw, 4.15rem);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  margin: 0;
+  font-size: clamp(2.15rem, 4vw, 3.65rem);
+  font-weight: 900;
+  line-height: 1;
 }
 
 .custom-signup-brand-tech {
@@ -500,26 +491,34 @@ async function handleVerifyEmail() {
   color: #ffc21a;
 }
 
-.custom-signup-brand-subtitle {
-  max-width: 420px;
-  margin: 0 0 1.5rem;
-  color: #ffffff;
-  font-size: clamp(1rem, 1.35vw, 1.25rem);
+.custom-signup-brand-copy {
+  max-width: 500px;
+}
+
+.custom-signup-kicker {
+  margin: 0 0 0.75rem;
+  color: #c9f7de;
+  font-size: 0.78rem;
   font-weight: 800;
-  line-height: 1.25;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.custom-signup-brand-subtitle {
+  max-width: 500px;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 4rem);
+  font-weight: 900;
+  line-height: 0.98;
 }
 
 .custom-signup-brand-description {
-  max-width: 410px;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: clamp(0.72rem, 0.95vw, 0.9rem);
-  line-height: 1.35;
-}
-
-.custom-signup-brand-description strong {
-  color: #ffffff;
-  font-weight: 800;
+  max-width: 430px;
+  margin: 1.4rem 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.98rem;
+  line-height: 1.65;
 }
 
 .custom-signup-form-panel {
@@ -528,20 +527,22 @@ async function handleVerifyEmail() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 48%;
+  width: 54%;
   min-height: 100vh;
-  padding: 2rem 1rem 5.5rem;
-  background: #eeeeee;
+  padding: 2rem 2rem 5rem;
+  background:
+    radial-gradient(circle at top right, rgba(8, 120, 74, 0.09), transparent 34%),
+    #f5f6f4;
   overflow: hidden;
 }
 
 .custom-signup-watermark {
   position: absolute;
   top: -7%;
-  right: -31%;
-  width: min(78vw, 760px);
+  right: -28%;
+  width: min(64vw, 660px);
   max-width: none;
-  opacity: 0.12;
+  opacity: 0.07;
   pointer-events: none;
   user-select: none;
   z-index: 0;
@@ -550,111 +551,181 @@ async function handleVerifyEmail() {
 .custom-signup-form-content {
   position: relative;
   z-index: 1;
-  width: min(100%, 520px);
-  margin-left: 1.5rem;
+  width: min(100%, 700px);
+}
+
+.custom-signup-card {
+  width: 100%;
+  max-height: calc(100vh - 7rem);
+  overflow: auto;
+  padding: clamp(1.35rem, 2.5vw, 2rem);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.custom-signup-card-header {
+  margin-bottom: 1.2rem;
+}
+
+.custom-signup-card-kicker {
+  margin: 0 0 0.5rem;
+  color: #08784a;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .custom-signup-heading {
-  margin: 0 0 1.5rem;
-  color: #050505;
-  font-size: clamp(1.9rem, 2.7vw, 2.5rem);
+  margin: 0;
+  color: #111827;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
   font-weight: 900;
-  line-height: 1;
-  text-align: center;
+  line-height: 1.05;
+}
+
+.custom-signup-card-copy {
+  margin: 0.55rem 0 0;
+  color: #6b7280;
+  font-size: 0.94rem;
+  line-height: 1.5;
 }
 
 .custom-signup-form {
   display: flex;
   flex-direction: column;
-  gap: 0.56rem;
+  gap: 0.9rem;
+}
+
+.custom-signup-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
 .custom-signup-row {
-  display: grid;
-  grid-template-columns: 230px minmax(190px, 1fr);
-  align-items: end;
-  column-gap: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.custom-signup-row-wide {
+  grid-column: 1 / -1;
 }
 
 .custom-signup-row label {
-  color: #050505;
-  font-size: clamp(1rem, 1.2vw, 1.18rem);
-  font-weight: 900;
-  line-height: 1.08;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .custom-signup-row input,
 .custom-signup-select {
   width: 100%;
-  min-height: 28px;
-  border: 0;
+  min-height: 42px;
+  border: 1px solid #d6ddd8;
+  border-radius: 10px;
   outline: none;
-  background: transparent;
-  color: #050505;
+  background: #ffffff;
+  color: #111827;
   font-size: 0.9rem;
-  font-weight: 900;
-  text-align: right;
+  font-weight: 700;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .custom-signup-row input {
-  padding: 0 0.25rem 0.15rem;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.6);
+  padding: 0 0.85rem;
 }
 
-.custom-signup-row input:focus {
-  border-bottom-color: #06894f;
+.custom-signup-password-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-signup-password-control input {
+  padding-right: 2.75rem;
+}
+
+.custom-signup-password-toggle {
+  position: absolute;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.custom-signup-password-toggle:hover,
+.custom-signup-password-toggle:focus-visible {
+  color: #08784a;
+  background: rgba(8, 120, 74, 0.08);
+  outline: none;
+}
+
+.custom-signup-password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.custom-signup-row input:focus,
+.custom-signup-select:focus {
+  border-color: #08784a;
+  box-shadow: 0 0 0 3px rgba(8, 120, 74, 0.12);
 }
 
 .custom-signup-select {
-  justify-self: end;
-  width: min(100%, 180px);
-  height: 30px;
-  padding: 0 0.9rem 0 1rem;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.08);
-  text-align: center;
+  padding: 0 0.85rem;
   cursor: pointer;
 }
 
 .custom-signup-confirmation {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  max-width: 460px;
-  margin: 1.35rem auto 0.1rem;
-  color: #050505;
-  font-size: clamp(0.7rem, 0.85vw, 0.8rem);
-  font-weight: 900;
-  line-height: 1.15;
+  gap: 0.7rem;
+  margin: 0.1rem 0 0;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
   cursor: pointer;
 }
 
 .custom-signup-confirmation input {
   flex: 0 0 auto;
-  width: 21px;
-  height: 21px;
-  margin-top: 0.05rem;
-  accent-color: #06894f;
+  width: 18px;
+  height: 18px;
+  margin-top: 0.1rem;
+  accent-color: #08784a;
   cursor: pointer;
 }
 
 .custom-signup-submit {
-  min-height: 34px;
-  width: 180px;
-  margin: 0.75rem auto 0;
+  min-height: 44px;
+  width: 100%;
+  margin: 0.1rem 0 0;
   border: 0;
-  border-radius: 999px;
-  background: #06894f;
+  border-radius: 10px;
+  background: #08784a;
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 900;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.18s ease, transform 0.1s ease;
 }
 
 .custom-signup-submit:hover:not(:disabled) {
-  background: #047342;
+  background: #05613d;
 }
 
 .custom-signup-submit:active:not(:disabled) {
@@ -668,10 +739,10 @@ async function handleVerifyEmail() {
 
 .custom-signup-secondary-action {
   width: fit-content;
-  margin: 0.65rem auto 0;
+  margin: 0 auto;
   border: 0;
   background: transparent;
-  color: #06894f;
+  color: #08784a;
   font-size: 0.85rem;
   font-weight: 900;
   cursor: pointer;
@@ -686,21 +757,19 @@ async function handleVerifyEmail() {
 }
 
 .custom-signup-verification-copy {
-  max-width: 420px;
-  margin: 0 auto 0.25rem;
-  color: #050505;
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1.35;
-  text-align: center;
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .custom-signup-back-link {
   display: block;
   width: fit-content;
-  margin: 1.05rem auto 0;
-  color: #06894f;
-  font-size: 1.1rem;
+  margin: 1rem auto 0;
+  color: #08784a;
+  font-size: 0.9rem;
   font-weight: 900;
   text-align: center;
   text-decoration: none;
@@ -712,13 +781,11 @@ async function handleVerifyEmail() {
 
 .custom-signup-error-box,
 .custom-signup-success-box {
-  max-width: 420px;
-  margin: 0.4rem auto 0;
-  padding: 0.55rem 0.85rem;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
   border-radius: 10px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  text-align: center;
 }
 
 .custom-signup-error-box {
@@ -735,13 +802,13 @@ async function handleVerifyEmail() {
 
 .custom-signup-page-footer {
   position: absolute;
-  bottom: 4.6rem;
+  bottom: 2rem;
   z-index: 1;
   width: 100%;
   text-align: center;
-  color: #878787;
-  font-size: clamp(0.66rem, 0.9vw, 0.78rem);
-  letter-spacing: 0.01em;
+  color: #7a827d;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -751,16 +818,12 @@ async function handleVerifyEmail() {
     width: 50%;
   }
 
-  .custom-signup-form-content {
-    margin-left: 0;
-  }
-
-  .custom-signup-row {
-    grid-template-columns: 190px minmax(165px, 1fr);
+  .custom-signup-field-grid {
+    grid-template-columns: 1fr;
   }
 
   .custom-signup-page-footer {
-    bottom: 2.25rem;
+    bottom: 1.35rem;
   }
 }
 
@@ -772,38 +835,42 @@ async function handleVerifyEmail() {
 
   .custom-signup-branding-panel {
     width: 100%;
-    min-height: 34vh;
-    padding: 2rem 1rem;
+    min-height: 36vh;
+    padding: 2rem 1.25rem;
   }
 
   .custom-signup-branding-panel::after {
     display: none;
   }
 
+  .custom-signup-branding-content {
+    width: min(100%, 520px);
+    min-height: auto;
+    gap: 2rem;
+  }
+
   .custom-signup-logo {
-    width: 105px;
-    height: 105px;
-    margin-bottom: 0.5rem;
+    width: 62px;
+    height: 62px;
   }
 
   .custom-signup-brand-title {
-    margin-bottom: 0.75rem;
     font-size: 2rem;
   }
 
   .custom-signup-brand-subtitle {
-    margin-bottom: 0;
-    font-size: 0.88rem;
+    font-size: 1.85rem;
   }
 
   .custom-signup-brand-description {
-    display: none;
+    margin-top: 0.85rem;
+    font-size: 0.9rem;
   }
 
   .custom-signup-form-panel {
     width: 100%;
-    min-height: 66vh;
-    padding: 2rem 1.25rem 5rem;
+    min-height: 64vh;
+    padding: 1.25rem 1rem 4rem;
   }
 
   .custom-signup-watermark {
@@ -811,23 +878,10 @@ async function handleVerifyEmail() {
     width: 420px;
   }
 
-  .custom-signup-row {
-    grid-template-columns: 1fr;
-    gap: 0.25rem;
-  }
-
-  .custom-signup-row input,
-  .custom-signup-select {
-    text-align: left;
-  }
-
-  .custom-signup-select {
-    justify-self: stretch;
-    width: 100%;
-  }
-
-  .custom-signup-submit {
-    width: 100%;
+  .custom-signup-card {
+    max-height: none;
+    padding: 1.25rem;
+    border-radius: 14px;
   }
 
   .custom-signup-page-footer {

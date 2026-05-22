@@ -17,6 +17,22 @@ const { isLoaded, isSignedIn, user } = useUser();
 const { getToken } = useAuth();
 const authStore = useAuthenticationStore();
 
+function resolveBackendAccountStatus(account, fallbackRole) {
+  if (account?.isActive === false || String(account?.status || '').toLowerCase() === 'disabled') {
+    return 'disabled';
+  }
+
+  if (account?.isApproved === true || ['approved', 'active', 'verified'].includes(String(account?.status || '').toLowerCase())) {
+    return 'approved';
+  }
+
+  if (fallbackRole === 'ROLE_ADMIN') {
+    return 'approved';
+  }
+
+  return 'pending';
+}
+
 async function ensureBackendAccount(clerkUser, roleDesignation, token) {
   try {
     const headers = {
@@ -45,8 +61,12 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
       const responseText = await response.text();
       throw new Error(`Backend account registration failed with ${response.status}: ${responseText}`);
     }
+
+    const result = await response.json().catch(() => ({}));
+    return result?.data?.account ?? null;
   } catch (error) {
     console.error('[PostLogin] Failed to ensure backend account:', error);
+    return null;
   }
 }
 
@@ -63,20 +83,26 @@ async function routeAfterLogin() {
   const emailAddress = user.value.primaryEmailAddress?.emailAddress || '';
   const roleDesignation = resolveRole(user.value.publicMetadata?.role, emailAddress);
 
-  await ensureBackendAccount(user.value, roleDesignation, token);
+  const backendAccount = await ensureBackendAccount(user.value, roleDesignation, token);
 
   authStore.setClerkAuth(token, {
-    accountIdentifier: user.value.id,
+    ...backendAccount,
+    accountIdentifier: backendAccount?.accountIdentifier || user.value.id,
+    clerkUserId: user.value.id,
     firstName: user.value.firstName || '',
     lastName: user.value.lastName || '',
     emailAddress,
-    roleDesignation,
+    roleDesignation: backendAccount?.roleDesignation || roleDesignation,
     contactNumber: user.value.publicMetadata?.contactNumber || '',
-    isActive: true,
+    status: resolveBackendAccountStatus(backendAccount, roleDesignation),
+    isApproved: backendAccount?.isApproved ?? roleDesignation === 'ROLE_ADMIN',
+    isActive: backendAccount?.isActive ?? true,
     authProvider: 'clerk',
   });
 
-  if (authStore.userRole === 'ROLE_ADMIN') {
+  if (authStore.clerkAccountStatus === 'pending') {
+    router.replace({ name: 'requestPendingPage' });
+  } else if (authStore.userRole === 'ROLE_ADMIN') {
     router.replace({ name: 'adminDashboardPage' });
   } else {
     router.replace({ name: 'borrowerMyReservationsPage' });

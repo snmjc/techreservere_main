@@ -37,6 +37,7 @@ services:
       CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
       CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
+      MAILER_DSN: "${MAILER_DSN:-null://null}"
     depends_on:
       database:
         condition: service_healthy

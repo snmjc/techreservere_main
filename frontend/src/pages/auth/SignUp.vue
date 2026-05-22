@@ -17,32 +17,9 @@
       </div>
     </div>
 
-<<<<<<< HEAD
-    <!-- Right Panel: Clerk Sign Up -->
-    <section class="signup-page-form-panel">
-      <img
-        src="@/assets/FEU_Tech_official_seal.png"
-        alt="FEU Tech Seal Watermark"
-        class="signup-page-form-watermark"
-      />
-      <div class="signup-page-form-content">
-        <div class="clerk-signup-container">
-          <h2 class="signup-form-heading">Sign Up</h2>
-          
-          <div class="clerk-signup-wrapper">
-            <SignUp 
-              path="/signup"
-              routing="path"
-              :signInUrl="signInUrl"
-              :forceRedirectUrl="afterSignUpUrl"
-              :fallbackRedirectUrl="afterSignUpUrl"
-            />
-          </div>
-=======
     <!-- Right Panel - Registration Form -->
     <div class="right-panel">
       <img src="@/assets/FEU_Tech_official_seal.png" alt="FEU Tech Seal" class="seal-watermark" />
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 
       <div class="right-content">
 
@@ -167,14 +144,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-<<<<<<< HEAD
-import { SignUp } from '@clerk/vue';
-import { useUser, useAuth } from '@clerk/vue';
-import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
-import './css/SignUp.css';
-=======
 import { useSignUp, useAuth } from '@clerk/vue';
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 
 const router = useRouter();
 const { signUp, isLoaded } = useSignUp();
@@ -185,29 +155,6 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 const verificationCode = ref('');
 
-<<<<<<< HEAD
-// Watch for successful sign-up and save user data to backend
-const saveUserToBackend = async () => {
-  if (user.value) {
-    try {
-      const token = await getClerkToken(getToken);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          clerkUserId: user.value.id,
-          firstName: user.value.firstName || '',
-          lastName: user.value.lastName || '',
-          emailAddress: user.value.primaryEmailAddress?.emailAddress || '',
-          role: 'ROLE_BORROWER',
-          contactNumber: user.value.primaryPhoneNumber?.phoneNumber || '',
-        }),
-      });
-=======
 const form = ref({
   lastName: '',
   firstName: '',
@@ -220,7 +167,6 @@ const form = ref({
   agreed: false,
   file: null,
 });
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
 
 function handleFileChange(event) {
   const file = event.target.files[0];
@@ -332,9 +278,6 @@ async function saveToPostgres(clerkUserId) {
 function navigateToLogin() {
   router.push({ name: 'clerkLoginPage' });
 }
-<<<<<<< HEAD
-</script>
-=======
 </script>
 
 <style scoped>
@@ -694,4 +637,3 @@ function navigateToLogin() {
   .seal-watermark { width: 320px; height: 320px; }
 }
 </style>
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779

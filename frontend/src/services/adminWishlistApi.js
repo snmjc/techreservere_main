@@ -55,7 +55,10 @@ async function parseResponse(response) {
   if (!response.ok) {
     return {
       success: false,
+      status: response.status,
+      errorType: result.errorType || result.type || '',
       error: result.errorMessage || result.message || 'Request failed.',
+      data: result.data ?? null,
     };
   }
   return {
@@ -77,11 +80,12 @@ export const adminWishlistApi = {
     }
   },
 
-  async verifyAccount(accountIdentifier, token) {
+  async verifyAccount(accountIdentifier, token, payload = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/users/${accountIdentifier}/approve`, {
         method: 'POST',
         headers: buildHeaders(token, true),
+        body: JSON.stringify(payload),
       });
       return parseResponse(response);
     } catch (error) {
@@ -104,6 +108,32 @@ export const adminWishlistApi = {
   async createAdminAccount(accountPayload, token) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/admin-accounts`, {
+        method: 'POST',
+        headers: buildHeaders(token, true),
+        body: JSON.stringify(accountPayload),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async createUserAccount(accountPayload, token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/user-accounts`, {
+        method: 'POST',
+        headers: buildHeaders(token, true),
+        body: JSON.stringify(accountPayload),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async createEmployeeAccount(accountPayload, token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/employee-accounts`, {
         method: 'POST',
         headers: buildHeaders(token, true),
         body: JSON.stringify(accountPayload),

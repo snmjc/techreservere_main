@@ -4,6 +4,8 @@ namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\Repository\AccountRepository;
 use App\Shared\Traits\JsonResponseTrait;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -14,10 +16,12 @@ class AuthenticationController
     use JsonResponseTrait;
 
     private AccountRepository $accountRepository;
+    private Connection $connection;
 
-    public function __construct(AccountRepository $accountRepository)
+    public function __construct(AccountRepository $accountRepository, Connection $connection)
     {
         $this->accountRepository = $accountRepository;
+        $this->connection = $connection;
     }
 
     #[Route('/login', name: 'auth_login', methods: ['POST'])]
@@ -111,7 +115,7 @@ class AuthenticationController
     {
         try {
             // Handle both JSON and FormData
-            $contentType = $request->headers->get('Content-Type');
+            $contentType = $request->headers->get('Content-Type', '');
             
             if (strpos($contentType, 'application/json') !== false) {
                 $requestBody = json_decode($request->getContent(), true) ?? [];
@@ -153,23 +157,54 @@ class AuthenticationController
                 );
             }
 
-            $accountEntity = new \App\Domain\Account\Entity\AccountEntity();
-            $accountEntity->setFirstName($firstName);
-            $accountEntity->setLastName($lastName);
-            $accountEntity->setEmailAddress($emailAddress);
-            $accountEntity->setPasswordHash(password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]));
-            $accountEntity->setRoleDesignation('ROLE_BORROWER');
+            $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+            $passwordHash = password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]);
 
-            $this->accountRepository->persistAccount($accountEntity);
+            $this->connection->executeStatement(
+                'INSERT INTO accounts
+                    (last_name, first_name, email_address, password_hash, role_designation,
+                     status, is_approved, is_active, failed_login_attempts, created_timestamp, updated_timestamp)
+                 VALUES
+                    (:lastName, :firstName, :emailAddress, :passwordHash, :roleDesignation,
+                     :status, :isApproved, :isActive, :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
+                [
+                    'lastName' => $lastName,
+                    'firstName' => $firstName,
+                    'emailAddress' => $emailAddress,
+                    'passwordHash' => $passwordHash,
+                    'roleDesignation' => 'ROLE_BORROWER',
+                    'status' => 'pending',
+                    'isApproved' => false,
+                    'isActive' => true,
+                    'failedLoginAttempts' => 0,
+                    'createdTimestamp' => $now,
+                    'updatedTimestamp' => $now,
+                ],
+                [
+                    'lastName' => ParameterType::STRING,
+                    'firstName' => ParameterType::STRING,
+                    'emailAddress' => ParameterType::STRING,
+                    'passwordHash' => ParameterType::STRING,
+                    'roleDesignation' => ParameterType::STRING,
+                    'status' => ParameterType::STRING,
+                    'isApproved' => ParameterType::BOOLEAN,
+                    'isActive' => ParameterType::BOOLEAN,
+                    'failedLoginAttempts' => ParameterType::INTEGER,
+                    'createdTimestamp' => ParameterType::STRING,
+                    'updatedTimestamp' => ParameterType::STRING,
+                ]
+            );
+
+            $accountIdentifier = (int)$this->connection->lastInsertId();
 
             return $this->createSuccessResponse([
                 'message' => 'Account registered successfully.',
                 'account' => [
-                    'accountIdentifier' => $accountEntity->getAccountIdentifier(),
-                    'firstName' => $accountEntity->getFirstName(),
-                    'lastName' => $accountEntity->getLastName(),
-                    'emailAddress' => $accountEntity->getEmailAddress(),
-                    'roleDesignation' => $accountEntity->getRoleDesignation(),
+                    'accountIdentifier' => $accountIdentifier,
+                    'firstName' => $firstName,
+                    'lastName' => $lastName,
+                    'emailAddress' => $emailAddress,
+                    'roleDesignation' => 'ROLE_BORROWER',
                 ],
             ], 201);
         } catch (\Exception $exception) {

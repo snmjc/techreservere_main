@@ -283,10 +283,19 @@ const settingsTabs = [
   { label: 'Preferences', value: 'preferences' }
 ];
 
-const formData = ref({
-  fullName: 'Farah Kenawy',
-  email: 'fakenawy@feu.edu.ph',
-  phone: '0959 565 7777'
+const currentAccount = computed(() => authStore.accountData || authStore.clerkAccountData || {});
+
+const formData = computed(() => {
+  const account = currentAccount.value;
+  const firstName = String(account.firstName || '').trim();
+  const lastName = String(account.lastName || '').trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(' ');
+
+  return {
+    fullName: fullName || 'Account User',
+    email: account.emailAddress || account.email || 'No email address',
+    phone: account.contactNumber || account.phone || 'No phone number',
+  };
 });
 
 const userRole = computed(() => {

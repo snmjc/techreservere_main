@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -119,11 +120,37 @@ class CreateAdminCommand extends Command
                     (last_name, first_name, email_address, role_designation, department,
                      clerk_user_id, status, is_approved, is_active,
                      failed_login_attempts, created_timestamp, updated_timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                 VALUES
+                    (:lastName, :firstName, :emailAddress, :roleDesignation, :department,
+                     :clerkUserId, :status, :isApproved, :isActive,
+                     :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 [
-                    $lastName, $firstName, $email, 'ROLE_ADMIN', $department,
-                    $clerkUserId, 'approved', true, true,
-                    0, $now, $now,
+                    'lastName' => $lastName,
+                    'firstName' => $firstName,
+                    'emailAddress' => $email,
+                    'roleDesignation' => 'ROLE_ADMIN',
+                    'department' => $department,
+                    'clerkUserId' => $clerkUserId,
+                    'status' => 'approved',
+                    'isApproved' => true,
+                    'isActive' => true,
+                    'failedLoginAttempts' => 0,
+                    'createdTimestamp' => $now,
+                    'updatedTimestamp' => $now,
+                ],
+                [
+                    'lastName' => ParameterType::STRING,
+                    'firstName' => ParameterType::STRING,
+                    'emailAddress' => ParameterType::STRING,
+                    'roleDesignation' => ParameterType::STRING,
+                    'department' => ParameterType::STRING,
+                    'clerkUserId' => ParameterType::STRING,
+                    'status' => ParameterType::STRING,
+                    'isApproved' => ParameterType::BOOLEAN,
+                    'isActive' => ParameterType::BOOLEAN,
+                    'failedLoginAttempts' => ParameterType::INTEGER,
+                    'createdTimestamp' => ParameterType::STRING,
+                    'updatedTimestamp' => ParameterType::STRING,
                 ]
             );
 

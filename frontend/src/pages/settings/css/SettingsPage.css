@@ -2,13 +2,11 @@
 .settings-page {
   padding: 0;
   background-color: transparent;
-  margin-left: 240px;
-  margin-top: 56px;
-  min-height: calc(100vh - 56px);
+  margin: 0;
+  min-height: auto;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 2rem;
 }
 
 .settings-wrapper {
@@ -19,14 +17,14 @@
 }
 
 .settings-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .settings-header h1 {
   font-size: 1.75rem;
   font-weight: 700;
   color: #333;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.25rem 0;
 }
 
 .settings-tabs {
@@ -422,8 +420,7 @@ input:checked + .slider:before {
 
 @media (max-width: 768px) {
   .settings-page {
-    padding: 1rem;
-    margin-left: 0;
+    padding: 0;
   }
 
   .profile-section {

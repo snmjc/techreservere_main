@@ -16,13 +16,19 @@ trait JsonResponseTrait
         return $response;
     }
 
-    protected function createErrorResponse(string $errorType, string $errorMessage, int $statusCode = 400): JsonResponse
+    protected function createErrorResponse(string $errorType, string $errorMessage, int $statusCode = 400, array $data = []): JsonResponse
     {
-        $response = new JsonResponse([
+        $payload = [
             'success' => false,
             'errorType' => $errorType,
             'errorMessage' => $errorMessage
-        ], $statusCode);
+        ];
+
+        if ($data !== []) {
+            $payload['data'] = $data;
+        }
+
+        $response = new JsonResponse($payload, $statusCode);
         $this->addCorsHeaders($response);
         return $response;
     }
@@ -30,7 +36,7 @@ trait JsonResponseTrait
     protected function addCorsHeaders(JsonResponse $response): void
     {
         $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
 }

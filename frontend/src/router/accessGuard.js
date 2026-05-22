@@ -22,9 +22,6 @@ export function evaluateRouteAccessGuard(toRoute) {
   const requiresAuth = toRoute.meta?.requiresAuth ?? false;
   const authStore = useAuthenticationStore();
 
-<<<<<<< HEAD
-  // If a Clerk-signed-in user hits the login route, push them to their default dashboard.
-=======
   const isSignedIn = authStore.clerkIsSignedIn;
   const accountStatus = authStore.clerkAccountStatus;
   const userRole = authStore.clerkUserRole;
@@ -33,7 +30,6 @@ export function evaluateRouteAccessGuard(toRoute) {
   console.log('[AccessGuard] Auth state:', { isSignedIn, accountStatus, userRole });
 
   // Public routes — allow access to login page even when signed in
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
   if (!requiresAuth) {
     // Only redirect from old login/signup pages, not clerkLoginPage
     const authPages = ['loginPage', 'signUpPage'];
@@ -54,44 +50,16 @@ export function evaluateRouteAccessGuard(toRoute) {
     return { name: 'clerkLoginPage' };
   }
 
-<<<<<<< HEAD
-  const allowedRoles = toRoute.meta?.allowedRoles ?? null;
-
-  if (allowedRoles !== null) {
-    const roleAllowed = allowedRoles.includes(authStore.userRole);
-
-    if (!roleAllowed) {
-      if (authStore.userRole === 'ROLE_ADMIN') {
-        return { name: 'adminDashboardPage' };
-      }
-      if (authStore.userRole === 'ROLE_BORROWER') {
-        return { name: 'borrowerMyReservationsPage' };
-      }
-      return { name: 'clerkLoginPage' };
-=======
   // Pending users can only access request-pending page
   if (accountStatus === 'pending') {
     if (toRoute.name !== 'requestPendingPage') {
       console.log('[AccessGuard] Pending user, redirecting to request-pending');
       return { name: 'requestPendingPage' };
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
     }
     console.log('[AccessGuard] Pending user allowed on request-pending');
     return true;
   }
 
-<<<<<<< HEAD
-  if (!canAccessRbac(authStore.userRole, toRoute.meta?.rbac)) {
-    if (authStore.userRole === 'ROLE_ADMIN') {
-      return { name: 'adminDashboardPage' };
-    }
-    if (authStore.userRole === 'ROLE_BORROWER') {
-      return { name: 'borrowerMyReservationsPage' };
-    }
-    return { name: 'clerkLoginPage' };
-  }
-
-=======
   // Rejected users go back to login
   if (accountStatus === 'rejected') {
     console.log('[AccessGuard] Rejected user, redirecting to login');
@@ -108,6 +76,5 @@ export function evaluateRouteAccessGuard(toRoute) {
   }
 
   console.log('[AccessGuard] Route allowed');
->>>>>>> bc882ef93b9a3d481a3bbd1e8f31f6f4ee910779
   return true;
 }
