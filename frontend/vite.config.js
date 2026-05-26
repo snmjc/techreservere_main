@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   // Load env variables from frontend directory
   const env = loadEnv(mode, path.resolve(__dirname), '');
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || apiBase || 'http://localhost:8000';
   const clerkSources = [
     'https://*.clerk.accounts.dev',
     'https://*.clerk.dev',
@@ -35,7 +36,7 @@ export default defineConfig(({ mode }) => {
       // Bind to all interfaces so the dev server is reachable from the host
       host: true,
       port: 5173,
-      allowedHosts: ['developers-tone-todd-nicole.trycloudflare.com'],
+      allowedHosts: ['provide-gourmet-technology-antiques.trycloudflare.com'],
       // Dev-only CSP: allows Vue/DevTools and some dependencies that use eval in development.
       // Remove/replace with a strict CSP for production builds.
       headers: {
@@ -62,10 +63,15 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy API requests to the backend to avoid CORS during local dev
         '/api': {
-          target: 'http://backend:8000',
+          target: apiProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (p) => p.replace(/^\/api/, '/api'),
+        },
+        '/health': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          secure: false,
         },
       },
     },

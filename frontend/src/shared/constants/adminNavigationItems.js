@@ -11,7 +11,7 @@ export const adminNavigationItems = [
   },
   {
     routeName: 'adminWishlistPage',
-    label: 'Wishlist',
+    label: 'Requests Hub',
     iconSvg: `<svg ${iconAttributes}><path d="M4 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z"/><path d="m8 10 2 2 5-5"/></svg>`,
   },
   {

@@ -74,7 +74,7 @@
 
 .admin-dashboard-stat-cards-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -88,6 +88,16 @@
   border: 1px solid var(--tr-border);
   border-radius: 8px;
   box-shadow: var(--tr-shadow);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.admin-dashboard-stat-card:hover,
+.admin-dashboard-stat-card:focus-visible {
+  border-color: rgba(8, 120, 74, 0.35);
+  box-shadow: 0 12px 28px rgba(20, 51, 41, 0.1);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .admin-dashboard-stat-icon {
@@ -134,6 +144,11 @@
 .admin-dashboard-stat-card--pending .admin-dashboard-stat-icon {
   color: #a16207;
   background: #fef3c7;
+}
+
+.admin-dashboard-stat-card--users .admin-dashboard-stat-icon {
+  color: #075985;
+  background: #e0f2fe;
 }
 
 .admin-dashboard-stat-card--approved .admin-dashboard-stat-icon {

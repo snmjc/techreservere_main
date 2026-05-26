@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 const AUTH_ACCOUNT_STORAGE_KEY = 'techreserve_auth_account';
 
 function createLocalBackendToken() {
@@ -45,7 +45,7 @@ async function parseResponse(response) {
 export const adminManageAccountsApi = {
   async getAccounts(token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/accounts`, {
+      const response = await fetch(apiUrl('/api/v1/accounts'), {
         method: 'GET',
         headers: buildHeaders(token),
       });
@@ -57,7 +57,7 @@ export const adminManageAccountsApi = {
 
   async updateAccount(accountIdentifier, accountPayload, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountIdentifier}/admin-details`, {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/admin-details`), {
         method: 'PUT',
         headers: buildHeaders(token, true),
         body: JSON.stringify(accountPayload),
@@ -70,7 +70,7 @@ export const adminManageAccountsApi = {
 
   async updateAccountAccess(accountIdentifier, isActive, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountIdentifier}/access`, {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/access`), {
         method: 'PATCH',
         headers: buildHeaders(token, true),
         body: JSON.stringify({ isActive }),
@@ -83,7 +83,7 @@ export const adminManageAccountsApi = {
 
   async deleteAccount(accountIdentifier, confirmEmail, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountIdentifier}`, {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}`), {
         method: 'DELETE',
         headers: buildHeaders(token, true),
         body: JSON.stringify({ confirmEmail }),

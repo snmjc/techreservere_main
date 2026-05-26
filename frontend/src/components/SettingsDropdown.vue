@@ -24,17 +24,39 @@
 
       <div class="dropdown-content">
         <router-link to="/settings/account" class="dropdown-item">
-          <span class="item-icon">A</span>
+          <span class="item-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21a8 8 0 0 0-16 0" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
           <span class="item-text">Account Settings</span>
         </router-link>
 
         <router-link to="/settings/security" class="dropdown-item">
-          <span class="item-icon">S</span>
+          <span class="item-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </span>
           <span class="item-text">Security</span>
         </router-link>
 
         <router-link to="/settings/preferences" class="dropdown-item">
-          <span class="item-icon">P</span>
+          <span class="item-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 21v-7" />
+              <path d="M4 10V3" />
+              <path d="M12 21v-9" />
+              <path d="M12 8V3" />
+              <path d="M20 21v-5" />
+              <path d="M20 12V3" />
+              <path d="M2 14h4" />
+              <path d="M10 8h4" />
+              <path d="M18 16h4" />
+            </svg>
+          </span>
           <span class="item-text">Preferences</span>
         </router-link>
       </div>
@@ -42,7 +64,13 @@
       <div class="dropdown-divider"></div>
 
       <button type="button" @click.prevent.stop="handleLogout" class="dropdown-item logout-item">
-        <span class="item-icon">L</span>
+        <span class="item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+        </span>
         <span class="item-text">Logout</span>
       </button>
     </div>
@@ -203,6 +231,13 @@ onUnmounted(() => {
   border-radius: 50%;
   font-size: 0.72rem;
   font-weight: 850;
+}
+
+.item-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .item-text {

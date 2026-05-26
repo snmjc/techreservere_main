@@ -88,15 +88,37 @@
           </div>
           <div class="my-reservations-action-list">
             <button type="button" @click="navigateToCreateReservation">
-              <span>+</span>
+              <span class="my-reservations-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+                  <path d="M14 2v6h6" />
+                  <path d="M12 11v6" />
+                  <path d="M9 14h6" />
+                </svg>
+              </span>
               Create new request
             </button>
             <button type="button" @click="navigateToViewReservationList">
-              <span>&gt;</span>
+              <span class="my-reservations-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="17" rx="2" />
+                  <path d="M8 2v4" />
+                  <path d="M16 2v4" />
+                  <path d="M3 10h18" />
+                  <path d="M8 15h5" />
+                  <path d="M8 18h8" />
+                </svg>
+              </span>
               View active reservations
             </button>
             <button type="button" @click="navigateToPastRecords">
-              <span>R</span>
+              <span class="my-reservations-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 12a9 9 0 1 0 3-6.7" />
+                  <path d="M3 3v6h6" />
+                  <path d="M12 7v5l4 2" />
+                </svg>
+              </span>
               Check past records
             </button>
           </div>

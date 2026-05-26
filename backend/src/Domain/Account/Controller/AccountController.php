@@ -216,10 +216,10 @@ class AccountController extends AbstractController
             $currentIsApproved
         );
 
-        if ($isActive && !$this->canActivateAccount($currentStatus, $currentIsApproved)) {
+        if ($isActive && !$this->canActivateAccount($currentStatus)) {
             return $this->createErrorResponse(
                 'AccountActionNotAllowed',
-                'Only disabled verified accounts can be activated.',
+                'Only disabled accounts can be activated.',
                 403,
                 ['actionRules' => $this->buildActionPermissions($currentStatus, $currentIsApproved)]
             );
@@ -234,20 +234,23 @@ class AccountController extends AbstractController
             );
         }
 
-        $nextStatus = $isActive ? 'approved' : ($currentIsApproved ? 'disabled' : 'pending');
+        $nextStatus = $isActive ? 'approved' : 'disabled';
+        $nextIsApproved = $isActive ? true : $currentIsApproved;
 
         $this->connection->executeStatement(
             'UPDATE accounts
-             SET is_active = :isActive, status = :status, updated_timestamp = :updatedTimestamp
+             SET is_active = :isActive, is_approved = :isApproved, status = :status, updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
                 'isActive' => $isActive,
+                'isApproved' => $nextIsApproved,
                 'status' => $nextStatus,
                 'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
             ],
             [
                 'isActive' => ParameterType::BOOLEAN,
+                'isApproved' => ParameterType::BOOLEAN,
                 'status' => ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'accountIdentifier' => ParameterType::INTEGER,
@@ -265,14 +268,14 @@ class AccountController extends AbstractController
     public function deleteAccount(int $accountIdentifier, Request $request): JsonResponse
     {
         $requestBody = json_decode($request->getContent(), true) ?? [];
-        $confirmEmail = strtolower(trim((string)($requestBody['confirmEmail'] ?? '')));
+        $confirmEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmEmail'] ?? ''));
         $account = $this->getAccountStateById($accountIdentifier);
 
         if (!$account) {
             return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
         }
 
-        $emailAddress = strtolower((string)($account['email_address'] ?? ''));
+        $emailAddress = $this->normalizeEmailForConfirmation((string)($account['email_address'] ?? ''));
         if ($confirmEmail === '' || $confirmEmail !== $emailAddress) {
             return $this->createErrorResponse('DeleteConfirmationFailed', 'Please type the exact email address to delete this account.', 422);
         }
@@ -393,6 +396,12 @@ class AccountController extends AbstractController
         return $normalized ?: RoleConstants::ROLE_BORROWER;
     }
 
+    private function normalizeEmailForConfirmation(string $emailAddress): string
+    {
+        $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
+        return strtolower(trim($normalizedEmailAddress));
+    }
+
     private function resolveRoleDesignationForAccountType(string $accountType, string $fallbackRoleDesignation): string
     {
         if (strcasecmp($accountType, 'Admin') === 0) {
@@ -450,7 +459,7 @@ class AccountController extends AbstractController
     private function getAccountStateById(int $accountIdentifier): ?array
     {
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, status, is_approved, is_active
+            'SELECT account_identifier, email_address, status, is_approved, is_active
              FROM accounts
              WHERE account_identifier = :accountIdentifier',
             ['accountIdentifier' => $accountIdentifier],
@@ -466,7 +475,7 @@ class AccountController extends AbstractController
             'view' => true,
             'update' => $this->canUpdateAccount($accountStatus),
             'disable' => $this->canDisableAccount($accountStatus),
-            'activate' => $this->canActivateAccount($accountStatus, $isApproved),
+            'activate' => $this->canActivateAccount($accountStatus),
         ];
     }
 
@@ -480,9 +489,9 @@ class AccountController extends AbstractController
         return in_array($accountStatus, ['Active', 'Pending'], true);
     }
 
-    private function canActivateAccount(string $accountStatus, bool $isApproved): bool
+    private function canActivateAccount(string $accountStatus): bool
     {
-        return $accountStatus === 'Disabled' && $isApproved;
+        return $accountStatus === 'Disabled';
     }
 
     private function toDatabaseBoolean(mixed $value): bool

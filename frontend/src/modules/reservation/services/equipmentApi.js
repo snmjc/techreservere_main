@@ -1,12 +1,11 @@
 import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const equipmentApi = {
   async listEquipment() {
     const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     try {
-      const response = await axios.get(`${API_BASE_URL}/equipment`, {
+      const response = await axios.get(apiUrl('/api/v1/equipment'), {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -21,7 +20,7 @@ const equipmentApi = {
   async getEquipmentById(equipmentIdentifier) {
     const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     try {
-      const response = await axios.get(`${API_BASE_URL}/equipment/${equipmentIdentifier}`, {
+      const response = await axios.get(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -36,7 +35,7 @@ const equipmentApi = {
   async createEquipment(equipmentData) {
     const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     try {
-      const response = await axios.post(`${API_BASE_URL}/equipment`, equipmentData, {
+      const response = await axios.post(apiUrl('/api/v1/equipment'), equipmentData, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
@@ -52,7 +51,7 @@ const equipmentApi = {
   async updateEquipment(equipmentIdentifier, equipmentData) {
     const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
     try {
-      const response = await axios.put(`${API_BASE_URL}/equipment/${equipmentIdentifier}`, equipmentData, {
+      const response = await axios.put(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), equipmentData, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`

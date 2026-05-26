@@ -8,7 +8,7 @@
       <div class="admin-wishlist-header">
         <div>
           <p class="admin-wishlist-kicker">Account verification</p>
-          <h1>Wishlist</h1>
+          <h1>Requests Hub</h1>
           <p>Review registered accounts before approval and invitation.</p>
         </div>
 
@@ -74,8 +74,10 @@
             <span>Status</span>
             <select v-model="statusFilter">
               <option value="all">All</option>
-              <option value="pending">Unverified</option>
-              <option value="invited">Invite Sent</option>
+              <option value="not_invited">Not invited</option>
+              <option value="verified">Verified</option>
+              <option value="unverified">Unverified</option>
+              <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
             </select>
           </label>
@@ -104,7 +106,7 @@
         </div>
 
         <div v-if="isLoading" class="admin-wishlist-empty-state">
-          Loading wishlist accounts...
+          Loading request accounts...
         </div>
 
         <div v-else class="admin-wishlist-table-wrap">
@@ -152,11 +154,27 @@
                       type="button"
                       aria-label="Send invite"
                       title="Send invite"
-                      @click="openApprovalModal(account)"
+                      :disabled="!canSendInvite(account)"
+                      @click="openApprovalModal(account, 'send')"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="5" width="18" height="14" rx="2" />
                         <path d="m3 7 9 6 9-6" />
+                      </svg>
+                    </button>
+                    <button
+                      class="admin-wishlist-icon-button admin-wishlist-icon-button--resend"
+                      type="button"
+                      aria-label="Resend invite"
+                      title="Resend invite"
+                      :disabled="!canResendInvite(account)"
+                      @click="openApprovalModal(account, 'resend')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                        <path d="M3 21v-5h5" />
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                        <path d="M16 8h5V3" />
                       </svg>
                     </button>
                     <button
@@ -165,7 +183,7 @@
                       type="button"
                       aria-label="Deny account"
                       title="Deny account"
-                      @click="denyAccount(account)"
+                      @click="openDenialModal(account)"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 6 6 18" />
@@ -177,7 +195,7 @@
               </tr>
               <tr v-if="filteredWishlistAccounts.length === 0">
                 <td colspan="6" class="admin-wishlist-empty-row">
-                  No wishlist accounts match the current filters.
+                  No request accounts match the current filters.
                 </td>
               </tr>
             </tbody>
@@ -242,8 +260,8 @@
           </button>
 
           <div class="admin-wishlist-modal-heading">
-            <h2>{{ approvalAccount.accountType === 'Employee' ? 'Ready to Invite Employee' : 'Send Invite' }}</h2>
-            <p>{{ approvalAccount.accountType === 'Employee' ? 'Review the worker information before sending the invitation.' : 'This will verify the account and send an invitation link to their email for system access.' }}</p>
+            <h2>{{ getInviteModalTitle(approvalAccount) }}</h2>
+            <p>{{ getInviteModalDescription(approvalAccount) }}</p>
           </div>
 
           <div class="admin-wishlist-approval-profile">
@@ -305,7 +323,86 @@
               :disabled="isProcessing || !isApprovalConfirmationReady"
               @click="verifyAccount"
             >
-              {{ isProcessing ? 'Sending...' : 'Send Invite' }}
+              {{ isProcessing ? 'Sending...' : getInviteSubmitLabel(approvalAccount) }}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="denialAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeDenialModal">
+        <section class="admin-wishlist-denial-modal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeDenialModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="admin-wishlist-modal-heading">
+            <h2>Deny Account Request</h2>
+            <p>This will mark the account request as denied and prevent it from being invited.</p>
+          </div>
+
+          <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">
+            <span class="admin-wishlist-avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            </span>
+            <div class="admin-wishlist-invite-summary">
+              <em :class="getAccountTypeBadgeClass(denialAccount.accountType)">
+                {{ denialAccount.accountType }}
+              </em>
+              <div class="admin-wishlist-invite-details">
+                <p>
+                  <span>Name</span>
+                  <strong>{{ denialAccount.fullName }}</strong>
+                </p>
+                <p>
+                  <span>ID Number</span>
+                  <strong>{{ denialAccount.idNumber }}</strong>
+                </p>
+                <p>
+                  <span>{{ getApprovalEmailLabel(denialAccount) }}</span>
+                  <strong>{{ denialAccount.emailAddress }}</strong>
+                </p>
+                <p>
+                  <span>Role</span>
+                  <strong>{{ denialAccount.role }}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <label class="admin-wishlist-confirm-field">
+            <span>Type <strong>{{ denialAccount.emailAddress }}</strong> to confirm denial:</span>
+            <input
+              v-model.trim="denialConfirmEmail"
+              type="email"
+              :placeholder="denialAccount.emailAddress"
+              autocomplete="off"
+            />
+          </label>
+
+          <p v-if="denialFormError" class="admin-wishlist-add-error">{{ denialFormError }}</p>
+
+          <div class="admin-wishlist-modal-actions">
+            <button
+              class="admin-wishlist-cancel-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="closeDenialModal"
+            >
+              Cancel
+            </button>
+            <button
+              class="admin-wishlist-deny-button"
+              type="button"
+              :disabled="isProcessing || !isDenialConfirmationReady"
+              @click="denyAccount"
+            >
+              {{ isProcessing ? 'Denying...' : 'Deny Request' }}
             </button>
           </div>
         </section>
@@ -336,11 +433,25 @@
           <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
             <label>
               <span>Last Name</span>
-              <input v-model.trim="addAdminForm.lastName" type="text" placeholder="Last Name" required />
+              <input
+                v-model.trim="addAdminForm.lastName"
+                type="text"
+                placeholder="Last Name"
+                minlength="2"
+                required
+                @input="sanitizeAdminNameField('lastName')"
+              />
             </label>
             <label>
               <span>First Name</span>
-              <input v-model.trim="addAdminForm.firstName" type="text" placeholder="First Name" required />
+              <input
+                v-model.trim="addAdminForm.firstName"
+                type="text"
+                placeholder="First Name"
+                minlength="2"
+                required
+                @input="sanitizeAdminNameField('firstName')"
+              />
             </label>
             <label class="admin-wishlist-field-wide">
               <span>Email</span>
@@ -350,71 +461,11 @@
               <span>ID Number</span>
               <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required />
             </label>
-            <label class="admin-wishlist-field-wide">
-              <span>Role</span>
-              <input v-model="addAdminForm.role" type="text" placeholder="Role" readonly />
-            </label>
-            <label>
-              <span>Password</span>
-              <span class="admin-wishlist-password-field">
-                <input
-                  v-model="addAdminForm.password"
-                  :type="showAddAdminPassword ? 'text' : 'password'"
-                  placeholder="Password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="admin-wishlist-password-toggle"
-                  :aria-label="showAddAdminPassword ? 'Hide password' : 'Show password'"
-                  @click="showAddAdminPassword = !showAddAdminPassword"
-                >
-                  <svg v-if="showAddAdminPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3l18 18" />
-                    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                    <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                    <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </button>
-              </span>
-            </label>
-            <label>
-              <span>Confirm Password</span>
-              <span class="admin-wishlist-password-field">
-                <input
-                  v-model="addAdminForm.confirmPassword"
-                  :type="showAddAdminConfirmPassword ? 'text' : 'password'"
-                  placeholder="Confirm Password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="admin-wishlist-password-toggle"
-                  :aria-label="showAddAdminConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
-                  @click="showAddAdminConfirmPassword = !showAddAdminConfirmPassword"
-                >
-                  <svg v-if="showAddAdminConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3l18 18" />
-                    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                    <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                    <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </button>
-              </span>
-            </label>
 
             <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
 
             <div class="admin-wishlist-modal-actions">
-              <button class="admin-wishlist-cancel-button" type="button" @click="closeAddAdminModal">
+              <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddAdminModal">
                 Cancel
               </button>
               <button class="admin-wishlist-verify-button" type="submit" :disabled="isProcessing">
@@ -685,14 +736,16 @@ const isProcessing = ref(false);
 const showAddAdminModal = ref(false);
 const showAddUserModal = ref(false);
 const showAddEmployeeModal = ref(false);
-const showAddAdminPassword = ref(false);
-const showAddAdminConfirmPassword = ref(false);
 const showAddUserPassword = ref(false);
 const showAddUserConfirmPassword = ref(false);
 const showAddEmployeePassword = ref(false);
 const showAddEmployeeConfirmPassword = ref(false);
 const selectedAccount = ref(null);
 const approvalAccount = ref(null);
+const approvalMode = ref('send');
+const denialAccount = ref(null);
+const denialConfirmEmail = ref('');
+const denialFormError = ref('');
 const toastMessage = ref('');
 const loadErrorMessage = ref('');
 const wishlistAccounts = ref([]);
@@ -715,9 +768,6 @@ const addAdminForm = reactive({
   firstName: '',
   emailAddress: '',
   idNumber: '',
-  role: 'Admin',
-  password: '',
-  confirmPassword: '',
 });
 
 const addUserForm = reactive({
@@ -782,7 +832,7 @@ const fallbackWishlistAccounts = [
     roleLabel: 'User: Faculty',
     accountType: 'Employee',
     contactNumber: '09170000003',
-    accountStatus: 'invited',
+    accountStatus: 'expired',
     registeredAt: '2026-05-14T14:05:00+08:00',
     inviteSentAt: '2026-05-17T09:00:00+08:00',
     inviteExpiresAt: '2026-05-24T09:00:00+08:00',
@@ -790,7 +840,7 @@ const fallbackWishlistAccounts = [
   },
 ];
 
-const normalizedAccounts = computed(() => wishlistAccounts.value.map(normalizeWishlistAccount));
+const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim();
@@ -798,7 +848,11 @@ const currentAdminEmail = computed(() => {
 const isApprovalConfirmationReady = computed(() => (
   Boolean(approvalAccount.value)
   && Boolean(currentAdminEmail.value)
-  && approvalForm.confirmEmail.toLowerCase() === currentAdminEmail.value.toLowerCase()
+  && normalizeEmailForConfirmation(approvalForm.confirmEmail) === normalizeEmailForConfirmation(currentAdminEmail.value)
+));
+const isDenialConfirmationReady = computed(() => (
+  Boolean(denialAccount.value)
+  && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
 ));
 
 const wishlistTabs = computed(() => {
@@ -861,7 +915,7 @@ async function loadWishlistAccounts() {
     wishlistAccounts.value = result.data.users || result.data || [];
   } else {
     wishlistAccounts.value = [];
-    loadErrorMessage.value = result.error || 'Unable to load wishlist accounts from the backend.';
+    loadErrorMessage.value = result.error || 'Unable to load request accounts from the backend.';
     showToast(loadErrorMessage.value);
   }
   isLoading.value = false;
@@ -873,7 +927,10 @@ function normalizeWishlistAccount(account) {
   const lastName = account.lastName || account.last_name || '';
   const emailAddress = account.emailAddress || account.email_address || '';
   const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const accountStatus = String(account.accountStatus || account.status || 'pending').toLowerCase();
+  const inviteSentAt = account.inviteSentAt || account.invite_sent_at || null;
+  const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
+  const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
+  const accountStatus = resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt);
   const idNumber = account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A';
   const contactNumber = account.contactNumber || account.contact_number || account.phone || 'N/A';
 
@@ -892,11 +949,26 @@ function normalizeWishlistAccount(account) {
     accountType,
     accountStatus,
     registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
-    inviteSentAt: account.inviteSentAt || account.invite_sent_at || null,
-    inviteExpiresAt: account.inviteExpiresAt || account.invite_expires_at || null,
-    inviteAcceptedAt: account.inviteAcceptedAt || account.invite_accepted_at || null,
+    inviteSentAt,
+    inviteExpiresAt,
+    inviteAcceptedAt,
     initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'TR',
   };
+}
+
+function getUniqueRequestAccounts(accounts) {
+  const accountsByEmail = new Map();
+  accounts.forEach((account) => {
+    const emailKey = normalizeEmailForConfirmation(account.emailAddress);
+    if (!emailKey) return;
+
+    const existingAccount = accountsByEmail.get(emailKey);
+    if (!existingAccount || new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime()) {
+      accountsByEmail.set(emailKey, account);
+    }
+  });
+
+  return Array.from(accountsByEmail.values());
 }
 
 function resolveAccountType(account, roleDesignation) {
@@ -981,9 +1053,12 @@ function openViewModal(account) {
   selectedAccount.value = account;
 }
 
-function openApprovalModal(account = selectedAccount.value) {
+function openApprovalModal(account = selectedAccount.value, mode = 'send') {
   if (!account) return;
+  if (mode === 'resend' && !canResendInvite(account)) return;
+  if (mode !== 'resend' && !canSendInvite(account)) return;
   approvalAccount.value = account;
+  approvalMode.value = mode === 'resend' ? 'resend' : 'send';
   approvalForm.emailAddress = account.emailAddress;
   approvalForm.role = account.roleDesignation;
   approvalForm.idNumber = account.idNumber;
@@ -996,12 +1071,27 @@ function openApprovalModal(account = selectedAccount.value) {
 function closeModals() {
   selectedAccount.value = null;
   closeApprovalModal();
+  closeDenialModal();
 }
 
 function closeApprovalModal() {
   approvalAccount.value = null;
+  approvalMode.value = 'send';
   approvalForm.confirmEmail = '';
   approvalFormError.value = '';
+}
+
+function openDenialModal(account) {
+  if (!account) return;
+  denialAccount.value = account;
+  denialConfirmEmail.value = '';
+  denialFormError.value = '';
+}
+
+function closeDenialModal() {
+  denialAccount.value = null;
+  denialConfirmEmail.value = '';
+  denialFormError.value = '';
 }
 
 function openAddAccountModal() {
@@ -1018,16 +1108,13 @@ function openAddAccountModal() {
 
 function openAddAdminModal() {
   resetAddAdminForm();
-  showAddAdminPassword.value = false;
-  showAddAdminConfirmPassword.value = false;
   showAddAdminModal.value = true;
 }
 
 function closeAddAdminModal() {
   showAddAdminModal.value = false;
   addAdminError.value = '';
-  showAddAdminPassword.value = false;
-  showAddAdminConfirmPassword.value = false;
+  resetAddAdminForm();
 }
 
 function openAddUserModal() {
@@ -1061,8 +1148,9 @@ function closeAddEmployeeModal() {
 async function createAdminAccount() {
   addAdminError.value = '';
 
-  if (addAdminForm.password !== addAdminForm.confirmPassword) {
-    addAdminError.value = 'Password and confirm password must match.';
+  const validationError = validateAdminAccountForm();
+  if (validationError) {
+    addAdminError.value = validationError;
     return;
   }
 
@@ -1070,7 +1158,7 @@ async function createAdminAccount() {
     (account) => account.emailAddress.toLowerCase() === addAdminForm.emailAddress.toLowerCase()
   );
   if (emailExists) {
-    addAdminError.value = 'An account with this email already exists in the wishlist.';
+    addAdminError.value = 'An account with this email already exists in Requests Hub.';
     return;
   }
 
@@ -1079,7 +1167,6 @@ async function createAdminAccount() {
     firstName: addAdminForm.firstName,
     emailAddress: addAdminForm.emailAddress,
     idNumber: addAdminForm.idNumber,
-    passwordText: addAdminForm.password,
   };
 
   isProcessing.value = true;
@@ -1103,12 +1190,42 @@ function resetAddAdminForm() {
   addAdminForm.firstName = '';
   addAdminForm.emailAddress = '';
   addAdminForm.idNumber = '';
-  addAdminForm.role = 'Admin';
-  addAdminForm.password = '';
-  addAdminForm.confirmPassword = '';
-  showAddAdminPassword.value = false;
-  showAddAdminConfirmPassword.value = false;
   addAdminError.value = '';
+}
+
+function sanitizeAdminNameField(fieldName) {
+  addAdminForm[fieldName] = String(addAdminForm[fieldName] || '').replace(/[^A-Za-z ]+/g, '').replace(/\s{2,}/g, ' ');
+}
+
+function validateAdminAccountForm() {
+  const lastName = addAdminForm.lastName.trim();
+  const firstName = addAdminForm.firstName.trim();
+  const emailAddress = addAdminForm.emailAddress.trim().toLowerCase();
+
+  if (!isValidAdminName(lastName)) {
+    return 'Last name must have at least 2 letters and cannot contain numbers or symbols.';
+  }
+
+  if (!isValidAdminName(firstName)) {
+    return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
+  }
+
+  if (!isInstitutionalAdminEmail(emailAddress)) {
+    return 'Admin account must use a valid institutional email address.';
+  }
+
+  return '';
+}
+
+function isValidAdminName(value) {
+  const normalized = String(value || '').trim();
+  const letterCount = (normalized.match(/[A-Za-z]/g) || []).length;
+  return letterCount >= 2 && /^[A-Za-z ]+$/.test(normalized);
+}
+
+function isInstitutionalAdminEmail(emailAddress) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
+    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@techreserve.edu.ph'));
 }
 
 async function createUserAccount() {
@@ -1123,7 +1240,7 @@ async function createUserAccount() {
     (account) => account.emailAddress.toLowerCase() === addUserForm.emailAddress.toLowerCase()
   );
   if (emailExists) {
-    addUserError.value = 'An account with this email already exists in the wishlist.';
+    addUserError.value = 'An account with this email already exists in Requests Hub.';
     return;
   }
 
@@ -1177,7 +1294,7 @@ async function createEmployeeAccount() {
     (account) => account.emailAddress.toLowerCase() === addEmployeeForm.emailAddress.toLowerCase()
   );
   if (emailExists) {
-    addEmployeeError.value = 'An account with this email already exists in the wishlist.';
+    addEmployeeError.value = 'An account with this email already exists in Requests Hub.';
     return;
   }
 
@@ -1231,7 +1348,7 @@ function formatCreateAccountError(result, accountType) {
   const status = getStatusLabel(conflict.status);
   const location = conflict.isApproved || String(conflict.status).toLowerCase() === 'approved'
     ? 'Manage Accounts'
-    : 'Wishlist or Manage Accounts';
+    : 'Requests Hub or Manage Accounts';
   const matchedField = conflict.matchedField === 'idNumber' ? 'ID number' : 'email';
 
   return `This ${matchedField} is already used by ${fullName} (${conflict.emailAddress}, ${conflict.accountType}, ${status}). Check ${location}.`;
@@ -1243,7 +1360,7 @@ async function verifyAccount() {
     approvalFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
     return;
   }
-  if (approvalForm.confirmEmail.toLowerCase() !== currentAdminEmail.value.toLowerCase()) {
+  if (normalizeEmailForConfirmation(approvalForm.confirmEmail) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
     approvalFormError.value = 'Please type your exact admin email to send the invite.';
     return;
   }
@@ -1252,12 +1369,13 @@ async function verifyAccount() {
   const result = await adminWishlistApi.verifyAccount(
     approvalAccount.value.accountIdentifier,
     authStore.authToken,
-    { confirmedAdminEmail: approvalForm.confirmEmail },
+    { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
   );
   if (result.success) {
+    const successMessage = getInviteSuccessMessage(approvalAccount.value);
     closeModals();
     await loadWishlistAccounts();
-    showToast('Invitation Sent!');
+    showToast(successMessage);
   } else {
     approvalFormError.value = result.error || 'Unable to send invite.';
     showToast(approvalFormError.value);
@@ -1265,17 +1383,28 @@ async function verifyAccount() {
   isProcessing.value = false;
 }
 
-async function denyAccount(account) {
-  if (!account) return;
+async function denyAccount() {
+  if (!denialAccount.value) return;
+  if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(denialAccount.value.emailAddress)) {
+    denialFormError.value = 'Please type the exact email address to deny this request.';
+    return;
+  }
+
   isProcessing.value = true;
-  const result = await adminWishlistApi.denyAccount(account.accountIdentifier, authStore.authToken);
+  const result = await adminWishlistApi.denyAccount(
+    denialAccount.value.accountIdentifier,
+    authStore.authToken,
+    { confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value) },
+  );
   if (result.success) {
     approvalAccount.value = null;
     selectedAccount.value = null;
+    closeDenialModal();
     await loadWishlistAccounts();
     showToast('Account request denied.');
   } else {
-    showToast(result.error || 'Unable to deny account.');
+    denialFormError.value = result.error || 'Unable to deny account.';
+    showToast(denialFormError.value);
   }
   isProcessing.value = false;
 }
@@ -1295,18 +1424,76 @@ function updateAccountStatus(accountIdentifier, status) {
   });
 }
 
+function normalizeEmailForConfirmation(value) {
+  return String(value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function resolveRequestStatus(status, inviteAcceptedAt, inviteExpiresAt) {
+  const normalized = String(status || 'pending').toLowerCase();
+  if (inviteAcceptedAt || normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'verified';
+  if (normalized === 'rejected' || normalized === 'denied') return 'rejected';
+  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() < Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
+    return 'expired';
+  }
+  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() >= Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
+    return 'unverified';
+  }
+  if (normalized === 'invited' || normalized === 'unverified') return 'unverified';
+  if (normalized === 'pending' || normalized === 'not_invited') return 'not_invited';
+  return normalized;
+}
+
+function canSendInvite(account) {
+  return String(account?.accountStatus || '').toLowerCase() === 'not_invited' && !isProcessing.value;
+}
+
+function canResendInvite(account) {
+  return String(account?.accountStatus || '').toLowerCase() === 'expired' && !isProcessing.value;
+}
+
+function getInviteModalTitle(account) {
+  if (approvalMode.value === 'resend') return 'Resend Invite';
+  return account?.accountType === 'Employee' ? 'Ready to Invite Employee' : 'Send Invite';
+}
+
+function getInviteModalDescription(account) {
+  if (approvalMode.value === 'resend') {
+    return 'The previous invitation expired. Confirm the responsible admin before sending a new invitation link.';
+  }
+
+  return account?.accountType === 'Employee'
+    ? 'Review the worker information before sending the invitation.'
+    : 'This will verify the account and send an invitation link to their email for system access.';
+}
+
+function getInviteSubmitLabel(account) {
+  return approvalMode.value === 'resend' ? 'Resend Invite' : 'Send Invite';
+}
+
+function getInviteSuccessMessage(account) {
+  return approvalMode.value === 'resend' ? 'Invitation resent!' : 'Invitation sent!';
+}
+
 function getStatusLabel(status) {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'approved' || normalized === 'verified') return 'Verified';
+  if (normalized === 'approved' || normalized === 'verified' || normalized === 'accepted') return 'Verified';
+  if (normalized === 'not_invited' || normalized === 'pending') return 'Not invited';
+  if (normalized === 'invited' || normalized === 'unverified') return 'Unverified';
+  if (normalized === 'expired') return 'Expired';
   if (normalized === 'rejected' || normalized === 'denied') return 'Denied';
-  if (normalized === 'invited') return 'Invite Sent';
   return 'Unverified';
 }
 
 function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'rejected' || normalized === 'denied') return 'admin-wishlist-status--denied';
-  if (normalized === 'invited') return 'admin-wishlist-status--invited';
+  if (normalized === 'invited' || normalized === 'unverified') return 'admin-wishlist-status--invited';
+  if (normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'admin-wishlist-status--accepted';
+  if (normalized === 'expired') return 'admin-wishlist-status--expired';
   return 'admin-wishlist-status--pending';
 }
 

@@ -50,16 +50,56 @@
           <form v-if="!awaitingVerification" class="custom-signup-form" @submit.prevent="handleSignUp">
             <div class="custom-signup-field-grid">
               <div class="custom-signup-row">
-                <label for="accountType">Account Type</label>
-                <input id="accountType" v-model="formData.accountType" readonly />
-              </div>
-
-              <div class="custom-signup-row">
                 <label for="role">Role</label>
                 <select id="role" v-model="formData.role" class="custom-signup-select">
                   <option value="Student">Student</option>
                   <option value="Faculty">Faculty</option>
                 </select>
+              </div>
+
+              <div class="custom-signup-role-boundary custom-signup-row-wide">
+                <div class="custom-signup-role-boundary-header">
+                  <span class="custom-signup-role-boundary-label">User Verification</span>
+                  <strong>{{ formData.role }}</strong>
+                </div>
+
+                <div v-if="isStudentRole" class="custom-signup-file-section">
+                  <label for="studentSupportingFile">Supporting File</label>
+                  <div class="custom-signup-file-control">
+                    <input
+                      id="studentSupportingFile"
+                      ref="studentSupportingFileInput"
+                      type="file"
+                      accept=".docx,.doc,.pdf,.png,.jpeg,.jpg"
+                      class="custom-signup-file-input"
+                      @change="handleStudentSupportingFileChange"
+                    />
+                    <button type="button" class="custom-signup-file-button" @click="openStudentSupportingFile">
+                      Choose File
+                    </button>
+                    <span v-if="formData.supportingFile" class="custom-signup-file-name">
+                      {{ formData.supportingFile.name }}
+                    </span>
+                    <span v-else class="custom-signup-file-placeholder">No file chosen</span>
+                    <button
+                      v-if="formData.supportingFile"
+                      type="button"
+                      class="custom-signup-file-remove"
+                      aria-label="Remove selected file"
+                      @click="removeStudentSupportingFile"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <p class="custom-signup-role-boundary-note">
+                    Recommended for student requests: attach a valid student ID or enrollment proof.
+                  </p>
+                </div>
+
+                <div v-else class="custom-signup-faculty-note">
+                  <strong>No file upload needed for faculty.</strong>
+                  <span>Recommended: use your official FIT faculty email and complete your department details for admin verification.</span>
+                </div>
               </div>
 
               <div class="custom-signup-row">
@@ -258,18 +298,19 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 const router = useRouter();
 
 const formData = ref({
-  accountType: 'User',
   lastName: '',
   firstName: '',
   idNumber: '',
   fitEmailAddress: '',
   department: '',
   role: 'Student',
+  supportingFile: null,
   password: '',
   confirmPassword: '',
   acceptTerms: false,
@@ -283,8 +324,19 @@ const verificationCode = ref('');
 const signupRequestCreated = ref(false);
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
+const studentSupportingFileInput = ref(null);
 
 const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
+const isStudentRole = computed(() => formData.value.role === 'Student');
+
+watch(
+  () => formData.value.role,
+  (role) => {
+    if (role === 'Faculty') {
+      removeStudentSupportingFile();
+    }
+  },
+);
 
 function isValidName(value) {
   return /^[A-Za-z][A-Za-z .'-]*$/.test(value.trim());
@@ -296,6 +348,22 @@ function isFitEmail(value) {
 
 function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+}
+
+function openStudentSupportingFile() {
+  studentSupportingFileInput.value?.click();
+}
+
+function handleStudentSupportingFileChange(event) {
+  const selectedFile = event.target.files?.[0] || null;
+  formData.value.supportingFile = selectedFile;
+}
+
+function removeStudentSupportingFile() {
+  formData.value.supportingFile = null;
+  if (studentSupportingFileInput.value) {
+    studentSupportingFileInput.value.value = '';
+  }
 }
 
 function validateForm() {
@@ -345,7 +413,7 @@ function validateForm() {
 }
 
 async function createSignupRequest() {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/signup-requests`, {
+  const response = await fetch(apiUrl('/api/v1/users/signup-requests'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -355,6 +423,7 @@ async function createSignupRequest() {
       idNumber: formData.value.idNumber.trim(),
       department: formData.value.department.trim(),
       role: formData.value.role,
+      supportingDocumentName: isStudentRole.value && formData.value.supportingFile ? formData.value.supportingFile.name : null,
       passwordText: formData.value.password,
       confirmPasswordText: formData.value.confirmPassword,
       acceptedPrivacy: formData.value.acceptTerms,
@@ -687,6 +756,139 @@ async function handleVerifyEmail() {
 .custom-signup-select {
   padding: 0 0.85rem;
   cursor: pointer;
+}
+
+.custom-signup-role-boundary {
+  padding: 0.95rem;
+  border: 1px solid #d6e7dd;
+  border-radius: 12px;
+  background: #f8fcfa;
+}
+
+.custom-signup-role-boundary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #0f3d2a;
+}
+
+.custom-signup-role-boundary-header strong {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #dff5e9;
+  color: #08784a;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.custom-signup-role-boundary-label {
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.custom-signup-file-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.custom-signup-file-section > label {
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.custom-signup-file-control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.custom-signup-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-signup-file-button {
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: #08784a;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.custom-signup-file-button:hover {
+  background: #05613d;
+}
+
+.custom-signup-file-name,
+.custom-signup-file-placeholder {
+  min-width: 0;
+  color: #4b5563;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.custom-signup-file-name {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-signup-file-placeholder {
+  color: #9ca3af;
+}
+
+.custom-signup-file-remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.custom-signup-role-boundary-note,
+.custom-signup-faculty-note {
+  margin: 0.2rem 0 0;
+  color: #5b665f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.custom-signup-faculty-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #d9eadf;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.custom-signup-faculty-note strong {
+  color: #08784a;
+  font-size: 0.82rem;
 }
 
 .custom-signup-confirmation {

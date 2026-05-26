@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { loginRequest } from '../services/authenticationService.js';
+import { apiUrl as buildApiUrl } from '@/shared/utils/apiBase.js';
 
 const STORAGE_KEY_TOKEN = 'techreserve_auth_token';
 const STORAGE_KEY_ACCOUNT = 'techreserve_auth_account';
@@ -102,11 +103,11 @@ export const useAuthenticationStore = defineStore('authentication', () => {
         return null;
       }
 
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/me`;
-      console.log('[loadClerkAccount] Fetching from:', apiUrl);
+      const accountApiUrl = buildApiUrl('/api/v1/users/me');
+      console.log('[loadClerkAccount] Fetching from:', accountApiUrl);
       
       const response = await fetch(
-        apiUrl,
+        accountApiUrl,
         { 
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -189,27 +190,8 @@ export const useAuthenticationStore = defineStore('authentication', () => {
 
       return response.account;
     } catch (error) {
-      console.warn('Backend login failed, using mock authentication:', error.message);
-      
-      // Mock authentication for development when backend is not available
-      const mockToken = 'mock_token_' + Date.now();
-      const mockAccount = {
-        accountIdentifier: 1,
-        firstName: emailAddress.split('@')[0],
-        lastName: 'User',
-        emailAddress: emailAddress,
-        roleDesignation: emailAddress.includes('admin') ? 'ROLE_ADMIN' : 'ROLE_BORROWER',
-        contactNumber: '+63-912-345-6789',
-        isActive: true
-      };
-
-      authToken.value = mockToken;
-      accountData.value = { ...mockAccount, roleDesignation: normalizeRole(mockAccount.roleDesignation) };
-
-      localStorage.setItem(STORAGE_KEY_TOKEN, mockToken);
-      localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(accountData.value));
-
-      return mockAccount;
+      console.warn('Backend login failed:', error.message);
+      throw error;
     }
   }
 

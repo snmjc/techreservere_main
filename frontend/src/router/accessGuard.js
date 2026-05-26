@@ -22,9 +22,9 @@ export function evaluateRouteAccessGuard(toRoute) {
   const requiresAuth = toRoute.meta?.requiresAuth ?? false;
   const authStore = useAuthenticationStore();
 
-  const isSignedIn = authStore.clerkIsSignedIn;
-  const accountStatus = authStore.clerkAccountStatus;
-  const userRole = authStore.clerkUserRole;
+  const isSignedIn = authStore.isAuthenticated;
+  const accountStatus = authStore.clerkAccountStatus ?? authStore.accountData?.status ?? 'approved';
+  const userRole = authStore.userRole;
 
   console.log('[AccessGuard] Evaluating route:', toRoute.path, 'requiresAuth:', requiresAuth);
   console.log('[AccessGuard] Auth state:', { isSignedIn, accountStatus, userRole });
@@ -60,9 +60,9 @@ export function evaluateRouteAccessGuard(toRoute) {
     return true;
   }
 
-  // Rejected users go back to login
-  if (accountStatus === 'rejected') {
-    console.log('[AccessGuard] Rejected user, redirecting to login');
+  // Rejected or disabled users go back to login
+  if (accountStatus === 'rejected' || accountStatus === 'disabled') {
+    console.log('[AccessGuard] Account not allowed, redirecting to login');
     return { name: 'clerkLoginPage' };
   }
 

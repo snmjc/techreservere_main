@@ -6,6 +6,10 @@
 }
 
 .manage-accounts-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid rgba(31, 41, 55, 0.22);
 }
@@ -23,6 +27,36 @@
   color: #4b5563;
   font-size: 0.78rem;
   font-weight: 650;
+}
+
+.manage-accounts-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 0.48rem;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  color: #047857;
+  background: #ffffff;
+  border: 1px solid #cfd8d3;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  font-size: 0.8rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.manage-accounts-refresh-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.manage-accounts-refresh-button:disabled {
+  color: #6b7280;
+  background: #f3f4f6;
+  cursor: wait;
+  opacity: 0.78;
 }
 
 .manage-accounts-toast {
@@ -584,6 +618,7 @@
 
 @media (max-width: 640px) {
   .manage-accounts-toolbar,
+  .manage-accounts-header,
   .manage-accounts-modal-actions,
   .manage-accounts-confirm-profile {
     flex-direction: column;
@@ -593,6 +628,7 @@
   .manage-accounts-toolbar label,
   .manage-accounts-toolbar input,
   .manage-accounts-toolbar select,
+  .manage-accounts-refresh-button,
   .manage-accounts-close-button,
   .manage-accounts-cancel-button,
   .manage-accounts-save-button {

@@ -287,6 +287,16 @@
   background: #dbeafe;
 }
 
+.admin-wishlist-status--accepted {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.admin-wishlist-status--expired {
+  color: #92400e;
+  background: #ffedd5;
+}
+
 .admin-wishlist-status--denied {
   color: #b91c1c;
   background: #fee2e2;
@@ -315,6 +325,13 @@
   height: 17px;
 }
 
+.admin-wishlist-icon-button:disabled {
+  cursor: not-allowed;
+  color: #94a3b8;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 .admin-wishlist-icon-button--deny {
   color: #b91c1c;
   background: #fee2e2;
@@ -325,6 +342,12 @@
   color: #b45309;
   background: #fff7ed;
   border-color: #fed7aa;
+}
+
+.admin-wishlist-icon-button--resend {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #bfdbfe;
 }
 
 .admin-wishlist-empty-state,
@@ -352,6 +375,7 @@
 
 .admin-wishlist-view-modal,
 .admin-wishlist-approval-modal,
+.admin-wishlist-denial-modal,
 .admin-wishlist-add-admin-modal,
 .admin-wishlist-add-user-modal,
 .admin-wishlist-add-employee-modal {
@@ -369,6 +393,15 @@
 
 .admin-wishlist-approval-modal {
   width: min(600px, 100%);
+}
+
+.admin-wishlist-denial-modal {
+  width: min(600px, 100%);
+}
+
+.admin-wishlist-denial-profile {
+  border-color: #fecaca;
+  background: #fff7f7;
 }
 
 .admin-wishlist-add-admin-modal,

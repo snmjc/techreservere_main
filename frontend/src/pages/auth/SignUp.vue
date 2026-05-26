@@ -63,7 +63,7 @@
               </select>
             </div>
 
-            <div class="form-row">
+            <div v-if="isStudentRole" class="form-row">
               <label class="form-label">Supporting File:</label>
               <div class="file-upload-wrapper">
                 <input
@@ -79,7 +79,14 @@
                 <button v-if="form.file" type="button" class="file-remove-btn" @click="removeFile">&times;</button>
               </div>
             </div>
-            <div class="file-types-hint">Accepted: PDF, DOC, DOCX, PNG, JPEG</div>
+            <div v-if="isStudentRole" class="file-types-hint">
+              Recommended for student requests: valid student ID or enrollment proof. Accepted: PDF, DOC, DOCX, PNG, JPEG
+            </div>
+
+            <div v-else class="faculty-recommendation-box">
+              <strong>No supporting file needed for faculty.</strong>
+              <span>Recommended: use your official FIT faculty email and complete your department details for admin verification.</span>
+            </div>
 
             <div class="form-row">
               <label class="form-label">Password:</label>
@@ -142,9 +149,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSignUp, useAuth } from '@clerk/vue';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const router = useRouter();
 const { signUp, isLoaded } = useSignUp();
@@ -167,6 +175,17 @@ const form = ref({
   agreed: false,
   file: null,
 });
+
+const isStudentRole = computed(() => form.value.role === 'ROLE_BORROWER');
+
+watch(
+  () => form.value.role,
+  (role) => {
+    if (role === 'ROLE_FACULTY') {
+      removeFile();
+    }
+  },
+);
 
 function handleFileChange(event) {
   const file = event.target.files[0];
@@ -248,7 +267,7 @@ async function resendCode() {
 
 async function saveToPostgres(clerkUserId) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/register`, {
+    const response = await fetch(apiUrl('/api/v1/users/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -619,6 +638,25 @@ function navigateToLogin() {
   margin-bottom: 0.5rem;
 }
 
+.faculty-recommendation-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0.75rem 170px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #d9eadf;
+  border-radius: 10px;
+  background: #f8fcfa;
+  color: #4b5563;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.faculty-recommendation-box strong {
+  color: #08784a;
+  font-size: 0.82rem;
+}
+
 /* ===== FOOTER ===== */
 .page-footer {
   text-align: center;
@@ -634,6 +672,7 @@ function navigateToLogin() {
   .right-panel { width: 100%; }
   .form-row { grid-template-columns: 1fr; gap: 0.2rem; }
   .input-line { text-align: left; }
+  .faculty-recommendation-box { margin-left: 0; }
   .seal-watermark { width: 320px; height: 320px; }
 }
 </style>

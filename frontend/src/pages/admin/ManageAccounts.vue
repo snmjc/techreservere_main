@@ -9,8 +9,24 @@
       </div>
 
       <header class="manage-accounts-header">
-        <h1>{{ pageTitle }}</h1>
-        <p>{{ pageDescription }}</p>
+        <div>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ pageDescription }}</p>
+        </div>
+        <button
+          class="manage-accounts-refresh-button"
+          type="button"
+          :disabled="isLoading"
+          @click="handleRefreshAccounts"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+            <path d="M3 21v-5h5" />
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+            <path d="M16 8h5V3" />
+          </svg>
+          {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+        </button>
       </header>
 
       <div v-if="loadErrorMessage" class="manage-accounts-error">
@@ -426,8 +442,8 @@ onMounted(() => {
   loadAccounts();
 });
 
-async function loadAccounts() {
-  isLoading.value = true;
+async function loadAccounts({ showLoading = true } = {}) {
+  if (showLoading) isLoading.value = true;
   loadErrorMessage.value = '';
   const result = await adminManageAccountsApi.getAccounts(authStore.authToken);
   if (result.success) {
@@ -435,7 +451,14 @@ async function loadAccounts() {
   } else {
     loadErrorMessage.value = result.error || 'Unable to load accounts.';
   }
-  isLoading.value = false;
+  if (showLoading) isLoading.value = false;
+}
+
+async function handleRefreshAccounts() {
+  await loadAccounts();
+  if (!loadErrorMessage.value) {
+    showToast('Accounts refreshed.');
+  }
 }
 
 function normalizeAccount(account) {
@@ -443,7 +466,8 @@ function normalizeAccount(account) {
   const firstName = account.firstName || account.first_name || '';
   const lastName = account.lastName || account.last_name || '';
   const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const accountStatus = account.accountStatus || (account.isActive === false ? 'Disabled' : account.isApproved === false ? 'Pending' : 'Active');
+  const isApproved = account.isApproved !== false;
+  const accountStatus = account.accountStatus || (account.isActive === false ? 'Disabled' : isApproved ? 'Active' : 'Pending');
 
   return {
     ...account,
@@ -465,7 +489,7 @@ function normalizeAccount(account) {
     inviteSentAt: account.inviteSentAt || account.invite_sent_at,
     inviteExpiresAt: account.inviteExpiresAt || account.invite_expires_at,
     inviteAcceptedAt: account.inviteAcceptedAt || account.invite_accepted_at,
-    actionPermissions: account.actionPermissions || resolveActionPermissions(accountStatus, account.isApproved !== false),
+    actionPermissions: resolveActionPermissions(accountStatus, account.actionPermissions),
   };
 }
 
@@ -548,7 +572,7 @@ function openAccessModal(account, mode) {
   }
 
   if (mode === 'activate' && !canActivateAccount(account)) {
-    showToast('Only disabled verified accounts can be activated.');
+    showToast('Only disabled accounts can be activated.');
     return;
   }
 
@@ -617,7 +641,7 @@ async function saveAccountChanges() {
 
 async function confirmAccessChange() {
   if (!accessAccount.value) return;
-  if (confirmEmailText.value.toLowerCase() !== accessAccount.value.emailAddress.toLowerCase()) {
+  if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(accessAccount.value.emailAddress)) {
     modalErrorMessage.value = 'Please type the exact email address to confirm.';
     return;
   }
@@ -651,6 +675,15 @@ async function confirmAccessChange() {
   upsertAccount(result.data.account);
   closeModals();
   showToast(shouldActivate ? 'Account activated!' : 'Account deactivated!');
+  await loadAccounts({ showLoading: false });
+}
+
+function normalizeEmailForConfirmation(value) {
+  return String(value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 function removeAccount(accountIdentifier) {
@@ -770,12 +803,12 @@ function getAccountTypeClass(accountType) {
   };
 }
 
-function resolveActionPermissions(accountStatus, isApproved) {
+function resolveActionPermissions(accountStatus, serverPermissions = null) {
   return {
-    view: true,
+    view: serverPermissions?.view ?? true,
     update: accountStatus === 'Active',
     disable: accountStatus === 'Active' || accountStatus === 'Pending',
-    activate: accountStatus === 'Disabled' && isApproved,
+    activate: accountStatus === 'Disabled',
   };
 }
 

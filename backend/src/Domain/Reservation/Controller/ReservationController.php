@@ -5,6 +5,8 @@ namespace App\Domain\Reservation\Controller;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Reservation\Service\ReservationCreateService;
 use App\Domain\Reservation\Service\ReservationReviewService;
+use App\Shared\Exceptions\DomainNotFoundException;
+use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
@@ -36,7 +38,7 @@ class ReservationController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function createReservation(Request $request): JsonResponse
     {
-        $identity = $request->attributes->get('authenticatedIdentity');
+        $identity = $request->attributes->get('authenticatedIdentity', []);
         $requestBody = json_decode($request->getContent(), true) ?? [];
 
         error_log('Reservation Creation - Identity: ' . json_encode($identity));
@@ -53,7 +55,10 @@ class ReservationController extends AbstractController
             supportingDocuments: $requestBody['supportingDocuments'] ?? null
         );
 
-        $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
+        $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
+        if ($borrowerAccountId <= 0) {
+            return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+        }
         error_log('Reservation Creation - Borrower Account ID: ' . $borrowerAccountId);
         
         $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
@@ -73,17 +78,22 @@ class ReservationController extends AbstractController
     {
         try {
         $resolvedRole = $request->attributes->get('resolvedRole', '');
-        $identity = $request->attributes->get('authenticatedIdentity');
+        $identity = $request->attributes->get('authenticatedIdentity', []);
 
         error_log('Reservation List - Resolved Role: ' . $resolvedRole);
         error_log('Reservation List - Identity: ' . json_encode($identity));
 
         if ($resolvedRole === RoleConstants::ROLE_BORROWER) {
-            $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
+            $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
+            if ($borrowerAccountId <= 0) {
+                return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+            }
             error_log('Reservation List - Borrower Account ID: ' . $borrowerAccountId);
             $dtos = $this->reservationReviewService->getReservationsByBorrower($borrowerAccountId);
-        } else {
+        } elseif ($resolvedRole === RoleConstants::ROLE_ADMIN || $resolvedRole === RoleConstants::ROLE_DEVELOPER) {
             $dtos = $this->reservationReviewService->getAllReservations();
+        } else {
+            return $this->createErrorResponse('AuthorizationDenied', 'Insufficient permissions for this resource.', 403);
         }
 
         error_log('Reservation List - Total Reservations Found: ' . count($dtos));
@@ -95,6 +105,28 @@ class ReservationController extends AbstractController
             // Dev-friendly fallback: avoid crashing the UI when the database isn't ready yet.
             // The underlying error is still logged server-side.
             return $this->createSuccessResponse(['reservations' => []]);
+        }
+    }
+
+    #[Route('/{reservationIdentifier}', name: 'reservation_detail', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    public function getReservation(int $reservationIdentifier, Request $request): JsonResponse
+    {
+        $resolvedRole = $request->attributes->get('resolvedRole', '');
+        $identity = $request->attributes->get('authenticatedIdentity', []);
+        $accountIdentifier = (int)($identity['accountIdentifier'] ?? 0);
+
+        if ($accountIdentifier <= 0) {
+            return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in user.', 401);
+        }
+
+        try {
+            $responseDTO = $this->reservationReviewService->getReservationByIdForRole($reservationIdentifier, $resolvedRole, $accountIdentifier);
+            return $this->createSuccessResponse($responseDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('ReservationNotFound', $exception->getMessage(), 404);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('ReservationAccessDenied', $exception->getMessage(), 403);
         }
     }
 

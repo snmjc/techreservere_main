@@ -103,6 +103,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const authStore = useAuthenticationStore();
 
@@ -117,19 +118,19 @@ const inviteForm = ref({
 });
 
 const userRole = computed(() => {
-  const account = authStore.accountData;
-  if (account && account.role) {
-    return account.role === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : 'BORROWER';
-  }
-  return 'USER';
+  const role = String(
+    authStore.accountData?.role
+    || authStore.accountData?.roleDesignation
+    || authStore.accountData?.role_designation
+    || authStore.userRole
+    || '',
+  ).toUpperCase();
+
+  return role.includes('ADMIN') ? 'ADMINISTRATOR' : 'BORROWER';
 });
 
 const navigationItems = computed(() => {
-  const account = authStore.accountData;
-  if (account && account.role === 'ROLE_ADMIN') {
-    return adminNavigationItems;
-  }
-  return [];
+  return adminNavigationItems;
 });
 
 onMounted(() => {
@@ -168,7 +169,7 @@ async function sendInvitation() {
   isProcessing.value = true;
   try {
     const token = authStore.authToken;
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/invite`, {
+    const response = await fetch(apiUrl('/api/v1/users/invite'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -249,9 +250,10 @@ function formatDate(dateString) {
 
 <style scoped>
 .admin-invitations-page {
-  padding: 2rem;
-  margin-left: 240px;
-  margin-top: 56px;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 6rem 1rem 2rem;
 }
 
 .invitations-header {

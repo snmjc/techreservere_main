@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth, useUser } from '@clerk/vue'
+import { useUser } from '@clerk/vue'
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js'
-import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js'
-import { resolveRole } from '@/modules/authentication/utils/roleUtils.js'
 
 const router = useRouter()
 const route = useRoute()
-const { isLoaded, isSignedIn, user } = useUser()
-const { getToken } = useAuth()
+const { isLoaded, isSignedIn } = useUser()
 const authStore = useAuthenticationStore()
 
 const isLoading = computed(() => !isLoaded.value)
 
 // Hydrate Pinia auth state from an existing Clerk session (works even when user lands directly on protected routes).
-watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
+watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
   if (!loaded) return
 
   if (!signedIn) {
@@ -29,34 +26,14 @@ watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
     return
   }
 
-  if (!clerkUser) return
   if (authStore.isAuthenticated) return
 
-  let token: string | null = null
-  try {
-    token = await getClerkToken(getToken)
-  } catch (e) {
-    token = null
-  }
+  if (route.name === 'clerkLoginPage') return
 
-  authStore.setClerkAuth(token, {
-    accountIdentifier: clerkUser.id,
-    firstName: clerkUser.firstName || '',
-    lastName: clerkUser.lastName || '',
-    emailAddress: clerkUser.primaryEmailAddress?.emailAddress || '',
-    roleDesignation: resolveRole(clerkUser.publicMetadata?.role, clerkUser.primaryEmailAddress?.emailAddress || ''),
-    contactNumber: clerkUser.publicMetadata?.contactNumber || '',
-    isActive: true,
-    authProvider: 'clerk',
-  })
-
-  // If the user is on the login page but already signed in, route them to the correct dashboard.
-  if (route.name === 'clerkLoginPage' || route.name === 'loginPage' || route.path === '/') {
-    if (authStore.userRole === 'ROLE_ADMIN') {
-      router.replace({ name: 'adminDashboardPage' })
-    } else {
-      router.replace({ name: 'borrowerMyReservationsPage' })
-    }
+  // Signed-in Clerk users must pass through PostLogin so the User Accounts DB
+  // remains the source of truth for role, status, and dashboard destination.
+  if (route.name !== 'postLoginPage') {
+    router.replace({ name: 'postLoginPage' })
   }
 }, { immediate: true })
 </script>

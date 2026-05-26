@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { apiUrl } from '@/shared/utils/apiBase.js';
+
 const AUTH_ACCOUNT_STORAGE_KEY = 'techreserve_auth_account';
 
 function createLocalBackendToken() {
@@ -70,7 +71,7 @@ async function parseResponse(response) {
 export const adminWishlistApi = {
   async getWishlistAccounts(token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist`, {
+      const response = await fetch(apiUrl('/api/v1/users/wishlist'), {
         method: 'GET',
         headers: buildHeaders(token),
       });
@@ -82,7 +83,7 @@ export const adminWishlistApi = {
 
   async verifyAccount(accountIdentifier, token, payload = {}) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${accountIdentifier}/approve`, {
+      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/approve`), {
         method: 'POST',
         headers: buildHeaders(token, true),
         body: JSON.stringify(payload),
@@ -93,11 +94,12 @@ export const adminWishlistApi = {
     }
   },
 
-  async denyAccount(accountIdentifier, token) {
+  async denyAccount(accountIdentifier, token, payload = {}) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${accountIdentifier}/reject`, {
+      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/reject`), {
         method: 'POST',
         headers: buildHeaders(token, true),
+        body: JSON.stringify(payload),
       });
       return parseResponse(response);
     } catch (error) {
@@ -107,7 +109,7 @@ export const adminWishlistApi = {
 
   async createAdminAccount(accountPayload, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/admin-accounts`, {
+      const response = await fetch(apiUrl('/api/v1/users/wishlist/admin-accounts'), {
         method: 'POST',
         headers: buildHeaders(token, true),
         body: JSON.stringify(accountPayload),
@@ -120,7 +122,7 @@ export const adminWishlistApi = {
 
   async createUserAccount(accountPayload, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/user-accounts`, {
+      const response = await fetch(apiUrl('/api/v1/users/wishlist/user-accounts'), {
         method: 'POST',
         headers: buildHeaders(token, true),
         body: JSON.stringify(accountPayload),
@@ -133,7 +135,7 @@ export const adminWishlistApi = {
 
   async createEmployeeAccount(accountPayload, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/wishlist/employee-accounts`, {
+      const response = await fetch(apiUrl('/api/v1/users/wishlist/employee-accounts'), {
         method: 'POST',
         headers: buildHeaders(token, true),
         body: JSON.stringify(accountPayload),

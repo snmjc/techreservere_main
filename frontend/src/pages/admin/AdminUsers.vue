@@ -147,6 +147,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const authStore = useAuthenticationStore();
 
@@ -187,7 +188,7 @@ async function fetchPendingUsers() {
   loading.value = true;
   try {
     const token = authStore.authToken;
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/pending`, {
+    const response = await fetch(apiUrl('/api/v1/users/pending'), {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -215,7 +216,7 @@ async function approveUser(accountIdentifier) {
   try {
     const token = authStore.authToken;
     const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${accountIdentifier}/approve`,
+      apiUrl(`/api/v1/users/${accountIdentifier}/approve`),
       {
         method: 'POST',
         headers: {
@@ -247,7 +248,7 @@ async function rejectUser(accountIdentifier) {
   try {
     const token = authStore.authToken;
     const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${accountIdentifier}/reject`,
+      apiUrl(`/api/v1/users/${accountIdentifier}/reject`),
       {
         method: 'POST',
         headers: {

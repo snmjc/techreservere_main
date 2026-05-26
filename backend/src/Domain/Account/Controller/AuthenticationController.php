@@ -40,7 +40,15 @@ class AuthenticationController
             );
         }
 
-        $accountEntity = $this->accountRepository->findOneByEmailAddress($emailAddress);
+        try {
+            $accountEntity = $this->accountRepository->findOneByEmailAddress($emailAddress);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse(
+                'DatabaseUnavailable',
+                'The authentication database is currently unavailable. Please make sure the TechReserve database service is running.',
+                503
+            );
+        }
 
         if ($accountEntity === null) {
             return $this->createErrorResponse(
@@ -69,7 +77,15 @@ class AuthenticationController
 
         $storedHash = $accountEntity->getPasswordHash();
 
-        if ($storedHash === null || !password_verify($passwordText, $storedHash)) {
+        if ($storedHash === null) {
+            return $this->createErrorResponse(
+                'LocalPasswordUnavailable',
+                'This account uses Clerk authentication. Continuing with Clerk sign-in.',
+                401
+            );
+        }
+
+        if (!password_verify($passwordText, $storedHash)) {
             $failedAttempts = $accountEntity->getFailedLoginAttempts() + 1;
             $accountEntity->setFailedLoginAttempts($failedAttempts);
 
@@ -77,7 +93,15 @@ class AuthenticationController
                 $accountEntity->setLockedUntilTimestamp(new \DateTime('+15 minutes'));
             }
 
-            $this->accountRepository->persistAccount($accountEntity);
+            try {
+                $this->accountRepository->persistAccount($accountEntity);
+            } catch (\Throwable $exception) {
+                return $this->createErrorResponse(
+                    'DatabaseUnavailable',
+                    'The authentication database is currently unavailable. Please make sure the TechReserve database service is running.',
+                    503
+                );
+            }
 
             return $this->createErrorResponse(
                 'AuthenticationFailed',
@@ -89,7 +113,15 @@ class AuthenticationController
         $accountEntity->setFailedLoginAttempts(0);
         $accountEntity->setLockedUntilTimestamp(null);
         $accountEntity->setLastLoginTimestamp(new \DateTime());
-        $this->accountRepository->persistAccount($accountEntity);
+        try {
+            $this->accountRepository->persistAccount($accountEntity);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse(
+                'DatabaseUnavailable',
+                'The authentication database is currently unavailable. Please make sure the TechReserve database service is running.',
+                503
+            );
+        }
 
         $tokenPayload = base64_encode(json_encode([
             'accountId' => $accountEntity->getAccountIdentifier(),

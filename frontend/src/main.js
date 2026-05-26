@@ -5,7 +5,7 @@ import App from './App.vue'
 import applicationRouter from './router/index.js'
 import { clerkPlugin } from '@clerk/vue'
 
-const FALLBACK_CLERK_PUBLISHABLE_KEY = 'pk_test_cHJpbWFyeS1yb29zdGVyLTgwLmNsZXJrLmFjY291bnRzLmRldiQ'
+const FALLBACK_CLERK_PUBLISHABLE_KEY = 'pk_test_c2F2ZWQtbGFiLTIuY2xlcmsuYWNjb3VudHMuZGV2JA=='
 const PLACEHOLDER_CLERK_KEYS = new Set([
   'pk_test_your_clerk_key_here',
   'your_clerk_publishable_key_here',

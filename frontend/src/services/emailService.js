@@ -1,10 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 export const emailService = {
   // Send invitation email
   async sendInvitationEmail(invitationData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/emails/send-invitation`, {
+      const response = await fetch(apiUrl('/api/v1/emails/send-invitation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ export const emailService = {
   // Send account approval email
   async sendApprovalEmail(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/emails/send-approval`, {
+      const response = await fetch(apiUrl('/api/v1/emails/send-approval'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export const emailService = {
   // Send rejection email
   async sendRejectionEmail(userData, reason = '') {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/emails/send-rejection`, {
+      const response = await fetch(apiUrl('/api/v1/emails/send-rejection'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

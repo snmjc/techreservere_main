@@ -3,7 +3,7 @@
 // Inputs: credentials object
 // Returns: API response data
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 /**
  * @function loginRequest
@@ -15,7 +15,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  */
 export async function loginRequest(credentials) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    const response = await fetch(apiUrl('/api/v1/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
@@ -30,7 +30,10 @@ export async function loginRequest(credentials) {
     }
 
     if (!response.ok) {
-      throw new Error(data.errorMessage || 'Login failed.');
+      const loginError = new Error(data.errorMessage || 'Login failed.');
+      loginError.errorType = data.errorType || null;
+      loginError.statusCode = response.status;
+      throw loginError;
     }
 
     // Handle different response structures
@@ -47,6 +50,9 @@ export async function loginRequest(credentials) {
     throw new Error('Invalid response format from server.');
   } catch (error) {
     console.error('Login request error:', error);
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Backend API is not reachable. Please make sure the TechReserve backend is running and the frontend tunnel is proxying /api requests.');
+    }
     throw error;
   }
 }
@@ -74,7 +80,7 @@ export async function registerRequest(registrationData) {
       formData.append('supportingDocument', registrationData.supportingDocument);
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    const response = await fetch(apiUrl('/api/v1/auth/register'), {
       method: 'POST',
       headers: {}, // Let browser set Content-Type for FormData
       body: formData,

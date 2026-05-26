@@ -7,6 +7,7 @@ use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\RoleConstants;
 
 class ReservationReviewService
 {
@@ -39,6 +40,20 @@ class ReservationReviewService
     {
         $entities = $this->reservationRepository->findByBorrowerAccountId($borrowerAccountId);
         return array_map(fn($entity) => $this->transformEntityToDTO($entity), $entities); // entity → DTO map
+    }
+
+    public function getReservationByIdForRole(int $reservationIdentifier, string $resolvedRole, int $accountIdentifier): ReservationResponseDTO
+    {
+        $entity = $this->reservationRepository->find($reservationIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
+        }
+
+        if ($resolvedRole !== RoleConstants::ROLE_ADMIN && $entity->getBorrowerAccountId() !== $accountIdentifier) {
+            throw new DomainValidationException('You are not allowed to access this reservation.');
+        }
+
+        return $this->transformEntityToDTO($entity);
     }
 
     // ===== AI GENERATED: updateReservationStatus =====

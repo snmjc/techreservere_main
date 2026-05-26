@@ -1,10 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 export const pendingUserService = {
   // Register new user (sign up request)
   async registerUser(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/pending-users`, {
+      const response = await fetch(apiUrl('/api/v1/pending-users'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ export const pendingUserService = {
   // Get pending users for requestor approval
   async getPendingUsers() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/pending-users`, {
+      const response = await fetch(apiUrl('/api/v1/pending-users'), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export const pendingUserService = {
   // Approve user account
   async approveUser(userId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/pending-users/${userId}/approve`, {
+      const response = await fetch(apiUrl(`/api/v1/pending-users/${userId}/approve`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ export const pendingUserService = {
   // Reject user account
   async rejectUser(userId, reason = '') {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/pending-users/${userId}/reject`, {
+      const response = await fetch(apiUrl(`/api/v1/pending-users/${userId}/reject`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

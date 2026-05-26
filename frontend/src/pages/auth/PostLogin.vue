@@ -9,24 +9,21 @@ import { watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth, useUser } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { getClerkToken, signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { resolveRole } from '@/modules/authentication/utils/roleUtils.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const router = useRouter();
 const { isLoaded, isSignedIn, user } = useUser();
-const { getToken } = useAuth();
+const { getToken, signOut } = useAuth();
 const authStore = useAuthenticationStore();
 
-function resolveBackendAccountStatus(account, fallbackRole) {
+function resolveBackendAccountStatus(account) {
   if (account?.isActive === false || String(account?.status || '').toLowerCase() === 'disabled') {
     return 'disabled';
   }
 
   if (account?.isApproved === true || ['approved', 'active', 'verified'].includes(String(account?.status || '').toLowerCase())) {
-    return 'approved';
-  }
-
-  if (fallbackRole === 'ROLE_ADMIN') {
     return 'approved';
   }
 
@@ -43,7 +40,7 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/register`, {
+    const response = await fetch(apiUrl('/api/v1/users/register'), {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -84,6 +81,20 @@ async function routeAfterLogin() {
   const roleDesignation = resolveRole(user.value.publicMetadata?.role, emailAddress);
 
   const backendAccount = await ensureBackendAccount(user.value, roleDesignation, token);
+  if (!backendAccount) {
+    authStore.performLogout();
+    await signOutClerk(signOut);
+    router.replace({ name: 'clerkLoginPage' });
+    return;
+  }
+  const backendStatus = resolveBackendAccountStatus(backendAccount);
+
+  if (backendStatus === 'disabled') {
+    authStore.performLogout();
+    await signOutClerk(signOut);
+    router.replace({ name: 'clerkLoginPage' });
+    return;
+  }
 
   authStore.setClerkAuth(token, {
     ...backendAccount,
@@ -94,9 +105,9 @@ async function routeAfterLogin() {
     emailAddress,
     roleDesignation: backendAccount?.roleDesignation || roleDesignation,
     contactNumber: user.value.publicMetadata?.contactNumber || '',
-    status: resolveBackendAccountStatus(backendAccount, roleDesignation),
-    isApproved: backendAccount?.isApproved ?? roleDesignation === 'ROLE_ADMIN',
-    isActive: backendAccount?.isActive ?? true,
+    status: backendStatus,
+    isApproved: backendAccount.isApproved === true,
+    isActive: backendAccount.isActive !== false,
     authProvider: 'clerk',
   });
 

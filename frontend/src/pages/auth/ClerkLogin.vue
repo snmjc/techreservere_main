@@ -33,14 +33,61 @@
     <section class="clerk-login-form-panel">
       <div class="clerk-login-form-content">
         <div class="clerk-login-card">
-          <SignIn
-            path="/clerk-login"
-            routing="path"
-            :signUpUrl="signUpUrl"
-            :forceRedirectUrl="postLoginUrl"
-            :fallbackRedirectUrl="postLoginUrl"
-            :appearance="clerkAppearance"
-          />
+          <form class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
+            <h2 class="techreserve-local-login-title">Welcome to TechReserve</h2>
+            <p v-if="loginError" class="techreserve-local-login-error">{{ loginError }}</p>
+
+            <label class="techreserve-local-login-field">
+              <span>Email address</span>
+              <input
+                v-model.trim="emailAddress"
+                type="email"
+                autocomplete="username"
+                required
+              />
+            </label>
+
+            <label class="techreserve-local-login-field">
+              <span>Password</span>
+              <input
+                v-model="passwordText"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+
+            <div class="techreserve-local-login-options">
+              <label class="techreserve-local-login-remember">
+                <input
+                  v-model="rememberMeChecked"
+                  type="checkbox"
+                />
+                <span>Remember me</span>
+              </label>
+
+              <button
+                type="button"
+                class="techreserve-local-login-link"
+                @click="handleForgotPassword"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            <p v-if="forgotPasswordMessage" class="techreserve-local-login-info">
+              {{ forgotPasswordMessage }}
+            </p>
+
+            <button class="techreserve-local-login-button" type="submit" :disabled="isSubmitting">
+              {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
+            </button>
+
+            <p class="techreserve-local-login-signup">
+              Don't have an account?
+              <router-link :to="{ name: 'customSignUpPage' }">Sign up</router-link>
+            </p>
+          </form>
         </div>
       </div>
 
@@ -52,80 +99,130 @@
 </template>
 
 <script setup>
-import { watch, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { SignIn, useUser, useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
-import { resolveRole } from '@/modules/authentication/utils/roleUtils.js';
 
 const router = useRouter();
-const { isLoaded, isSignedIn, user } = useUser();
-const { getToken } = useAuth();
 const authStore = useAuthenticationStore();
 
-const postLoginUrl = '/auth/post-login';
-const signUpUrl = '/sign-up';
-const clerkAppearance = {
-  variables: {
-    colorPrimary: '#08784a',
-    colorText: '#111827',
-    colorTextSecondary: '#6b7280',
-    colorBackground: '#ffffff',
-    borderRadius: '12px',
-    fontFamily: '"Inter", "Segoe UI", system-ui, -apple-system, sans-serif',
-  },
-  elements: {
-    rootBox: 'techreserve-clerk-root',
-    cardBox: 'techreserve-clerk-card-box',
-    card: 'techreserve-clerk-card',
-    headerTitle: 'techreserve-clerk-header-title',
-    headerSubtitle: 'techreserve-clerk-header-subtitle',
-    formField: 'techreserve-clerk-form-field',
-    formFieldLabel: 'techreserve-clerk-field-label',
-    formFieldInput: 'techreserve-clerk-field-input',
-    formButtonPrimary: 'techreserve-clerk-primary-button',
-    footer: 'techreserve-clerk-footer',
-    footerActionLink: 'techreserve-clerk-footer-link',
-  },
-};
+const emailAddress = ref('admin@techreserve.edu.ph');
+const passwordText = ref('');
+const rememberMeChecked = ref(false);
+const loginError = ref('');
+const forgotPasswordMessage = ref('');
+const isSubmitting = ref(false);
 
-watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
-  if (!loaded) return;
+onMounted(() => {
+  const rememberedEmail = localStorage.getItem('techreserve_remembered_login_email');
+  if (rememberedEmail) {
+    emailAddress.value = rememberedEmail;
+    rememberMeChecked.value = true;
+  }
+});
 
-  if (!signedIn) {
-    if (authStore.accountData?.authProvider === 'clerk') {
-      authStore.performLogout();
+async function handleLocalLogin() {
+  loginError.value = '';
+  forgotPasswordMessage.value = '';
+  isSubmitting.value = true;
+
+  try {
+    const account = await authStore.performLogin(emailAddress.value, passwordText.value);
+    routeAfterBackendLogin(account);
+  } catch (error) {
+    if (error?.errorType === 'LocalPasswordUnavailable') {
+      await handleClerkPasswordLogin();
+      return;
     }
+
+    loginError.value = error?.message || 'Invalid email address or password.';
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+async function handleClerkPasswordLogin() {
+  const clerk = await waitForClerk();
+
+  if (!clerk?.client?.signIn || !clerk?.setActive) {
+    loginError.value = 'Clerk authentication is still loading. Please try again.';
     return;
   }
 
-  if (!clerkUser) return;
-
-  let token = null;
   try {
-    token = await getClerkToken(getToken);
+    const clerkSignIn = await clerk.client.signIn.create({
+      identifier: emailAddress.value,
+      password: passwordText.value,
+      strategy: 'password',
+    });
+
+    if (clerkSignIn.status !== 'complete' || !clerkSignIn.createdSessionId) {
+      loginError.value = 'This account needs additional Clerk verification before sign-in can continue.';
+      return;
+    }
+
+    rememberLoginEmailPreference();
+    await clerk.setActive({ session: clerkSignIn.createdSessionId });
+    router.replace({ name: 'postLoginPage' });
   } catch (error) {
-    console.error('[ClerkLogin] Failed to retrieve Clerk token:', error);
+    loginError.value = resolveClerkErrorMessage(error);
+  }
+}
+
+function waitForClerk(timeoutMs = 4000) {
+  if (window.Clerk?.loaded) {
+    return Promise.resolve(window.Clerk);
   }
 
-  authStore.setClerkAuth(token, {
-    accountIdentifier: clerkUser.id,
-    firstName: clerkUser.firstName || '',
-    lastName: clerkUser.lastName || '',
-    emailAddress: clerkUser.primaryEmailAddress?.emailAddress || '',
-    roleDesignation: resolveRole(clerkUser.publicMetadata?.role, clerkUser.primaryEmailAddress?.emailAddress || ''),
-    contactNumber: clerkUser.publicMetadata?.contactNumber || '',
-    isActive: true,
-    authProvider: 'clerk',
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (window.Clerk?.loaded) {
+        window.clearInterval(timer);
+        resolve(window.Clerk);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        window.clearInterval(timer);
+        resolve(window.Clerk || null);
+      }
+    }, 100);
   });
+}
 
-  if (authStore.userRole === 'ROLE_ADMIN') {
+function routeAfterBackendLogin(account) {
+  const role = String(account?.roleDesignation || '').toUpperCase();
+
+  rememberLoginEmailPreference();
+
+  if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
     router.replace({ name: 'adminDashboardPage' });
-  } else {
-    router.replace({ name: 'borrowerMyReservationsPage' });
+    return;
   }
-});
+
+  router.replace({ name: 'borrowerMyReservationsPage' });
+}
+
+function rememberLoginEmailPreference() {
+  if (rememberMeChecked.value) {
+    localStorage.setItem('techreserve_remembered_login_email', emailAddress.value);
+  } else {
+    localStorage.removeItem('techreserve_remembered_login_email');
+  }
+}
+
+function resolveClerkErrorMessage(error) {
+  const clerkError = error?.errors?.[0];
+  if (clerkError?.longMessage) return clerkError.longMessage;
+  if (clerkError?.message) return clerkError.message;
+  return error?.message || 'Invalid email address or password.';
+}
+
+function handleForgotPassword() {
+  loginError.value = '';
+  forgotPasswordMessage.value = 'For local database accounts, password reset is handled by the system administrator.';
+}
 </script>
 
 <style scoped>
@@ -292,6 +389,152 @@ watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
   text-transform: uppercase;
 }
 
+.techreserve-local-login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 1rem;
+}
+
+.techreserve-local-login-title {
+  margin: 0 0 0.3rem;
+  color: #111827;
+  font-size: 1.28rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.techreserve-local-login-error {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #f3b5b5;
+  border-radius: 10px;
+  background: #fff4f4;
+  color: #9f1d1d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.techreserve-local-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.techreserve-local-login-field input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid #d7ded9;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 0 0.8rem;
+}
+
+.techreserve-local-login-field input:focus {
+  border-color: #08784a;
+  box-shadow: 0 0 0 3px rgba(8, 120, 74, 0.12);
+  outline: none;
+}
+
+.techreserve-local-login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: -0.15rem;
+}
+
+.techreserve-local-login-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.techreserve-local-login-remember input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #08784a;
+}
+
+.techreserve-local-login-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #08784a;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.techreserve-local-login-link:hover,
+.techreserve-local-login-signup a:hover {
+  color: #05613d;
+  text-decoration: underline;
+}
+
+.techreserve-local-login-info {
+  margin: -0.15rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #bfe8d2;
+  border-radius: 10px;
+  background: #f0fbf5;
+  color: #07543f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.techreserve-local-login-button {
+  min-height: 42px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: #08784a;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 900;
+  box-shadow: 0 6px 14px rgba(8, 120, 74, 0.14);
+}
+
+.techreserve-local-login-button:hover:not(:disabled) {
+  background: #05613d;
+}
+
+.techreserve-local-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.techreserve-local-login-signup {
+  margin: -0.1rem 0 0;
+  color: #6b7280;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.techreserve-local-login-signup a {
+  color: #08784a;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 :deep(.techreserve-clerk-root) {
   display: flex;
   justify-content: center;
@@ -314,12 +557,20 @@ watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
 }
 
 :deep(.techreserve-clerk-header-title) {
-  color: #111827;
-  font-size: 1.24rem;
-  font-weight: 900;
-  line-height: 1.2;
+  color: transparent;
+  font-size: 0;
+  line-height: 1;
   text-align: center;
   margin-bottom: 1.2rem;
+}
+
+:deep(.techreserve-clerk-header-title)::before {
+  content: 'Welcome to TechReserve';
+  display: block;
+  color: #111827;
+  font-size: 1.28rem;
+  font-weight: 900;
+  line-height: 1.25;
 }
 
 :deep(.techreserve-clerk-header-subtitle) {
@@ -363,6 +614,12 @@ watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
 
 :deep(.techreserve-clerk-primary-button:hover) {
   background: #05613d;
+}
+
+:deep(.techreserve-clerk-social-block),
+:deep(.techreserve-clerk-social-button),
+:deep(.techreserve-clerk-divider-row) {
+  display: none;
 }
 
 :deep(.techreserve-clerk-footer) {

@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const dashboardApi = {
   async getDashboardSummary() {
@@ -9,7 +8,7 @@ const dashboardApi = {
         localStorage.getItem('techreserve_auth_token') ||
         localStorage.getItem('authToken') ||
         localStorage.getItem('clerkToken');
-      const response = await axios.get(`${API_BASE_URL}/dashboard/summary`, {
+      const response = await axios.get(apiUrl('/api/v1/dashboard/summary'), {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }

@@ -37,6 +37,7 @@ services:
       CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
       CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
       MAILER_DSN: "${MAILER_DSN:-null://null}"
     depends_on:
       database:
@@ -79,6 +80,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "100"
       VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8000}"
+      VITE_API_PROXY_TARGET: "${VITE_API_PROXY_TARGET:-http://backend:8000}"
       VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY:-}"
     ports:
       - "${FRONTEND_EXTERNAL_PORT:-5173}:5173"
@@ -102,3 +104,5 @@ volumes:
   backend_var:
   backend_vendor:
   pgadmin_data:
+
+  CLERK_WEBHOOK_SIGNING_SECRET: "${CLERK_WEBHOOK_SIGNING_SECRET:-}"

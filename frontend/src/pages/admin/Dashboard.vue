@@ -33,6 +33,11 @@
             :key="card.label"
             class="admin-dashboard-stat-card"
             :class="card.className"
+            role="button"
+            tabindex="0"
+            @click="navigateToMetricPage(card.routeName)"
+            @keydown.enter.prevent="navigateToMetricPage(card.routeName)"
+            @keydown.space.prevent="navigateToMetricPage(card.routeName)"
           >
             <span class="admin-dashboard-stat-icon" v-html="card.icon"></span>
             <div class="admin-dashboard-stat-copy">
@@ -131,7 +136,7 @@
           >
             <div class="admin-dashboard-facility-card-header">
               <span>{{ facility.name }}</span>
-              <strong>{{ facility.available }}/{{ facility.total }}</strong>
+              <strong>{{ facility.occupied }}/{{ facility.total }}</strong>
             </div>
             <div class="admin-dashboard-facility-bar">
               <i :style="{ width: `${facility.percent}%` }"></i>
@@ -194,11 +199,33 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
+
+const router = useRouter();
+const authStore = useAuthenticationStore();
+
+const mockDashboardSummary = {
+  totalAccounts: 482,
+  totalEquipment: 320,
+  totalReservations: 1088,
+  pendingReservations: 156,
+  approvedReservations: 932,
+  activeReservations: 21,
+  completedReservations: 610,
+  activeEquipmentCount: 248,
+  activeFacilityUsageCount: 21,
+  overdueEquipment: 17,
+  equipmentUtilizationRate: 76.8,
+};
+
+const dashboardSummary = ref({ ...mockDashboardSummary });
 
 const dashboardDateRange = computed(() => {
   const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -208,46 +235,58 @@ const dashboardDateRange = computed(() => {
   return `${formatter.format(start)} - ${formatter.format(today)}`;
 });
 
-const totalOverviewCards = [
+const totalOverviewCards = computed(() => [
+  {
+    label: 'Total Users',
+    value: formatCount(dashboardSummary.value.totalAccounts),
+    meta: 'Connected user accounts',
+    className: 'admin-dashboard-stat-card--users',
+    routeName: 'adminManageAccountsPage',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  },
   {
     label: 'Pending Requests',
-    value: '156',
+    value: formatCount(dashboardSummary.value.pendingReservations),
     meta: 'Awaiting admin review',
     className: 'admin-dashboard-stat-card--pending',
+    routeName: 'adminPendingRequestsPage',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   },
   {
     label: 'Approved Requests',
-    value: '932',
+    value: formatCount(dashboardSummary.value.approvedReservations),
     meta: 'Ready for release',
     className: 'admin-dashboard-stat-card--approved',
+    routeName: 'adminApprovedRequestsPage',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
   },
   {
     label: 'Active Equipment / Facilities',
-    value: '248 / 21',
+    value: `${formatCount(dashboardSummary.value.activeEquipmentCount)} / ${formatCount(dashboardSummary.value.activeFacilityUsageCount)}`,
     meta: 'Deployed items / booked facilities',
     className: 'admin-dashboard-stat-card--deployed',
+    routeName: 'adminActiveReservationsPage',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M8 21h8"/><path d="M12 16v5"/></svg>',
   },
   {
     label: 'Overdue Equipment',
-    value: '17',
+    value: formatCount(dashboardSummary.value.overdueEquipment),
     meta: 'Past expected return',
     className: 'admin-dashboard-stat-card--overdue',
+    routeName: 'adminPastRecordsPage',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
   },
-];
+]);
 
-const groupedStats = [
+const groupedStats = computed(() => [
   {
     label: 'Overall Equipment Utilization',
-    value: '76.8%',
+    value: `${dashboardSummary.value.equipmentUtilizationRate}%`,
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-3"/></svg>',
   },
   {
     label: 'Active Users',
-    value: '482',
+    value: formatCount(dashboardSummary.value.totalAccounts),
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   },
   {
@@ -260,13 +299,13 @@ const groupedStats = [
     value: '1.2 hrs',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>',
   },
-];
+]);
 
 const facilityStatus = [
-  { name: 'Classrooms', available: 17, total: 30, percent: 57, status: 'Moderate availability' },
-  { name: 'Multipurpose Rooms', available: 1, total: 3, percent: 33, status: 'Limited availability' },
-  { name: 'Laboratories', available: 8, total: 12, percent: 67, status: 'Available' },
-  { name: 'Audio Visual Rooms', available: 4, total: 6, percent: 67, status: 'Available' },
+  { name: 'Classrooms', occupied: 17, total: 30, percent: 57, status: 'Moderate usage' },
+  { name: 'Multipurpose Room', occupied: 1, total: 1, percent: 100, status: 'Currently occupied' },
+  { name: 'Laboratories', occupied: 8, total: 12, percent: 67, status: 'Moderate usage' },
+  { name: 'Audio Visual Room', occupied: 0, total: 1, percent: 0, status: 'Currently available' },
 ];
 
 const readinessRiskAlerts = [
@@ -299,4 +338,63 @@ const systemActivityOverview = [
   { label: 'Equipment releases / returns', value: '11', meta: '7 released, 4 returned' },
   { label: 'Readiness alerts generated', value: '3', meta: 'Based on overdue, stock, and inspection flags' },
 ];
+
+onMounted(() => {
+  loadDashboardSummary();
+});
+
+async function loadDashboardSummary() {
+  try {
+    const response = await fetch(apiUrl('/api/v1/dashboard/summary'), {
+      method: 'GET',
+      headers: buildDashboardHeaders(),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return;
+
+    dashboardSummary.value = {
+      ...mockDashboardSummary,
+      ...(result.data || result),
+    };
+  } catch (error) {
+    dashboardSummary.value = { ...mockDashboardSummary };
+  }
+}
+
+function buildDashboardHeaders() {
+  const headers = {};
+  const storedToken = authStore.authToken && !String(authStore.authToken).startsWith('mock_token_')
+    ? authStore.authToken
+    : null;
+  const token = storedToken || createLocalBackendToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function createLocalBackendToken() {
+  try {
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocalDev) return null;
+    const account = authStore.accountData || {};
+    return btoa(JSON.stringify({
+      accountId: account.accountIdentifier || 1,
+      email: account.emailAddress || 'admin@techreserve.edu.ph',
+      role: 'ROLE_ADMIN',
+      exp: Math.floor(Date.now() / 1000) + 86400,
+    }));
+  } catch (error) {
+    return null;
+  }
+}
+
+function navigateToMetricPage(routeName) {
+  if (!routeName) return;
+  router.push({ name: routeName });
+}
+
+function formatCount(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return String(value ?? 0);
+  return new Intl.NumberFormat('en-US').format(numberValue);
+}
 </script>

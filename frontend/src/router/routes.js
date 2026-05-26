@@ -100,6 +100,18 @@ export const routeDefinitions = [
     path: '/sign-up',
     name: 'customSignUpPage',
     component: () => import('@/pages/auth/CustomSignUp.vue'),
+    beforeEnter: (toRoute) => {
+      const queryKeys = Object.keys(toRoute.query || {});
+      const hasInvitationQuery = queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key));
+      if (hasInvitationQuery) {
+        return {
+          name: 'clerkLoginPage',
+          query: toRoute.query,
+          hash: toRoute.hash,
+        };
+      }
+      return true;
+    },
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -140,6 +152,7 @@ export const routeDefinitions = [
   },
   {
     path: '/admin/wishlist',
+    alias: '/admin/requests-hub',
     name: 'adminWishlistPage',
     component: () => import('@/pages/admin/AdminWishlist.vue'),
     meta: {

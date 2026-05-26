@@ -136,12 +136,17 @@ class UserRegistrationController extends AbstractController
             $existingStatus = strtolower($existingEmailAccount->getStatus());
             $existingIsApproved = $existingEmailAccount->getIsApproved();
             $existingIsActive = $existingEmailAccount->getIsActive();
-            $nextStatus = $existingIsApproved ? ($existingIsActive ? 'approved' : 'disabled') : $existingStatus;
+            $existingRole = strtoupper(trim($existingEmailAccount->getRoleDesignation()));
+            $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
+            $latestInvitation = $this->findLatestInvitationForEmail($emailAddress);
+            $hasAcceptableInvitation = $this->isAcceptableInvitation($latestInvitation);
+            $nextRole = $existingIsAdmin ? 'ROLE_ADMIN' : $role;
+            $nextIsApproved = $existingIsApproved || $isApproved || $existingIsAdmin || $hasAcceptableInvitation;
+            $nextIsActive = $nextIsApproved ? $existingIsActive : true;
+            $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : $existingStatus;
             if ($nextStatus === '') {
                 $nextStatus = $status;
             }
-            $nextIsApproved = $existingIsApproved || $isApproved;
-            $nextIsActive = $existingIsApproved ? $existingIsActive : true;
 
             $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
@@ -161,7 +166,7 @@ class UserRegistrationController extends AbstractController
                 [
                     'lastName' => $lastName,
                     'firstName' => $firstName,
-                    'roleDesignation' => $role,
+                    'roleDesignation' => $nextRole,
                     'idNumber' => $idNumber ?: null,
                     'department' => $department ?: null,
                     'contactNumber' => $contactNumber ?: null,
@@ -188,6 +193,10 @@ class UserRegistrationController extends AbstractController
                 ]
             );
 
+            if ($hasAcceptableInvitation && $nextIsApproved) {
+                $this->markLatestInvitationAccepted((string)$emailAddress, $now);
+            }
+
             return $this->createSuccessResponse([
                 'message' => 'Account linked to Clerk successfully.',
                 'account' => [
@@ -196,7 +205,7 @@ class UserRegistrationController extends AbstractController
                     'firstName' => $firstName,
                     'lastName' => $lastName,
                     'emailAddress' => $emailAddress,
-                    'roleDesignation' => $role,
+                    'roleDesignation' => $nextRole,
                     'status' => $nextStatus,
                     'isApproved' => $nextIsApproved,
                     'isActive' => $nextIsActive,
@@ -369,22 +378,31 @@ class UserRegistrationController extends AbstractController
     public function listWishlistUsers(): JsonResponse
     {
         $rows = $this->connection->fetchAllAssociative(
-            "SELECT account_identifier, id_number, last_name, first_name, email_address, role_designation,
-                    department, contact_number, status, is_approved, created_timestamp,
+            "SELECT DISTINCT ON (LOWER(accounts.email_address))
+                    accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
+                    accounts.email_address, accounts.role_designation, accounts.department,
+                    accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
+                    latest_invitation.status AS invite_status,
                     latest_invitation.created_at AS invite_sent_at,
                     latest_invitation.expires_at AS invite_expires_at,
                     latest_invitation.accepted_at AS invite_accepted_at
              FROM accounts
              LEFT JOIN LATERAL (
-                SELECT created_at, expires_at, accepted_at
+                SELECT status, created_at, expires_at, accepted_at
                 FROM invitations
                 WHERE LOWER(email) = LOWER(accounts.email_address)
                 ORDER BY created_at DESC
                 LIMIT 1
              ) latest_invitation ON TRUE
-             WHERE COALESCE(is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(status, 'pending')) <> 'approved'
-             ORDER BY created_timestamp DESC"
+             WHERE (
+                COALESCE(accounts.is_approved, FALSE) = FALSE
+                AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
+             )
+             OR (
+                latest_invitation.accepted_at IS NOT NULL
+                AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
+             )
+             ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 
         $users = array_map(function (array $row): array {
@@ -416,8 +434,8 @@ class UserRegistrationController extends AbstractController
                 'roleDesignation' => $roleDesignation,
                 'roleLabel' => $roleLabel,
                 'accountType' => $accountType,
-                'accountStatus' => (string)($row['status'] ?? 'pending'),
-                'isApproved' => (bool)$row['is_approved'],
+                'accountStatus' => $this->resolveWishlistStatus($row),
+                'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
                 'registeredAt' => (string)$row['created_timestamp'],
                 'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
                 'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
@@ -441,18 +459,41 @@ class UserRegistrationController extends AbstractController
         $firstName = trim($requestBody['firstName'] ?? '');
         $emailAddress = strtolower(trim($requestBody['emailAddress'] ?? ''));
         $idNumber = trim($requestBody['idNumber'] ?? '');
-        $passwordText = (string)($requestBody['passwordText'] ?? $requestBody['password'] ?? '');
 
-        if ($lastName === '' || $firstName === '' || $emailAddress === '' || $idNumber === '' || $passwordText === '') {
+        if ($lastName === '' || $firstName === '' || $emailAddress === '' || $idNumber === '') {
             return $this->createErrorResponse(
                 'ValidationError',
-                'Last name, first name, email, ID number, and password are required.',
+                'Last name, first name, email, and ID number are required.',
+                422
+            );
+        }
+
+        if (!$this->isValidPersonName($lastName)) {
+            return $this->createErrorResponse(
+                'ValidationError',
+                'Last name must have at least 2 letters and cannot contain numbers or symbols.',
+                422
+            );
+        }
+
+        if (!$this->isValidPersonName($firstName)) {
+            return $this->createErrorResponse(
+                'ValidationError',
+                'First name must have at least 2 letters and cannot contain numbers or symbols.',
                 422
             );
         }
 
         if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
             return $this->createErrorResponse('ValidationError', 'Please provide a valid email address.', 422);
+        }
+
+        if (!$this->isInstitutionalAdminEmail($emailAddress)) {
+            return $this->createErrorResponse(
+                'ValidationError',
+                'Admin account must use a valid institutional email address.',
+                422
+            );
         }
 
         $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
@@ -478,7 +519,6 @@ class UserRegistrationController extends AbstractController
         }
 
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $passwordHash = password_hash($passwordText, PASSWORD_BCRYPT);
 
         try {
             $this->connection->executeStatement(
@@ -499,7 +539,7 @@ class UserRegistrationController extends AbstractController
                     'department' => 'Administration',
                     'contactNumber' => null,
                     'clerkUserId' => null,
-                    'passwordHash' => $passwordHash,
+                    'passwordHash' => null,
                     'status' => 'pending',
                     'isApproved' => false,
                     'isActive' => true,
@@ -516,7 +556,7 @@ class UserRegistrationController extends AbstractController
                     'department' => ParameterType::STRING,
                     'contactNumber' => ParameterType::NULL,
                     'clerkUserId' => ParameterType::NULL,
-                    'passwordHash' => ParameterType::STRING,
+                    'passwordHash' => ParameterType::NULL,
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
                     'isActive' => ParameterType::BOOLEAN,
@@ -956,11 +996,11 @@ class UserRegistrationController extends AbstractController
     public function approveUser(Request $request, int $accountIdentifier): JsonResponse
     {
         $requestBody = json_decode($request->getContent(), true) ?? [];
-        $confirmedAdminEmail = strtolower(trim((string)($requestBody['confirmedAdminEmail'] ?? '')));
+        $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
         $authenticatedIdentity = $request->attributes->get('authenticatedIdentity', []);
-        $invitedBy = strtolower(trim((string)($authenticatedIdentity['emailAddress'] ?? '')));
+        $invitedBy = $this->normalizeEmailForConfirmation((string)($authenticatedIdentity['emailAddress'] ?? ''));
 
-        if ($confirmedAdminEmail === '' || $invitedBy === '' || $confirmedAdminEmail !== $invitedBy) {
+        if ($confirmedAdminEmail === '') {
             return $this->createErrorResponse(
                 'SecurityConfirmationFailed',
                 'Please type the responsible admin email before sending the invite.',
@@ -968,10 +1008,42 @@ class UserRegistrationController extends AbstractController
             );
         }
 
+        if ($invitedBy === '' || $confirmedAdminEmail !== $invitedBy) {
+            $confirmedAdmin = $this->connection->fetchAssociative(
+                "SELECT account_identifier
+                 FROM accounts
+                 WHERE LOWER(email_address) = LOWER(:emailAddress)
+                   AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
+                   AND COALESCE(is_active, TRUE) = TRUE
+                 LIMIT 1",
+                ['emailAddress' => $confirmedAdminEmail],
+                ['emailAddress' => ParameterType::STRING]
+            );
+
+            if (!$confirmedAdmin) {
+                return $this->createErrorResponse(
+                    'SecurityConfirmationFailed',
+                    'Please type the responsible admin email before sending the invite.',
+                    422
+                );
+            }
+
+            $invitedBy = $confirmedAdminEmail;
+        }
+
         $account = $this->connection->fetchAssociative(
             "SELECT account_identifier, email_address, role_designation, first_name, last_name,
-                    department, id_number, status, is_approved
+                    department, id_number, status, is_approved,
+                    latest_invitation.expires_at AS invite_expires_at,
+                    latest_invitation.accepted_at AS invite_accepted_at
              FROM accounts
+             LEFT JOIN LATERAL (
+                SELECT expires_at, accepted_at
+                FROM invitations
+                WHERE LOWER(email) = LOWER(accounts.email_address)
+                ORDER BY created_at DESC
+                LIMIT 1
+             ) latest_invitation ON TRUE
              WHERE account_identifier = :accountIdentifier
                AND COALESCE(is_approved, FALSE) = FALSE
                AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'rejected', 'disabled')",
@@ -982,16 +1054,52 @@ class UserRegistrationController extends AbstractController
         if (!$account) {
             return $this->createErrorResponse(
                 'WishlistAccountNotFound',
-                'This email is not in the wishlist database or is no longer eligible for invitation.',
+                'This email is not in the Requests Hub database or is no longer eligible for invitation.',
                 404
             );
         }
 
         $now = new \DateTimeImmutable();
+        $accountStatus = strtolower((string)($account['status'] ?? 'pending'));
+        if (!empty($account['invite_accepted_at'])) {
+            return $this->createErrorResponse(
+                'InviteAlreadyAccepted',
+                'This account invitation has already been accepted.',
+                409
+            );
+        }
+
+        if ($accountStatus === 'invited' && empty($account['invite_expires_at'])) {
+            return $this->createErrorResponse(
+                'InviteAlreadySent',
+                'This account is already marked as invited. Resend is only available after the invitation expires.',
+                409
+            );
+        }
+
+        if (!empty($account['invite_expires_at'])) {
+            try {
+                $existingInviteExpiresAt = new \DateTimeImmutable((string)$account['invite_expires_at']);
+                if ($existingInviteExpiresAt >= $now) {
+                    return $this->createErrorResponse(
+                        'InviteAlreadySent',
+                        'This account already has an active invitation. Resend is only available after the invitation expires.',
+                        409
+                    );
+                }
+            } catch (\Throwable) {
+                return $this->createErrorResponse(
+                    'InviteStatusInvalid',
+                    'The existing invitation status could not be verified. Please refresh Requests Hub and try again.',
+                    409
+                );
+            }
+        }
+
         $expiresAt = $now->modify('+7 days');
         $invitationToken = bin2hex(random_bytes(24));
         $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173'), '/');
-        $redirectUrl = $frontendUrl . '/sign-up';
+        $redirectUrl = $frontendUrl . '/clerk-login';
         $useBrandedMailer = !$this->isNullMailerDsn();
 
         try {
@@ -1110,8 +1218,10 @@ class UserRegistrationController extends AbstractController
 
     #[Route('/{accountIdentifier}/reject', name: 'reject_user', methods: ['POST'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
-    public function rejectUser(int $accountIdentifier): JsonResponse
+    public function rejectUser(int $accountIdentifier, Request $request): JsonResponse
     {
+        $requestBody = json_decode($request->getContent(), true) ?? [];
+        $confirmEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmEmail'] ?? ''));
         $account = $this->accountRepository->find($accountIdentifier);
 
         if ($account === null) {
@@ -1119,6 +1229,14 @@ class UserRegistrationController extends AbstractController
                 'UserNotFound',
                 'User not found.',
                 404
+            );
+        }
+
+        if ($confirmEmail === '' || $confirmEmail !== $this->normalizeEmailForConfirmation($account->getEmailAddress())) {
+            return $this->createErrorResponse(
+                'DenyConfirmationFailed',
+                'Please type the exact email address to deny this request.',
+                422
             );
         }
 
@@ -1525,7 +1643,7 @@ HTML;
         $accountType = $this->resolveConflictAccountType($account);
 
         return sprintf(
-            'An account with this %s already exists: %s (%s, %s, %s). Check Manage Accounts or switch Wishlist filters.',
+            'An account with this %s already exists: %s (%s, %s, %s). Check Manage Accounts or switch Requests Hub filters.',
             $fieldName,
             $fullName !== '' ? $fullName : (string)($account['email_address'] ?? 'Unknown account'),
             (string)($account['email_address'] ?? 'No email'),
@@ -1586,10 +1704,131 @@ HTML;
         }
 
         if ($normalizedStatus === 'invited') {
-            return 'Invite Sent';
+            return 'Unverified';
         }
 
         return 'Unverified';
+    }
+
+    private function findLatestInvitationForEmail(string $emailAddress): ?array
+    {
+        $invitation = $this->connection->fetchAssociative(
+            'SELECT id, status, expires_at, accepted_at
+             FROM invitations
+             WHERE LOWER(email) = LOWER(:emailAddress)
+             ORDER BY created_at DESC
+             LIMIT 1',
+            ['emailAddress' => $emailAddress],
+            ['emailAddress' => ParameterType::STRING]
+        );
+
+        return $invitation ?: null;
+    }
+
+    private function isAcceptableInvitation(?array $invitation): bool
+    {
+        if ($invitation === null) {
+            return false;
+        }
+
+        if (!empty($invitation['accepted_at'])) {
+            return true;
+        }
+
+        $status = strtolower((string)($invitation['status'] ?? 'pending'));
+        if (in_array($status, ['accepted', 'expired', 'rejected', 'denied'], true)) {
+            return false;
+        }
+
+        try {
+            $expiresAt = new \DateTimeImmutable((string)$invitation['expires_at']);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $expiresAt >= new \DateTimeImmutable();
+    }
+
+    private function markLatestInvitationAccepted(string $emailAddress, string $acceptedAt): void
+    {
+        $this->connection->executeStatement(
+            "UPDATE invitations
+             SET status = 'accepted',
+                 accepted_at = COALESCE(accepted_at, :acceptedAt)
+             WHERE id = (
+                SELECT id
+                FROM invitations
+                WHERE LOWER(email) = LOWER(:emailAddress)
+                ORDER BY created_at DESC
+                LIMIT 1
+             )",
+            [
+                'emailAddress' => $emailAddress,
+                'acceptedAt' => $acceptedAt,
+            ],
+            [
+                'emailAddress' => ParameterType::STRING,
+                'acceptedAt' => ParameterType::STRING,
+            ]
+        );
+    }
+
+    private function resolveWishlistStatus(array $row): string
+    {
+        if (!empty($row['invite_accepted_at'])) {
+            return 'verified';
+        }
+
+        $status = strtolower((string)($row['status'] ?? 'pending'));
+        if (in_array($status, ['rejected', 'denied'], true)) {
+            return $status;
+        }
+
+        if (!empty($row['invite_expires_at'])) {
+            try {
+                $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
+                if ($expiresAt < new \DateTimeImmutable()) {
+                    return 'expired';
+                }
+
+                return 'unverified';
+            } catch (\Throwable) {
+                return $status;
+            }
+        }
+
+        if ($status === 'invited') {
+            return 'unverified';
+        }
+
+        if ($status === 'approved' || $status === 'verified') {
+            return 'verified';
+        }
+
+        return 'not_invited';
+    }
+
+    private function normalizeEmailForConfirmation(string $emailAddress): string
+    {
+        $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
+        return strtolower(trim($normalizedEmailAddress));
+    }
+
+    private function isValidPersonName(string $name): bool
+    {
+        $normalizedName = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
+        preg_match_all('/[A-Za-z]/', $normalizedName, $letterMatches);
+
+        return count($letterMatches[0] ?? []) >= 2
+            && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
+    }
+
+    private function isInstitutionalAdminEmail(string $emailAddress): bool
+    {
+        $normalizedEmailAddress = strtolower(trim($emailAddress));
+
+        return str_ends_with($normalizedEmailAddress, '@fit.edu.ph')
+            || str_ends_with($normalizedEmailAddress, '@techreserve.edu.ph');
     }
 
     private function toDatabaseBoolean(mixed $value): bool

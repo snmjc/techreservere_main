@@ -35,11 +35,10 @@
 
 <script setup>
 import { reactive } from "vue";
+import { apiUrl } from "@/shared/utils/apiBase.js";
 
 const backend = reactive({ status: "idle", message: "Not checked" });
 const db = reactive({ status: "idle", message: "Not checked" });
-
-const apiBase = import.meta.env.VITE_API_BASE_URL || "";
 
 const statusClass = (s) => {
   if (s === "ok") return "text-green-600 font-semibold";
@@ -52,7 +51,7 @@ async function checkBackend() {
   backend.status = "loading";
   backend.message = "Checking...";
   try {
-    const res = await fetch(`${apiBase}/health`, { method: "GET" });
+    const res = await fetch(apiUrl("/health"), { method: "GET" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     backend.status = "ok";
@@ -67,7 +66,7 @@ async function checkDB() {
   db.status = "loading";
   db.message = "Checking...";
   try {
-    const res = await fetch(`${apiBase}/health/db`, { method: "GET" });
+    const res = await fetch(apiUrl("/health/db"), { method: "GET" });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`HTTP ${res.status} ${text}`);
