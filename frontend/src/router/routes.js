@@ -25,6 +25,8 @@ export const routeDefinitions = [
         const accountString = localStorage.getItem('techreserve_auth_account');
         if (accountString) {
           const account = JSON.parse(accountString);
+          const status = String(account?.status || account?.accountStatus || '').trim().toLowerCase();
+          if (account?.isActive === false || status === 'disabled') return { name: 'accountDeactivatedPage' };
           const rawRole = account?.roleDesignation ?? account?.role ?? null;
           const role = rawRole ? String(rawRole).trim().toUpperCase() : null;
           if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: 'adminDashboardPage' };
@@ -63,6 +65,15 @@ export const routeDefinitions = [
     path: '/auth/post-login',
     name: 'postLoginPage',
     component: () => import('@/pages/auth/PostLogin.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
+    path: '/account-deactivated',
+    name: 'accountDeactivatedPage',
+    component: () => import('@/pages/auth/AccountDeactivated.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,

@@ -22,6 +22,8 @@ class UserRegistrationController extends AbstractController
 {
     use JsonResponseTrait;
 
+    private const DEFAULT_ADMIN_PASSWORD = 'admin123';
+
     private const ADMIN_EMAIL_ALLOWLIST = [
         'smmojica@fit.edu.ph',
     ];
@@ -324,6 +326,11 @@ class UserRegistrationController extends AbstractController
             return $this->createErrorResponse('AccountNotFound', 'No account registered for this Clerk user.', 404);
         }
 
+        $profilePhotoData = $this->connection->fetchOne(
+            'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
+            ['accountIdentifier' => $account->getAccountIdentifier()]
+        );
+
         return $this->createSuccessResponse([
             'account' => [
                 'accountIdentifier' => $account->getAccountIdentifier(),
@@ -337,6 +344,7 @@ class UserRegistrationController extends AbstractController
                 'status'            => $account->getStatus(),
                 'isApproved'        => $account->getIsApproved(),
                 'isActive'          => $account->getIsActive(),
+                'profilePhotoData'  => $profilePhotoData ? (string)$profilePhotoData : null,
                 'createdTimestamp'  => $account->getCreatedTimestamp()->format('Y-m-d H:i:s'),
             ],
         ]);
@@ -383,12 +391,13 @@ class UserRegistrationController extends AbstractController
                     accounts.email_address, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
                     latest_invitation.status AS invite_status,
+                    latest_invitation.invited_by AS invite_invited_by,
                     latest_invitation.created_at AS invite_sent_at,
                     latest_invitation.expires_at AS invite_expires_at,
                     latest_invitation.accepted_at AS invite_accepted_at
              FROM accounts
              LEFT JOIN LATERAL (
-                SELECT status, created_at, expires_at, accepted_at
+                SELECT status, invited_by, created_at, expires_at, accepted_at
                 FROM invitations
                 WHERE LOWER(email) = LOWER(accounts.email_address)
                 ORDER BY created_at DESC
@@ -437,6 +446,8 @@ class UserRegistrationController extends AbstractController
                 'accountStatus' => $this->resolveWishlistStatus($row),
                 'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
                 'registeredAt' => (string)$row['created_timestamp'],
+                'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
+                'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
                 'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
                 'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
                 'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
@@ -496,6 +507,9 @@ class UserRegistrationController extends AbstractController
             );
         }
 
+        $lastName = $this->normalizePersonName($lastName);
+        $firstName = $this->normalizePersonName($firstName);
+
         $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
 
         if ($existingEmailAccount) {
@@ -519,6 +533,8 @@ class UserRegistrationController extends AbstractController
         }
 
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $defaultAdminPassword = (string)($_ENV['DEFAULT_ADMIN_PASSWORD'] ?? self::DEFAULT_ADMIN_PASSWORD);
+        $defaultAdminPasswordHash = password_hash($defaultAdminPassword, PASSWORD_BCRYPT);
 
         try {
             $this->connection->executeStatement(
@@ -539,7 +555,7 @@ class UserRegistrationController extends AbstractController
                     'department' => 'Administration',
                     'contactNumber' => null,
                     'clerkUserId' => null,
-                    'passwordHash' => null,
+                    'passwordHash' => $defaultAdminPasswordHash,
                     'status' => 'pending',
                     'isApproved' => false,
                     'isActive' => true,
@@ -556,7 +572,7 @@ class UserRegistrationController extends AbstractController
                     'department' => ParameterType::STRING,
                     'contactNumber' => ParameterType::NULL,
                     'clerkUserId' => ParameterType::NULL,
-                    'passwordHash' => ParameterType::NULL,
+                    'passwordHash' => ParameterType::STRING,
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
                     'isActive' => ParameterType::BOOLEAN,
@@ -578,6 +594,8 @@ class UserRegistrationController extends AbstractController
                 'roleLabel' => 'Admin',
                 'accountType' => 'Admin',
                 'accountStatus' => 'pending',
+                'hasDefaultPassword' => true,
+                'defaultPasswordLabel' => $defaultAdminPassword,
                 'isApproved' => false,
                 'registeredAt' => $now,
                 'inviteSentAt' => null,
@@ -998,7 +1016,7 @@ class UserRegistrationController extends AbstractController
         $requestBody = json_decode($request->getContent(), true) ?? [];
         $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
         $authenticatedIdentity = $request->attributes->get('authenticatedIdentity', []);
-        $invitedBy = $this->normalizeEmailForConfirmation((string)($authenticatedIdentity['emailAddress'] ?? ''));
+        $authenticatedAdminId = $this->resolveAuthenticatedAccountIdentifier($request, $authenticatedIdentity);
 
         if ($confirmedAdminEmail === '') {
             return $this->createErrorResponse(
@@ -1008,37 +1026,36 @@ class UserRegistrationController extends AbstractController
             );
         }
 
-        if ($invitedBy === '' || $confirmedAdminEmail !== $invitedBy) {
-            $confirmedAdmin = $this->connection->fetchAssociative(
-                "SELECT account_identifier
-                 FROM accounts
-                 WHERE LOWER(email_address) = LOWER(:emailAddress)
-                   AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
-                   AND COALESCE(is_active, TRUE) = TRUE
-                 LIMIT 1",
-                ['emailAddress' => $confirmedAdminEmail],
-                ['emailAddress' => ParameterType::STRING]
+        $confirmedAdmin = $this->connection->fetchAssociative(
+            "SELECT account_identifier, email_address
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+               AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
+               AND COALESCE(is_active, TRUE) = TRUE
+             LIMIT 1",
+            ['accountIdentifier' => $authenticatedAdminId],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        $invitedBy = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
+
+        if (!$confirmedAdmin || $confirmedAdminEmail !== $invitedBy) {
+            return $this->createErrorResponse(
+                'SecurityConfirmationFailed',
+                'Please type your exact admin email before sending the invite.',
+                422
             );
-
-            if (!$confirmedAdmin) {
-                return $this->createErrorResponse(
-                    'SecurityConfirmationFailed',
-                    'Please type the responsible admin email before sending the invite.',
-                    422
-                );
-            }
-
-            $invitedBy = $confirmedAdminEmail;
         }
 
         $account = $this->connection->fetchAssociative(
             "SELECT account_identifier, email_address, role_designation, first_name, last_name,
                     department, id_number, status, is_approved,
+                    latest_invitation.created_at AS invite_sent_at,
                     latest_invitation.expires_at AS invite_expires_at,
                     latest_invitation.accepted_at AS invite_accepted_at
              FROM accounts
              LEFT JOIN LATERAL (
-                SELECT expires_at, accepted_at
+                SELECT created_at, expires_at, accepted_at
                 FROM invitations
                 WHERE LOWER(email) = LOWER(accounts.email_address)
                 ORDER BY created_at DESC
@@ -1814,6 +1831,54 @@ HTML;
         return strtolower(trim($normalizedEmailAddress));
     }
 
+    private function resolveAuthenticatedAccountIdentifier(Request $request, array $authenticatedIdentity): int
+    {
+        $accountIdentifier = (int)($authenticatedIdentity['accountIdentifier'] ?? 0);
+        if ($accountIdentifier > 0) {
+            return $accountIdentifier;
+        }
+
+        $authorizationHeader = $request->headers->get('Authorization', '');
+        if (!str_starts_with($authorizationHeader, 'Bearer ')) {
+            return 0;
+        }
+
+        $bearerToken = substr($authorizationHeader, 7);
+        $decodedLocalToken = json_decode(base64_decode($bearerToken, true) ?: '', true);
+        if (is_array($decodedLocalToken) && isset($decodedLocalToken['accountId'])) {
+            return (int)$decodedLocalToken['accountId'];
+        }
+
+        $decodedJwtPayload = $this->decodeJwtPayloadWithoutVerification($bearerToken);
+        $clerkUserId = (string)($decodedJwtPayload['sub'] ?? '');
+        if ($clerkUserId === '') {
+            return 0;
+        }
+
+        $account = $this->accountRepository->findOneByClerkUserId($clerkUserId);
+
+        return $account ? (int)$account->getAccountIdentifier() : 0;
+    }
+
+    private function decodeJwtPayloadWithoutVerification(string $token): array
+    {
+        $parts = explode('.', $token);
+        if (count($parts) < 2) {
+            return [];
+        }
+
+        $payload = strtr($parts[1], '-_', '+/');
+        $payload .= str_repeat('=', (4 - strlen($payload) % 4) % 4);
+        $decodedPayload = base64_decode($payload, true);
+        if ($decodedPayload === false) {
+            return [];
+        }
+
+        $data = json_decode($decodedPayload, true);
+
+        return is_array($data) ? $data : [];
+    }
+
     private function isValidPersonName(string $name): bool
     {
         $normalizedName = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
@@ -1821,6 +1886,11 @@ HTML;
 
         return count($letterMatches[0] ?? []) >= 2
             && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
+    }
+
+    private function normalizePersonName(string $name): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $name) ?? $name);
     }
 
     private function isInstitutionalAdminEmail(string $emailAddress): bool

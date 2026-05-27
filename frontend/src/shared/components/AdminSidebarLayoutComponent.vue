@@ -51,7 +51,10 @@
         <div class="admin-topbar-actions">
           <NotificationDropdown />
           <div class="admin-topbar-user">
-            <span class="admin-topbar-avatar">{{ userInitials }}</span>
+            <span class="admin-topbar-avatar">
+              <img v-if="userProfilePhoto" :src="userProfilePhoto" alt="Profile photo" />
+              <span v-else>{{ userInitials }}</span>
+            </span>
             <span class="admin-topbar-user-text">{{ displayedNameLabel }}</span>
           </div>
           <SettingsDropdown />
@@ -137,6 +140,10 @@ const userInitials = computed(() => {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
+});
+
+const userProfilePhoto = computed(() => {
+  return authStore.accountData?.profilePhotoData || authStore.clerkAccountData?.profilePhotoData || '';
 });
 
 /**

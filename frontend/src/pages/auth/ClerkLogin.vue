@@ -135,6 +135,12 @@ async function handleLocalLogin() {
       return;
     }
 
+    if (error?.errorType === 'AccountDisabled') {
+      authStore.performLogout();
+      router.replace({ name: 'accountDeactivatedPage' });
+      return;
+    }
+
     loginError.value = error?.message || 'Invalid email address or password.';
   } finally {
     isSubmitting.value = false;

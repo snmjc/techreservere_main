@@ -211,21 +211,22 @@ import { apiUrl } from '@/shared/utils/apiBase.js';
 const router = useRouter();
 const authStore = useAuthenticationStore();
 
-const mockDashboardSummary = {
-  totalAccounts: 482,
-  totalEquipment: 320,
-  totalReservations: 1088,
-  pendingReservations: 156,
-  approvedReservations: 932,
-  activeReservations: 21,
-  completedReservations: 610,
-  activeEquipmentCount: 248,
-  activeFacilityUsageCount: 21,
-  overdueEquipment: 17,
-  equipmentUtilizationRate: 76.8,
+const emptyDashboardSummary = {
+  totalAccounts: 0,
+  totalEquipment: 0,
+  totalReservations: 0,
+  pendingReservations: 0,
+  approvedReservations: 0,
+  activeReservations: 0,
+  completedReservations: 0,
+  activeEquipmentCount: 0,
+  activeFacilityUsageCount: 0,
+  overdueEquipment: 0,
+  equipmentUtilizationRate: 0,
 };
 
-const dashboardSummary = ref({ ...mockDashboardSummary });
+const dashboardSummary = ref({ ...emptyDashboardSummary });
+const isDashboardSummaryLoading = ref(true);
 
 const dashboardDateRange = computed(() => {
   const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -238,7 +239,7 @@ const dashboardDateRange = computed(() => {
 const totalOverviewCards = computed(() => [
   {
     label: 'Total Users',
-    value: formatCount(dashboardSummary.value.totalAccounts),
+    value: formatMetricValue(dashboardSummary.value.totalAccounts),
     meta: 'Connected user accounts',
     className: 'admin-dashboard-stat-card--users',
     routeName: 'adminManageAccountsPage',
@@ -246,7 +247,7 @@ const totalOverviewCards = computed(() => [
   },
   {
     label: 'Pending Requests',
-    value: formatCount(dashboardSummary.value.pendingReservations),
+    value: formatMetricValue(dashboardSummary.value.pendingReservations),
     meta: 'Awaiting admin review',
     className: 'admin-dashboard-stat-card--pending',
     routeName: 'adminPendingRequestsPage',
@@ -254,7 +255,7 @@ const totalOverviewCards = computed(() => [
   },
   {
     label: 'Approved Requests',
-    value: formatCount(dashboardSummary.value.approvedReservations),
+    value: formatMetricValue(dashboardSummary.value.approvedReservations),
     meta: 'Ready for release',
     className: 'admin-dashboard-stat-card--approved',
     routeName: 'adminApprovedRequestsPage',
@@ -262,7 +263,9 @@ const totalOverviewCards = computed(() => [
   },
   {
     label: 'Active Equipment / Facilities',
-    value: `${formatCount(dashboardSummary.value.activeEquipmentCount)} / ${formatCount(dashboardSummary.value.activeFacilityUsageCount)}`,
+    value: isDashboardSummaryLoading.value
+      ? '...'
+      : `${formatCount(dashboardSummary.value.activeEquipmentCount)} / ${formatCount(dashboardSummary.value.activeFacilityUsageCount)}`,
     meta: 'Deployed items / booked facilities',
     className: 'admin-dashboard-stat-card--deployed',
     routeName: 'adminActiveReservationsPage',
@@ -270,7 +273,7 @@ const totalOverviewCards = computed(() => [
   },
   {
     label: 'Overdue Equipment',
-    value: formatCount(dashboardSummary.value.overdueEquipment),
+    value: formatMetricValue(dashboardSummary.value.overdueEquipment),
     meta: 'Past expected return',
     className: 'admin-dashboard-stat-card--overdue',
     routeName: 'adminPastRecordsPage',
@@ -281,12 +284,12 @@ const totalOverviewCards = computed(() => [
 const groupedStats = computed(() => [
   {
     label: 'Overall Equipment Utilization',
-    value: `${dashboardSummary.value.equipmentUtilizationRate}%`,
+    value: isDashboardSummaryLoading.value ? '...' : `${dashboardSummary.value.equipmentUtilizationRate}%`,
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-3"/></svg>',
   },
   {
     label: 'Active Users',
-    value: formatCount(dashboardSummary.value.totalAccounts),
+    value: formatMetricValue(dashboardSummary.value.totalAccounts),
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   },
   {
@@ -344,6 +347,7 @@ onMounted(() => {
 });
 
 async function loadDashboardSummary() {
+  isDashboardSummaryLoading.value = true;
   try {
     const response = await fetch(apiUrl('/api/v1/dashboard/summary'), {
       method: 'GET',
@@ -353,11 +357,13 @@ async function loadDashboardSummary() {
     if (!response.ok) return;
 
     dashboardSummary.value = {
-      ...mockDashboardSummary,
+      ...emptyDashboardSummary,
       ...(result.data || result),
     };
   } catch (error) {
-    dashboardSummary.value = { ...mockDashboardSummary };
+    dashboardSummary.value = { ...emptyDashboardSummary };
+  } finally {
+    isDashboardSummaryLoading.value = false;
   }
 }
 
@@ -396,5 +402,9 @@ function formatCount(value) {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return String(value ?? 0);
   return new Intl.NumberFormat('en-US').format(numberValue);
+}
+
+function formatMetricValue(value) {
+  return isDashboardSummaryLoading.value ? '...' : formatCount(value);
 }
 </script>

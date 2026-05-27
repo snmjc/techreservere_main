@@ -23,7 +23,7 @@ export function evaluateRouteAccessGuard(toRoute) {
   const authStore = useAuthenticationStore();
 
   const isSignedIn = authStore.isAuthenticated;
-  const accountStatus = authStore.clerkAccountStatus ?? authStore.accountData?.status ?? 'approved';
+  const accountStatus = resolveAccountStatus(authStore);
   const userRole = authStore.userRole;
 
   console.log('[AccessGuard] Evaluating route:', toRoute.path, 'requiresAuth:', requiresAuth);
@@ -31,6 +31,11 @@ export function evaluateRouteAccessGuard(toRoute) {
 
   // Public routes — allow access to login page even when signed in
   if (!requiresAuth) {
+    if (accountStatus === 'disabled' && toRoute.name !== 'accountDeactivatedPage') {
+      console.log('[AccessGuard] Disabled account, redirecting to deactivated page');
+      return { name: 'accountDeactivatedPage' };
+    }
+
     // Only redirect from old login/signup pages, not clerkLoginPage
     const authPages = ['loginPage', 'signUpPage'];
     if (authPages.includes(toRoute.name) && isSignedIn && accountStatus === 'approved') {
@@ -60,9 +65,15 @@ export function evaluateRouteAccessGuard(toRoute) {
     return true;
   }
 
-  // Rejected or disabled users go back to login
-  if (accountStatus === 'rejected' || accountStatus === 'disabled') {
-    console.log('[AccessGuard] Account not allowed, redirecting to login');
+  // Disabled users can only view the deactivated notice page.
+  if (accountStatus === 'disabled') {
+    console.log('[AccessGuard] Disabled account, redirecting to deactivated page');
+    return { name: 'accountDeactivatedPage' };
+  }
+
+  // Rejected users go back to login
+  if (accountStatus === 'rejected') {
+    console.log('[AccessGuard] Account rejected, redirecting to login');
     return { name: 'clerkLoginPage' };
   }
 
@@ -77,4 +88,16 @@ export function evaluateRouteAccessGuard(toRoute) {
 
   console.log('[AccessGuard] Route allowed');
   return true;
+}
+
+function resolveAccountStatus(authStore) {
+  const account = authStore.clerkAccountData || authStore.accountData || {};
+  const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'approved';
+  const normalizedStatus = String(rawStatus || '').trim().toLowerCase();
+
+  if (account.isActive === false || normalizedStatus === 'disabled') {
+    return 'disabled';
+  }
+
+  return normalizedStatus;
 }

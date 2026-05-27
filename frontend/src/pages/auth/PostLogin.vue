@@ -90,9 +90,20 @@ async function routeAfterLogin() {
   const backendStatus = resolveBackendAccountStatus(backendAccount);
 
   if (backendStatus === 'disabled') {
-    authStore.performLogout();
-    await signOutClerk(signOut);
-    router.replace({ name: 'clerkLoginPage' });
+    authStore.setClerkAuth(token, {
+      ...backendAccount,
+      accountIdentifier: backendAccount?.accountIdentifier || user.value.id,
+      clerkUserId: user.value.id,
+      firstName: backendAccount?.firstName || user.value.firstName || '',
+      lastName: backendAccount?.lastName || user.value.lastName || '',
+      emailAddress,
+      roleDesignation: backendAccount?.roleDesignation || roleDesignation,
+      status: 'disabled',
+      isApproved: backendAccount.isApproved === true,
+      isActive: false,
+      authProvider: 'clerk',
+    });
+    router.replace({ name: 'accountDeactivatedPage' });
     return;
   }
 

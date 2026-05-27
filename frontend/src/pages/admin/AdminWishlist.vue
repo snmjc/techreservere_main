@@ -214,27 +214,27 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>View Account</h2>
-            <p>Verify system account and send an invite.</p>
+            <p>Review account and invitation details from the database.</p>
           </div>
 
           <div class="admin-wishlist-view-account-grid">
             <div class="admin-wishlist-view-account-main">
-              <p><strong>ID Number:</strong> <span>{{ selectedAccount.idNumber }}</span></p>
               <p><strong>Last Name:</strong> <span>{{ selectedAccount.lastName }}</span></p>
               <p><strong>First Name:</strong> <span>{{ selectedAccount.firstName }}</span></p>
-              <p><strong>{{ getEmailLabel(selectedAccount) }}</strong> <span>{{ selectedAccount.emailAddress }}</span></p>
-              <p v-if="selectedAccount.accountType === 'Employee'"><strong>Phone:</strong> <span>{{ selectedAccount.contactNumber }}</span></p>
+              <p><strong>ID Number:</strong> <span>{{ selectedAccount.idNumber }}</span></p>
+              <p><strong>Email:</strong> <span>{{ selectedAccount.emailAddress }}</span></p>
               <p><strong>Role:</strong> <span>{{ selectedAccount.role }}</span></p>
               <p><strong>Account Status:</strong> <span>{{ getStatusLabel(selectedAccount.accountStatus) }}</span></p>
-              <p v-if="selectedAccount.accountType !== 'Employee'"><strong>Account Registered:</strong> <span>{{ formatDisplayDate(selectedAccount.registeredAt) }}</span></p>
+              <p><strong>Account Registered:</strong> <span>{{ formatDisplayDateTime(selectedAccount.registeredAt) }}</span></p>
+              <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
             </div>
             <div class="admin-wishlist-view-account-side">
-              <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
-              <div>
-                <p><strong>Invite Sent:</strong> <span>{{ formatNullableDate(selectedAccount.inviteSentAt) }}</span></p>
-                <p><strong>Expires:</strong> <span>{{ formatNullableDate(selectedAccount.inviteExpiresAt) }}</span></p>
-                <p><strong>Accepted:</strong> <span>{{ formatNullableDate(selectedAccount.inviteAcceptedAt) }}</span></p>
-              </div>
+              <p><strong>Invite Sent:</strong> <span>{{ getInviteSentStatus(selectedAccount) }}</span></p>
+              <p><strong>Invited By:</strong> <span>{{ selectedAccount.inviteInvitedBy || 'N/A' }}</span></p>
+              <p><strong>Invite Sent Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteSentAt) }}</span></p>
+              <p><strong>Expiration Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteExpiresAt) }}</span></p>
+              <p><strong>Accepted Status:</strong> <span>{{ getAcceptedStatus(selectedAccount) }}</span></p>
+              <p><strong>Accepted Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteAcceptedAt) }}</span></p>
             </div>
           </div>
 
@@ -250,9 +250,9 @@
         </section>
       </div>
 
-      <div v-if="approvalAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeApprovalModal">
+      <div v-if="approvalAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeApprovalModal()">
         <section class="admin-wishlist-approval-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeApprovalModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeApprovalModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -277,8 +277,12 @@
               </em>
               <div class="admin-wishlist-invite-details">
                 <p>
-                  <span>Name</span>
-                  <strong>{{ approvalAccount.fullName }}</strong>
+                  <span>Last Name</span>
+                  <strong>{{ approvalAccount.lastName }}</strong>
+                </p>
+                <p>
+                  <span>First Name</span>
+                  <strong>{{ approvalAccount.firstName }}</strong>
                 </p>
                 <p>
                   <span>ID Number</span>
@@ -292,6 +296,10 @@
                   <span>Role</span>
                   <strong>{{ approvalAccount.role }}</strong>
                 </p>
+                <p v-if="approvalMode === 'resend'">
+                  <span>Last Invite Sent</span>
+                  <strong>{{ formatNullableDateTime(approvalAccount.inviteSentAt) }}</strong>
+                </p>
               </div>
             </div>
           </div>
@@ -303,6 +311,7 @@
               type="email"
               :placeholder="currentAdminEmail || 'admin@fit.edu.ph'"
               autocomplete="off"
+              :disabled="isProcessing"
             />
           </label>
 
@@ -408,9 +417,9 @@
         </section>
       </div>
 
-      <div v-if="showAddAdminModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeAddAdminModal">
+      <div v-if="showAddAdminModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeAddAdminModal()">
         <section class="admin-wishlist-add-admin-modal admin-wishlist-create-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeAddAdminModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeAddAdminModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -439,6 +448,7 @@
                 placeholder="Last Name"
                 minlength="2"
                 required
+                :disabled="isProcessing"
                 @input="sanitizeAdminNameField('lastName')"
               />
             </label>
@@ -450,16 +460,21 @@
                 placeholder="First Name"
                 minlength="2"
                 required
+                :disabled="isProcessing"
                 @input="sanitizeAdminNameField('firstName')"
               />
             </label>
             <label class="admin-wishlist-field-wide">
               <span>Email</span>
-              <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required />
+              <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required :disabled="isProcessing" />
             </label>
             <label>
               <span>ID Number</span>
-              <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required />
+              <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required :disabled="isProcessing" />
+            </label>
+            <label class="admin-wishlist-field-wide">
+              <span>Default Password</span>
+              <input type="text" value="admin123" readonly disabled />
             </label>
 
             <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
@@ -930,6 +945,8 @@ function normalizeWishlistAccount(account) {
   const inviteSentAt = account.inviteSentAt || account.invite_sent_at || null;
   const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
   const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
+  const inviteStatus = account.inviteStatus || account.invite_status || null;
+  const inviteInvitedBy = account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || null;
   const accountStatus = resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt);
   const idNumber = account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A';
   const contactNumber = account.contactNumber || account.contact_number || account.phone || 'N/A';
@@ -937,6 +954,7 @@ function normalizeWishlistAccount(account) {
   return {
     ...account,
     accountIdentifier: account.accountIdentifier || account.account_identifier || idNumber,
+    rawIdNumber: String(idNumber),
     idNumber: formatIdNumber(idNumber),
     firstName,
     lastName,
@@ -949,6 +967,8 @@ function normalizeWishlistAccount(account) {
     accountType,
     accountStatus,
     registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
+    inviteStatus,
+    inviteInvitedBy,
     inviteSentAt,
     inviteExpiresAt,
     inviteAcceptedAt,
@@ -1055,8 +1075,14 @@ function openViewModal(account) {
 
 function openApprovalModal(account = selectedAccount.value, mode = 'send') {
   if (!account) return;
-  if (mode === 'resend' && !canResendInvite(account)) return;
-  if (mode !== 'resend' && !canSendInvite(account)) return;
+  if (mode === 'resend' && !canResendInvite(account)) {
+    showToast('Resend invite is only available after the previous invitation expires.');
+    return;
+  }
+  if (mode !== 'resend' && !canSendInvite(account)) {
+    showToast('Send invite is only available for accounts that are not invited.');
+    return;
+  }
   approvalAccount.value = account;
   approvalMode.value = mode === 'resend' ? 'resend' : 'send';
   approvalForm.emailAddress = account.emailAddress;
@@ -1146,6 +1172,8 @@ function closeAddEmployeeModal() {
 }
 
 async function createAdminAccount() {
+  if (isProcessing.value) return;
+
   addAdminError.value = '';
 
   const validationError = validateAdminAccountForm();
@@ -1155,10 +1183,18 @@ async function createAdminAccount() {
   }
 
   const emailExists = normalizedAccounts.value.some(
-    (account) => account.emailAddress.toLowerCase() === addAdminForm.emailAddress.toLowerCase()
+    (account) => normalizeEmailForConfirmation(account.emailAddress) === normalizeEmailForConfirmation(addAdminForm.emailAddress)
   );
   if (emailExists) {
     addAdminError.value = 'An account with this email already exists in Requests Hub.';
+    return;
+  }
+
+  const idNumberExists = normalizedAccounts.value.some(
+    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addAdminForm.idNumber.trim().toLowerCase()
+  );
+  if (idNumberExists) {
+    addAdminError.value = 'An account with this ID number already exists in Requests Hub.';
     return;
   }
 
@@ -1180,9 +1216,9 @@ async function createAdminAccount() {
 
   activeTab.value = 'admin';
   showAddAdminModal.value = false;
+  resetAddAdminForm();
   await loadWishlistAccounts();
   showToast('Account created!');
-  resetAddAdminForm();
 }
 
 function resetAddAdminForm() {
@@ -1355,6 +1391,7 @@ function formatCreateAccountError(result, accountType) {
 }
 
 async function verifyAccount() {
+  if (isProcessing.value) return;
   if (!approvalAccount.value) return;
   if (!currentAdminEmail.value) {
     approvalFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
@@ -1452,7 +1489,9 @@ function canSendInvite(account) {
 }
 
 function canResendInvite(account) {
-  return String(account?.accountStatus || '').toLowerCase() === 'expired' && !isProcessing.value;
+  return String(account?.accountStatus || '').toLowerCase() === 'expired'
+    && Boolean(account?.inviteSentAt)
+    && !isProcessing.value;
 }
 
 function getInviteModalTitle(account) {
@@ -1462,7 +1501,7 @@ function getInviteModalTitle(account) {
 
 function getInviteModalDescription(account) {
   if (approvalMode.value === 'resend') {
-    return 'The previous invitation expired. Confirm the responsible admin before sending a new invitation link.';
+    return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
   }
 
   return account?.accountType === 'Employee'
@@ -1509,6 +1548,44 @@ function formatDisplayDate(value) {
 function formatNullableDate(value) {
   if (!value) return 'N/A';
   return formatDisplayDate(value);
+}
+
+function formatDisplayDateTime(value) {
+  if (!value) return 'N/A';
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return 'N/A';
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function formatNullableDateTime(value) {
+  if (!value) return 'N/A';
+  return formatDisplayDateTime(value);
+}
+
+function getInviteSentStatus(account) {
+  if (!account?.inviteSentAt) return 'Not sent';
+  const inviteStatus = String(account.inviteStatus || '').trim();
+  return inviteStatus ? toTitleCase(inviteStatus) : 'Sent';
+}
+
+function getAcceptedStatus(account) {
+  if (account?.inviteAcceptedAt) return 'Accepted';
+  if (account?.inviteExpiresAt && new Date(account.inviteExpiresAt).getTime() < Date.now()) return 'Expired';
+  if (account?.inviteSentAt) return 'Pending acceptance';
+  return 'Not accepted';
+}
+
+function toTitleCase(value) {
+  return String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\w\S*/g, (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
 }
 
 function showToast(message) {

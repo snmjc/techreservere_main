@@ -68,12 +68,12 @@ export const adminManageAccountsApi = {
     }
   },
 
-  async updateAccountAccess(accountIdentifier, isActive, token) {
+  async updateAccountAccess(accountIdentifier, isActive, token, payload = {}) {
     try {
       const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/access`), {
         method: 'PATCH',
         headers: buildHeaders(token, true),
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({ isActive, ...payload }),
       });
       return parseResponse(response);
     } catch (error) {
@@ -81,12 +81,12 @@ export const adminManageAccountsApi = {
     }
   },
 
-  async deleteAccount(accountIdentifier, confirmEmail, token) {
+  async deleteAccount(accountIdentifier, confirmationPayload, token) {
     try {
       const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}`), {
         method: 'DELETE',
         headers: buildHeaders(token, true),
-        body: JSON.stringify({ confirmEmail }),
+        body: JSON.stringify(confirmationPayload),
       });
       return parseResponse(response);
     } catch (error) {

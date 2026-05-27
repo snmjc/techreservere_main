@@ -130,6 +130,12 @@ class AuthenticationController
             'exp' => time() + 86400,
         ]));
 
+        $profilePhotoData = $this->connection->fetchOne(
+            'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
+            ['accountIdentifier' => $accountEntity->getAccountIdentifier()],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
         return $this->createSuccessResponse([
             'token' => $tokenPayload,
             'account' => [
@@ -138,6 +144,7 @@ class AuthenticationController
                 'lastName' => $accountEntity->getLastName(),
                 'emailAddress' => $accountEntity->getEmailAddress(),
                 'roleDesignation' => $accountEntity->getRoleDesignation(),
+                'profilePhotoData' => $profilePhotoData ? (string)$profilePhotoData : null,
             ],
         ]);
     }

@@ -66,7 +66,6 @@
           <select v-model="showingFilterValue">
             <option value="all">All</option>
             <option value="active">Active</option>
-            <option value="pending">Pending</option>
             <option value="disabled">Disabled</option>
           </select>
         </label>
@@ -138,8 +137,8 @@
                   <button
                     type="button"
                     class="manage-accounts-icon-button manage-accounts-icon-button--activate"
-                    aria-label="Activate account"
-                    :title="canActivateAccount(account) ? 'Activate account' : 'Activate not allowed for this status'"
+                    aria-label="Reactivate account"
+                    :title="canActivateAccount(account) ? 'Reactivate account' : 'Reactivate not allowed for this status'"
                     :disabled="!canActivateAccount(account)"
                     @click="openAccessModal(account, 'activate')"
                   >
@@ -341,13 +340,19 @@
               <strong>{{ accessAccount.fullName }}</strong>
               <span>{{ accessAccount.idNumber }}</span>
               <span>{{ accessAccount.emailAddress }}</span>
+              <span>{{ accessAccount.roleLabel }}</span>
               <em :class="getAccountTypeClass(accessAccount.accountType)">{{ accessAccount.accountType }}</em>
             </div>
           </div>
 
           <label class="manage-accounts-confirm-field">
-            <span>Type <strong>{{ accessAccount.emailAddress }}</strong> to confirm:</span>
-            <input v-model.trim="confirmEmailText" type="email" :placeholder="accessAccount.emailAddress" />
+            <span>{{ getAccessConfirmationLabel() }}</span>
+            <input v-model.trim="confirmEmailText" type="email" :placeholder="getAccessConfirmationPlaceholder()" />
+          </label>
+
+          <label v-if="accessMode === 'delete'" class="manage-accounts-confirm-field">
+            <span>Type your admin password to confirm deletion:</span>
+            <input v-model="confirmPasswordText" type="password" placeholder="Admin password" autocomplete="current-password" />
           </label>
 
           <p v-if="modalErrorMessage" class="manage-accounts-modal-error">{{ modalErrorMessage }}</p>
@@ -358,7 +363,7 @@
               class="manage-accounts-save-button"
               :class="{ 'manage-accounts-save-button--danger': accessMode === 'disable' || accessMode === 'delete' }"
               type="button"
-              :disabled="isProcessing"
+              :disabled="!isAccessConfirmationReady"
               @click="confirmAccessChange"
             >
               {{ getAccessModalActionLabel() }}
@@ -397,6 +402,7 @@ const updateAccount = ref(null);
 const accessAccount = ref(null);
 const accessMode = ref('disable');
 const confirmEmailText = ref('');
+const confirmPasswordText = ref('');
 
 const updateForm = reactive({
   idNumber: '',
@@ -413,6 +419,20 @@ const normalizedAccounts = computed(() => accounts.value.map(normalizeAccount));
 const isEmployeeUpdateModal = computed(() => updateAccount.value?.accountType === 'Employee');
 const pageTitle = computed(() => 'Manage Accounts');
 const pageDescription = computed(() => 'Manage and oversee system accounts in TechReserve.');
+const currentAdminEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim();
+});
+const isAccessConfirmationReady = computed(() => {
+  if (isProcessing.value || !accessAccount.value) return false;
+  if (confirmEmailText.value.trim() === '') return false;
+
+  if (accessMode.value === 'delete') {
+    return confirmPasswordText.value.trim() !== '';
+  }
+
+  return true;
+});
 
 const accountTabs = computed(() => [
   { label: 'Admin', value: 'admin', count: normalizedAccounts.value.filter((account) => account.accountType === 'Admin').length },
@@ -466,8 +486,7 @@ function normalizeAccount(account) {
   const firstName = account.firstName || account.first_name || '';
   const lastName = account.lastName || account.last_name || '';
   const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const isApproved = account.isApproved !== false;
-  const accountStatus = account.accountStatus || (account.isActive === false ? 'Disabled' : isApproved ? 'Active' : 'Pending');
+  const accountStatus = normalizeManageAccountStatus(account.accountStatus || account.status, account.isActive);
 
   return {
     ...account,
@@ -491,6 +510,12 @@ function normalizeAccount(account) {
     inviteAcceptedAt: account.inviteAcceptedAt || account.invite_accepted_at,
     actionPermissions: resolveActionPermissions(accountStatus, account.actionPermissions),
   };
+}
+
+function normalizeManageAccountStatus(status, isActive) {
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (isActive === false || normalizedStatus === 'disabled') return 'Disabled';
+  return 'Active';
 }
 
 function resolveAccountType(account, roleDesignation) {
@@ -567,12 +592,12 @@ function openUpdateModal(account) {
 
 function openAccessModal(account, mode) {
   if (mode === 'disable' && !canDisableAccount(account)) {
-    showToast('Only active or pending accounts can be disabled.');
+    showToast('Only active accounts can be disabled.');
     return;
   }
 
   if (mode === 'activate' && !canActivateAccount(account)) {
-    showToast('Only disabled accounts can be activated.');
+    showToast('Only disabled accounts can be reactivated.');
     return;
   }
 
@@ -584,23 +609,44 @@ function openAccessModal(account, mode) {
 
 function getAccessModalTitle() {
   if (accessMode.value === 'delete') return 'Delete Account';
-  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Activate Account';
+  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Reactivate Account';
 }
 
 function getAccessModalDescription() {
   if (accessMode.value === 'delete') return 'This will permanently delete the account and its invitation records from the database.';
   return accessMode.value === 'disable'
     ? 'This will deactivate the account and prevent access to the system.'
-    : 'This will activate the account and give access to the system.';
+    : 'This will reactivate the account and restore access to the system.';
 }
 
 function getAccessModalActionLabel() {
   if (isProcessing.value) {
     if (accessMode.value === 'delete') return 'Deleting...';
-    return accessMode.value === 'disable' ? 'Deactivating...' : 'Activating...';
+    return accessMode.value === 'disable' ? 'Deactivating...' : 'Reactivating...';
   }
   if (accessMode.value === 'delete') return 'Delete Account';
-  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Activate Account';
+  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Reactivate Account';
+}
+
+function getAccessConfirmationLabel() {
+  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
+    const actionName = accessMode.value === 'activate'
+      ? 'reactivation'
+      : accessMode.value === 'disable'
+        ? 'deactivation'
+        : 'deletion';
+    return `Type your admin email ${currentAdminEmail.value || 'from your account'} to confirm ${actionName}:`;
+  }
+
+  return `Type ${accessAccount.value?.emailAddress || 'the account email'} to confirm:`;
+}
+
+function getAccessConfirmationPlaceholder() {
+  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
+    return currentAdminEmail.value || 'admin@techreserve.edu.ph';
+  }
+
+  return accessAccount.value?.emailAddress || '';
 }
 
 function closeModals() {
@@ -608,6 +654,7 @@ function closeModals() {
   updateAccount.value = null;
   accessAccount.value = null;
   confirmEmailText.value = '';
+  confirmPasswordText.value = '';
   modalErrorMessage.value = '';
 }
 
@@ -641,14 +688,41 @@ async function saveAccountChanges() {
 
 async function confirmAccessChange() {
   if (!accessAccount.value) return;
-  if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(accessAccount.value.emailAddress)) {
-    modalErrorMessage.value = 'Please type the exact email address to confirm.';
+
+  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
+    if (!currentAdminEmail.value) {
+      modalErrorMessage.value = 'Unable to verify the admin in-charge. Please sign in again.';
+      return;
+    }
+
+    if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
+      modalErrorMessage.value = accessMode.value === 'activate'
+        ? 'Please type your exact admin email to reactivate this account.'
+        : accessMode.value === 'disable'
+          ? 'Please type your exact admin email to deactivate this account.'
+          : 'Please type your exact admin email to delete this account.';
+      return;
+    }
+  } else if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(accessAccount.value.emailAddress)) {
+    modalErrorMessage.value = 'Please type the exact account email address to confirm.';
     return;
   }
 
   if (accessMode.value === 'delete') {
+    if (confirmPasswordText.value.trim() === '') {
+      modalErrorMessage.value = 'Please type your admin password to delete this account.';
+      return;
+    }
+
     isProcessing.value = true;
-    const result = await adminManageAccountsApi.deleteAccount(accessAccount.value.accountIdentifier, confirmEmailText.value, authStore.authToken);
+    const result = await adminManageAccountsApi.deleteAccount(
+      accessAccount.value.accountIdentifier,
+      {
+        confirmedAdminEmail: normalizeEmailForConfirmation(confirmEmailText.value),
+        confirmedAdminPassword: confirmPasswordText.value,
+      },
+      authStore.authToken,
+    );
     isProcessing.value = false;
 
     if (!result.success) {
@@ -664,7 +738,12 @@ async function confirmAccessChange() {
 
   const shouldActivate = accessMode.value === 'activate';
   isProcessing.value = true;
-  const result = await adminManageAccountsApi.updateAccountAccess(accessAccount.value.accountIdentifier, shouldActivate, authStore.authToken);
+  const result = await adminManageAccountsApi.updateAccountAccess(
+    accessAccount.value.accountIdentifier,
+    shouldActivate,
+    authStore.authToken,
+    { confirmedAdminEmail: normalizeEmailForConfirmation(confirmEmailText.value) },
+  );
   isProcessing.value = false;
 
   if (!result.success) {
@@ -674,7 +753,7 @@ async function confirmAccessChange() {
 
   upsertAccount(result.data.account);
   closeModals();
-  showToast(shouldActivate ? 'Account activated!' : 'Account deactivated!');
+  showToast(shouldActivate ? 'Account reactivated!' : 'Account deactivated!');
   await loadAccounts({ showLoading: false });
 }
 
@@ -724,7 +803,6 @@ function formatNullableDateTime(value) {
 
 function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
-  if (normalized === 'pending') return 'manage-accounts-status--pending';
   if (normalized === 'disabled') return 'manage-accounts-status--disabled';
   return 'manage-accounts-status--active';
 }
@@ -807,7 +885,7 @@ function resolveActionPermissions(accountStatus, serverPermissions = null) {
   return {
     view: serverPermissions?.view ?? true,
     update: accountStatus === 'Active',
-    disable: accountStatus === 'Active' || accountStatus === 'Pending',
+    disable: accountStatus === 'Active',
     activate: accountStatus === 'Disabled',
   };
 }

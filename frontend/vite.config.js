@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
       // Bind to all interfaces so the dev server is reachable from the host
       host: true,
       port: 5173,
-      allowedHosts: ['provide-gourmet-technology-antiques.trycloudflare.com'],
+      allowedHosts: ['blues-managed-gamma-consulting.trycloudflare.com'],
       // Dev-only CSP: allows Vue/DevTools and some dependencies that use eval in development.
       // Remove/replace with a strict CSP for production builds.
       headers: {
