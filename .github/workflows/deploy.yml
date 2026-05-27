@@ -18,7 +18,7 @@ jobs:
 
           ssh -i ~/.ssh/techreserve_deploy_key \
             -o StrictHostKeyChecking=no \
-            ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} <<'REMOTE'
+            ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "
               set -e
 
               cd /opt/techreserve
@@ -32,4 +32,4 @@ jobs:
               docker compose -f compose.prod.yml exec -T backend php bin/console doctrine:migrations:migrate --no-interaction --env=prod
 
               docker compose -f compose.prod.yml ps
-REMOTE
+            "
