@@ -1,8 +1,8 @@
+name: Deploy TechReserve
+
 on:
   push:
-    branches:
-      
-main
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -10,12 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      
-name: Deploy over SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/techreserve_deploy_key
-        chmod 600 ~/.ssh/techreserve_deploy_key
+      - name: Deploy over SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/techreserve_deploy_key
+          chmod 600 ~/.ssh/techreserve_deploy_key
 
           ssh -i ~/.ssh/techreserve_deploy_key \
             -o StrictHostKeyChecking=no \
