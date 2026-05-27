@@ -1,0 +1,78 @@
+name: "techreserve"
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    container_name: techreserve_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  database:
+    image: postgres:15-alpine
+    container_name: techreserve_database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-techreserve}
+      POSTGRES_USER: ${POSTGRES_USER:-techreserve_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-techreserve_user} -d ${POSTGRES_DB:-techreserve}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: techreserve_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      POSTGRES_HOST: database
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB:-techreserve}?serverVersion=15&charset=utf8"
+      DEFAULT_URI: "https://techreserve.farahkenawy.codes"
+      FRONTEND_URL: "https://techreserve.farahkenawy.codes"
+      MAILER_DSN: "${MAILER_DSN:-null://null}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
+      CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
+      CLERK_WEBHOOK_SIGNING_SECRET: "${CLERK_WEBHOOK_SIGNING_SECRET:-}"
+    expose:
+      - "8000"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: "https://techreserve.farahkenawy.codes"
+    container_name: techreserve_frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

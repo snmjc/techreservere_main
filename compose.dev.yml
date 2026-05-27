@@ -1,0 +1,108 @@
+name: "TechReserve"
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: techreserve_database
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-techreserve}
+      POSTGRES_USER: ${POSTGRES_USER:-techreserve_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techreserve_pass}
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-techreserve_user} -d ${POSTGRES_DB:-techreserve}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: techreserve_backend
+    volumes:
+      - ./backend:/app
+      - backend_var:/app/var
+      - backend_vendor:/app/vendor
+    ports:
+      - "${BACKEND_EXTERNAL_PORT:-8000}:8000"
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "1"
+      POSTGRES_HOST: database
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD:-techreserve_pass}@database:5432/${POSTGRES_DB:-techreserve}?serverVersion=15&charset=utf8"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
+      CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
+      DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
+      MAILER_DSN: "${MAILER_DSN:-null://null}"
+    depends_on:
+      database:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+        - action: sync+restart
+          path: ./backend/composer.json
+          target: /app/composer.json
+        - action: sync+restart
+          path: ./backend/composer.lock
+          target: /app/composer.lock
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: techreserve_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@techreserve.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "${PGADMIN_EXTERNAL_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: techreserve_frontend
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "100"
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8000}"
+      VITE_API_PROXY_TARGET: "${VITE_API_PROXY_TARGET:-http://backend:8000}"
+      VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY:-}"
+    ports:
+      - "${FRONTEND_EXTERNAL_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+        - action: sync+restart
+          path: ./frontend/package.json
+          target: /app/package.json
+        - action: sync+restart
+          path: ./frontend/package-lock.json
+          target: /app/package-lock.json
+
+volumes:
+  postgres_data:
+  frontend_node_modules:
+  backend_var:
+  backend_vendor:
+  pgadmin_data:
+
+  CLERK_WEBHOOK_SIGNING_SECRET: "${CLERK_WEBHOOK_SIGNING_SECRET:-}"
