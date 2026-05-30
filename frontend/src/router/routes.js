@@ -82,7 +82,7 @@ export const routeDefinitions = [
   {
     path: '/signup',
     name: 'signUpPage',
-    component: () => import('@/pages/auth/SignUp.vue'),
+    redirect: '/sign-up',
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -195,7 +195,7 @@ export const routeDefinitions = [
   {
     path: '/admin/task-assignments',
     name: 'adminTaskAssignmentsPage',
-    component: () => import('@/pages/admin/AdminInvitations.vue'),
+    component: () => import('@/pages/admin/AdminTaskAssignments.vue'),
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],

@@ -390,6 +390,14 @@ class UserRegistrationController extends AbstractController
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
                     accounts.email_address, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
+                    accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
+                    accounts.signup_supporting_document_data,
+                    staff_info.employee_id_number AS staff_employee_id_number,
+                    staff_info.first_name AS staff_first_name,
+                    staff_info.last_name AS staff_last_name,
+                    staff_info.phone_number AS staff_phone_number,
+                    staff_info.role AS staff_role,
+                    staff_info.image_url AS staff_image_url,
                     latest_invitation.status AS invite_status,
                     latest_invitation.invited_by AS invite_invited_by,
                     latest_invitation.created_at AS invite_sent_at,
@@ -403,6 +411,7 @@ class UserRegistrationController extends AbstractController
                 ORDER BY created_at DESC
                 LIMIT 1
              ) latest_invitation ON TRUE
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              WHERE (
                 COALESCE(accounts.is_approved, FALSE) = FALSE
                 AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
@@ -435,16 +444,19 @@ class UserRegistrationController extends AbstractController
 
             return [
                 'accountIdentifier' => (int)$row['account_identifier'],
-                'idNumber' => $row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT),
-                'lastName' => (string)$row['last_name'],
-                'firstName' => (string)$row['first_name'],
+                'idNumber' => ($isEmployee && !empty($row['staff_employee_id_number'])) ? (string)$row['staff_employee_id_number'] : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT)),
+                'lastName' => ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'],
+                'firstName' => ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'],
                 'emailAddress' => (string)$row['email_address'],
-                'contactNumber' => $row['contact_number'] ? (string)$row['contact_number'] : null,
+                'contactNumber' => ($isEmployee && !empty($row['staff_phone_number'])) ? (string)$row['staff_phone_number'] : ($row['contact_number'] ? (string)$row['contact_number'] : null),
                 'roleDesignation' => $roleDesignation,
-                'roleLabel' => $roleLabel,
+                'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,
                 'accountType' => $accountType,
                 'accountStatus' => $this->resolveWishlistStatus($row),
                 'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
+                'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
+                'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
+                'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
                 'registeredAt' => (string)$row['created_timestamp'],
                 'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
                 'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
@@ -583,6 +595,7 @@ class UserRegistrationController extends AbstractController
             );
 
             $accountIdentifier = (int)$this->connection->lastInsertId();
+            $this->upsertStaffInfo($accountIdentifier, $idNumber, $firstName, $lastName, $phone, $role, null);
 
             return $this->createSuccessResponse([
                 'accountIdentifier' => $accountIdentifier,
@@ -749,6 +762,9 @@ class UserRegistrationController extends AbstractController
         $passwordText = (string)($requestBody['passwordText'] ?? $requestBody['password'] ?? '');
         $confirmPasswordText = (string)($requestBody['confirmPasswordText'] ?? $requestBody['confirmPassword'] ?? $passwordText);
         $acceptedPrivacy = (bool)($requestBody['acceptedPrivacy'] ?? false);
+        $supportingDocumentName = trim((string)($requestBody['supportingDocumentName'] ?? ''));
+        $supportingDocumentMimeType = trim((string)($requestBody['supportingDocumentMimeType'] ?? ''));
+        $supportingDocumentData = trim((string)($requestBody['supportingDocumentData'] ?? ''));
 
         if ($lastName === '' || $firstName === '' || $emailAddress === '' || $idNumber === '' || $department === '' || $role === '' || $passwordText === '') {
             return $this->createErrorResponse('ValidationError', 'All signup fields are required.', 422);
@@ -776,21 +792,99 @@ class UserRegistrationController extends AbstractController
 
         $roleLabel = strtolower($role) === 'faculty' ? 'Faculty' : 'Student';
 
+        if ($roleLabel === 'Student' && $supportingDocumentName === '') {
+            return $this->createErrorResponse('ValidationError', 'PDF proof is required for student signup requests.', 422);
+        }
+
+        if ($roleLabel === 'Student' && !$this->isPdfSupportingDocument($supportingDocumentName, $supportingDocumentMimeType, $supportingDocumentData)) {
+            return $this->createErrorResponse('ValidationError', 'Student proof must be uploaded as a PDF file.', 422);
+        }
+
+        if ($supportingDocumentName !== '' && $supportingDocumentData === '') {
+            return $this->createErrorResponse('ValidationError', 'Supporting file data is missing.', 422);
+        }
+
+        if ($supportingDocumentData !== '' && strlen($supportingDocumentData) > 7000000) {
+            return $this->createErrorResponse('ValidationError', 'Supporting file is too large. Please upload a file up to 5 MB.', 422);
+        }
+
         $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
         if ($existingEmailAccount) {
             if ($this->isReusablePendingSignupRequest($existingEmailAccount, $idNumber)) {
+                $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+                try {
+                    $clerkUserId = $this->ensureClerkSignupUser($emailAddress, $firstName, $lastName, $passwordText, $roleLabel, $idNumber);
+                } catch (\Throwable $exception) {
+                    return $this->createErrorResponse(
+                        'ClerkSignupUserFailed',
+                        'Clerk could not create or update this signup account: ' . $exception->getMessage(),
+                        502
+                    );
+                }
+
+                $this->connection->executeStatement(
+                    'UPDATE accounts
+                     SET last_name = :lastName,
+                         first_name = :firstName,
+                         department = :department,
+                         clerk_user_id = :clerkUserId,
+                         password_hash = :passwordHash,
+                         signup_supporting_document_name = :supportingDocumentName,
+                         signup_supporting_document_mime_type = :supportingDocumentMimeType,
+                         signup_supporting_document_data = :supportingDocumentData,
+                         status = :status,
+                         is_approved = :isApproved,
+                         is_active = :isActive,
+                         created_timestamp = :createdTimestamp,
+                         updated_timestamp = :updatedTimestamp
+                     WHERE account_identifier = :accountIdentifier',
+                    [
+                        'lastName' => $lastName,
+                        'firstName' => $firstName,
+                        'department' => $roleLabel,
+                        'clerkUserId' => $clerkUserId,
+                        'passwordHash' => password_hash($passwordText, PASSWORD_BCRYPT),
+                        'supportingDocumentName' => $supportingDocumentName ?: null,
+                        'supportingDocumentMimeType' => $supportingDocumentMimeType ?: null,
+                        'supportingDocumentData' => $supportingDocumentData ?: null,
+                        'status' => 'pending',
+                        'isApproved' => false,
+                        'isActive' => true,
+                        'createdTimestamp' => $now,
+                        'updatedTimestamp' => $now,
+                        'accountIdentifier' => (int)$existingEmailAccount['account_identifier'],
+                    ],
+                    [
+                        'lastName' => ParameterType::STRING,
+                        'firstName' => ParameterType::STRING,
+                        'department' => ParameterType::STRING,
+                        'clerkUserId' => ParameterType::STRING,
+                        'passwordHash' => ParameterType::STRING,
+                        'supportingDocumentName' => $supportingDocumentName === '' ? ParameterType::NULL : ParameterType::STRING,
+                        'supportingDocumentMimeType' => $supportingDocumentMimeType === '' ? ParameterType::NULL : ParameterType::STRING,
+                        'supportingDocumentData' => $supportingDocumentData === '' ? ParameterType::NULL : ParameterType::STRING,
+                        'status' => ParameterType::STRING,
+                        'isApproved' => ParameterType::BOOLEAN,
+                        'isActive' => ParameterType::BOOLEAN,
+                        'createdTimestamp' => ParameterType::STRING,
+                        'updatedTimestamp' => ParameterType::STRING,
+                        'accountIdentifier' => ParameterType::INTEGER,
+                    ]
+                );
+
                 return $this->createSuccessResponse([
                     'accountIdentifier' => (int)$existingEmailAccount['account_identifier'],
-                    'idNumber' => (string)$existingEmailAccount['id_number'],
-                    'lastName' => (string)$existingEmailAccount['last_name'],
-                    'firstName' => (string)$existingEmailAccount['first_name'],
-                    'emailAddress' => (string)$existingEmailAccount['email_address'],
+                    'idNumber' => $idNumber,
+                    'lastName' => $lastName,
+                    'firstName' => $firstName,
+                    'emailAddress' => $emailAddress,
+                    'clerkUserId' => $clerkUserId,
                     'roleDesignation' => 'ROLE_BORROWER',
                     'roleLabel' => 'User: ' . $roleLabel,
                     'accountType' => 'User',
                     'accountStatus' => 'pending',
                     'isApproved' => false,
-                    'registeredAt' => (string)($existingEmailAccount['created_timestamp'] ?? ''),
+                    'registeredAt' => $now,
                     'reusedPendingRequest' => true,
                 ]);
             }
@@ -817,14 +911,18 @@ class UserRegistrationController extends AbstractController
         $passwordHash = password_hash($passwordText, PASSWORD_BCRYPT);
 
         try {
+            $clerkUserId = $this->ensureClerkSignupUser($emailAddress, $firstName, $lastName, $passwordText, $roleLabel, $idNumber);
+
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
+                     signup_supporting_document_name, signup_supporting_document_mime_type, signup_supporting_document_data,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
                     (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
+                     :supportingDocumentName, :supportingDocumentMimeType, :supportingDocumentData,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 [
                     'lastName' => $lastName,
@@ -834,11 +932,14 @@ class UserRegistrationController extends AbstractController
                     'idNumber' => $idNumber,
                     'department' => $roleLabel,
                     'contactNumber' => null,
-                    'clerkUserId' => null,
+                    'clerkUserId' => $clerkUserId,
                     'passwordHash' => $passwordHash,
                     'status' => 'pending',
                     'isApproved' => false,
                     'isActive' => true,
+                    'supportingDocumentName' => $supportingDocumentName ?: null,
+                    'supportingDocumentMimeType' => $supportingDocumentMimeType ?: null,
+                    'supportingDocumentData' => $supportingDocumentData ?: null,
                     'failedLoginAttempts' => 0,
                     'createdTimestamp' => $now,
                     'updatedTimestamp' => $now,
@@ -851,11 +952,14 @@ class UserRegistrationController extends AbstractController
                     'idNumber' => ParameterType::STRING,
                     'department' => ParameterType::STRING,
                     'contactNumber' => ParameterType::NULL,
-                    'clerkUserId' => ParameterType::NULL,
+                    'clerkUserId' => ParameterType::STRING,
                     'passwordHash' => ParameterType::STRING,
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
                     'isActive' => ParameterType::BOOLEAN,
+                    'supportingDocumentName' => $supportingDocumentName === '' ? ParameterType::NULL : ParameterType::STRING,
+                    'supportingDocumentMimeType' => $supportingDocumentMimeType === '' ? ParameterType::NULL : ParameterType::STRING,
+                    'supportingDocumentData' => $supportingDocumentData === '' ? ParameterType::NULL : ParameterType::STRING,
                     'failedLoginAttempts' => ParameterType::INTEGER,
                     'createdTimestamp' => ParameterType::STRING,
                     'updatedTimestamp' => ParameterType::STRING,
@@ -868,6 +972,7 @@ class UserRegistrationController extends AbstractController
                 'lastName' => $lastName,
                 'firstName' => $firstName,
                 'emailAddress' => $emailAddress,
+                'clerkUserId' => $clerkUserId,
                 'roleDesignation' => 'ROLE_BORROWER',
                 'roleLabel' => 'User: ' . $roleLabel,
                 'accountType' => 'User',
@@ -893,21 +998,29 @@ class UserRegistrationController extends AbstractController
         $lastName = trim($requestBody['lastName'] ?? '');
         $firstName = trim($requestBody['firstName'] ?? '');
         $emailAddress = strtolower(trim($requestBody['emailAddress'] ?? ''));
-        $phone = trim($requestBody['phone'] ?? $requestBody['contactNumber'] ?? '');
-        $idNumber = trim($requestBody['idNumber'] ?? '');
-        $role = trim($requestBody['role'] ?? 'Maintenance Staff');
-        $passwordText = (string)($requestBody['passwordText'] ?? $requestBody['password'] ?? '');
+        $phone = trim($requestBody['phone'] ?? $requestBody['phoneNumber'] ?? $requestBody['phone_number'] ?? $requestBody['contactNumber'] ?? '');
+        $idNumber = trim($requestBody['idNumber'] ?? $requestBody['workIdNumber'] ?? $requestBody['work_id_number'] ?? '');
+        $role = 'Maintenance Staff';
 
-        if ($lastName === '' || $firstName === '' || $emailAddress === '' || $phone === '' || $idNumber === '' || $role === '' || $passwordText === '') {
+        if ($lastName === '' || $firstName === '' || $phone === '' || $idNumber === '') {
             return $this->createErrorResponse(
                 'ValidationError',
-                'Last name, first name, email, phone, ID number, role, and password are required.',
+                'Last name, first name, phone number, and Work ID number are required.',
                 422
             );
         }
 
-        if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
-            return $this->createErrorResponse('ValidationError', 'Please provide a valid email address.', 422);
+        if (!$this->isValidStaffName($firstName) || !$this->isValidStaffName($lastName)) {
+            return $this->createErrorResponse('ValidationError', 'First name and last name must have at least 2 letters and cannot contain numbers or symbols.', 422);
+        }
+
+        $phone = preg_replace('/\D+/', '', $phone);
+        if (!preg_match('/^9\d{9}$/', $phone)) {
+            return $this->createErrorResponse('ValidationError', 'Phone number must be exactly 10 digits and begin with 9.', 422);
+        }
+
+        if ($emailAddress === '') {
+            $emailAddress = $this->buildStaffEmailAddress($idNumber);
         }
 
         $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
@@ -932,8 +1045,18 @@ class UserRegistrationController extends AbstractController
             );
         }
 
+        $existingPhoneAccount = $this->findStaffAccountConflictByPhone($phone);
+
+        if ($existingPhoneAccount) {
+            return $this->createErrorResponse(
+                'DuplicatePhoneNumber',
+                $this->buildDuplicateAccountMessage('phone number', $existingPhoneAccount),
+                409,
+                ['conflict' => $this->normalizeAccountConflict($existingPhoneAccount, 'phone')]
+            );
+        }
+
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $passwordHash = password_hash($passwordText, PASSWORD_BCRYPT);
 
         try {
             $this->connection->executeStatement(
@@ -954,7 +1077,7 @@ class UserRegistrationController extends AbstractController
                     'department' => $role,
                     'contactNumber' => $phone,
                     'clerkUserId' => null,
-                    'passwordHash' => $passwordHash,
+                    'passwordHash' => null,
                     'status' => 'pending',
                     'isApproved' => false,
                     'isActive' => true,
@@ -971,7 +1094,7 @@ class UserRegistrationController extends AbstractController
                     'department' => ParameterType::STRING,
                     'contactNumber' => ParameterType::STRING,
                     'clerkUserId' => ParameterType::NULL,
-                    'passwordHash' => ParameterType::STRING,
+                    'passwordHash' => ParameterType::NULL,
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
                     'isActive' => ParameterType::BOOLEAN,
@@ -1271,6 +1394,90 @@ class UserRegistrationController extends AbstractController
         ]);
     }
 
+    #[Route('/{accountIdentifier}/delete-request', name: 'delete_wishlist_account_request', methods: ['DELETE'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function deleteWishlistAccountRequest(int $accountIdentifier, Request $request): JsonResponse
+    {
+        $requestBody = json_decode($request->getContent(), true) ?? [];
+        $confirmEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmEmail'] ?? ''));
+        $confirmedAdminPassword = (string)($requestBody['confirmedAdminPassword'] ?? '');
+
+        $account = $this->connection->fetchAssociative(
+            "SELECT account_identifier, email_address, status, is_approved
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+             LIMIT 1",
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        if (!$account) {
+            return $this->createErrorResponse('UserNotFound', 'User not found.', 404);
+        }
+
+        if ($confirmEmail === '' || $confirmEmail !== $this->normalizeEmailForConfirmation((string)$account['email_address'])) {
+            return $this->createErrorResponse(
+                'DeleteConfirmationFailed',
+                'Please type the exact email address to delete this request.',
+                422
+            );
+        }
+
+        $authenticatedIdentity = $request->attributes->get('authenticatedIdentity', []);
+        $authenticatedAdminId = $this->resolveAuthenticatedAccountIdentifier($request, $authenticatedIdentity);
+        $adminPasswordConfirmationError = $this->validateResponsibleAdminPassword(
+            $authenticatedAdminId,
+            $confirmedAdminPassword,
+            'deleting'
+        );
+        if ($adminPasswordConfirmationError !== null) {
+            return $adminPasswordConfirmationError;
+        }
+
+        if ($this->toDatabaseBoolean($account['is_approved'] ?? false) || strtolower((string)$account['status']) === 'approved') {
+            return $this->createErrorResponse(
+                'DeleteRequestNotAllowed',
+                'Approved accounts must be deleted from Manage Accounts.',
+                403
+            );
+        }
+
+        $this->connection->beginTransaction();
+        try {
+            $this->connection->executeStatement(
+                'DELETE FROM invitations WHERE LOWER(email) = LOWER(:emailAddress)',
+                ['emailAddress' => (string)$account['email_address']],
+                ['emailAddress' => ParameterType::STRING]
+            );
+
+            $this->connection->executeStatement(
+                'DELETE FROM staff_info WHERE account_identifier = :accountIdentifier',
+                ['accountIdentifier' => $accountIdentifier],
+                ['accountIdentifier' => ParameterType::INTEGER]
+            );
+
+            $this->connection->executeStatement(
+                'DELETE FROM accounts WHERE account_identifier = :accountIdentifier',
+                ['accountIdentifier' => $accountIdentifier],
+                ['accountIdentifier' => ParameterType::INTEGER]
+            );
+
+            $this->connection->commit();
+        } catch (\Throwable $exception) {
+            $this->connection->rollBack();
+            return $this->createErrorResponse(
+                'DeleteAccountRequestFailed',
+                'Unable to delete account request: ' . $exception->getMessage(),
+                500
+            );
+        }
+
+        return $this->createSuccessResponse([
+            'message' => 'Account request deleted successfully.',
+            'accountIdentifier' => $accountIdentifier,
+        ]);
+    }
+
     #[Route('/invite', name: 'invite_user', methods: ['POST'])]
     public function inviteUser(Request $request): JsonResponse
     {
@@ -1366,6 +1573,168 @@ class UserRegistrationController extends AbstractController
         }
 
         return $payload;
+    }
+
+    private function ensureClerkSignupUser(
+        string $emailAddress,
+        string $firstName,
+        string $lastName,
+        string $password,
+        string $roleLabel,
+        string $idNumber
+    ): string {
+        $existingClerkUser = $this->findClerkUserByEmail($emailAddress);
+        if ($existingClerkUser !== null) {
+            $clerkUserId = (string)$existingClerkUser['id'];
+            $this->updateClerkSignupUser($clerkUserId, $firstName, $lastName, $password, $roleLabel, $idNumber);
+            return $clerkUserId;
+        }
+
+        return $this->createClerkSignupUser($emailAddress, $firstName, $lastName, $password, $roleLabel, $idNumber);
+    }
+
+    private function findClerkUserByEmail(string $emailAddress): ?array
+    {
+        $clerkSecretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
+        if ($clerkSecretKey === '') {
+            throw new \RuntimeException('CLERK_SECRET_KEY is not configured.');
+        }
+
+        $clerkApiBaseUrl = rtrim((string)($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com'), '/');
+        $response = $this->httpClient->request('GET', $clerkApiBaseUrl . '/v1/users', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $clerkSecretKey,
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'email_address' => $emailAddress,
+            ],
+        ]);
+
+        if ($response->getStatusCode() >= 400) {
+            $payload = $response->toArray(false);
+            $message = $payload['errors'][0]['long_message']
+                ?? $payload['errors'][0]['message']
+                ?? $payload['message']
+                ?? 'Clerk user lookup failed.';
+            throw new \RuntimeException($message);
+        }
+
+        $payload = $response->toArray(false);
+        if (isset($payload['id'])) {
+            return $payload;
+        }
+
+        if (isset($payload[0]['id'])) {
+            return $payload[0];
+        }
+
+        if (isset($payload['data'][0]['id'])) {
+            return $payload['data'][0];
+        }
+
+        return null;
+    }
+
+    private function createClerkSignupUser(
+        string $emailAddress,
+        string $firstName,
+        string $lastName,
+        string $password,
+        string $roleLabel,
+        string $idNumber
+    ): string {
+        $clerkSecretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
+        if ($clerkSecretKey === '') {
+            throw new \RuntimeException('CLERK_SECRET_KEY is not configured.');
+        }
+
+        $clerkApiBaseUrl = rtrim((string)($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com'), '/');
+        $response = $this->httpClient->request('POST', $clerkApiBaseUrl . '/v1/users', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $clerkSecretKey,
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'email_address' => [$emailAddress],
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'password' => $password,
+                'public_metadata' => [
+                    'techreserve_account_type' => 'User',
+                    'techreserve_role_designation' => 'ROLE_BORROWER',
+                    'techreserve_role_label' => $roleLabel,
+                    'techreserve_id_number' => $idNumber,
+                    'techreserve_approval_status' => 'pending',
+                ],
+            ],
+        ]);
+
+        $payload = $response->toArray(false);
+        if ($response->getStatusCode() >= 400) {
+            $existingClerkUser = $this->findClerkUserByEmail($emailAddress);
+            if ($existingClerkUser !== null) {
+                return (string)$existingClerkUser['id'];
+            }
+
+            $message = $payload['errors'][0]['long_message']
+                ?? $payload['errors'][0]['message']
+                ?? $payload['message']
+                ?? 'Clerk user creation failed.';
+            throw new \RuntimeException($message);
+        }
+
+        $clerkUserId = (string)($payload['id'] ?? '');
+        if ($clerkUserId === '') {
+            throw new \RuntimeException('Clerk created the user but did not return a user ID.');
+        }
+
+        return $clerkUserId;
+    }
+
+    private function updateClerkSignupUser(
+        string $clerkUserId,
+        string $firstName,
+        string $lastName,
+        string $password,
+        string $roleLabel,
+        string $idNumber
+    ): void {
+        $clerkSecretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
+        if ($clerkSecretKey === '' || $clerkUserId === '') {
+            return;
+        }
+
+        $clerkApiBaseUrl = rtrim((string)($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com'), '/');
+        $response = $this->httpClient->request('PATCH', $clerkApiBaseUrl . '/v1/users/' . rawurlencode($clerkUserId), [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $clerkSecretKey,
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'password' => $password,
+                'public_metadata' => [
+                    'techreserve_account_type' => 'User',
+                    'techreserve_role_designation' => 'ROLE_BORROWER',
+                    'techreserve_role_label' => $roleLabel,
+                    'techreserve_id_number' => $idNumber,
+                    'techreserve_approval_status' => 'pending',
+                ],
+            ],
+        ]);
+
+        if ($response->getStatusCode() >= 400) {
+            $payload = $response->toArray(false);
+            $message = $payload['errors'][0]['long_message']
+                ?? $payload['errors'][0]['message']
+                ?? $payload['message']
+                ?? 'Clerk user update failed.';
+            throw new \RuntimeException($message);
+        }
     }
 
     private function isNullMailerDsn(): bool
@@ -1622,13 +1991,29 @@ HTML;
         return $account ?: null;
     }
 
+    private function isPdfSupportingDocument(string $documentName, string $mimeType, string $documentData): bool
+    {
+        $lowerName = strtolower($documentName);
+        $lowerMimeType = strtolower($mimeType);
+
+        return str_ends_with($lowerName, '.pdf')
+            && ($lowerMimeType === '' || $lowerMimeType === 'application/pdf')
+            && str_starts_with($documentData, 'data:application/pdf;base64,');
+    }
+
     private function findAccountConflictByIdNumber(string $idNumber): ?array
     {
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, id_number, first_name, last_name, email_address, role_designation,
-                    department, status, is_approved, is_active, clerk_user_id, created_timestamp
+            'SELECT accounts.account_identifier,
+                    COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
+                    COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
+                    COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
+                    accounts.email_address, accounts.role_designation,
+                    COALESCE(staff_info.role, accounts.department) AS department,
+                    accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp
              FROM accounts
-             WHERE id_number = :idNumber
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
+             WHERE accounts.id_number = :idNumber OR staff_info.employee_id_number = :idNumber
              LIMIT 1',
             ['idNumber' => $idNumber],
             ['idNumber' => ParameterType::STRING]
@@ -1637,16 +2022,100 @@ HTML;
         return $account ?: null;
     }
 
+    private function findStaffAccountConflictByPhone(string $phone): ?array
+    {
+        $account = $this->connection->fetchAssociative(
+            "SELECT accounts.account_identifier,
+                    COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
+                    COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
+                    COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
+                    accounts.email_address, accounts.role_designation,
+                    COALESCE(staff_info.role, accounts.department) AS department,
+                    COALESCE(staff_info.phone_number, accounts.contact_number) AS contact_number,
+                    accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp
+             FROM accounts
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
+             WHERE (accounts.contact_number = :phone OR staff_info.phone_number = :phone)
+               AND accounts.role_designation = 'ROLE_STAFF'
+             LIMIT 1",
+            ['phone' => $phone],
+            ['phone' => ParameterType::STRING]
+        );
+
+        return $account ?: null;
+    }
+
+    private function isValidStaffName(string $name): bool
+    {
+        $normalizedName = trim($name);
+        $letterCount = preg_match_all('/[A-Za-z]/', $normalizedName);
+
+        return $letterCount >= 2 && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
+    }
+
+    private function buildStaffEmailAddress(string $idNumber): string
+    {
+        $normalizedIdNumber = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $idNumber) ?: bin2hex(random_bytes(4)));
+        return 'staff-' . $normalizedIdNumber . '@techreserve.feu.edu.ph';
+    }
+
+    private function upsertStaffInfo(
+        int $accountIdentifier,
+        string $employeeIdNumber,
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $role,
+        ?string $imageUrl
+    ): void {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->connection->executeStatement(
+            'INSERT INTO staff_info
+                (account_identifier, employee_id_number, first_name, last_name, phone_number, role, image_url, created_timestamp, updated_timestamp)
+             VALUES
+                (:accountIdentifier, :employeeIdNumber, :firstName, :lastName, :phoneNumber, :role, :imageUrl, :createdTimestamp, :updatedTimestamp)
+             ON CONFLICT (account_identifier) WHERE account_identifier IS NOT NULL
+             DO UPDATE SET
+                employee_id_number = EXCLUDED.employee_id_number,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                phone_number = EXCLUDED.phone_number,
+                role = EXCLUDED.role,
+                image_url = EXCLUDED.image_url,
+                updated_timestamp = EXCLUDED.updated_timestamp',
+            [
+                'accountIdentifier' => $accountIdentifier,
+                'employeeIdNumber' => $employeeIdNumber,
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'phoneNumber' => $phoneNumber,
+                'role' => $role,
+                'imageUrl' => $imageUrl,
+                'createdTimestamp' => $now,
+                'updatedTimestamp' => $now,
+            ],
+            [
+                'accountIdentifier' => ParameterType::INTEGER,
+                'employeeIdNumber' => ParameterType::STRING,
+                'firstName' => ParameterType::STRING,
+                'lastName' => ParameterType::STRING,
+                'phoneNumber' => ParameterType::STRING,
+                'role' => ParameterType::STRING,
+                'imageUrl' => $imageUrl === null ? ParameterType::NULL : ParameterType::STRING,
+                'createdTimestamp' => ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+            ]
+        );
+    }
+
     private function isReusablePendingSignupRequest(array $account, string $idNumber): bool
     {
         $isApproved = $this->toDatabaseBoolean($account['is_approved'] ?? false);
         $status = strtolower((string)($account['status'] ?? ''));
-        $clerkUserId = trim((string)($account['clerk_user_id'] ?? ''));
         $existingIdNumber = trim((string)($account['id_number'] ?? ''));
 
         return !$isApproved
             && $status === 'pending'
-            && $clerkUserId === ''
             && $existingIdNumber === $idNumber;
     }
 
@@ -1829,6 +2298,47 @@ HTML;
     {
         $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
         return strtolower(trim($normalizedEmailAddress));
+    }
+
+    private function validateResponsibleAdminPassword(int $authenticatedAdminId, string $confirmedAdminPassword, string $actionName): ?JsonResponse
+    {
+        if ($authenticatedAdminId <= 0) {
+            return $this->createErrorResponse(
+                'SecurityConfirmationFailed',
+                sprintf('Please sign in as an admin before %s this request.', $actionName),
+                422
+            );
+        }
+
+        if (trim($confirmedAdminPassword) === '') {
+            return $this->createErrorResponse(
+                'SecurityConfirmationFailed',
+                sprintf('Please type the responsible admin password before %s this request.', $actionName),
+                422
+            );
+        }
+
+        $confirmedAdmin = $this->connection->fetchAssociative(
+            "SELECT password_hash
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+               AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
+               AND COALESCE(is_active, TRUE) = TRUE
+             LIMIT 1",
+            ['accountIdentifier' => $authenticatedAdminId],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        $passwordHash = (string)($confirmedAdmin['password_hash'] ?? '');
+        if (!$confirmedAdmin || $passwordHash === '' || !password_verify($confirmedAdminPassword, $passwordHash)) {
+            return $this->createErrorResponse(
+                'SecurityConfirmationFailed',
+                sprintf('Please type your exact admin password before %s this request.', $actionName),
+                422
+            );
+        }
+
+        return null;
     }
 
     private function resolveAuthenticatedAccountIdentifier(Request $request, array $authenticatedIdentity): int

@@ -68,6 +68,18 @@ export const adminManageAccountsApi = {
     }
   },
 
+  async getEmployeeWorkLogs(accountIdentifier, token) {
+    try {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/work-logs`), {
+        method: 'GET',
+        headers: buildHeaders(token),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   async updateAccountAccess(accountIdentifier, isActive, token, payload = {}) {
     try {
       const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/access`), {

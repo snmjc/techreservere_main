@@ -22,7 +22,7 @@ class BorrowerAccountFixture extends Fixture
     public function load(ObjectManager $manager): void
     {
         $existingBorrower = $manager->getRepository(AccountEntity::class)
-            ->findOneBy(['emailAddress' => 'borrower@techreserve.feu.edu.ph']);
+            ->findOneBy(['emailAddress' => 'borrower@techreserve.edu.ph']);
 
         if ($existingBorrower !== null) {
             return;
@@ -30,12 +30,14 @@ class BorrowerAccountFixture extends Fixture
 
         $borrowerAccount = new AccountEntity();
         $borrowerAccount->setLastName('Borrower');
-        $borrowerAccount->setFirstName('Default');
-        $borrowerAccount->setEmailAddress('borrower@techreserve.feu.edu.ph');
+        $borrowerAccount->setFirstName('TechReserve');
+        $borrowerAccount->setEmailAddress('borrower@techreserve.edu.ph');
         $borrowerAccount->setRoleDesignation(RoleConstants::ROLE_BORROWER);
         $borrowerAccount->setContactNumber('09000000001');
         $borrowerAccount->setClerkUserId('clerk_borrower_placeholder');
         $borrowerAccount->setPasswordHash(password_hash('borrower123', PASSWORD_BCRYPT, ['cost' => 4]));
+        $borrowerAccount->setStatus('approved');
+        $borrowerAccount->setIsApproved(true);
         $borrowerAccount->setIsActive(true);
 
         $manager->persist($borrowerAccount);

@@ -92,8 +92,9 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>ID No.</th>
+              <th>Work ID No.</th>
               <th>Name</th>
+              <th v-if="activeAccountTab === 'employee'">Phone Number</th>
               <th>Role</th>
               <th>Status</th>
               <th>Actions</th>
@@ -101,12 +102,13 @@
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="6" class="manage-accounts-empty">Loading accounts...</td>
+              <td :colspan="manageAccountsColumnCount" class="manage-accounts-empty">Loading accounts...</td>
             </tr>
             <tr v-for="(account, index) in filteredAccounts" v-else :key="account.accountIdentifier">
               <td>{{ index + 1 }}</td>
               <td>{{ account.idNumber }}</td>
               <td>{{ account.fullName }}</td>
+              <td v-if="activeAccountTab === 'employee'">{{ account.contactNumber || 'N/A' }}</td>
               <td>{{ account.roleLabel }}</td>
               <td>
                 <span class="manage-accounts-status" :class="getStatusClass(account.accountStatus)">
@@ -179,11 +181,26 @@
                       <path d="M19 6l-1 14H6L5 6" />
                     </svg>
                   </button>
+                  <button
+                    v-if="canViewWorkLogs(account)"
+                    type="button"
+                    class="manage-accounts-icon-button manage-accounts-icon-button--logs"
+                    aria-label="View work logs"
+                    title="View work logs"
+                    @click="openWorkLogs(account)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="5" y="3" width="14" height="18" rx="2" />
+                      <path d="M9 7h6" />
+                      <path d="M9 11h6" />
+                      <path d="M9 15h4" />
+                    </svg>
+                  </button>
                 </div>
               </td>
             </tr>
             <tr v-if="!isLoading && filteredAccounts.length === 0">
-              <td colspan="6" class="manage-accounts-empty">No accounts found.</td>
+              <td :colspan="manageAccountsColumnCount" class="manage-accounts-empty">No accounts found.</td>
             </tr>
           </tbody>
         </table>
@@ -216,7 +233,7 @@
             </span>
 
             <div class="manage-accounts-detail-main">
-              <p><strong>ID Number:</strong> <span>{{ viewAccount.idNumber }}</span></p>
+              <p><strong>Work ID Number:</strong> <span>{{ viewAccount.idNumber }}</span></p>
               <p><strong>Last Name:</strong> <span>{{ viewAccount.lastName }}</span></p>
               <p><strong>First Name:</strong> <span>{{ viewAccount.firstName }}</span></p>
               <p><strong>{{ getEmailLabel(viewAccount) }}</strong> <span>{{ viewAccount.emailAddress }}</span></p>
@@ -245,9 +262,9 @@
         </section>
       </div>
 
-      <div v-if="updateAccount" class="manage-accounts-modal-overlay" @click.self="closeModals">
+      <div v-if="updateAccount" class="manage-accounts-modal-overlay" @click.self="!isProcessing && closeModals()">
         <section class="manage-accounts-view-modal">
-          <button class="manage-accounts-modal-close" type="button" aria-label="Close" @click="closeModals">
+          <button class="manage-accounts-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeModals">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -268,33 +285,23 @@
             </span>
 
             <div class="manage-accounts-edit-fields">
-              <label><strong>ID Number:</strong><input v-model.trim="updateForm.idNumber" required /></label>
-              <label><strong>Last Name:</strong><input v-model.trim="updateForm.lastName" required /></label>
-              <label><strong>First Name:</strong><input v-model.trim="updateForm.firstName" required /></label>
-              <label v-if="isEmployeeUpdateModal"><strong>Phone Number:</strong><input v-model.trim="updateForm.contactNumber" type="tel" placeholder="0912 345 6789" :required="updateForm.accountType === 'Employee'" /></label>
-              <label><strong>{{ getUpdateEmailLabel() }}</strong><input v-model.trim="updateForm.emailAddress" type="email" required /></label>
+              <label><strong>Work ID Number:</strong><input v-model.trim="updateForm.idNumber" readonly /></label>
+              <label><strong>Last Name:</strong><input v-model.trim="updateForm.lastName" required @input="sanitizeUpdateNameField('lastName')" /></label>
+              <label><strong>First Name:</strong><input v-model.trim="updateForm.firstName" required @input="sanitizeUpdateNameField('firstName')" /></label>
+              <label><strong>Phone Number:</strong><input v-model.trim="updateForm.contactNumber" type="tel" inputmode="numeric" maxlength="10" placeholder="9123456789" required @input="sanitizeUpdatePhone" /></label>
+              <label><strong>{{ getUpdateEmailLabel() }}</strong><input v-model.trim="updateForm.emailAddress" type="email" readonly /></label>
               <label>
                 <strong>Role:</strong>
-                <select v-model="updateForm.roleLabel">
-                  <option
-                    v-for="option in getUpdateRoleOptions()"
-                    :key="option"
-                    :value="option"
-                  >
-                    {{ option }}
-                  </option>
-                </select>
+                <input v-model="updateForm.roleLabel" readonly />
               </label>
-              <label v-if="isEmployeeUpdateModal">
-                <strong>Account Type:</strong>
-                <select v-model="updateForm.accountType" @change="handleUpdateAccountTypeChange">
-                  <option value="Admin">Admin</option>
-                  <option value="Employee">Employee</option>
-                </select>
+              <label class="manage-accounts-field-wide">
+                <strong>Profile Photo:</strong>
+                <input type="file" accept=".jpg,image/jpeg" :disabled="isProcessing" @change="handleUpdateProfilePhotoChange" />
               </label>
             </div>
 
             <div class="manage-accounts-detail-side manage-accounts-detail-side--muted">
+              <img v-if="updateForm.profilePhotoPreview" class="manage-accounts-profile-preview" :src="updateForm.profilePhotoPreview" alt="" />
               <p><strong>Account Status:</strong> <span class="manage-accounts-status" :class="getStatusClass(updateAccount.accountStatus)">{{ updateAccount.accountStatus }}</span></p>
               <p><strong>Account Registered:</strong> <span>{{ formatDateTime(updateAccount.createdTimestamp) }}</span></p>
               <p><strong>Account Type:</strong> <span class="manage-accounts-type-pill" :class="getAccountTypeClass(updateForm.accountType)">{{ updateForm.accountType }}</span></p>
@@ -307,7 +314,7 @@
 
             <div class="manage-accounts-modal-actions manage-accounts-modal-actions--wide">
               <button class="manage-accounts-cancel-button" type="button" :disabled="isProcessing" @click="closeModals">Cancel</button>
-              <button class="manage-accounts-save-button" type="submit" :disabled="isProcessing">
+              <button class="manage-accounts-save-button" type="submit" :disabled="isProcessing || !isUpdateFormReady">
                 {{ isProcessing ? 'Saving...' : 'Save Changes' }}
               </button>
             </div>
@@ -315,9 +322,9 @@
         </section>
       </div>
 
-      <div v-if="accessAccount" class="manage-accounts-modal-overlay" @click.self="closeModals">
+      <div v-if="accessAccount" class="manage-accounts-modal-overlay" @click.self="!isProcessing && closeModals()">
         <section class="manage-accounts-access-modal">
-          <button class="manage-accounts-modal-close" type="button" aria-label="Close" @click="closeModals">
+          <button class="manage-accounts-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeModals">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -338,7 +345,8 @@
             </span>
             <div>
               <strong>{{ accessAccount.fullName }}</strong>
-              <span>{{ accessAccount.idNumber }}</span>
+              <span>Work ID: {{ accessAccount.idNumber }}</span>
+              <span>Phone: {{ accessAccount.contactNumber || 'N/A' }}</span>
               <span>{{ accessAccount.emailAddress }}</span>
               <span>{{ accessAccount.roleLabel }}</span>
               <em :class="getAccountTypeClass(accessAccount.accountType)">{{ accessAccount.accountType }}</em>
@@ -363,11 +371,64 @@
               class="manage-accounts-save-button"
               :class="{ 'manage-accounts-save-button--danger': accessMode === 'disable' || accessMode === 'delete' }"
               type="button"
-              :disabled="!isAccessConfirmationReady"
+              :disabled="isProcessing || !isAccessConfirmationReady"
               @click="confirmAccessChange"
             >
               {{ getAccessModalActionLabel() }}
             </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="workLogsAccount" class="manage-accounts-modal-overlay" @click.self="closeModals">
+        <section class="manage-accounts-work-logs-modal">
+          <button class="manage-accounts-modal-close" type="button" aria-label="Close" @click="closeModals">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="manage-accounts-modal-heading">
+            <h2>Work Logs</h2>
+            <p>{{ workLogsAccount.fullName }} - {{ workLogsAccount.idNumber }}</p>
+          </div>
+
+          <p v-if="workLogsLoading" class="manage-accounts-work-logs-state">Loading work logs...</p>
+          <p v-else-if="workLogsError" class="manage-accounts-modal-error">{{ workLogsError }}</p>
+          <p v-else-if="employeeWorkLogs.length === 0" class="manage-accounts-work-logs-state">No work logs found for this employee.</p>
+
+          <div v-else class="manage-accounts-work-logs-list">
+            <article
+              v-for="log in employeeWorkLogs"
+              :key="log.taskIdentifier"
+              class="manage-accounts-work-log"
+            >
+              <button
+                class="manage-accounts-work-log-summary"
+                type="button"
+                @click="toggleWorkLog(log.taskIdentifier)"
+              >
+                <span>
+                  <strong>{{ log.taskName }}</strong>
+                  <small>{{ formatNullableDateTime(log.taskDateTime) }}</small>
+                </span>
+                <em>{{ log.status }}</em>
+              </button>
+
+              <div v-if="expandedWorkLogIds.has(log.taskIdentifier)" class="manage-accounts-work-log-details">
+                <p><strong>Reservation Details:</strong> <span>{{ formatReservationDetails(log.reservationDetails) }}</span></p>
+                <p><strong>Assignments:</strong> <span>{{ formatAssignments(log.assignments) }}</span></p>
+                <p><strong>Task Type:</strong> <span>{{ log.taskType || 'N/A' }}</span></p>
+                <p><strong>Description:</strong> <span>{{ log.taskDescription || 'N/A' }}</span></p>
+                <p><strong>Created:</strong> <span>{{ formatNullableDateTime(log.createdTimestamp) }}</span></p>
+                <p><strong>Updated:</strong> <span>{{ formatNullableDateTime(log.updatedTimestamp) }}</span></p>
+              </div>
+            </article>
+          </div>
+
+          <div class="manage-accounts-modal-actions">
+            <button class="manage-accounts-close-button" type="button" @click="closeModals">Close</button>
           </div>
         </section>
       </div>
@@ -400,6 +461,11 @@ const accounts = ref([]);
 const viewAccount = ref(null);
 const updateAccount = ref(null);
 const accessAccount = ref(null);
+const workLogsAccount = ref(null);
+const employeeWorkLogs = ref([]);
+const workLogsLoading = ref(false);
+const workLogsError = ref('');
+const expandedWorkLogIds = ref(new Set());
 const accessMode = ref('disable');
 const confirmEmailText = ref('');
 const confirmPasswordText = ref('');
@@ -413,12 +479,16 @@ const updateForm = reactive({
   roleDesignation: 'ROLE_ADMIN',
   roleLabel: 'Admin',
   accountType: 'Admin',
+  profilePhotoName: '',
+  profilePhotoData: '',
+  profilePhotoPreview: '',
 });
 
 const normalizedAccounts = computed(() => accounts.value.map(normalizeAccount));
 const isEmployeeUpdateModal = computed(() => updateAccount.value?.accountType === 'Employee');
 const pageTitle = computed(() => 'Manage Accounts');
 const pageDescription = computed(() => 'Manage and oversee system accounts in TechReserve.');
+const manageAccountsColumnCount = computed(() => (activeAccountTab.value === 'employee' ? 7 : 6));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim();
@@ -433,6 +503,7 @@ const isAccessConfirmationReady = computed(() => {
 
   return true;
 });
+const isUpdateFormReady = computed(() => validateUpdateAccountForm() === '');
 
 const accountTabs = computed(() => [
   { label: 'Admin', value: 'admin', count: normalizedAccounts.value.filter((account) => account.accountType === 'Admin').length },
@@ -498,6 +569,7 @@ function normalizeAccount(account) {
     fullName: `${firstName} ${lastName}`.trim(),
     emailAddress: account.emailAddress || account.email_address || '',
     contactNumber: account.contactNumber || account.contact_number || '',
+    profilePhotoData: account.profilePhotoData || account.profile_photo_data || '',
     roleDesignation,
     roleLabel: account.roleLabel || resolveRoleLabel(account, roleDesignation, accountType),
     accountType,
@@ -569,6 +641,63 @@ function openViewModal(account) {
   viewAccount.value = account;
 }
 
+async function openWorkLogs(account) {
+  if (!canViewWorkLogs(account)) return;
+  workLogsAccount.value = account;
+  employeeWorkLogs.value = [];
+  workLogsError.value = '';
+  expandedWorkLogIds.value = new Set();
+  workLogsLoading.value = true;
+
+  const result = await adminManageAccountsApi.getEmployeeWorkLogs(account.accountIdentifier, authStore.authToken);
+  workLogsLoading.value = false;
+
+  if (!result.success) {
+    workLogsError.value = result.error || 'Unable to load work logs.';
+    return;
+  }
+
+  employeeWorkLogs.value = result.data.workLogs || [];
+}
+
+function canViewWorkLogs(account) {
+  return account?.accountType === 'Employee';
+}
+
+function toggleWorkLog(taskIdentifier) {
+  const nextExpanded = new Set(expandedWorkLogIds.value);
+  if (nextExpanded.has(taskIdentifier)) {
+    nextExpanded.delete(taskIdentifier);
+  } else {
+    nextExpanded.add(taskIdentifier);
+  }
+  expandedWorkLogIds.value = nextExpanded;
+}
+
+function formatReservationDetails(reservationDetails) {
+  if (!reservationDetails) return 'No linked reservation.';
+
+  const parts = [
+    reservationDetails.reservationCode || `Reservation #${reservationDetails.reservationIdentifier}`,
+    reservationDetails.organizationName,
+    reservationDetails.activityType,
+    reservationDetails.eventDateTime ? formatNullableDateTime(reservationDetails.eventDateTime) : '',
+    reservationDetails.status,
+  ].filter(Boolean);
+
+  return parts.join(' | ');
+}
+
+function formatAssignments(assignments) {
+  if (!assignments) return 'N/A';
+
+  return [
+    assignments.assignedTask,
+    assignments.assignmentType,
+    assignments.assignedToAccountId ? `Account #${assignments.assignedToAccountId}` : '',
+  ].filter(Boolean).join(' | ') || 'N/A';
+}
+
 function openUpdateModal(account) {
   if (!canUpdateAccount(account)) {
     showToast('Only active accounts can be updated.');
@@ -584,6 +713,9 @@ function openUpdateModal(account) {
   updateForm.roleDesignation = normalizeUpdateRoleDesignation(account.accountType, account.roleLabel);
   updateForm.roleLabel = account.roleLabel;
   updateForm.accountType = account.accountType;
+  updateForm.profilePhotoName = '';
+  updateForm.profilePhotoData = '';
+  updateForm.profilePhotoPreview = account.profilePhotoData || '';
   if (account.accountType === 'Employee' && !getEmployeeRoleOptions().includes(updateForm.roleLabel)) {
     updateForm.roleLabel = account.roleLabel || 'Technical Staff';
   }
@@ -653,26 +785,116 @@ function closeModals() {
   viewAccount.value = null;
   updateAccount.value = null;
   accessAccount.value = null;
+  workLogsAccount.value = null;
+  employeeWorkLogs.value = [];
+  workLogsLoading.value = false;
+  workLogsError.value = '';
+  expandedWorkLogIds.value = new Set();
   confirmEmailText.value = '';
   confirmPasswordText.value = '';
+  resetUpdateForm();
   modalErrorMessage.value = '';
+}
+
+function resetUpdateForm() {
+  updateForm.idNumber = '';
+  updateForm.lastName = '';
+  updateForm.firstName = '';
+  updateForm.emailAddress = '';
+  updateForm.contactNumber = '';
+  updateForm.roleDesignation = 'ROLE_ADMIN';
+  updateForm.roleLabel = 'Admin';
+  updateForm.accountType = 'Admin';
+  updateForm.profilePhotoName = '';
+  updateForm.profilePhotoData = '';
+  updateForm.profilePhotoPreview = '';
+}
+
+function sanitizeUpdateNameField(fieldName) {
+  updateForm[fieldName] = String(updateForm[fieldName] || '').replace(/[^A-Za-z ]+/g, '').replace(/\s{2,}/g, ' ');
+}
+
+function sanitizeUpdatePhone() {
+  updateForm.contactNumber = String(updateForm.contactNumber || '').replace(/\D/g, '').slice(0, 10);
+}
+
+function validateUpdateAccountForm() {
+  const lastName = updateForm.lastName.trim();
+  const firstName = updateForm.firstName.trim();
+  const phone = updateForm.contactNumber.trim();
+
+  if (!isValidAccountName(lastName)) {
+    return 'Last name is required, must be at least 2 characters, and may contain letters and spaces only.';
+  }
+
+  if (!isValidAccountName(firstName)) {
+    return 'First name is required, must be at least 2 characters, and may contain letters and spaces only.';
+  }
+
+  if (!/^9\d{9}$/.test(phone)) {
+    return 'Phone number must be exactly 10 digits and begin with 9.';
+  }
+
+  if (updateForm.profilePhotoName && !updateForm.profilePhotoName.toLowerCase().endsWith('.jpg')) {
+    return 'Profile photo must be a .jpg image only.';
+  }
+
+  return '';
+}
+
+function isValidAccountName(value) {
+  return /^[A-Za-z]+(?: [A-Za-z]+)*$/.test(String(value || '').trim()) && String(value || '').trim().length >= 2;
+}
+
+function handleUpdateProfilePhotoChange(event) {
+  const file = event.target.files?.[0] || null;
+  updateForm.profilePhotoName = '';
+  updateForm.profilePhotoData = '';
+
+  if (!file) {
+    updateForm.profilePhotoPreview = updateAccount.value?.profilePhotoData || '';
+    modalErrorMessage.value = '';
+    return;
+  }
+
+  if (!file.name.toLowerCase().endsWith('.jpg') || file.type !== 'image/jpeg') {
+    modalErrorMessage.value = 'Profile photo must be a .jpg image only.';
+    event.target.value = '';
+    updateForm.profilePhotoPreview = updateAccount.value?.profilePhotoData || '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    updateForm.profilePhotoName = file.name;
+    updateForm.profilePhotoData = String(reader.result || '');
+    updateForm.profilePhotoPreview = updateForm.profilePhotoData;
+    modalErrorMessage.value = '';
+  };
+  reader.onerror = () => {
+    modalErrorMessage.value = 'Unable to read profile photo.';
+    event.target.value = '';
+  };
+  reader.readAsDataURL(file);
 }
 
 async function saveAccountChanges() {
   if (!updateAccount.value) return;
+  if (isProcessing.value) return;
 
-  const accountType = getUpdateAccountTypeForPayload();
-  const roleLabel = getUpdateRoleLabelForPayload(accountType);
+  const validationError = validateUpdateAccountForm();
+  if (validationError) {
+    modalErrorMessage.value = validationError;
+    return;
+  }
+
   isProcessing.value = true;
   const result = await adminManageAccountsApi.updateAccount(updateAccount.value.accountIdentifier, {
-    idNumber: updateForm.idNumber,
     lastName: updateForm.lastName,
     firstName: updateForm.firstName,
-    emailAddress: updateForm.emailAddress,
     contactNumber: updateForm.contactNumber,
-    roleDesignation: normalizeUpdateRoleDesignation(accountType, roleLabel),
-    roleLabel,
-    accountType,
+    profilePhotoName: updateForm.profilePhotoName,
+    profilePhotoData: updateForm.profilePhotoData,
   }, authStore.authToken);
   isProcessing.value = false;
 
@@ -688,6 +910,7 @@ async function saveAccountChanges() {
 
 async function confirmAccessChange() {
   if (!accessAccount.value) return;
+  if (isProcessing.value) return;
 
   if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
     if (!currentAdminEmail.value) {
@@ -912,4 +1135,5 @@ function showToast(message) {
     if (toastMessage.value === message) toastMessage.value = '';
   }, 2800);
 }
+
 </script>

@@ -14,6 +14,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/api/v1/accounts')]
 class AccountController extends AbstractController
@@ -23,15 +24,18 @@ class AccountController extends AbstractController
     private AccountProfileService $accountProfileService;
     private AccountUpdateService $accountUpdateService;
     private Connection $connection;
+    private HttpClientInterface $httpClient;
 
     public function __construct(
         AccountProfileService $accountProfileService,
         AccountUpdateService $accountUpdateService,
-        Connection $connection
+        Connection $connection,
+        HttpClientInterface $httpClient
     ) {
         $this->accountProfileService = $accountProfileService;
         $this->accountUpdateService = $accountUpdateService;
         $this->connection = $connection;
+        $this->httpClient = $httpClient;
     }
 
     #[Route('/me', name: 'account_get_my_profile', methods: ['GET'])]
@@ -196,6 +200,45 @@ class AccountController extends AbstractController
         ]);
     }
 
+    #[Route('/me/password/sync-from-clerk', name: 'account_sync_clerk_password', methods: ['PUT'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    public function syncPasswordFromClerk(Request $request): JsonResponse
+    {
+        $accountIdentifier = $this->resolveAuthenticatedAccountIdentifier($request);
+
+        if ($accountIdentifier <= 0) {
+            return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in account.', 401);
+        }
+
+        $requestBody = json_decode($request->getContent(), true);
+        if (!is_array($requestBody)) {
+            return $this->createErrorResponse('ValidationError', 'Invalid request body.', 422);
+        }
+
+        $newPassword = (string)($requestBody['newPassword'] ?? '');
+
+        if (!$this->isStrongPassword($newPassword)) {
+            return $this->createErrorResponse('ValidationError', 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.', 422);
+        }
+
+        $updatedRows = $this->connection->update(
+            'accounts',
+            [
+                'password_hash' => password_hash($newPassword, PASSWORD_BCRYPT),
+                'updated_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ],
+            ['account_identifier' => $accountIdentifier]
+        );
+
+        if ($updatedRows === 0) {
+            return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
+        }
+
+        return $this->createSuccessResponse([
+            'message' => 'Password synced from Clerk.',
+        ]);
+    }
+
     #[Route('', name: 'account_get_all', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getAllAccounts(): JsonResponse
@@ -204,12 +247,20 @@ class AccountController extends AbstractController
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
                        accounts.email_address, accounts.role_designation, accounts.department, accounts.contact_number,
+                       accounts.profile_photo_data,
+                       staff_info.employee_id_number AS staff_employee_id_number,
+                       staff_info.first_name AS staff_first_name,
+                       staff_info.last_name AS staff_last_name,
+                       staff_info.phone_number AS staff_phone_number,
+                       staff_info.role AS staff_role,
+                       staff_info.image_url AS staff_image_url,
                        accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                        accounts.last_login_timestamp,
                        latest_invitation.created_at AS invite_sent_at,
                        latest_invitation.expires_at AS invite_expires_at,
                        latest_invitation.accepted_at AS invite_accepted_at
                 FROM accounts
+                LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
                 LEFT JOIN LATERAL (
                    SELECT created_at, expires_at, accepted_at
                    FROM invitations
@@ -221,8 +272,7 @@ class AccountController extends AbstractController
                   AND LOWER(COALESCE(accounts.status, 'pending')) IN ('approved', 'disabled')
                   AND (
                     latest_invitation.accepted_at IS NOT NULL
-                    OR accounts.clerk_user_id IS NOT NULL
-                    OR accounts.password_hash IS NOT NULL
+                    OR accounts.role_designation IN ('ROLE_ADMIN', 'ADMIN', 'ROLE_STAFF')
                   )
              ),
              deduped_by_email AS (
@@ -234,9 +284,14 @@ class AccountController extends AbstractController
                 SELECT DISTINCT ON (COALESCE(NULLIF(id_number, ''), account_identifier::text)) *
                 FROM deduped_by_email
                 ORDER BY COALESCE(NULLIF(id_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
+             ),
+             deduped_by_phone AS (
+                SELECT DISTINCT ON (COALESCE(NULLIF(contact_number, ''), account_identifier::text)) *
+                FROM deduped_by_id
+                ORDER BY COALESCE(NULLIF(contact_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
              )
              SELECT *
-             FROM deduped_by_id
+             FROM deduped_by_phone
              ORDER BY created_timestamp DESC"
         );
 
@@ -270,6 +325,65 @@ class AccountController extends AbstractController
         return $this->createSuccessResponse($updatedProfile->toResponseArray());
     }
 
+    #[Route('/{accountIdentifier}/work-logs', name: 'account_employee_work_logs', requirements: ['accountIdentifier' => '\d+'], methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getEmployeeWorkLogs(int $accountIdentifier): JsonResponse
+    {
+        $account = $this->getAccountStateById($accountIdentifier);
+        if (!$account) {
+            return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
+        }
+
+        $mappedAccount = $this->getMappedAccountById($accountIdentifier);
+        if (($mappedAccount['accountType'] ?? '') !== 'Employee') {
+            return $this->createErrorResponse(
+                'WorkLogsUnavailable',
+                'Work logs are only available for employee accounts.',
+                422
+            );
+        }
+
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT
+                history_logs.id AS history_log_id,
+                history_logs.staff_id,
+                history_logs.reservation_id,
+                history_logs.task_assignment_id,
+                tasks.task_identifier,
+                tasks.task_title,
+                tasks.task_description,
+                tasks.task_type,
+                tasks.task_status,
+                tasks.assigned_to_account_id,
+                tasks.due_date_timestamp,
+                tasks.created_timestamp,
+                tasks.updated_timestamp,
+                reservations.reservation_identifier,
+                reservations.reservation_code,
+                reservations.organization_name,
+                reservations.event_date_time,
+                reservations.purpose_description,
+                reservations.activity_type,
+                reservations.current_status AS reservation_status,
+                reservations.requested_equipment_list,
+                reservations.requested_quantity,
+                reservations.priority_level
+             FROM history_logs
+             INNER JOIN staff_info ON staff_info.id = history_logs.staff_id
+             INNER JOIN tasks ON tasks.task_identifier = history_logs.task_assignment_id
+             INNER JOIN reservations ON reservations.reservation_identifier = history_logs.reservation_id
+             WHERE staff_info.account_identifier = :accountIdentifier
+             ORDER BY COALESCE(tasks.due_date_timestamp, tasks.created_timestamp) DESC, history_logs.id DESC",
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        return $this->createSuccessResponse([
+            'account' => $mappedAccount,
+            'workLogs' => array_map(fn (array $row): array => $this->mapEmployeeWorkLogRow($row), $rows),
+        ]);
+    }
+
     #[Route('/{accountIdentifier}/admin-details', name: 'account_update_admin_details', methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateAdminAccountDetails(int $accountIdentifier, Request $request): JsonResponse
@@ -297,66 +411,58 @@ class AccountController extends AbstractController
             );
         }
 
-        $idNumber = trim($requestBody['idNumber'] ?? '');
-        $lastName = trim($requestBody['lastName'] ?? '');
-        $firstName = trim($requestBody['firstName'] ?? '');
-        $emailAddress = strtolower(trim($requestBody['emailAddress'] ?? ''));
-        $accountType = trim((string)($requestBody['accountType'] ?? 'Admin'));
-        $roleLabel = trim((string)($requestBody['roleLabel'] ?? 'Admin'));
-        $contactNumber = trim((string)($requestBody['contactNumber'] ?? ''));
-        $roleDesignation = $this->resolveRoleDesignationForAccountType($accountType, (string)($requestBody['roleDesignation'] ?? 'ROLE_ADMIN'));
-        $department = $this->resolveDepartmentForAccountType($accountType, $roleLabel);
+        $lastName = $this->normalizePersonName((string)($requestBody['lastName'] ?? ''));
+        $firstName = $this->normalizePersonName((string)($requestBody['firstName'] ?? ''));
+        $contactNumber = preg_replace('/\D+/', '', (string)($requestBody['contactNumber'] ?? '')) ?? '';
+        if (str_starts_with($contactNumber, '09')) {
+            $contactNumber = substr($contactNumber, 1);
+        }
+        $profilePhotoName = trim((string)($requestBody['profilePhotoName'] ?? ''));
+        $profilePhotoData = array_key_exists('profilePhotoData', $requestBody)
+            ? trim((string)$requestBody['profilePhotoData'])
+            : null;
 
-        if (($currentMappedAccount['accountType'] ?? '') === 'Employee') {
-            if (!in_array($accountType, ['Admin', 'Employee'], true)) {
-                return $this->createErrorResponse('ValidationError', 'Employee accounts can only be updated as Admin or Employee.', 422);
-            }
-
-            if (strcasecmp($accountType, 'Employee') === 0 && preg_match('/^(user|student|faculty)$/i', $roleLabel) === 1) {
-                return $this->createErrorResponse('ValidationError', 'Employee account role cannot be set to User, Student, or Faculty.', 422);
-            }
+        $validationError = $this->validateEditableAccountSettings($firstName, $lastName, $contactNumber, $profilePhotoData, $profilePhotoName);
+        if ($validationError !== null) {
+            return $this->createErrorResponse('ValidationError', $validationError, 422);
         }
 
-        if ($idNumber === '' || $lastName === '' || $firstName === '' || $emailAddress === '') {
-            return $this->createErrorResponse('ValidationError', 'ID number, last name, first name, and email are required.', 422);
-        }
-
-        if (strcasecmp($accountType, 'Employee') === 0 && $contactNumber === '') {
-            return $this->createErrorResponse('ValidationError', 'Phone is required for employee accounts.', 422);
-        }
-
-        if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
-            return $this->createErrorResponse('ValidationError', 'Please provide a valid email address.', 422);
-        }
-
-        $duplicateEmail = $this->connection->fetchOne(
-            'SELECT 1 FROM accounts WHERE LOWER(email_address) = LOWER(:emailAddress) AND account_identifier <> :accountIdentifier',
-            ['emailAddress' => $emailAddress, 'accountIdentifier' => $accountIdentifier]
-        );
-
-        if ($duplicateEmail) {
-            return $this->createErrorResponse('DuplicateAccount', 'An account with this email already exists.', 409);
-        }
-
-        $duplicateIdNumber = $this->connection->fetchOne(
-            'SELECT 1 FROM accounts WHERE id_number = :idNumber AND account_identifier <> :accountIdentifier',
-            ['idNumber' => $idNumber, 'accountIdentifier' => $accountIdentifier]
-        );
-
-        if ($duplicateIdNumber) {
-            return $this->createErrorResponse('DuplicateIdNumber', 'An account with this ID number already exists.', 409);
-        }
-
-        $updatedRows = $this->connection->update('accounts', [
-            'id_number' => $idNumber,
+        $updateFields = [
             'last_name' => $lastName,
             'first_name' => $firstName,
-            'email_address' => $emailAddress,
-            'role_designation' => $roleDesignation,
-            'department' => $department,
-            'contact_number' => $contactNumber !== '' ? $contactNumber : null,
+            'contact_number' => $contactNumber,
             'updated_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-        ], ['account_identifier' => $accountIdentifier]);
+        ];
+
+        if ($profilePhotoData !== null && $profilePhotoData !== '') {
+            $updateFields['profile_photo_data'] = $profilePhotoData;
+        }
+
+        if (($currentMappedAccount['accountType'] ?? '') === 'Employee') {
+            $duplicateStaffPhone = $this->connection->fetchOne(
+                'SELECT 1 FROM staff_info WHERE phone_number = :phoneNumber AND account_identifier <> :accountIdentifier',
+                ['phoneNumber' => $contactNumber, 'accountIdentifier' => $accountIdentifier],
+                ['phoneNumber' => ParameterType::STRING, 'accountIdentifier' => ParameterType::INTEGER]
+            );
+
+            if ($duplicateStaffPhone) {
+                return $this->createErrorResponse('DuplicatePhoneNumber', 'This phone number is already used by another staff account.', 409);
+            }
+        }
+
+        $updatedRows = $this->connection->update('accounts', $updateFields, ['account_identifier' => $accountIdentifier]);
+
+        if (($currentMappedAccount['accountType'] ?? '') === 'Employee') {
+            $this->upsertStaffInfo(
+                $accountIdentifier,
+                (string)($currentMappedAccount['rawIdNumber'] ?? $currentMappedAccount['idNumber'] ?? $existingAccount['id_number'] ?? ''),
+                $firstName,
+                $lastName,
+                $contactNumber,
+                (string)($currentMappedAccount['roleLabel'] ?? $existingAccount['department'] ?? 'Maintenance Staff'),
+                ($profilePhotoData !== null && $profilePhotoData !== '') ? $profilePhotoData : (string)($currentMappedAccount['profilePhotoData'] ?? '')
+            );
+        }
 
         if ($updatedRows === 0) {
             return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
@@ -472,10 +578,18 @@ class AccountController extends AbstractController
 
         $this->connection->beginTransaction();
         try {
+            $clerkUserId = trim((string)($account['clerk_user_id'] ?? ''));
+
             $this->connection->executeStatement(
                 'DELETE FROM invitations WHERE LOWER(email) = LOWER(:emailAddress)',
                 ['emailAddress' => (string)$account['email_address']],
                 ['emailAddress' => ParameterType::STRING]
+            );
+
+            $this->connection->executeStatement(
+                'DELETE FROM staff_info WHERE account_identifier = :accountIdentifier',
+                ['accountIdentifier' => $accountIdentifier],
+                ['accountIdentifier' => ParameterType::INTEGER]
             );
 
             $deletedRows = $this->connection->executeStatement(
@@ -485,6 +599,10 @@ class AccountController extends AbstractController
             );
 
             $this->connection->commit();
+
+            if ($clerkUserId !== '') {
+                $this->deleteClerkUser($clerkUserId);
+            }
         } catch (\Throwable $exception) {
             $this->connection->rollBack();
             return $this->createErrorResponse(
@@ -507,13 +625,21 @@ class AccountController extends AbstractController
     private function getMappedAccountById(int $accountIdentifier): ?array
     {
         $row = $this->connection->fetchAssociative(
-            "SELECT account_identifier, id_number, last_name, first_name, email_address, role_designation,
-                    department, contact_number, status, is_approved, is_active, created_timestamp,
-                    last_login_timestamp,
+            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.role_designation,
+                    accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
+                    accounts.profile_photo_data,
+                    staff_info.employee_id_number AS staff_employee_id_number,
+                    staff_info.first_name AS staff_first_name,
+                    staff_info.last_name AS staff_last_name,
+                    staff_info.phone_number AS staff_phone_number,
+                    staff_info.role AS staff_role,
+                    staff_info.image_url AS staff_image_url,
+                    accounts.last_login_timestamp,
                     latest_invitation.created_at AS invite_sent_at,
                     latest_invitation.expires_at AS invite_expires_at,
                     latest_invitation.accepted_at AS invite_accepted_at
              FROM accounts
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              LEFT JOIN LATERAL (
                 SELECT created_at, expires_at, accepted_at
                 FROM invitations
@@ -521,7 +647,7 @@ class AccountController extends AbstractController
                 ORDER BY created_at DESC
                 LIMIT 1
              ) latest_invitation ON TRUE
-             WHERE account_identifier = :accountIdentifier",
+             WHERE accounts.account_identifier = :accountIdentifier",
             ['accountIdentifier' => $accountIdentifier]
         );
 
@@ -531,11 +657,18 @@ class AccountController extends AbstractController
     private function getSettingsAccountById(int $accountIdentifier): ?array
     {
         $row = $this->connection->fetchAssociative(
-            "SELECT account_identifier, id_number, last_name, first_name, email_address, role_designation,
-                    department, contact_number, status, is_approved, is_active, created_timestamp,
-                    last_login_timestamp, profile_photo_data
+            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.role_designation,
+                    accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
+                    accounts.last_login_timestamp, accounts.profile_photo_data,
+                    staff_info.employee_id_number AS staff_employee_id_number,
+                    staff_info.first_name AS staff_first_name,
+                    staff_info.last_name AS staff_last_name,
+                    staff_info.phone_number AS staff_phone_number,
+                    staff_info.role AS staff_role,
+                    staff_info.image_url AS staff_image_url
              FROM accounts
-             WHERE account_identifier = :accountIdentifier",
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
+             WHERE accounts.account_identifier = :accountIdentifier",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
@@ -576,27 +709,149 @@ class AccountController extends AbstractController
 
         $accountType = $isAdmin ? 'Admin' : ($isEmployee ? 'Employee' : 'User');
         $roleLabel = $this->resolveRoleLabelForAccountRow($row, $accountType);
+        $idNumber = ($isEmployee && !empty($row['staff_employee_id_number']))
+            ? (string)$row['staff_employee_id_number']
+            : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT));
+        $firstName = ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'];
+        $lastName = ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'];
+        $contactNumber = ($isEmployee && !empty($row['staff_phone_number']))
+            ? (string)$row['staff_phone_number']
+            : ($row['contact_number'] ? (string)$row['contact_number'] : null);
+        $profilePhotoData = ($isEmployee && !empty($row['staff_image_url']))
+            ? (string)$row['staff_image_url']
+            : (!empty($row['profile_photo_data']) ? (string)$row['profile_photo_data'] : null);
 
         return [
             'accountIdentifier' => (int)$row['account_identifier'],
-            'idNumber' => $row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT),
-            'lastName' => (string)$row['last_name'],
-            'firstName' => (string)$row['first_name'],
+            'idNumber' => $idNumber,
+            'lastName' => $lastName,
+            'firstName' => $firstName,
             'emailAddress' => (string)$row['email_address'],
             'roleDesignation' => $this->normalizeRoleDesignation($roleDesignation),
-            'roleLabel' => $roleLabel,
+            'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,
             'accountType' => $accountType,
             'accountStatus' => $accountStatus,
             'isActive' => $isActive,
             'isApproved' => $isApproved,
             'actionPermissions' => $this->buildActionPermissions($accountStatus, $isApproved),
-            'contactNumber' => $row['contact_number'] ? (string)$row['contact_number'] : null,
+            'contactNumber' => $contactNumber,
+            'profilePhotoData' => $profilePhotoData,
             'createdTimestamp' => (string)$row['created_timestamp'],
             'lastLoginTimestamp' => $row['last_login_timestamp'] ? (string)$row['last_login_timestamp'] : null,
             'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
             'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
             'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
         ];
+    }
+
+    private function mapEmployeeWorkLogRow(array $row): array
+    {
+        $equipmentList = $this->decodeJsonList($row['requested_equipment_list'] ?? null);
+        $reservationDetails = null;
+
+        if (!empty($row['reservation_identifier'])) {
+            $reservationDetails = [
+                'reservationIdentifier' => (int)$row['reservation_identifier'],
+                'reservationCode' => (string)($row['reservation_code'] ?? ''),
+                'organizationName' => (string)($row['organization_name'] ?? ''),
+                'eventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
+                'purposeDescription' => $row['purpose_description'] ? (string)$row['purpose_description'] : null,
+                'activityType' => $row['activity_type'] ? (string)$row['activity_type'] : null,
+                'status' => $row['reservation_status'] ? (string)$row['reservation_status'] : null,
+                'requestedEquipmentList' => $equipmentList,
+                'requestedQuantity' => isset($row['requested_quantity']) ? (int)$row['requested_quantity'] : null,
+                'priorityLevel' => $row['priority_level'] ? (string)$row['priority_level'] : null,
+            ];
+        }
+
+        return [
+            'historyLogId' => isset($row['history_log_id']) ? (int)$row['history_log_id'] : null,
+            'staffId' => isset($row['staff_id']) ? (int)$row['staff_id'] : null,
+            'reservationId' => isset($row['reservation_id']) ? (int)$row['reservation_id'] : null,
+            'taskAssignmentId' => isset($row['task_assignment_id']) ? (int)$row['task_assignment_id'] : null,
+            'taskIdentifier' => (int)$row['task_identifier'],
+            'taskName' => (string)$row['task_title'],
+            'taskDescription' => $row['task_description'] ? (string)$row['task_description'] : null,
+            'taskType' => (string)($row['task_type'] ?? ''),
+            'status' => (string)($row['task_status'] ?? ''),
+            'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
+            'taskDateTime' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : (string)($row['created_timestamp'] ?? ''),
+            'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
+            'createdTimestamp' => (string)($row['created_timestamp'] ?? ''),
+            'updatedTimestamp' => (string)($row['updated_timestamp'] ?? ''),
+            'reservationDetails' => $reservationDetails,
+            'assignments' => [
+                'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
+                'assignmentType' => (string)($row['task_type'] ?? ''),
+                'assignedTask' => (string)$row['task_title'],
+            ],
+            'fullTaskInformation' => [
+                'description' => $row['task_description'] ? (string)$row['task_description'] : null,
+                'type' => (string)($row['task_type'] ?? ''),
+                'createdTimestamp' => (string)($row['created_timestamp'] ?? ''),
+                'updatedTimestamp' => (string)($row['updated_timestamp'] ?? ''),
+            ],
+        ];
+    }
+
+    private function decodeJsonList(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode((string)($value ?? '[]'), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function upsertStaffInfo(
+        int $accountIdentifier,
+        string $employeeIdNumber,
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $role,
+        ?string $imageUrl
+    ): void {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->connection->executeStatement(
+            'INSERT INTO staff_info
+                (account_identifier, employee_id_number, first_name, last_name, phone_number, role, image_url, created_timestamp, updated_timestamp)
+             VALUES
+                (:accountIdentifier, :employeeIdNumber, :firstName, :lastName, :phoneNumber, :role, :imageUrl, :createdTimestamp, :updatedTimestamp)
+             ON CONFLICT (account_identifier) WHERE account_identifier IS NOT NULL
+             DO UPDATE SET
+                employee_id_number = EXCLUDED.employee_id_number,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                phone_number = EXCLUDED.phone_number,
+                role = EXCLUDED.role,
+                image_url = COALESCE(EXCLUDED.image_url, staff_info.image_url),
+                updated_timestamp = EXCLUDED.updated_timestamp',
+            [
+                'accountIdentifier' => $accountIdentifier,
+                'employeeIdNumber' => $employeeIdNumber,
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'phoneNumber' => $phoneNumber,
+                'role' => $role,
+                'imageUrl' => $imageUrl !== '' ? $imageUrl : null,
+                'createdTimestamp' => $now,
+                'updatedTimestamp' => $now,
+            ],
+            [
+                'accountIdentifier' => ParameterType::INTEGER,
+                'employeeIdNumber' => ParameterType::STRING,
+                'firstName' => ParameterType::STRING,
+                'lastName' => ParameterType::STRING,
+                'phoneNumber' => ParameterType::STRING,
+                'role' => ParameterType::STRING,
+                'imageUrl' => $imageUrl === null || $imageUrl === '' ? ParameterType::NULL : ParameterType::STRING,
+                'createdTimestamp' => ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+            ]
+        );
     }
 
     private function normalizeRoleDesignation(string $roleDesignation): string
@@ -618,7 +873,13 @@ class AccountController extends AbstractController
         return preg_replace('/\s+/', ' ', trim($value)) ?? trim($value);
     }
 
-    private function validateEditableAccountSettings(string $firstName, string $lastName, string $contactNumber, ?string $profilePhotoData): ?string
+    private function validateEditableAccountSettings(
+        string $firstName,
+        string $lastName,
+        string $contactNumber,
+        ?string $profilePhotoData,
+        string $profilePhotoName = ''
+    ): ?string
     {
         if ($firstName === '' || $lastName === '' || $contactNumber === '') {
             return 'First name, last name, and phone number are required.';
@@ -632,8 +893,14 @@ class AccountController extends AbstractController
             return 'Phone number must be 10 digits and begin with 9.';
         }
 
-        if ($profilePhotoData !== null && $profilePhotoData !== '' && !$this->isValidJpegDataUrl($profilePhotoData)) {
-            return 'Profile photo must be a .jpg image only.';
+        if ($profilePhotoData !== null && $profilePhotoData !== '') {
+            if ($profilePhotoName !== '' && !str_ends_with(strtolower($profilePhotoName), '.jpg')) {
+                return 'Profile photo must be a .jpg image only.';
+            }
+
+            if (!$this->isValidJpegDataUrl($profilePhotoData)) {
+                return 'Profile photo must be a .jpg image only.';
+            }
         }
 
         return null;
@@ -869,7 +1136,7 @@ class AccountController extends AbstractController
     private function getAccountStateById(int $accountIdentifier): ?array
     {
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, email_address, status, is_approved, is_active
+            'SELECT account_identifier, email_address, clerk_user_id, status, is_approved, is_active
              FROM accounts
              WHERE account_identifier = :accountIdentifier',
             ['accountIdentifier' => $accountIdentifier],
@@ -902,6 +1169,24 @@ class AccountController extends AbstractController
     private function canActivateAccount(string $accountStatus): bool
     {
         return $accountStatus === 'Disabled';
+    }
+
+    private function deleteClerkUser(string $clerkUserId): void
+    {
+        $secretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
+        if ($secretKey === '') {
+            return;
+        }
+
+        try {
+            $this->httpClient->request('DELETE', ($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com') . '/v1/users/' . rawurlencode($clerkUserId), [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $secretKey,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+        } catch (\Throwable) {
+        }
     }
 
     private function toDatabaseBoolean(mixed $value): bool

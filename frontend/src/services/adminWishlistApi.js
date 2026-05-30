@@ -107,6 +107,19 @@ export const adminWishlistApi = {
     }
   },
 
+  async deleteAccountRequest(accountIdentifier, token, payload = {}) {
+    try {
+      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/delete-request`), {
+        method: 'DELETE',
+        headers: buildHeaders(token, true),
+        body: JSON.stringify(payload),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   async createAdminAccount(accountPayload, token) {
     try {
       const response = await fetch(apiUrl('/api/v1/users/wishlist/admin-accounts'), {

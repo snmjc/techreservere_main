@@ -33,7 +33,7 @@
     <section class="clerk-login-form-panel">
       <div class="clerk-login-form-content">
         <div class="clerk-login-card">
-          <form class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
+          <form v-if="!isResettingPassword" class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
             <h2 class="techreserve-local-login-title">Welcome to TechReserve</h2>
             <p v-if="loginError" class="techreserve-local-login-error">{{ loginError }}</p>
 
@@ -69,15 +69,11 @@
               <button
                 type="button"
                 class="techreserve-local-login-link"
-                @click="handleForgotPassword"
+                @click="showResetPasswordForm"
               >
                 Forgot password?
               </button>
             </div>
-
-            <p v-if="forgotPasswordMessage" class="techreserve-local-login-info">
-              {{ forgotPasswordMessage }}
-            </p>
 
             <button class="techreserve-local-login-button" type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
@@ -87,6 +83,69 @@
               Don't have an account?
               <router-link :to="{ name: 'customSignUpPage' }">Sign up</router-link>
             </p>
+          </form>
+
+          <form v-else class="techreserve-local-login-form" @submit.prevent="handleResetPasswordSubmit">
+            <h2 class="techreserve-local-login-title">Reset your password</h2>
+            <p v-if="resetPasswordError" class="techreserve-local-login-error">{{ resetPasswordError }}</p>
+            <p v-if="resetPasswordMessage" class="techreserve-local-login-info">{{ resetPasswordMessage }}</p>
+
+            <label class="techreserve-local-login-field">
+              <span>Email address</span>
+              <input
+                v-model.trim="resetEmailAddress"
+                type="email"
+                autocomplete="username"
+                required
+                :disabled="resetCodeSent"
+              />
+            </label>
+
+            <template v-if="resetCodeSent">
+              <label class="techreserve-local-login-field">
+                <span>Email code</span>
+                <input
+                  v-model.trim="resetCodeText"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  required
+                />
+              </label>
+
+              <label class="techreserve-local-login-field">
+                <span>New password</span>
+                <input
+                  v-model="resetPasswordText"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+              </label>
+
+              <label class="techreserve-local-login-field">
+                <span>Confirm new password</span>
+                <input
+                  v-model="resetPasswordConfirmText"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+              </label>
+            </template>
+
+            <button class="techreserve-local-login-button" type="submit" :disabled="isResetSubmitting">
+              {{ resolveResetPasswordButtonText() }}
+            </button>
+
+            <button
+              type="button"
+              class="techreserve-local-login-secondary-button"
+              :disabled="isResetSubmitting"
+              @click="hideResetPasswordForm"
+            >
+              Back to sign in
+            </button>
           </form>
         </div>
       </div>
@@ -102,16 +161,26 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const router = useRouter();
 const authStore = useAuthenticationStore();
 
-const emailAddress = ref('admin@techreserve.edu.ph');
+const emailAddress = ref('');
 const passwordText = ref('');
 const rememberMeChecked = ref(false);
 const loginError = ref('');
-const forgotPasswordMessage = ref('');
 const isSubmitting = ref(false);
+const isResettingPassword = ref(false);
+const isResetSubmitting = ref(false);
+const resetCodeSent = ref(false);
+const resetEmailAddress = ref('');
+const resetCodeText = ref('');
+const resetPasswordText = ref('');
+const resetPasswordConfirmText = ref('');
+const resetPasswordError = ref('');
+const resetPasswordMessage = ref('');
+const resetSignIn = ref(null);
 
 onMounted(() => {
   const rememberedEmail = localStorage.getItem('techreserve_remembered_login_email');
@@ -123,14 +192,13 @@ onMounted(() => {
 
 async function handleLocalLogin() {
   loginError.value = '';
-  forgotPasswordMessage.value = '';
   isSubmitting.value = true;
 
   try {
     const account = await authStore.performLogin(emailAddress.value, passwordText.value);
     routeAfterBackendLogin(account);
   } catch (error) {
-    if (error?.errorType === 'LocalPasswordUnavailable') {
+    if (error?.errorType === 'LocalPasswordUnavailable' || error?.errorType === 'AuthenticationFailed') {
       await handleClerkPasswordLogin();
       return;
     }
@@ -167,11 +235,43 @@ async function handleClerkPasswordLogin() {
       return;
     }
 
+    const preflightResult = await verifyClerkLoginAllowed();
+    if (!preflightResult.success) {
+      loginError.value = preflightResult.error || 'Please wait for an administrator invitation before signing in.';
+      return;
+    }
+
     rememberLoginEmailPreference();
     await clerk.setActive({ session: clerkSignIn.createdSessionId });
     router.replace({ name: 'postLoginPage' });
   } catch (error) {
     loginError.value = resolveClerkErrorMessage(error);
+  }
+}
+
+async function verifyClerkLoginAllowed() {
+  try {
+    const response = await fetch(apiUrl('/api/v1/auth/clerk-login-preflight'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailAddress: emailAddress.value }),
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        success: false,
+        errorType: result.errorType || result.type || '',
+        error: result.errorMessage || result.message || 'Please wait for an administrator invitation before signing in.',
+      };
+    }
+
+    return { success: true, data: result.data ?? result };
+  } catch (error) {
+    return {
+      success: false,
+      error: error?.message || 'Unable to verify invitation status. Please try again.',
+    };
   }
 }
 
@@ -225,10 +325,172 @@ function resolveClerkErrorMessage(error) {
   return error?.message || 'Invalid email address or password.';
 }
 
-function handleForgotPassword() {
+function showResetPasswordForm() {
   loginError.value = '';
-  forgotPasswordMessage.value = 'For local database accounts, password reset is handled by the system administrator.';
+  resetEmailAddress.value = emailAddress.value;
+  resetCodeText.value = '';
+  resetPasswordText.value = '';
+  resetPasswordConfirmText.value = '';
+  resetPasswordError.value = '';
+  resetPasswordMessage.value = '';
+  resetCodeSent.value = false;
+  resetSignIn.value = null;
+  isResettingPassword.value = true;
 }
+
+function hideResetPasswordForm() {
+  isResettingPassword.value = false;
+  isResetSubmitting.value = false;
+  resetCodeSent.value = false;
+  resetPasswordError.value = '';
+  resetPasswordMessage.value = '';
+}
+
+function resolveResetPasswordButtonText() {
+  if (isResetSubmitting.value) return resetCodeSent.value ? 'Resetting...' : 'Sending code...';
+  return resetCodeSent.value ? 'Reset password' : 'Send reset code';
+}
+
+async function handleResetPasswordSubmit() {
+  resetPasswordError.value = '';
+  resetPasswordMessage.value = '';
+  isResetSubmitting.value = true;
+
+  try {
+    if (!resetCodeSent.value) {
+      await sendResetPasswordCode();
+      return;
+    }
+
+    await submitResetPassword();
+  } finally {
+    isResetSubmitting.value = false;
+  }
+}
+
+async function sendResetPasswordCode() {
+  try {
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signIn) {
+      resetPasswordError.value = 'Clerk authentication is still loading. Please try again.';
+      return;
+    }
+
+    let clerkSignIn = null;
+    try {
+      clerkSignIn = await clerk.client.signIn.create({
+        identifier: resetEmailAddress.value,
+      });
+
+      if (clerkSignIn?.resetPasswordEmailCode?.sendCode) {
+        clerkSignIn = await clerkSignIn.resetPasswordEmailCode.sendCode();
+      } else {
+        clerkSignIn = await clerk.client.signIn.create({
+          identifier: resetEmailAddress.value,
+          strategy: 'reset_password_email_code',
+        });
+      }
+    } catch (error) {
+      resetPasswordError.value = resolveClerkErrorMessage(error);
+      return;
+    }
+
+    resetSignIn.value = clerkSignIn;
+    resetCodeSent.value = true;
+    resetPasswordMessage.value = 'Enter the code Clerk sent to your email, then choose a new password.';
+  } catch (error) {
+    resetPasswordError.value = resolveClerkErrorMessage(error);
+  }
+}
+
+async function submitResetPassword() {
+  if (resetPasswordText.value !== resetPasswordConfirmText.value) {
+    resetPasswordError.value = 'New passwords do not match.';
+    return;
+  }
+
+  if (!isStrongPassword(resetPasswordText.value)) {
+    resetPasswordError.value = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+    return;
+  }
+
+  try {
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signIn || !clerk?.setActive) {
+      resetPasswordError.value = 'Clerk authentication is still loading. Please try again.';
+      return;
+    }
+
+    let clerkSignIn = resetSignIn.value;
+    if (!clerkSignIn?.attemptFirstFactor && !clerkSignIn?.resetPasswordEmailCode) {
+      clerkSignIn = await clerk.client.signIn.create({
+        identifier: resetEmailAddress.value,
+        strategy: 'reset_password_email_code',
+      });
+    }
+
+    let result = null;
+    if (clerkSignIn?.resetPasswordEmailCode?.verifyCode) {
+      result = await clerkSignIn.resetPasswordEmailCode.verifyCode({ code: resetCodeText.value });
+      if (result?.status === 'needs_new_password' && result?.resetPasswordEmailCode?.submitPassword) {
+        result = await result.resetPasswordEmailCode.submitPassword({
+          password: resetPasswordText.value,
+          signOutOfOtherSessions: true,
+        });
+      }
+    } else {
+      result = await clerkSignIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code: resetCodeText.value,
+        password: resetPasswordText.value,
+      });
+    }
+
+    if (result?.status === 'needs_second_factor') {
+      resetPasswordError.value = 'Two-factor authentication is required, but this reset form does not handle it yet.';
+      return;
+    }
+
+    if (result?.status !== 'complete' || !result?.createdSessionId) {
+      resetPasswordError.value = 'Password reset is not complete. Please check the code and try again.';
+      return;
+    }
+
+    await clerk.setActive({ session: result.createdSessionId });
+    await syncPostgresPasswordFromClerk(resetPasswordText.value);
+    router.replace({ name: 'postLoginPage' });
+  } catch (error) {
+    resetPasswordError.value = resolveClerkErrorMessage(error);
+  }
+}
+
+async function syncPostgresPasswordFromClerk(newPassword) {
+  const clerk = await waitForClerk();
+  const token = await clerk?.session?.getToken?.();
+
+  if (!token) {
+    throw new Error('Password was reset in Clerk, but the system could not sync the local database session.');
+  }
+
+  const response = await fetch(apiUrl('/api/v1/accounts/me/password/sync-from-clerk'), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ newPassword }),
+  });
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.errorMessage || 'Password was reset in Clerk, but could not be synced to the local database.');
+  }
+}
+
+function isStrongPassword(value) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
+}
+
 </script>
 
 <style scoped>
@@ -459,6 +721,10 @@ function handleForgotPassword() {
   margin-top: -0.15rem;
 }
 
+.techreserve-local-login-options-single {
+  justify-content: flex-start;
+}
+
 .techreserve-local-login-remember {
   display: inline-flex;
   align-items: center;
@@ -523,6 +789,28 @@ function handleForgotPassword() {
 }
 
 .techreserve-local-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.techreserve-local-login-secondary-button {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid #cfd8d3;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.techreserve-local-login-secondary-button:hover:not(:disabled) {
+  border-color: #08784a;
+  color: #08784a;
+}
+
+.techreserve-local-login-secondary-button:disabled {
   cursor: not-allowed;
   opacity: 0.62;
 }

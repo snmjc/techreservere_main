@@ -74,6 +74,18 @@ class ClerkTokenVerifier
                 if (isset($decoded['exp']) && $decoded['exp'] < time()) {
                     throw new ClerkVerificationFailedException('Token has expired');
                 }
+
+                if (!$account->getIsApproved()) {
+                    throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
+                }
+
+                if ($account->getStatus() !== 'approved') {
+                    throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only approved accounts can access the system.');
+                }
+
+                if (!$account->getIsActive()) {
+                    throw new ClerkVerificationFailedException('Account is disabled. Please contact an administrator.');
+                }
                 
                 return [
                     'accountIdentifier' => $account->getAccountIdentifier(),
@@ -81,6 +93,8 @@ class ClerkTokenVerifier
                     'firstName' => $account->getFirstName(),
                     'lastName' => $account->getLastName(),
                     'roleDesignation' => $account->getRoleDesignation(),
+                    'status' => $account->getStatus(),
+                    'isApproved' => $account->getIsApproved(),
                 ];
             }
         } catch (\Throwable $e) {
@@ -103,6 +117,17 @@ class ClerkTokenVerifier
 
             // Look up account in database by clerkUserId
             $account = $this->accountRepository->findOneByClerkUserId($clerkUserId);
+
+            if ($account === null) {
+                $emailAddress = $this->resolvePrimaryEmailAddress($clerkUserId);
+                if ($emailAddress !== '') {
+                    $account = $this->accountRepository->findOneByEmailAddress($emailAddress);
+                    if ($account !== null && $account->getClerkUserId() !== $clerkUserId) {
+                        $account->setClerkUserId($clerkUserId);
+                        $this->accountRepository->persistAccount($account);
+                    }
+                }
+            }
 
             if ($account === null) {
                 throw new ClerkVerificationFailedException('Account not found for clerkUserId: ' . $clerkUserId);
@@ -155,5 +180,39 @@ class ClerkTokenVerifier
             throw new ClerkVerificationFailedException('Failed to decode JWT payload.');
         }
         return $payload;
+    }
+
+    private function resolvePrimaryEmailAddress(string $clerkUserId): string
+    {
+        if ($this->clerkSecretKey === '') {
+            return '';
+        }
+
+        try {
+            $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl . '/v1/users/' . rawurlencode($clerkUserId), [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->clerkSecretKey,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            if ($response->getStatusCode() >= 400) {
+                return '';
+            }
+
+            $userData = $response->toArray(false);
+            $primaryEmailAddressId = (string)($userData['primary_email_address_id'] ?? '');
+
+            foreach (($userData['email_addresses'] ?? []) as $emailAddress) {
+                if ((string)($emailAddress['id'] ?? '') === $primaryEmailAddressId) {
+                    return trim((string)($emailAddress['email_address'] ?? ''));
+                }
+            }
+
+            $firstEmailAddress = $userData['email_addresses'][0]['email_address'] ?? '';
+            return trim((string)$firstEmailAddress);
+        } catch (\Throwable $exception) {
+            return '';
+        }
     }
 }

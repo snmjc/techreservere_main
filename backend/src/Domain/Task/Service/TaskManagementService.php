@@ -22,25 +22,55 @@ class TaskManagementService
     // Inputs: task fields
     // Returns: TaskResponseDTO
 
-    public function createTask(string $taskTitle, ?string $taskDescription, string $taskType, ?int $reservationIdentifier, ?int $assignedToAccountId, ?string $dueDateTimestamp): TaskResponseDTO
+    public function createTask(string $taskTitle, ?string $taskDescription, string $taskType, string $taskStatus, ?int $reservationIdentifier, ?int $assignedToAccountId, ?string $dueDateTimestamp): TaskResponseDTO
     {
-        if (empty($taskTitle)) {
-            throw new DomainValidationException('Task title is required.');
-        }
+        $this->validateTaskFields($taskTitle, $taskType, $taskStatus);
 
         $entity = new TaskEntity();
-        $entity->setTaskTitle($taskTitle);
-        $entity->setTaskDescription($taskDescription);
-        $entity->setTaskType($taskType);
+        $entity->setTaskTitle(trim($taskTitle));
+        $entity->setTaskDescription($this->normalizeOptionalText($taskDescription));
+        $entity->setTaskType(trim($taskType));
+        $entity->setTaskStatus(trim($taskStatus));
         $entity->setReservationIdentifier($reservationIdentifier);
         $entity->setAssignedToAccountId($assignedToAccountId);
 
         if ($dueDateTimestamp !== null) {
-            $entity->setDueDateTimestamp(new \DateTime($dueDateTimestamp));
+            $entity->setDueDateTimestamp($this->parseDueDate($dueDateTimestamp));
         }
 
         $this->taskRepository->persistTask($entity);
         return $this->transformEntityToDTO($entity);
+    }
+
+    public function updateTask(int $taskIdentifier, string $taskTitle, ?string $taskDescription, string $taskType, string $taskStatus, ?int $reservationIdentifier, ?int $assignedToAccountId, ?string $dueDateTimestamp): TaskResponseDTO
+    {
+        $entity = $this->taskRepository->find($taskIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
+        }
+
+        $this->validateTaskFields($taskTitle, $taskType, $taskStatus);
+
+        $entity->setTaskTitle(trim($taskTitle));
+        $entity->setTaskDescription($this->normalizeOptionalText($taskDescription));
+        $entity->setTaskType(trim($taskType));
+        $entity->setTaskStatus(trim($taskStatus));
+        $entity->setReservationIdentifier($reservationIdentifier);
+        $entity->setAssignedToAccountId($assignedToAccountId);
+        $entity->setDueDateTimestamp($dueDateTimestamp !== null ? $this->parseDueDate($dueDateTimestamp) : null);
+
+        $this->taskRepository->persistTask($entity);
+        return $this->transformEntityToDTO($entity);
+    }
+
+    public function deleteTask(int $taskIdentifier): void
+    {
+        $entity = $this->taskRepository->find($taskIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
+        }
+
+        $this->taskRepository->deleteTask($entity);
     }
 
     // ===== AI GENERATED: updateTaskStatus =====
@@ -92,5 +122,40 @@ class TaskManagementService
             dueDateTimestamp: $entity->getDueDateTimestamp()?->format(\DateTime::ATOM),
             createdTimestamp: $entity->getCreatedTimestamp()->format(\DateTime::ATOM)
         );
+    }
+
+    private function validateTaskFields(string $taskTitle, string $taskType, string $taskStatus): void
+    {
+        if (trim($taskTitle) === '') {
+            throw new DomainValidationException('Task name is required.');
+        }
+
+        if (mb_strlen(trim($taskTitle)) > 200) {
+            throw new DomainValidationException('Task name must not exceed 200 characters.');
+        }
+
+        if (trim($taskType) === '') {
+            throw new DomainValidationException('Task type is required.');
+        }
+
+        $allowedStatuses = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
+        if (!in_array(trim($taskStatus), $allowedStatuses, true)) {
+            throw new DomainValidationException('Invalid task status: ' . $taskStatus);
+        }
+    }
+
+    private function normalizeOptionalText(?string $value): ?string
+    {
+        $trimmed = trim((string)$value);
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function parseDueDate(string $dueDateTimestamp): \DateTimeInterface
+    {
+        try {
+            return new \DateTime($dueDateTimestamp);
+        } catch (\Throwable) {
+            throw new DomainValidationException('Due date is invalid.');
+        }
     }
 }

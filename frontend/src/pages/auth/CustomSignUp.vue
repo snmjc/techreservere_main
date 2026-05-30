@@ -70,7 +70,7 @@
                       id="studentSupportingFile"
                       ref="studentSupportingFileInput"
                       type="file"
-                      accept=".docx,.doc,.pdf,.png,.jpeg,.jpg"
+                      accept=".pdf,application/pdf"
                       class="custom-signup-file-input"
                       @change="handleStudentSupportingFileChange"
                     />
@@ -92,7 +92,7 @@
                     </button>
                   </div>
                   <p class="custom-signup-role-boundary-note">
-                    Recommended for student requests: attach a valid student ID or enrollment proof.
+                    Required for student requests: attach a valid student ID or enrollment proof as a PDF.
                   </p>
                 </div>
 
@@ -350,12 +350,30 @@ function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 }
 
+function isPdfFile(file) {
+  return file?.type === 'application/pdf' || String(file?.name || '').toLowerCase().endsWith('.pdf');
+}
+
 function openStudentSupportingFile() {
   studentSupportingFileInput.value?.click();
 }
 
 function handleStudentSupportingFileChange(event) {
   const selectedFile = event.target.files?.[0] || null;
+  if (selectedFile && !isPdfFile(selectedFile)) {
+    errors.value.supportingFile = 'Student proof must be uploaded as a PDF file.';
+    event.target.value = '';
+    formData.value.supportingFile = null;
+    return;
+  }
+
+  if (selectedFile && selectedFile.size > 5 * 1024 * 1024) {
+    errors.value.supportingFile = 'Supporting file must be 5 MB or smaller.';
+    event.target.value = '';
+    formData.value.supportingFile = null;
+    return;
+  }
+  errors.value.supportingFile = '';
   formData.value.supportingFile = selectedFile;
 }
 
@@ -409,10 +427,29 @@ function validateForm() {
     errors.value.acceptTerms = 'Please confirm the account purpose policy.';
   }
 
+  if (isStudentRole.value && !formData.value.supportingFile) {
+    errors.value.supportingFile = 'PDF proof is required for student requests.';
+  } else if (isStudentRole.value && !isPdfFile(formData.value.supportingFile)) {
+    errors.value.supportingFile = 'Student proof must be uploaded as a PDF file.';
+  }
+
   return Object.keys(errors.value).length === 0;
 }
 
+function readFileAsDataUrl(file) {
+  if (!file) return Promise.resolve(null);
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Unable to read supporting file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function createSignupRequest() {
+  const supportingDocumentData = await readFileAsDataUrl(formData.value.supportingFile);
+
   const response = await fetch(apiUrl('/api/v1/users/signup-requests'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -424,6 +461,8 @@ async function createSignupRequest() {
       department: formData.value.department.trim(),
       role: formData.value.role,
       supportingDocumentName: isStudentRole.value && formData.value.supportingFile ? formData.value.supportingFile.name : null,
+      supportingDocumentMimeType: isStudentRole.value && formData.value.supportingFile ? formData.value.supportingFile.type : null,
+      supportingDocumentData,
       passwordText: formData.value.password,
       confirmPasswordText: formData.value.confirmPassword,
       acceptedPrivacy: formData.value.acceptTerms,
