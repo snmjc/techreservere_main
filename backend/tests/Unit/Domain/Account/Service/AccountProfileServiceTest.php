@@ -7,13 +7,15 @@ use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\AccountProfileService;
 use App\Shared\Exceptions\DomainNotFoundException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 // ===== AI GENERATED: AccountProfileServiceTest =====
 // Purpose: Unit tests for AccountProfileService
-// Tests: getProfileByEmail, getProfileById, getAllProfiles, not-found paths
+// Tests: getAccountProfileByEmail, getAccountProfileById, getAllAccountProfiles, not-found paths
 
+#[AllowMockObjectsWithoutExpectations]
 class AccountProfileServiceTest extends TestCase
 {
     private AccountRepository|MockObject $accountRepository;
@@ -35,7 +37,7 @@ class AccountProfileServiceTest extends TestCase
             ->with('john@techreserve.edu.ph')
             ->willReturn($entity);
 
-        $result = $this->service->getProfileByEmail('john@techreserve.edu.ph');
+        $result = $this->service->getAccountProfileByEmail('john@techreserve.edu.ph');
 
         $this->assertInstanceOf(AccountProfileResponseDTO::class, $result);
         $this->assertSame(1, $result->accountIdentifier);
@@ -54,7 +56,7 @@ class AccountProfileServiceTest extends TestCase
             ->willReturn(null);
 
         $this->expectException(DomainNotFoundException::class);
-        $this->service->getProfileByEmail('missing@example.com');
+        $this->service->getAccountProfileByEmail('missing@example.com');
     }
 
     public function testGetProfileByIdReturnsDTO(): void
@@ -67,7 +69,7 @@ class AccountProfileServiceTest extends TestCase
             ->with(5)
             ->willReturn($entity);
 
-        $result = $this->service->getProfileById(5);
+        $result = $this->service->getAccountProfileById(5);
 
         $this->assertInstanceOf(AccountProfileResponseDTO::class, $result);
         $this->assertSame(5, $result->accountIdentifier);
@@ -83,7 +85,7 @@ class AccountProfileServiceTest extends TestCase
             ->willReturn(null);
 
         $this->expectException(DomainNotFoundException::class);
-        $this->service->getProfileById(999);
+        $this->service->getAccountProfileById(999);
     }
 
     public function testGetAllProfilesReturnsArrayOfDTOs(): void
@@ -96,7 +98,7 @@ class AccountProfileServiceTest extends TestCase
             ->method('findAllAccounts')
             ->willReturn([$entity1, $entity2]);
 
-        $results = $this->service->getAllProfiles();
+        $results = $this->service->getAllAccountProfiles();
 
         $this->assertCount(2, $results);
         $this->assertInstanceOf(AccountProfileResponseDTO::class, $results[0]);
@@ -112,7 +114,7 @@ class AccountProfileServiceTest extends TestCase
             ->method('findAllAccounts')
             ->willReturn([]);
 
-        $results = $this->service->getAllProfiles();
+        $results = $this->service->getAllAccountProfiles();
 
         $this->assertIsArray($results);
         $this->assertCount(0, $results);

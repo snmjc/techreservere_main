@@ -9,13 +9,16 @@ use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\AccountUpdateService;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\RoleConstants;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 // ===== AI GENERATED: AccountUpdateServiceTest =====
 // Purpose: Unit tests for AccountUpdateService
-// Tests: updateProfile success, not-found, invalid role
+// Tests: updateAccountProfile success, not-found, invalid role
 
+#[AllowMockObjectsWithoutExpectations]
 class AccountUpdateServiceTest extends TestCase
 {
     private AccountRepository|MockObject $accountRepository;
@@ -29,7 +32,7 @@ class AccountUpdateServiceTest extends TestCase
 
     public function testUpdateProfileSuccessfully(): void
     {
-        $entity = $this->createRealAccountEntity(1, 'Doe', 'John', 'john@techreserve.edu.ph', 'Borrower');
+        $entity = $this->createRealAccountEntity(1, 'Doe', 'John', 'john@techreserve.edu.ph', RoleConstants::ROLE_BORROWER);
 
         $this->accountRepository
             ->expects($this->once())
@@ -47,7 +50,7 @@ class AccountUpdateServiceTest extends TestCase
             roleDesignation: null
         );
 
-        $result = $this->service->updateProfile(1, $updateDTO);
+        $result = $this->service->updateAccountProfile(1, $updateDTO);
 
         $this->assertInstanceOf(AccountProfileResponseDTO::class, $result);
         $this->assertSame(1, $result->accountIdentifier);
@@ -67,12 +70,12 @@ class AccountUpdateServiceTest extends TestCase
         );
 
         $this->expectException(DomainNotFoundException::class);
-        $this->service->updateProfile(999, $updateDTO);
+        $this->service->updateAccountProfile(999, $updateDTO);
     }
 
     public function testUpdateProfileWithInvalidRoleThrowsValidationError(): void
     {
-        $entity = $this->createRealAccountEntity(1, 'Doe', 'John', 'john@techreserve.edu.ph', 'Borrower');
+        $entity = $this->createRealAccountEntity(1, 'Doe', 'John', 'john@techreserve.edu.ph', RoleConstants::ROLE_BORROWER);
 
         $this->accountRepository
             ->expects($this->once())
@@ -86,12 +89,18 @@ class AccountUpdateServiceTest extends TestCase
         );
 
         $this->expectException(DomainValidationException::class);
-        $this->service->updateProfile(1, $updateDTO);
+        $this->service->updateAccountProfile(1, $updateDTO);
     }
 
     public function testUpdateProfileWithValidRoleUpdatesRole(): void
     {
-        $entity = $this->createRealAccountEntity(2, 'Smith', 'Jane', 'jane@techreserve.edu.ph', 'Borrower');
+        $entity = $this->createRealAccountEntity(2, 'Smith', 'Jane', 'jane@techreserve.edu.ph', RoleConstants::ROLE_ADMIN);
+
+        $entity
+            ->expects($this->once())
+            ->method('setRoleDesignation')
+            ->with(RoleConstants::ROLE_ADMIN)
+            ->willReturnSelf();
 
         $this->accountRepository
             ->expects($this->once())
@@ -106,13 +115,13 @@ class AccountUpdateServiceTest extends TestCase
 
         $updateDTO = new AccountUpdateRequestDTO(
             contactNumber: null,
-            roleDesignation: 'Admin'
+            roleDesignation: RoleConstants::ROLE_ADMIN
         );
 
-        $result = $this->service->updateProfile(2, $updateDTO);
+        $result = $this->service->updateAccountProfile(2, $updateDTO);
 
         $this->assertInstanceOf(AccountProfileResponseDTO::class, $result);
-        $this->assertSame('Admin', $result->roleDesignation);
+        $this->assertSame(RoleConstants::ROLE_ADMIN, $result->roleDesignation);
     }
 
     private function createRealAccountEntity(int $id, string $lastName, string $firstName, string $email, string $role): AccountEntity

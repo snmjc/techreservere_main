@@ -5,6 +5,7 @@ namespace App\Tests\Feature\Middleware;
 use App\Middleware\AuthorizationMiddleware;
 use App\Middleware\RoleResolver;
 use App\Shared\Utils\RoleConstants;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,6 +17,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 // Purpose: Feature tests for AuthorizationMiddleware RBAC enforcement
 // Tests: no identity skips, unauthorized role 403, authorized role passes, no controller skips
 
+#[AllowMockObjectsWithoutExpectations]
 class AuthorizationMiddlewareTest extends TestCase
 {
     private RoleResolver|MockObject $roleResolver;
