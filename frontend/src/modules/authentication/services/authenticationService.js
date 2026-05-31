@@ -5,6 +5,37 @@
 
 import { apiUrl } from '@/shared/utils/apiBase.js';
 
+async function parseJsonResponse(response, invalidResponseMessage) {
+  try {
+    return await response.json();
+  } catch (jsonError) {
+    throw new Error(invalidResponseMessage);
+  }
+}
+
+function normalizeLoginResponse(data) {
+  if (data.success && data.data) {
+    return data.data;
+  }
+
+  if (data.token && data.account) {
+    return data;
+  }
+
+  throw new Error('Invalid response format from server.');
+}
+
+function buildLoginError(response, data) {
+  const loginError = new Error(data.errorMessage || 'Login failed.');
+  loginError.errorType = data.errorType || null;
+  loginError.statusCode = response.status;
+  return loginError;
+}
+
+function isNetworkFetchError(error) {
+  return error instanceof TypeError && error.message === 'Failed to fetch';
+}
+
 /**
  * @function loginRequest
  * @description Sends login credentials to the backend API.
@@ -21,36 +52,15 @@ export async function loginRequest(credentials) {
       body: JSON.stringify(credentials),
     });
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      console.error('Failed to parse login response as JSON:', jsonError);
-      throw new Error('Login API returned invalid response. Backend may not be ready.');
-    }
+    const data = await parseJsonResponse(response, 'Login API returned invalid response. Backend may not be ready.');
 
     if (!response.ok) {
-      const loginError = new Error(data.errorMessage || 'Login failed.');
-      loginError.errorType = data.errorType || null;
-      loginError.statusCode = response.status;
-      throw loginError;
+      throw buildLoginError(response, data);
     }
 
-    // Handle different response structures
-    // Backend returns: { success: true, data: { token, account } }
-    if (data.success && data.data) {
-      return data.data;
-    }
-
-    // Fallback for direct structure: { token, account }
-    if (data.token && data.account) {
-      return data;
-    }
-
-    throw new Error('Invalid response format from server.');
+    return normalizeLoginResponse(data);
   } catch (error) {
-    console.error('Login request error:', error);
-    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    if (isNetworkFetchError(error)) {
       throw new Error('Backend API is not reachable. Please make sure the TechReserve backend is running and the frontend tunnel is proxying /api requests.');
     }
     throw error;
@@ -86,13 +96,7 @@ export async function registerRequest(registrationData) {
       body: formData,
     });
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      console.error('Failed to parse registration response as JSON:', jsonError);
-      throw new Error('Registration API returned invalid response. Backend may not be ready.');
-    }
+    const data = await parseJsonResponse(response, 'Registration API returned invalid response. Backend may not be ready.');
 
     if (!response.ok) {
       throw new Error(data.errorMessage || 'Registration failed.');
@@ -100,7 +104,6 @@ export async function registerRequest(registrationData) {
 
     return data;
   } catch (error) {
-    console.error('Registration request error:', error);
     throw error;
   }
 }

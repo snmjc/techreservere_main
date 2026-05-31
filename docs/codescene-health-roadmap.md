@@ -12,6 +12,16 @@ Completed health work:
 - `AdminWishlist.vue`: pure wishlist normalization, validation, formatting, and sanitizing moved to `adminWishlistHelpers.js`.
 - `adminWishlistApi.js`: repeated request blocks consolidated into one `sendWishlistRequest` helper.
 - `accessGuard.js`: route decision logic moved to `routeAccessDecision.js`.
+- `authenticationService.js`: duplicated response parsing and login error construction moved to helpers.
+- `authenticationStore.js`: auth localStorage access moved to `authStorage.js`.
+- Logout redirect logic centralized in `logoutRedirect.js`.
+- Reservation, venue, equipment, and dashboard API token/header construction centralized in `authToken.js`.
+- `PendingUserController.php`: repeated pending-user lookup SQL replaced with explicit columns and a shared lookup helper.
+
+Dashboard safety rule:
+
+- Do not change dashboard UI, layout, data mapping, computed output, or behavior during CodeScene refactors.
+- Dashboard-related work must be limited to internal extraction unless separately requested.
 
 ## 2. CodeScene Health Interpretation
 

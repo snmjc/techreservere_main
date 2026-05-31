@@ -74,6 +74,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
 import NotificationDropdown from '@/components/NotificationDropdown.vue';
 import SettingsDropdown from '@/components/SettingsDropdown.vue';
 import './adminSidebarLayout.css';
@@ -156,31 +157,22 @@ function isActiveRoute(routeName) {
   return currentRoute.name === routeName;
 }
 
-/**
- * @function handleLogout
- * @description Clears auth state and redirects to login page.
- */
 async function handleLogout() {
-  // Sign out from Clerk first to clear the httpOnly session cookie
-  console.log('[AdminSidebarLayout] Calling Clerk signOut...');
   try {
     await signOut();
   } catch (e) {
-    console.warn('[AdminSidebarLayout] Clerk signOut error:', e);
+    // Continue local logout even if Clerk has no active session.
   }
 
   authStore.performLogout();
-  localStorage.removeItem('techreserve_auth_token');
-  localStorage.removeItem('techreserve_auth_account');
 
-  console.log('[AdminSidebarLayout] logout clicked; navigating to clerkLoginPage');
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
     await Promise.race([signOutClerk(signOut), timeoutPromise]);
   } catch (e) {
     // ignore
   } finally {
-    window.location.href = '/clerk-login';
+    redirectToPostLogoutHome();
   }
 }
 </script>

@@ -25,6 +25,7 @@
 import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
 
 const authStore = useAuthenticationStore();
 const { signOut } = useAuth();
@@ -37,7 +38,7 @@ async function handleLogout() {
   } catch (error) {
     // Local database accounts may not have an active Clerk session.
   } finally {
-    window.location.href = '/clerk-login';
+    redirectToPostLogoutHome();
   }
 }
 </script>

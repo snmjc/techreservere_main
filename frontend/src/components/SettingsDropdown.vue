@@ -84,6 +84,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
 
 const { signOut } = useAuth();
 const authStore = useAuthenticationStore();
@@ -101,16 +102,14 @@ const handleLogout = async () => {
   closeDropdown();
 
   authStore.performLogout();
-  localStorage.removeItem('techreserve_auth_token');
-  localStorage.removeItem('techreserve_auth_account');
 
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   try {
     await Promise.race([signOutClerk(signOut), timeoutPromise]);
   } catch (e) {
-    // Ignore logout network errors and still return the user to login.
+    // Ignore logout network errors and still return the user to the app home.
   } finally {
-    window.location.href = '/clerk-login';
+    redirectToPostLogoutHome();
   }
 };
 

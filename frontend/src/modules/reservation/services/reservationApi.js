@@ -1,12 +1,14 @@
 import axios from 'axios';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import {
+  buildAuthorizationHeaders,
+  buildJsonAuthorizationHeaders,
+  getStoredAuthToken,
+} from '@/shared/utils/authToken.js';
 
 const reservationApi = {
   async createReservation(reservationData) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
-    console.log('Creating reservation at:', apiUrl('/api/v1/reservations'));
-    console.log('Reservation data:', reservationData);
-    console.log('Auth token exists:', !!authToken);
+    const authToken = getStoredAuthToken();
 
     // If the user is logged out, avoid calling protected endpoints.
     if (!authToken) {
@@ -15,10 +17,7 @@ const reservationApi = {
     
     try {
       const response = await axios.post(apiUrl('/api/v1/reservations'), reservationData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (apiError) {
@@ -28,9 +27,7 @@ const reservationApi = {
   },
 
   async listReservations() {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
-    console.log('Listing reservations with token exists:', !!authToken);
-    console.log('Token:', authToken ? authToken.substring(0, 20) + '...' : 'none');
+    const authToken = getStoredAuthToken();
 
     // If the user is logged out, avoid calling protected endpoints.
     if (!authToken) {
@@ -39,9 +36,7 @@ const reservationApi = {
     
     try {
       const response = await axios.get(apiUrl('/api/v1/reservations'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -53,11 +48,9 @@ const reservationApi = {
 
   async getReservationById(reservationIdentifier) {
     try {
-      const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken');
+      const authToken = getStoredAuthToken({ includeClerkToken: false });
       const response = await axios.get(apiUrl(`/api/v1/reservations/${reservationIdentifier}`), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -68,7 +61,7 @@ const reservationApi = {
 
   async updateReservationStatus(reservationIdentifier, status, rejectionReason = null) {
     try {
-      const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken');
+      const authToken = getStoredAuthToken({ includeClerkToken: false });
       const response = await axios.put(
         apiUrl(`/api/v1/reservations/${reservationIdentifier}/status`),
         {
@@ -76,10 +69,7 @@ const reservationApi = {
           rejectionReason: rejectionReason
         },
         {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          }
+          headers: buildJsonAuthorizationHeaders(authToken)
         }
       );
       return response.data;

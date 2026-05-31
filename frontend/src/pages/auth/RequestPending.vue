@@ -101,6 +101,7 @@ import { useRouter } from 'vue-router';
 import { useUser, useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
 
 const router = useRouter();
 const { user, isSignedIn } = useUser();
@@ -128,7 +129,7 @@ async function handleLogout() {
     await signOutClerk(signOut);
   } finally {
     authStore.performLogout();
-    router.push({ name: 'clerkLoginPage' });
+    redirectToPostLogoutHome();
   }
 }
 

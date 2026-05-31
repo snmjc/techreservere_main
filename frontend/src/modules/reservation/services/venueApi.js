@@ -1,14 +1,17 @@
 import axios from 'axios';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import {
+  buildAuthorizationHeaders,
+  buildJsonAuthorizationHeaders,
+  getStoredAuthToken,
+} from '@/shared/utils/authToken.js';
 
 const venueApi = {
   async listVenues() {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/venues'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -18,12 +21,10 @@ const venueApi = {
   },
 
   async getVenueById(venueIdentifier) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.get(apiUrl(`/api/v1/venues/${venueIdentifier}`), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -33,13 +34,10 @@ const venueApi = {
   },
 
   async createVenue(venueData) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.post(apiUrl('/api/v1/venues'), venueData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -49,13 +47,10 @@ const venueApi = {
   },
 
   async updateVenue(venueIdentifier, venueData) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.put(apiUrl(`/api/v1/venues/${venueIdentifier}`), venueData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -65,12 +60,10 @@ const venueApi = {
   },
 
   async deleteVenue(venueIdentifier) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.delete(apiUrl(`/api/v1/venues/${venueIdentifier}`), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {

@@ -1,17 +1,13 @@
 import axios from 'axios';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { buildAuthorizationHeaders, getStoredAuthToken } from '@/shared/utils/authToken.js';
 
 const dashboardApi = {
   async getDashboardSummary() {
     try {
-      const authToken =
-        localStorage.getItem('techreserve_auth_token') ||
-        localStorage.getItem('authToken') ||
-        localStorage.getItem('clerkToken');
+      const authToken = getStoredAuthToken();
       const response = await axios.get(apiUrl('/api/v1/dashboard/summary'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
