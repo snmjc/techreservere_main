@@ -827,6 +827,27 @@ import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
+import {
+  formatCreateAccountError,
+  formatDisplayDateTime,
+  formatNullableDateTime,
+  getAcceptedStatus,
+  getAccountTypeBadgeClass,
+  getApprovalEmailLabel,
+  getInviteSentStatus,
+  getSortRoleName,
+  getStatusClass,
+  getStatusLabel,
+  getUniqueRequestAccounts,
+  getUserRoleName,
+  isPdfProof,
+  normalizeEmailForConfirmation,
+  normalizeWishlistAccount,
+  sanitizeNameInput,
+  sanitizePhoneInput,
+  validateAdminAccountForm as validateAdminFormValues,
+  validateEmployeeAccountForm as validateEmployeeFormValues,
+} from './wishlist/adminWishlistHelpers.js';
 
 const authStore = useAuthenticationStore();
 
@@ -897,55 +918,6 @@ const addEmployeeForm = reactive({
   role: 'Maintenance Staff',
 });
 
-const fallbackWishlistAccounts = [
-  {
-    accountIdentifier: 20240001,
-    idNumber: '2024*****',
-    firstName: 'Karin',
-    lastName: 'Dela Fuente',
-    emailAddress: 'kdelafuente@fit.edu.ph',
-    roleDesignation: 'ROLE_ADMIN',
-    roleLabel: 'Admin',
-    accountType: 'Admin',
-    accountStatus: 'pending',
-    registeredAt: '2026-05-15T08:30:00+08:00',
-    inviteSentAt: null,
-    inviteExpiresAt: null,
-    inviteAcceptedAt: null,
-  },
-  {
-    accountIdentifier: 20230002,
-    idNumber: '2023*****',
-    firstName: 'Anabela',
-    lastName: 'Valdes',
-    emailAddress: 'avaldes@fit.edu.ph',
-    roleDesignation: 'ROLE_BORROWER',
-    roleLabel: 'User: Student',
-    accountType: 'User',
-    accountStatus: 'pending',
-    registeredAt: '2026-05-16T10:15:00+08:00',
-    inviteSentAt: null,
-    inviteExpiresAt: null,
-    inviteAcceptedAt: null,
-  },
-  {
-    accountIdentifier: 20220003,
-    idNumber: '2022*****',
-    firstName: 'Miguel',
-    lastName: 'Santos',
-    emailAddress: 'msantos@fit.edu.ph',
-    roleDesignation: 'ROLE_BORROWER',
-    roleLabel: 'User: Faculty',
-    accountType: 'Employee',
-    contactNumber: '09170000003',
-    accountStatus: 'expired',
-    registeredAt: '2026-05-14T14:05:00+08:00',
-    inviteSentAt: '2026-05-17T09:00:00+08:00',
-    inviteExpiresAt: '2026-05-24T09:00:00+08:00',
-    inviteAcceptedAt: null,
-  },
-];
-
 const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
@@ -965,7 +937,7 @@ const isDeleteConfirmationReady = computed(() => (
   && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)
   && deleteConfirmPassword.value.trim() !== ''
 ));
-const isEmployeeCreateFormReady = computed(() => validateEmployeeAccountForm() === '');
+const isEmployeeCreateFormReady = computed(() => validateEmployeeFormValues(addEmployeeForm) === '');
 
 const wishlistTabs = computed(() => {
   const accounts = normalizedAccounts.value;
@@ -1031,148 +1003,6 @@ async function loadWishlistAccounts() {
     showToast(loadErrorMessage.value);
   }
   isLoading.value = false;
-}
-
-function normalizeWishlistAccount(account) {
-  const roleDesignation = account.roleDesignation || account.role_designation || 'ROLE_BORROWER';
-  const firstName = account.firstName || account.first_name || '';
-  const lastName = account.lastName || account.last_name || '';
-  const emailAddress = account.emailAddress || account.email_address || '';
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const inviteSentAt = account.inviteSentAt || account.invite_sent_at || null;
-  const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
-  const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
-  const inviteStatus = account.inviteStatus || account.invite_status || null;
-  const inviteInvitedBy = account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || null;
-  const accountStatus = resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt);
-  const idNumber = account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A';
-  const contactNumber = account.contactNumber || account.contact_number || account.phone || 'N/A';
-
-  return {
-    ...account,
-    accountIdentifier: account.accountIdentifier || account.account_identifier || idNumber,
-    rawIdNumber: String(idNumber),
-    idNumber: formatIdNumber(idNumber),
-    firstName,
-    lastName,
-    fullName: `${firstName} ${lastName}`.trim(),
-    emailAddress,
-    contactNumber,
-    supportingDocumentName: account.supportingDocumentName || account.signup_supporting_document_name || null,
-    supportingDocumentMimeType: account.supportingDocumentMimeType || account.signup_supporting_document_mime_type || null,
-    supportingDocumentData: account.supportingDocumentData || account.signup_supporting_document_data || null,
-    roleDesignation,
-    role: resolveRoleName(account, roleDesignation),
-    roleLabel: account.roleLabel || resolveRoleLabel(account, roleDesignation),
-    accountType,
-    accountStatus,
-    registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
-    inviteStatus,
-    inviteInvitedBy,
-    inviteSentAt,
-    inviteExpiresAt,
-    inviteAcceptedAt,
-    initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'TR',
-  };
-}
-
-function isPdfProof(account) {
-  const mimeType = String(account?.supportingDocumentMimeType || '').toLowerCase();
-  const fileName = String(account?.supportingDocumentName || '').toLowerCase();
-  return mimeType === 'application/pdf' || fileName.endsWith('.pdf');
-}
-
-function getUniqueRequestAccounts(accounts) {
-  const accountsByEmail = new Map();
-  accounts.forEach((account) => {
-    const emailKey = normalizeEmailForConfirmation(account.emailAddress);
-    if (!emailKey) return;
-
-    const existingAccount = accountsByEmail.get(emailKey);
-    if (!existingAccount || new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime()) {
-      accountsByEmail.set(emailKey, account);
-    }
-  });
-
-  return Array.from(accountsByEmail.values());
-}
-
-function resolveAccountType(account, roleDesignation) {
-  const normalizedRole = String(roleDesignation).toUpperCase();
-  if (normalizedRole.includes('ADMIN')) return 'Admin';
-  if (normalizedRole.includes('STAFF') || normalizedRole.includes('EMPLOYEE')) return 'Employee';
-  const department = String(account.department || '').toLowerCase();
-  if (department.includes('staff') || department.includes('employee') || department.includes('technical') || department.includes('maintenance')) return 'Employee';
-  return 'User';
-}
-
-function resolveRoleLabel(account, roleDesignation) {
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  if (String(roleDesignation).toUpperCase().includes('ADMIN')) return 'Admin';
-  if (accountType === 'Employee') return resolveRoleName({ ...account, accountType }, roleDesignation);
-  const department = String(account.department || '').toLowerCase();
-  if (department.includes('faculty') || department.includes('employee')) return 'User: Faculty';
-  return 'User: Student';
-}
-
-function resolveRoleName(account, roleDesignation) {
-  if (String(roleDesignation).toUpperCase().includes('ADMIN')) return 'Administrator';
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const rawRole = account.role || account.roleName || account.roleLabel || '';
-  const department = String(account.department || '');
-  if (accountType === 'Employee') {
-    const employeeRole = formatEmployeeRoleName(rawRole);
-    if (employeeRole) return employeeRole;
-    if (/faculty/i.test(rawRole) || /faculty/i.test(department)) return 'Faculty';
-    const departmentRole = formatEmployeeRoleName(department);
-    if (departmentRole) return departmentRole;
-    return 'Technical Staff';
-  }
-  if (/faculty/i.test(rawRole) || /faculty/i.test(department)) return 'Faculty';
-  return 'Student';
-}
-
-function getSortRoleName(account) {
-  return account.accountType === 'User' ? getUserRoleName(account) : account.role;
-}
-
-function getUserRoleName(account) {
-  const roleText = `${account?.role || ''} ${account?.roleLabel || ''} ${account?.roleDesignation || ''}`.toLowerCase();
-  return roleText.includes('faculty') ? 'Faculty' : 'Student';
-}
-
-function getApprovalEmailLabel(account) {
-  if (account?.accountType === 'Employee') return 'Employee company email';
-  return account?.accountType === 'User' ? 'FIT email address' : 'Email address';
-}
-
-function formatEmployeeRoleName(value) {
-  const normalized = String(value || '').trim();
-  if (!normalized || /^user:/i.test(normalized)) return '';
-  if (/^role_/i.test(normalized)) return '';
-  return normalized
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getEmailLabel(account) {
-  return account?.accountType === 'Employee' ? 'Email Address:' : 'FIT Email Address:';
-}
-
-function getAccountTypeBadgeClass(accountType) {
-  return {
-    'admin-wishlist-account-type-badge--employee': accountType === 'Employee',
-    'admin-wishlist-account-type-badge--admin': accountType === 'Admin',
-    'admin-wishlist-account-type-badge--user': accountType === 'User',
-  };
-}
-
-function formatIdNumber(idNumber) {
-  const value = String(idNumber);
-  if (value.includes('*') || value === 'N/A') return value;
-  if (value.length <= 4) return value;
-  return `${value.slice(0, 4)}*****`;
 }
 
 function openViewModal(account) {
@@ -1296,7 +1126,7 @@ async function createAdminAccount() {
 
   addAdminError.value = '';
 
-  const validationError = validateAdminAccountForm();
+  const validationError = validateAdminFormValues(addAdminForm);
   if (validationError) {
     addAdminError.value = validationError;
     return;
@@ -1350,38 +1180,7 @@ function resetAddAdminForm() {
 }
 
 function sanitizeAdminNameField(fieldName) {
-  addAdminForm[fieldName] = String(addAdminForm[fieldName] || '').replace(/[^A-Za-z ]+/g, '').replace(/\s{2,}/g, ' ');
-}
-
-function validateAdminAccountForm() {
-  const lastName = addAdminForm.lastName.trim();
-  const firstName = addAdminForm.firstName.trim();
-  const emailAddress = addAdminForm.emailAddress.trim().toLowerCase();
-
-  if (!isValidAdminName(lastName)) {
-    return 'Last name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (!isValidAdminName(firstName)) {
-    return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (!isInstitutionalAdminEmail(emailAddress)) {
-    return 'Admin account must use a valid institutional email address.';
-  }
-
-  return '';
-}
-
-function isValidAdminName(value) {
-  const normalized = String(value || '').trim();
-  const letterCount = (normalized.match(/[A-Za-z]/g) || []).length;
-  return letterCount >= 2 && /^[A-Za-z ]+$/.test(normalized);
-}
-
-function isInstitutionalAdminEmail(emailAddress) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
-    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@techreserve.edu.ph'));
+  addAdminForm[fieldName] = sanitizeNameInput(addAdminForm[fieldName]);
 }
 
 async function createUserAccount() {
@@ -1443,7 +1242,7 @@ async function createEmployeeAccount() {
 
   addEmployeeError.value = '';
 
-  const validationError = validateEmployeeAccountForm();
+  const validationError = validateEmployeeFormValues(addEmployeeForm);
   if (validationError) {
     addEmployeeError.value = validationError;
     return;
@@ -1501,56 +1300,11 @@ function resetAddEmployeeForm() {
 }
 
 function sanitizeEmployeeNameField(fieldName) {
-  addEmployeeForm[fieldName] = String(addEmployeeForm[fieldName] || '').replace(/[^A-Za-z ]+/g, '').replace(/\s{2,}/g, ' ');
+  addEmployeeForm[fieldName] = sanitizeNameInput(addEmployeeForm[fieldName]);
 }
 
 function sanitizeEmployeePhone() {
-  addEmployeeForm.phone = String(addEmployeeForm.phone || '').replace(/\D/g, '').slice(0, 10);
-}
-
-function validateEmployeeAccountForm() {
-  const lastName = addEmployeeForm.lastName.trim();
-  const firstName = addEmployeeForm.firstName.trim();
-  const phone = addEmployeeForm.phone.trim();
-  const idNumber = addEmployeeForm.idNumber.trim();
-
-  if (!isValidAdminName(lastName)) {
-    return 'Last name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (!isValidAdminName(firstName)) {
-    return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (idNumber === '') {
-    return 'Work ID number is required.';
-  }
-
-  if (!/^9\d{9}$/.test(phone)) {
-    return 'Phone number must be exactly 10 digits and begin with 9.';
-  }
-
-  return '';
-}
-
-function formatCreateAccountError(result, accountType) {
-  const conflict = result?.data?.conflict;
-  if (!conflict) {
-    return result?.error || `Unable to create ${accountType} account.`;
-  }
-
-  const fullName = `${conflict.firstName || ''} ${conflict.lastName || ''}`.trim() || 'Existing account';
-  const status = getStatusLabel(conflict.status);
-  const location = conflict.isApproved || String(conflict.status).toLowerCase() === 'approved'
-    ? 'Manage Accounts'
-    : 'Requests Hub or Manage Accounts';
-  const matchedField = conflict.matchedField === 'idNumber'
-    ? 'ID number'
-    : conflict.matchedField === 'phone'
-      ? 'phone number'
-      : 'email';
-
-  return `This ${matchedField} is already used by ${fullName} (${conflict.emailAddress}, ${conflict.accountType}, ${status}). Check ${location}.`;
+  addEmployeeForm.phone = sanitizePhoneInput(addEmployeeForm.phone);
 }
 
 async function verifyAccount() {
@@ -1642,44 +1396,6 @@ async function deleteWishlistAccount() {
   isProcessing.value = false;
 }
 
-function removeAccountFromWishlist(accountIdentifier) {
-  wishlistAccounts.value = wishlistAccounts.value.filter((account) => {
-    const currentIdentifier = account.accountIdentifier || account.account_identifier;
-    return String(currentIdentifier) !== String(accountIdentifier);
-  });
-}
-
-function updateAccountStatus(accountIdentifier, status) {
-  wishlistAccounts.value = wishlistAccounts.value.map((account) => {
-    const currentIdentifier = account.accountIdentifier || account.account_identifier;
-    if (String(currentIdentifier) !== String(accountIdentifier)) return account;
-    return { ...account, accountStatus: status, status };
-  });
-}
-
-function normalizeEmailForConfirmation(value) {
-  return String(value || '')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .replace(/\s+/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-function resolveRequestStatus(status, inviteAcceptedAt, inviteExpiresAt) {
-  const normalized = String(status || 'pending').toLowerCase();
-  if (inviteAcceptedAt || normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'verified';
-  if (normalized === 'rejected' || normalized === 'denied') return 'rejected';
-  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() < Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
-    return 'expired';
-  }
-  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() >= Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
-    return 'unverified';
-  }
-  if (normalized === 'invited' || normalized === 'unverified') return 'unverified';
-  if (normalized === 'pending' || normalized === 'not_invited') return 'not_invited';
-  return normalized;
-}
-
 function canSendInvite(account) {
   return String(account?.accountStatus || '').toLowerCase() === 'not_invited' && !isProcessing.value;
 }
@@ -1711,77 +1427,6 @@ function getInviteSubmitLabel(account) {
 
 function getInviteSuccessMessage(account) {
   return approvalMode.value === 'resend' ? 'Invitation resent!' : 'Invitation sent!';
-}
-
-function getStatusLabel(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'approved' || normalized === 'verified' || normalized === 'accepted') return 'Verified';
-  if (normalized === 'not_invited' || normalized === 'pending') return 'Not invited';
-  if (normalized === 'invited' || normalized === 'unverified') return 'Unverified';
-  if (normalized === 'expired') return 'Expired';
-  if (normalized === 'rejected' || normalized === 'denied') return 'Denied';
-  return 'Unverified';
-}
-
-function getStatusClass(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'rejected' || normalized === 'denied') return 'admin-wishlist-status--denied';
-  if (normalized === 'invited' || normalized === 'unverified') return 'admin-wishlist-status--invited';
-  if (normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'admin-wishlist-status--accepted';
-  if (normalized === 'expired') return 'admin-wishlist-status--expired';
-  return 'admin-wishlist-status--pending';
-}
-
-function formatDisplayDate(value) {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
-function formatNullableDate(value) {
-  if (!value) return 'N/A';
-  return formatDisplayDate(value);
-}
-
-function formatDisplayDateTime(value) {
-  if (!value) return 'N/A';
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) return 'N/A';
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(parsedDate);
-}
-
-function formatNullableDateTime(value) {
-  if (!value) return 'N/A';
-  return formatDisplayDateTime(value);
-}
-
-function getInviteSentStatus(account) {
-  if (!account?.inviteSentAt) return 'Not sent';
-  const inviteStatus = String(account.inviteStatus || '').trim();
-  return inviteStatus ? toTitleCase(inviteStatus) : 'Sent';
-}
-
-function getAcceptedStatus(account) {
-  if (account?.inviteAcceptedAt) return 'Accepted';
-  if (account?.inviteExpiresAt && new Date(account.inviteExpiresAt).getTime() < Date.now()) return 'Expired';
-  if (account?.inviteSentAt) return 'Pending acceptance';
-  return 'Not accepted';
-}
-
-function toTitleCase(value) {
-  return String(value || '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\w\S*/g, (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
 }
 
 function showToast(message) {

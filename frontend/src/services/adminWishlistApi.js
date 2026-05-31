@@ -68,94 +68,46 @@ async function parseResponse(response) {
   };
 }
 
+async function sendWishlistRequest(path, { method = 'GET', token, payload } = {}) {
+  try {
+    const response = await fetch(apiUrl(path), {
+      method,
+      headers: buildHeaders(token, payload !== undefined),
+      ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}),
+    });
+
+    return parseResponse(response);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export const adminWishlistApi = {
   async getWishlistAccounts(token) {
-    try {
-      const response = await fetch(apiUrl('/api/v1/users/wishlist'), {
-        method: 'GET',
-        headers: buildHeaders(token),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest('/api/v1/users/wishlist', { token });
   },
 
   async verifyAccount(accountIdentifier, token, payload = {}) {
-    try {
-      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/approve`), {
-        method: 'POST',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(payload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/approve`, { method: 'POST', token, payload });
   },
 
   async denyAccount(accountIdentifier, token, payload = {}) {
-    try {
-      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/reject`), {
-        method: 'POST',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(payload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/reject`, { method: 'POST', token, payload });
   },
 
   async deleteAccountRequest(accountIdentifier, token, payload = {}) {
-    try {
-      const response = await fetch(apiUrl(`/api/v1/users/${accountIdentifier}/delete-request`), {
-        method: 'DELETE',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(payload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/delete-request`, { method: 'DELETE', token, payload });
   },
 
   async createAdminAccount(accountPayload, token) {
-    try {
-      const response = await fetch(apiUrl('/api/v1/users/wishlist/admin-accounts'), {
-        method: 'POST',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(accountPayload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest('/api/v1/users/wishlist/admin-accounts', { method: 'POST', token, payload: accountPayload });
   },
 
   async createUserAccount(accountPayload, token) {
-    try {
-      const response = await fetch(apiUrl('/api/v1/users/wishlist/user-accounts'), {
-        method: 'POST',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(accountPayload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest('/api/v1/users/wishlist/user-accounts', { method: 'POST', token, payload: accountPayload });
   },
 
   async createEmployeeAccount(accountPayload, token) {
-    try {
-      const response = await fetch(apiUrl('/api/v1/users/wishlist/employee-accounts'), {
-        method: 'POST',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify(accountPayload),
-      });
-      return parseResponse(response);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return sendWishlistRequest('/api/v1/users/wishlist/employee-accounts', { method: 'POST', token, payload: accountPayload });
   },
 };
