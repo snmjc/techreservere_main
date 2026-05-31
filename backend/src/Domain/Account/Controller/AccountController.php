@@ -3,7 +3,9 @@
 namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\DTO\AccountUpdateRequestDTO;
+use App\Domain\Account\Service\AccountLifecyclePolicyService;
 use App\Domain\Account\Service\AccountProfileService;
+use App\Domain\Account\Service\AccountResponseMapperService;
 use App\Domain\Account\Service\AccountSettingsValidationService;
 use App\Domain\Account\Service\AccountUpdateService;
 use App\Domain\Authentication\Service\AuthenticationClerkService;
@@ -24,6 +26,8 @@ class AccountController extends AbstractController
     use JsonResponseTrait;
 
     private AccountProfileService $accountProfileService;
+    private AccountLifecyclePolicyService $accountLifecyclePolicyService;
+    private AccountResponseMapperService $accountResponseMapperService;
     private AccountSettingsValidationService $accountSettingsValidationService;
     private AccountUpdateService $accountUpdateService;
     private AuthenticationClerkService $authenticationClerkService;
@@ -32,6 +36,8 @@ class AccountController extends AbstractController
 
     public function __construct(
         AccountProfileService $accountProfileService,
+        AccountLifecyclePolicyService $accountLifecyclePolicyService,
+        AccountResponseMapperService $accountResponseMapperService,
         AccountSettingsValidationService $accountSettingsValidationService,
         AccountUpdateService $accountUpdateService,
         AuthenticationClerkService $authenticationClerkService,
@@ -39,6 +45,8 @@ class AccountController extends AbstractController
         PasswordPolicyService $passwordPolicyService
     ) {
         $this->accountProfileService = $accountProfileService;
+        $this->accountLifecyclePolicyService = $accountLifecyclePolicyService;
+        $this->accountResponseMapperService = $accountResponseMapperService;
         $this->accountSettingsValidationService = $accountSettingsValidationService;
         $this->accountUpdateService = $accountUpdateService;
         $this->authenticationClerkService = $authenticationClerkService;
@@ -304,7 +312,7 @@ class AccountController extends AbstractController
         );
 
         return $this->createSuccessResponse([
-            'accounts' => array_map(fn (array $row): array => $this->mapAccountRow($row), $rows),
+            'accounts' => array_map(fn (array $row): array => $this->accountResponseMapperService->mapAccountRow($row), $rows),
         ]);
     }
 
@@ -388,7 +396,7 @@ class AccountController extends AbstractController
 
         return $this->createSuccessResponse([
             'account' => $mappedAccount,
-            'workLogs' => array_map(fn (array $row): array => $this->mapEmployeeWorkLogRow($row), $rows),
+            'workLogs' => array_map(fn (array $row): array => $this->accountResponseMapperService->mapEmployeeWorkLogRow($row), $rows),
         ]);
     }
 
@@ -404,18 +412,18 @@ class AccountController extends AbstractController
         }
 
         $currentMappedAccount = $this->getMappedAccountById($accountIdentifier);
-        $accountStatus = $this->resolveAccountStatus(
+        $accountStatus = $this->accountLifecyclePolicyService->resolveAccountStatus(
             $this->toDatabaseBoolean($existingAccount['is_active'] ?? false),
             (string)($existingAccount['status'] ?? ''),
             $this->toDatabaseBoolean($existingAccount['is_approved'] ?? false)
         );
 
-        if (!$this->canUpdateAccount($accountStatus)) {
+        if (!$this->accountLifecyclePolicyService->canUpdateAccount($accountStatus)) {
             return $this->createErrorResponse(
                 'AccountActionNotAllowed',
                 'Only active accounts can be updated. Disabled accounts are read-only until reactivated, and pending accounts must be accepted before updates are allowed.',
                 403,
-                ['actionRules' => $this->buildActionPermissions($accountStatus, $this->toDatabaseBoolean($existingAccount['is_approved'] ?? false))]
+                ['actionRules' => $this->accountLifecyclePolicyService->buildActionPermissions($accountStatus, $this->toDatabaseBoolean($existingAccount['is_approved'] ?? false))]
             );
         }
 
@@ -496,27 +504,27 @@ class AccountController extends AbstractController
         }
 
         $currentIsApproved = $this->toDatabaseBoolean($account['is_approved'] ?? false);
-        $currentStatus = $this->resolveAccountStatus(
+        $currentStatus = $this->accountLifecyclePolicyService->resolveAccountStatus(
             $this->toDatabaseBoolean($account['is_active'] ?? false),
             (string)($account['status'] ?? ''),
             $currentIsApproved
         );
 
-        if ($isActive && !$this->canActivateAccount($currentStatus)) {
+        if ($isActive && !$this->accountLifecyclePolicyService->canActivateAccount($currentStatus)) {
             return $this->createErrorResponse(
                 'AccountActionNotAllowed',
                 'Only disabled accounts can be reactivated.',
                 403,
-                ['actionRules' => $this->buildActionPermissions($currentStatus, $currentIsApproved)]
+                ['actionRules' => $this->accountLifecyclePolicyService->buildActionPermissions($currentStatus, $currentIsApproved)]
             );
         }
 
-        if (!$isActive && !$this->canDisableAccount($currentStatus)) {
+        if (!$isActive && !$this->accountLifecyclePolicyService->canDisableAccount($currentStatus)) {
             return $this->createErrorResponse(
                 'AccountActionNotAllowed',
                 'Only active accounts can be disabled.',
                 403,
-                ['actionRules' => $this->buildActionPermissions($currentStatus, $currentIsApproved)]
+                ['actionRules' => $this->accountLifecyclePolicyService->buildActionPermissions($currentStatus, $currentIsApproved)]
             );
         }
 
@@ -659,7 +667,7 @@ class AccountController extends AbstractController
             ['accountIdentifier' => $accountIdentifier]
         );
 
-        return $row ? $this->mapAccountRow($row) : null;
+        return $row ? $this->accountResponseMapperService->mapAccountRow($row) : null;
     }
 
     private function getSettingsAccountById(int $accountIdentifier): ?array
@@ -685,7 +693,7 @@ class AccountController extends AbstractController
             return null;
         }
 
-        $mapped = $this->mapAccountRow($row + [
+        $mapped = $this->accountResponseMapperService->mapAccountRow($row + [
             'invite_sent_at' => null,
             'invite_expires_at' => null,
             'invite_accepted_at' => null,
@@ -694,123 +702,6 @@ class AccountController extends AbstractController
         $mapped['profilePhotoData'] = $row['profile_photo_data'] ? (string)$row['profile_photo_data'] : null;
 
         return $mapped;
-    }
-
-    private function mapAccountRow(array $row): array
-    {
-        $roleDesignation = (string)($row['role_designation'] ?? 'ROLE_BORROWER');
-        $department = strtolower((string)($row['department'] ?? ''));
-        $normalizedRole = strtoupper($roleDesignation);
-        $isActive = $this->toDatabaseBoolean($row['is_active'] ?? false);
-        $isApproved = $this->toDatabaseBoolean($row['is_approved'] ?? false);
-        $accountStatus = $this->resolveAccountStatus($isActive, (string)($row['status'] ?? ''), $isApproved);
-        $isAdmin = str_contains($normalizedRole, 'ADMIN') || strtolower($roleDesignation) === 'admin';
-        $isEmployee = !$isAdmin && (
-            str_contains($normalizedRole, 'STAFF') ||
-            str_contains($normalizedRole, 'EMPLOYEE') ||
-            str_contains($department, 'staff') ||
-            str_contains($department, 'employee') ||
-            str_contains($department, 'technical') ||
-            str_contains($department, 'maintenance') ||
-            str_contains($department, 'support')
-        );
-
-        $accountType = $isAdmin ? 'Admin' : ($isEmployee ? 'Employee' : 'User');
-        $roleLabel = $this->resolveRoleLabelForAccountRow($row, $accountType);
-        $idNumber = ($isEmployee && !empty($row['staff_employee_id_number']))
-            ? (string)$row['staff_employee_id_number']
-            : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT));
-        $firstName = ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'];
-        $lastName = ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'];
-        $contactNumber = ($isEmployee && !empty($row['staff_phone_number']))
-            ? (string)$row['staff_phone_number']
-            : ($row['contact_number'] ? (string)$row['contact_number'] : null);
-        $profilePhotoData = ($isEmployee && !empty($row['staff_image_url']))
-            ? (string)$row['staff_image_url']
-            : (!empty($row['profile_photo_data']) ? (string)$row['profile_photo_data'] : null);
-
-        return [
-            'accountIdentifier' => (int)$row['account_identifier'],
-            'idNumber' => $idNumber,
-            'lastName' => $lastName,
-            'firstName' => $firstName,
-            'emailAddress' => (string)$row['email_address'],
-            'roleDesignation' => $this->normalizeRoleDesignation($roleDesignation),
-            'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,
-            'accountType' => $accountType,
-            'accountStatus' => $accountStatus,
-            'isActive' => $isActive,
-            'isApproved' => $isApproved,
-            'actionPermissions' => $this->buildActionPermissions($accountStatus, $isApproved),
-            'contactNumber' => $contactNumber,
-            'profilePhotoData' => $profilePhotoData,
-            'createdTimestamp' => (string)$row['created_timestamp'],
-            'lastLoginTimestamp' => $row['last_login_timestamp'] ? (string)$row['last_login_timestamp'] : null,
-            'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
-            'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
-            'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
-        ];
-    }
-
-    private function mapEmployeeWorkLogRow(array $row): array
-    {
-        $equipmentList = $this->decodeJsonList($row['requested_equipment_list'] ?? null);
-        $reservationDetails = null;
-
-        if (!empty($row['reservation_identifier'])) {
-            $reservationDetails = [
-                'reservationIdentifier' => (int)$row['reservation_identifier'],
-                'reservationCode' => (string)($row['reservation_code'] ?? ''),
-                'organizationName' => (string)($row['organization_name'] ?? ''),
-                'eventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
-                'purposeDescription' => $row['purpose_description'] ? (string)$row['purpose_description'] : null,
-                'activityType' => $row['activity_type'] ? (string)$row['activity_type'] : null,
-                'status' => $row['reservation_status'] ? (string)$row['reservation_status'] : null,
-                'requestedEquipmentList' => $equipmentList,
-                'requestedQuantity' => isset($row['requested_quantity']) ? (int)$row['requested_quantity'] : null,
-                'priorityLevel' => $row['priority_level'] ? (string)$row['priority_level'] : null,
-            ];
-        }
-
-        return [
-            'historyLogId' => isset($row['history_log_id']) ? (int)$row['history_log_id'] : null,
-            'staffId' => isset($row['staff_id']) ? (int)$row['staff_id'] : null,
-            'reservationId' => isset($row['reservation_id']) ? (int)$row['reservation_id'] : null,
-            'taskAssignmentId' => isset($row['task_assignment_id']) ? (int)$row['task_assignment_id'] : null,
-            'taskIdentifier' => (int)$row['task_identifier'],
-            'taskName' => (string)$row['task_title'],
-            'taskDescription' => $row['task_description'] ? (string)$row['task_description'] : null,
-            'taskType' => (string)($row['task_type'] ?? ''),
-            'status' => (string)($row['task_status'] ?? ''),
-            'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
-            'taskDateTime' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : (string)($row['created_timestamp'] ?? ''),
-            'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
-            'createdTimestamp' => (string)($row['created_timestamp'] ?? ''),
-            'updatedTimestamp' => (string)($row['updated_timestamp'] ?? ''),
-            'reservationDetails' => $reservationDetails,
-            'assignments' => [
-                'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
-                'assignmentType' => (string)($row['task_type'] ?? ''),
-                'assignedTask' => (string)$row['task_title'],
-            ],
-            'fullTaskInformation' => [
-                'description' => $row['task_description'] ? (string)$row['task_description'] : null,
-                'type' => (string)($row['task_type'] ?? ''),
-                'createdTimestamp' => (string)($row['created_timestamp'] ?? ''),
-                'updatedTimestamp' => (string)($row['updated_timestamp'] ?? ''),
-            ],
-        ];
-    }
-
-    private function decodeJsonList(mixed $value): array
-    {
-        if (is_array($value)) {
-            return $value;
-        }
-
-        $decoded = json_decode((string)($value ?? '[]'), true);
-
-        return is_array($decoded) ? $decoded : [];
     }
 
     private function upsertStaffInfo(
@@ -860,79 +751,6 @@ class AccountController extends AbstractController
                 'updatedTimestamp' => ParameterType::STRING,
             ]
         );
-    }
-
-    private function normalizeRoleDesignation(string $roleDesignation): string
-    {
-        $normalized = strtoupper(trim($roleDesignation));
-        if ($normalized === 'ADMIN') return RoleConstants::ROLE_ADMIN;
-        if ($normalized === 'USER') return RoleConstants::ROLE_BORROWER;
-        return $normalized ?: RoleConstants::ROLE_BORROWER;
-    }
-
-    private function normalizeEmailForConfirmation(string $emailAddress): string
-    {
-        $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
-        return strtolower(trim($normalizedEmailAddress));
-    }
-
-    private function normalizePersonName(string $value): string
-    {
-        return preg_replace('/\s+/', ' ', trim($value)) ?? trim($value);
-    }
-
-    private function validateEditableAccountSettings(
-        string $firstName,
-        string $lastName,
-        string $contactNumber,
-        ?string $profilePhotoData,
-        string $profilePhotoName = ''
-    ): ?string
-    {
-        if ($firstName === '' || $lastName === '' || $contactNumber === '') {
-            return 'First name, last name, and phone number are required.';
-        }
-
-        if (!$this->isValidPersonName($firstName) || !$this->isValidPersonName($lastName)) {
-            return 'First name and last name must contain letters and spaces only, with at least 2 characters each.';
-        }
-
-        if (preg_match('/^9\d{9}$/', $contactNumber) !== 1) {
-            return 'Phone number must be 10 digits and begin with 9.';
-        }
-
-        if ($profilePhotoData !== null && $profilePhotoData !== '') {
-            if ($profilePhotoName !== '' && !str_ends_with(strtolower($profilePhotoName), '.jpg')) {
-                return 'Profile photo must be a .jpg image only.';
-            }
-
-            if (!$this->isValidJpegDataUrl($profilePhotoData)) {
-                return 'Profile photo must be a .jpg image only.';
-            }
-        }
-
-        return null;
-    }
-
-    private function isValidPersonName(string $value): bool
-    {
-        return mb_strlen($value) >= 2 && preg_match('/^[A-Za-z]+(?: [A-Za-z]+)*$/', $value) === 1;
-    }
-
-    private function isValidJpegDataUrl(string $profilePhotoData): bool
-    {
-        if (preg_match('/^data:image\/jpeg;base64,([A-Za-z0-9+\/=\r\n]+)$/', $profilePhotoData, $matches) !== 1) {
-            return false;
-        }
-
-        $base64Data = preg_replace('/\s+/', '', $matches[1]) ?? $matches[1];
-        $binaryData = base64_decode($base64Data, true);
-
-        if ($binaryData === false || strlen($binaryData) > 2 * 1024 * 1024) {
-            return false;
-        }
-
-        return str_starts_with($binaryData, "\xFF\xD8\xFF");
     }
 
     private function validateResponsibleAdminEmail(Request $request, string $confirmedAdminEmail, string $actionName): ?JsonResponse
@@ -1082,60 +900,6 @@ class AccountController extends AbstractController
         return is_array($data) ? $data : [];
     }
 
-    private function resolveRoleDesignationForAccountType(string $accountType, string $fallbackRoleDesignation): string
-    {
-        if (strcasecmp($accountType, 'Admin') === 0) {
-            return RoleConstants::ROLE_ADMIN;
-        }
-
-        if (strcasecmp($accountType, 'Employee') === 0) {
-            return 'ROLE_STAFF';
-        }
-
-        return RoleConstants::ROLE_BORROWER;
-    }
-
-    private function resolveDepartmentForAccountType(string $accountType, string $roleLabel): ?string
-    {
-        $normalizedRoleLabel = trim($roleLabel);
-
-        if (strcasecmp($accountType, 'Admin') === 0) {
-            return 'Administration';
-        }
-
-        if ($normalizedRoleLabel === '') {
-            return strcasecmp($accountType, 'Employee') === 0 ? 'Technical Staff' : 'Student';
-        }
-
-        return $normalizedRoleLabel;
-    }
-
-    private function resolveRoleLabelForAccountRow(array $row, string $accountType): string
-    {
-        if ($accountType === 'Admin') {
-            return 'Admin';
-        }
-
-        $department = trim((string)($row['department'] ?? ''));
-        if ($accountType === 'Employee') {
-            return $department !== '' ? ucwords($department) : 'Technical Staff';
-        }
-
-        if (preg_match('/faculty/i', $department) === 1) {
-            return 'Faculty';
-        }
-
-        return 'Student';
-    }
-
-    private function resolveAccountStatus(bool $isActive, string $status, bool $isApproved): string
-    {
-        $normalized = strtolower($status);
-        if (!$isActive || $normalized === 'disabled') return 'Disabled';
-        if ($normalized === 'pending' || !$isApproved) return 'Pending';
-        return 'Active';
-    }
-
     private function getAccountStateById(int $accountIdentifier): ?array
     {
         $account = $this->connection->fetchAssociative(
@@ -1147,49 +911,6 @@ class AccountController extends AbstractController
         );
 
         return $account ?: null;
-    }
-
-    private function buildActionPermissions(string $accountStatus, bool $isApproved): array
-    {
-        return [
-            'view' => true,
-            'update' => $this->canUpdateAccount($accountStatus),
-            'disable' => $this->canDisableAccount($accountStatus),
-            'activate' => $this->canActivateAccount($accountStatus),
-        ];
-    }
-
-    private function canUpdateAccount(string $accountStatus): bool
-    {
-        return $accountStatus === 'Active';
-    }
-
-    private function canDisableAccount(string $accountStatus): bool
-    {
-        return $accountStatus === 'Active';
-    }
-
-    private function canActivateAccount(string $accountStatus): bool
-    {
-        return $accountStatus === 'Disabled';
-    }
-
-    private function deleteClerkUser(string $clerkUserId): void
-    {
-        $secretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
-        if ($secretKey === '') {
-            return;
-        }
-
-        try {
-            $this->httpClient->request('DELETE', ($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com') . '/v1/users/' . rawurlencode($clerkUserId), [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $secretKey,
-                    'Accept' => 'application/json',
-                ],
-            ]);
-        } catch (\Throwable) {
-        }
     }
 
     private function toDatabaseBoolean(mixed $value): bool

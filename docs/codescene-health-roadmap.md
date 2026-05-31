@@ -23,6 +23,7 @@ Completed health work:
 - `ManageAccounts.vue`: account normalization, formatting, sorting, validation, and permission helpers moved to `manageAccountsHelpers.js`.
 - `AuthenticationController.php` and `AccountController.php`: duplicated password-strength policy moved to `PasswordPolicyService`.
 - `AuthenticationController.php`: Clerk password lookup/update moved to `AuthenticationClerkService`; reset-code email rendering/sending moved to `PasswordResetEmailService`.
+- `AccountController.php`: settings/profile validation moved to `AccountSettingsValidationService`; account response mapping moved to `AccountResponseMapperService`; account status/action rules moved to `AccountLifecyclePolicyService`; Clerk delete delegated to `AuthenticationClerkService`.
 - `UserRegistrationController.php`: branded accepted-account email construction and mail sending moved to `AccountAcceptanceEmailService`.
 - `UserRegistrationController.php`: Clerk invitation/signup provisioning moved to `AccountClerkProvisioningService`.
 
@@ -61,7 +62,7 @@ The most important rule for this project is: controllers and pages should coordi
 | `backend/src/Domain/Account/Controller/UserRegistrationController.php` | Critical | Still large, but Clerk API calls, branded email content, wishlist reads, duplicate checks, and validation have started moving out | Continue extracting registration workflow, invitation persistence, and admin confirmation services |
 | `frontend/src/pages/admin/AdminWishlist.vue` | Critical | 1400+ lines after first split, still owns table UI, modal state, create flows, action orchestration | Extract modal components and `useAdminWishlist` composables |
 | `frontend/src/services/adminWishlistApi.js` | Medium | Request duplication was present; now reduced | Keep thin API facade and add tests around response parsing |
-| `backend/src/Domain/Account/Controller/AccountController.php` | High | 1200+ lines, many account operations and conditionals | Split profile, staff, account lifecycle services |
+| `backend/src/Domain/Account/Controller/AccountController.php` | High | Still owns several account workflows, but validation, mapping, lifecycle rules, and Clerk deletion have been extracted | Continue splitting account settings, access updates, deletion, and work-log queries into services |
 | `frontend/src/pages/admin/ManageAccounts.vue` | High | 1100+ lines, 67 functions, many modals and workflows | Extract account table, create/update/delete modals, work logs composable |
 | `frontend/src/pages/auth/CustomSignUp.vue` | High | 1100+ lines, form UI, validation, file handling, backend calls | Extract signup form, document upload, validation composable |
 | `frontend/src/pages/auth/ClerkLogin.vue` | High | 1000 lines, custom Clerk reset/login flows and local backend auth handling | Extract Clerk password reset composable and backend login service |
@@ -230,6 +231,7 @@ Expected impact after completed work:
 - `accessGuard.js`: meaningful improvement from reduced branching and focused responsibility.
 - Auth/router coupling: moderate improvement from central route-name and storage-key ownership.
 - `AuthenticationController.php`: moderate improvement from removing direct Clerk HTTP and mail-template responsibilities.
+- `AccountController.php`: moderate improvement from reducing private helpers and moving mapping/validation/lifecycle rules into cohesive services.
 - `UserRegistrationController.php`: modest improvement so far; major improvement requires more service extraction.
 - `UserRegistrationController.php`: stronger improvement expected after Clerk provisioning and accepted-account email extraction; remaining hotspot is registration/approval orchestration.
 
