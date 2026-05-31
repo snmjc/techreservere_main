@@ -4,6 +4,8 @@ namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Entity\AccountEntity;
+use App\Domain\Account\Service\AccountConflictLookupService;
+use App\Domain\Account\Service\AccountInputValidationService;
 use App\Domain\Account\Service\Wishlist\WishlistAccountReadService;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
@@ -34,13 +36,17 @@ class UserRegistrationController extends AbstractController
     private Connection $connection;
     private MailerInterface $mailer;
     private WishlistAccountReadService $wishlistAccountReadService;
+    private AccountConflictLookupService $accountConflictLookupService;
+    private AccountInputValidationService $accountInputValidationService;
 
     public function __construct(
         AccountRepository $accountRepository,
         HttpClientInterface $httpClient,
         Connection $connection,
         MailerInterface $mailer,
-        WishlistAccountReadService $wishlistAccountReadService
+        WishlistAccountReadService $wishlistAccountReadService,
+        AccountConflictLookupService $accountConflictLookupService,
+        AccountInputValidationService $accountInputValidationService
     )
     {
         $this->accountRepository = $accountRepository;
@@ -48,6 +54,8 @@ class UserRegistrationController extends AbstractController
         $this->connection = $connection;
         $this->mailer = $mailer;
         $this->wishlistAccountReadService = $wishlistAccountReadService;
+        $this->accountConflictLookupService = $accountConflictLookupService;
+        $this->accountInputValidationService = $accountInputValidationService;
     }
 
     #[Route('/register', name: 'user_register', methods: ['POST'])]
@@ -416,7 +424,7 @@ class UserRegistrationController extends AbstractController
             );
         }
 
-        if (!$this->isValidPersonName($lastName)) {
+        if (!$this->accountInputValidationService->isValidPersonName($lastName)) {
             return $this->createErrorResponse(
                 'ValidationError',
                 'Last name must have at least 2 letters and cannot contain numbers or symbols.',
@@ -424,7 +432,7 @@ class UserRegistrationController extends AbstractController
             );
         }
 
-        if (!$this->isValidPersonName($firstName)) {
+        if (!$this->accountInputValidationService->isValidPersonName($firstName)) {
             return $this->createErrorResponse(
                 'ValidationError',
                 'First name must have at least 2 letters and cannot contain numbers or symbols.',
@@ -436,7 +444,7 @@ class UserRegistrationController extends AbstractController
             return $this->createErrorResponse('ValidationError', 'Please provide a valid email address.', 422);
         }
 
-        if (!$this->isInstitutionalAdminEmail($emailAddress)) {
+        if (!$this->accountInputValidationService->isInstitutionalAdminEmail($emailAddress)) {
             return $this->createErrorResponse(
                 'ValidationError',
                 'Admin account must use a valid institutional email address.',
@@ -444,28 +452,28 @@ class UserRegistrationController extends AbstractController
             );
         }
 
-        $lastName = $this->normalizePersonName($lastName);
-        $firstName = $this->normalizePersonName($firstName);
+        $lastName = $this->accountInputValidationService->normalizePersonName($lastName);
+        $firstName = $this->accountInputValidationService->normalizePersonName($firstName);
 
-        $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
+        $existingEmailAccount = $this->accountConflictLookupService->findByEmail($emailAddress);
 
         if ($existingEmailAccount) {
             return $this->createErrorResponse(
                 'DuplicateAccount',
-                $this->buildDuplicateAccountMessage('email', $existingEmailAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('email', $existingEmailAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingEmailAccount, 'email')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingEmailAccount, 'email')]
             );
         }
 
-        $existingIdNumberAccount = $this->findAccountConflictByIdNumber($idNumber);
+        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($idNumber);
 
         if ($existingIdNumberAccount) {
             return $this->createErrorResponse(
                 'DuplicateIdNumber',
-                $this->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingIdNumberAccount, 'idNumber')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingIdNumberAccount, 'idNumber')]
             );
         }
 
@@ -574,25 +582,25 @@ class UserRegistrationController extends AbstractController
             return $this->createErrorResponse('ValidationError', 'Please provide a valid email address.', 422);
         }
 
-        $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
+        $existingEmailAccount = $this->accountConflictLookupService->findByEmail($emailAddress);
 
         if ($existingEmailAccount) {
             return $this->createErrorResponse(
                 'DuplicateAccount',
-                $this->buildDuplicateAccountMessage('email', $existingEmailAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('email', $existingEmailAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingEmailAccount, 'email')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingEmailAccount, 'email')]
             );
         }
 
-        $existingIdNumberAccount = $this->findAccountConflictByIdNumber($idNumber);
+        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($idNumber);
 
         if ($existingIdNumberAccount) {
             return $this->createErrorResponse(
                 'DuplicateIdNumber',
-                $this->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingIdNumberAccount, 'idNumber')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingIdNumberAccount, 'idNumber')]
             );
         }
 
@@ -733,7 +741,7 @@ class UserRegistrationController extends AbstractController
             return $this->createErrorResponse('ValidationError', 'Supporting file is too large. Please upload a file up to 5 MB.', 422);
         }
 
-        $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
+        $existingEmailAccount = $this->accountConflictLookupService->findByEmail($emailAddress);
         if ($existingEmailAccount) {
             if ($this->isReusablePendingSignupRequest($existingEmailAccount, $idNumber)) {
                 $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -816,19 +824,19 @@ class UserRegistrationController extends AbstractController
 
             return $this->createErrorResponse(
                 'DuplicateAccount',
-                $this->buildDuplicateAccountMessage('email', $existingEmailAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('email', $existingEmailAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingEmailAccount, 'email')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingEmailAccount, 'email')]
             );
         }
 
-        $existingIdNumberAccount = $this->findAccountConflictByIdNumber($idNumber);
+        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($idNumber);
         if ($existingIdNumberAccount) {
             return $this->createErrorResponse(
                 'DuplicateIdNumber',
-                $this->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingIdNumberAccount, 'idNumber')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingIdNumberAccount, 'idNumber')]
             );
         }
 
@@ -948,36 +956,36 @@ class UserRegistrationController extends AbstractController
             $emailAddress = $this->buildStaffEmailAddress($idNumber);
         }
 
-        $existingEmailAccount = $this->findAccountConflictByEmail($emailAddress);
+        $existingEmailAccount = $this->accountConflictLookupService->findByEmail($emailAddress);
 
         if ($existingEmailAccount) {
             return $this->createErrorResponse(
                 'DuplicateAccount',
-                $this->buildDuplicateAccountMessage('email', $existingEmailAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('email', $existingEmailAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingEmailAccount, 'email')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingEmailAccount, 'email')]
             );
         }
 
-        $existingIdNumberAccount = $this->findAccountConflictByIdNumber($idNumber);
+        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($idNumber);
 
         if ($existingIdNumberAccount) {
             return $this->createErrorResponse(
                 'DuplicateIdNumber',
-                $this->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('ID number', $existingIdNumberAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingIdNumberAccount, 'idNumber')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingIdNumberAccount, 'idNumber')]
             );
         }
 
-        $existingPhoneAccount = $this->findStaffAccountConflictByPhone($phone);
+        $existingPhoneAccount = $this->accountConflictLookupService->findStaffByPhone($phone);
 
         if ($existingPhoneAccount) {
             return $this->createErrorResponse(
                 'DuplicatePhoneNumber',
-                $this->buildDuplicateAccountMessage('phone number', $existingPhoneAccount),
+                $this->accountConflictLookupService->buildDuplicateAccountMessage('phone number', $existingPhoneAccount),
                 409,
-                ['conflict' => $this->normalizeAccountConflict($existingPhoneAccount, 'phone')]
+                ['conflict' => $this->accountConflictLookupService->normalizeConflict($existingPhoneAccount, 'phone')]
             );
         }
 
@@ -1901,21 +1909,6 @@ HTML;
         return str_starts_with($role, 'ROLE_') ? $role : 'ROLE_BORROWER';
     }
 
-    private function findAccountConflictByEmail(string $emailAddress): ?array
-    {
-        $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, id_number, first_name, last_name, email_address, role_designation,
-                    department, status, is_approved, is_active, clerk_user_id, created_timestamp
-             FROM accounts
-             WHERE LOWER(email_address) = LOWER(:emailAddress)
-             LIMIT 1',
-            ['emailAddress' => $emailAddress],
-            ['emailAddress' => ParameterType::STRING]
-        );
-
-        return $account ?: null;
-    }
-
     private function isPdfSupportingDocument(string $documentName, string $mimeType, string $documentData): bool
     {
         $lowerName = strtolower($documentName);
@@ -1924,50 +1917,6 @@ HTML;
         return str_ends_with($lowerName, '.pdf')
             && ($lowerMimeType === '' || $lowerMimeType === 'application/pdf')
             && str_starts_with($documentData, 'data:application/pdf;base64,');
-    }
-
-    private function findAccountConflictByIdNumber(string $idNumber): ?array
-    {
-        $account = $this->connection->fetchAssociative(
-            'SELECT accounts.account_identifier,
-                    COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
-                    COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
-                    COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
-                    accounts.email_address, accounts.role_designation,
-                    COALESCE(staff_info.role, accounts.department) AS department,
-                    accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp
-             FROM accounts
-             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE accounts.id_number = :idNumber OR staff_info.employee_id_number = :idNumber
-             LIMIT 1',
-            ['idNumber' => $idNumber],
-            ['idNumber' => ParameterType::STRING]
-        );
-
-        return $account ?: null;
-    }
-
-    private function findStaffAccountConflictByPhone(string $phone): ?array
-    {
-        $account = $this->connection->fetchAssociative(
-            "SELECT accounts.account_identifier,
-                    COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
-                    COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
-                    COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
-                    accounts.email_address, accounts.role_designation,
-                    COALESCE(staff_info.role, accounts.department) AS department,
-                    COALESCE(staff_info.phone_number, accounts.contact_number) AS contact_number,
-                    accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp
-             FROM accounts
-             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE (accounts.contact_number = :phone OR staff_info.phone_number = :phone)
-               AND accounts.role_designation = 'ROLE_STAFF'
-             LIMIT 1",
-            ['phone' => $phone],
-            ['phone' => ParameterType::STRING]
-        );
-
-        return $account ?: null;
     }
 
     private function isValidStaffName(string $name): bool
@@ -2042,83 +1991,6 @@ HTML;
         return !$isApproved
             && $status === 'pending'
             && $existingIdNumber === $idNumber;
-    }
-
-    private function buildDuplicateAccountMessage(string $fieldName, array $account): string
-    {
-        $fullName = trim((string)($account['first_name'] ?? '') . ' ' . (string)($account['last_name'] ?? ''));
-        $status = $this->formatConflictStatus(
-            (string)($account['status'] ?? 'pending'),
-            $this->toDatabaseBoolean($account['is_approved'] ?? false)
-        );
-        $accountType = $this->resolveConflictAccountType($account);
-
-        return sprintf(
-            'An account with this %s already exists: %s (%s, %s, %s). Check Manage Accounts or switch Requests Hub filters.',
-            $fieldName,
-            $fullName !== '' ? $fullName : (string)($account['email_address'] ?? 'Unknown account'),
-            (string)($account['email_address'] ?? 'No email'),
-            $accountType,
-            $status
-        );
-    }
-
-    private function normalizeAccountConflict(array $account, string $matchedField): array
-    {
-        return [
-            'matchedField' => $matchedField,
-            'accountIdentifier' => (int)($account['account_identifier'] ?? 0),
-            'idNumber' => $account['id_number'] ?? null,
-            'firstName' => (string)($account['first_name'] ?? ''),
-            'lastName' => (string)($account['last_name'] ?? ''),
-            'emailAddress' => (string)($account['email_address'] ?? ''),
-            'accountType' => $this->resolveConflictAccountType($account),
-            'status' => (string)($account['status'] ?? 'pending'),
-            'isApproved' => $this->toDatabaseBoolean($account['is_approved'] ?? false),
-            'isActive' => $this->toDatabaseBoolean($account['is_active'] ?? false),
-        ];
-    }
-
-    private function resolveConflictAccountType(array $account): string
-    {
-        $roleDesignation = strtoupper((string)($account['role_designation'] ?? ''));
-        $department = strtolower((string)($account['department'] ?? ''));
-
-        if (str_contains($roleDesignation, 'ADMIN')) {
-            return 'Admin';
-        }
-
-        if (
-            str_contains($roleDesignation, 'STAFF') ||
-            str_contains($roleDesignation, 'EMPLOYEE') ||
-            str_contains($department, 'staff') ||
-            str_contains($department, 'employee') ||
-            str_contains($department, 'technical') ||
-            str_contains($department, 'maintenance')
-        ) {
-            return 'Employee';
-        }
-
-        return 'User';
-    }
-
-    private function formatConflictStatus(string $status, bool $isApproved): string
-    {
-        $normalizedStatus = strtolower($status);
-
-        if ($isApproved || $normalizedStatus === 'approved') {
-            return 'Verified';
-        }
-
-        if ($normalizedStatus === 'rejected') {
-            return 'Denied';
-        }
-
-        if ($normalizedStatus === 'invited') {
-            return 'Unverified';
-        }
-
-        return 'Unverified';
     }
 
     private function findLatestInvitationForEmail(string $emailAddress): ?array
@@ -2277,28 +2149,6 @@ HTML;
         $data = json_decode($decodedPayload, true);
 
         return is_array($data) ? $data : [];
-    }
-
-    private function isValidPersonName(string $name): bool
-    {
-        $normalizedName = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
-        preg_match_all('/[A-Za-z]/', $normalizedName, $letterMatches);
-
-        return count($letterMatches[0] ?? []) >= 2
-            && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
-    }
-
-    private function normalizePersonName(string $name): string
-    {
-        return trim(preg_replace('/\s+/', ' ', $name) ?? $name);
-    }
-
-    private function isInstitutionalAdminEmail(string $emailAddress): bool
-    {
-        $normalizedEmailAddress = strtolower(trim($emailAddress));
-
-        return str_ends_with($normalizedEmailAddress, '@fit.edu.ph')
-            || str_ends_with($normalizedEmailAddress, '@techreserve.edu.ph');
     }
 
     private function toDatabaseBoolean(mixed $value): bool
