@@ -1,6 +1,6 @@
 # TechReserve CodeScene Health Roadmap
 
-Date: 2026-05-31
+Date: 2026-06-01
 
 ## 1. Executive Summary
 
@@ -16,7 +16,15 @@ Completed health work:
 - `authenticationStore.js`: auth localStorage access moved to `authStorage.js`.
 - Logout redirect logic centralized in `logoutRedirect.js`.
 - Reservation, venue, equipment, and dashboard API token/header construction centralized in `authToken.js`.
+- Route-name strings centralized in `routeNames.js` to reduce hidden coupling between `routes.js`, auth pages, `App.vue`, and route guards.
+- Auth localStorage key usage centralized through `AUTH_STORAGE_KEYS`, including remembered login email and Clerk account cache keys.
 - `PendingUserController.php`: repeated pending-user lookup SQL replaced with explicit columns and a shared lookup helper.
+- `UserRegistrationController.php`: duplicate account conflict lookup/formatting moved to `AccountConflictLookupService`; person-name/admin-email validation moved to `AccountInputValidationService`.
+- `ManageAccounts.vue`: account normalization, formatting, sorting, validation, and permission helpers moved to `manageAccountsHelpers.js`.
+- `AuthenticationController.php` and `AccountController.php`: duplicated password-strength policy moved to `PasswordPolicyService`.
+- `AuthenticationController.php`: Clerk password lookup/update moved to `AuthenticationClerkService`; reset-code email rendering/sending moved to `PasswordResetEmailService`.
+- `UserRegistrationController.php`: branded accepted-account email construction and mail sending moved to `AccountAcceptanceEmailService`.
+- `UserRegistrationController.php`: Clerk invitation/signup provisioning moved to `AccountClerkProvisioningService`.
 
 Dashboard safety rule:
 
@@ -50,14 +58,14 @@ The most important rule for this project is: controllers and pages should coordi
 
 | File | Risk | Why Unhealthy | Recommended Fix |
 |---|---:|---|---|
-| `backend/src/Domain/Account/Controller/UserRegistrationController.php` | Critical | 2300+ lines, SQL, validation, Clerk, mail/invite, approval rules, duplicate checks in one controller | Extract registration service, invitation service, validators, repositories |
+| `backend/src/Domain/Account/Controller/UserRegistrationController.php` | Critical | Still large, but Clerk API calls, branded email content, wishlist reads, duplicate checks, and validation have started moving out | Continue extracting registration workflow, invitation persistence, and admin confirmation services |
 | `frontend/src/pages/admin/AdminWishlist.vue` | Critical | 1400+ lines after first split, still owns table UI, modal state, create flows, action orchestration | Extract modal components and `useAdminWishlist` composables |
 | `frontend/src/services/adminWishlistApi.js` | Medium | Request duplication was present; now reduced | Keep thin API facade and add tests around response parsing |
 | `backend/src/Domain/Account/Controller/AccountController.php` | High | 1200+ lines, many account operations and conditionals | Split profile, staff, account lifecycle services |
 | `frontend/src/pages/admin/ManageAccounts.vue` | High | 1100+ lines, 67 functions, many modals and workflows | Extract account table, create/update/delete modals, work logs composable |
 | `frontend/src/pages/auth/CustomSignUp.vue` | High | 1100+ lines, form UI, validation, file handling, backend calls | Extract signup form, document upload, validation composable |
 | `frontend/src/pages/auth/ClerkLogin.vue` | High | 1000 lines, custom Clerk reset/login flows and local backend auth handling | Extract Clerk password reset composable and backend login service |
-| `backend/src/Domain/Account/Controller/AuthenticationController.php` | High | Authentication controller contains token/password/reset decisions | Move reset/login business rules into auth services |
+| `backend/src/Domain/Account/Controller/AuthenticationController.php` | High | Still owns endpoint orchestration, but Clerk password API and reset email rendering are now extracted | Continue extracting local login and password reset persistence into services |
 | `frontend/src/pages/auth/SignUp.vue` | Medium | Large page, duplicated signup validation with `CustomSignUp.vue` | Share signup validation/service |
 | `backend/src/Command/CreateAdminCommand.php` | Medium | Command creates Clerk user and DB account directly | Move account creation into reusable admin account service |
 | `frontend/src/pages/auth/PostLogin.vue` | Medium | Clerk/backend linking and redirect decisions in page | Move post-login sync into auth composable/service |
@@ -81,6 +89,7 @@ The most important rule for this project is: controllers and pages should coordi
 - Auth flows have duplicated role/status/token decisions.
 - API services repeatedly build headers, parse responses, and handle errors.
 - Primitive strings such as roles, statuses, account types, and invitation states appear across files.
+- Hidden route-name and auth-storage key dependencies made unrelated route/auth files change together.
 - Some backend security rules are difficult to audit because they are embedded inside long methods.
 
 ## 6. Before and After Architecture
@@ -166,6 +175,7 @@ frontend/src/shared/api/
    - move Clerk account loading out of Pinia store
    - centralize token storage/header creation
    - keep route decisions in pure helpers
+   - keep route names and logout destinations centralized constants
 6. Refactor backend account APIs:
    - split `AccountController.php` into thin endpoints backed by services
    - move account deletion credential verification into a service
@@ -218,7 +228,10 @@ Expected impact after completed work:
 - `adminWishlistApi.js`: meaningful duplication reduction.
 - `AdminWishlist.vue`: moderate improvement from reduced size and better cohesion.
 - `accessGuard.js`: meaningful improvement from reduced branching and focused responsibility.
+- Auth/router coupling: moderate improvement from central route-name and storage-key ownership.
+- `AuthenticationController.php`: moderate improvement from removing direct Clerk HTTP and mail-template responsibilities.
 - `UserRegistrationController.php`: modest improvement so far; major improvement requires more service extraction.
+- `UserRegistrationController.php`: stronger improvement expected after Clerk provisioning and accepted-account email extraction; remaining hotspot is registration/approval orchestration.
 
 Expected impact after the next two phases:
 

@@ -3,15 +3,15 @@
 namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Authentication\Service\AuthenticationClerkService;
+use App\Domain\Authentication\Service\PasswordResetEmailService;
+use App\Domain\Authentication\Service\PasswordPolicyService;
 use App\Shared\Traits\JsonResponseTrait;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
-use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/api/v1/auth')]
 class AuthenticationController
@@ -20,19 +20,22 @@ class AuthenticationController
 
     private AccountRepository $accountRepository;
     private Connection $connection;
-    private MailerInterface $mailer;
-    private HttpClientInterface $httpClient;
+    private AuthenticationClerkService $authenticationClerkService;
+    private PasswordResetEmailService $passwordResetEmailService;
+    private PasswordPolicyService $passwordPolicyService;
 
     public function __construct(
         AccountRepository $accountRepository,
         Connection $connection,
-        MailerInterface $mailer,
-        HttpClientInterface $httpClient
+        AuthenticationClerkService $authenticationClerkService,
+        PasswordResetEmailService $passwordResetEmailService,
+        PasswordPolicyService $passwordPolicyService
     ) {
         $this->accountRepository = $accountRepository;
         $this->connection = $connection;
-        $this->mailer = $mailer;
-        $this->httpClient = $httpClient;
+        $this->authenticationClerkService = $authenticationClerkService;
+        $this->passwordResetEmailService = $passwordResetEmailService;
+        $this->passwordPolicyService = $passwordPolicyService;
     }
 
     #[Route('/login', name: 'auth_login', methods: ['POST'])]
@@ -273,7 +276,7 @@ class AuthenticationController
             return $this->createErrorResponse('AccountNotFound', 'No TechReserve account was found for this email address.', 404);
         }
 
-        $clerkUser = $this->findClerkUserByEmail($emailAddress);
+        $clerkUser = $this->authenticationClerkService->findUserByEmail($emailAddress);
         if ($clerkUser === null) {
             return $this->createErrorResponse('ClerkAccountNotFound', 'No Clerk account was found for this email address.', 422);
         }
@@ -311,16 +314,7 @@ class AuthenticationController
             ]
         );
 
-        try {
-            $recipientName = trim((string)$account['first_name'] . ' ' . (string)$account['last_name']);
-            $email = (new Email())
-                ->from($_ENV['MAILER_FROM'] ?? 'noreply@techreserve.feutech.edu.ph')
-                ->to($emailAddress)
-                ->subject('Your TechReserve password reset code')
-                ->html($this->buildPasswordResetEmailHtml($recipientName !== '' ? $recipientName : $emailAddress, $code));
-
-            $this->mailer->send($email);
-        } catch (\Throwable $exception) {
+        if (!$this->passwordResetEmailService->sendResetCode($account, $emailAddress, $code)) {
             return $this->createErrorResponse('EmailSendFailed', 'Unable to send the reset code email. Please check the mailer configuration.', 503);
         }
 
@@ -346,7 +340,7 @@ class AuthenticationController
             return $this->createErrorResponse('ValidationError', 'New password and confirmation password do not match.', 422);
         }
 
-        if (!$this->isStrongPassword($newPassword)) {
+        if (!$this->passwordPolicyService->isStrongPassword($newPassword)) {
             return $this->createErrorResponse('ValidationError', 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.', 422);
         }
 
@@ -378,7 +372,7 @@ class AuthenticationController
         }
 
         $clerkUserId = (string)$reset['clerk_user_id'];
-        if (!$this->updateClerkPassword($clerkUserId, $newPassword)) {
+        if (!$this->authenticationClerkService->updatePassword($clerkUserId, $newPassword)) {
             return $this->createErrorResponse('ClerkPasswordUpdateFailed', 'Unable to update the Clerk password for this account.', 502);
         }
 
@@ -578,90 +572,4 @@ class AuthenticationController
         return in_array($normalized, ['1', 'true', 't', 'yes', 'y'], true);
     }
 
-    private function findClerkUserByEmail(string $emailAddress): ?array
-    {
-        $secretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
-        if ($secretKey === '') {
-            return null;
-        }
-
-        try {
-            $response = $this->httpClient->request('GET', ($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com') . '/v1/users', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $secretKey,
-                    'Accept' => 'application/json',
-                ],
-                'query' => [
-                    'email_address' => $emailAddress,
-                ],
-            ]);
-
-            if ($response->getStatusCode() >= 400) {
-                return null;
-            }
-
-            $data = $response->toArray(false);
-            if (isset($data['id'])) {
-                return $data;
-            }
-
-            if (isset($data[0]['id'])) {
-                return $data[0];
-            }
-
-            if (isset($data['data'][0]['id'])) {
-                return $data['data'][0];
-            }
-        } catch (\Throwable $exception) {
-            return null;
-        }
-
-        return null;
-    }
-
-    private function updateClerkPassword(string $clerkUserId, string $newPassword): bool
-    {
-        $secretKey = trim((string)($_ENV['CLERK_SECRET_KEY'] ?? ''));
-        if ($secretKey === '') {
-            return false;
-        }
-
-        try {
-            $response = $this->httpClient->request('PATCH', ($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com') . '/v1/users/' . rawurlencode($clerkUserId), [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $secretKey,
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'password' => $newPassword,
-                ],
-            ]);
-
-            return $response->getStatusCode() < 400;
-        } catch (\Throwable $exception) {
-            return false;
-        }
-    }
-
-    private function isStrongPassword(string $password): bool
-    {
-        return preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/', $password) === 1;
-    }
-
-    private function buildPasswordResetEmailHtml(string $recipientName, string $code): string
-    {
-        return sprintf(
-            '<div style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5;">
-                <h2 style="color:#007a4d;">TechReserve Password Reset</h2>
-                <p>Hello %s,</p>
-                <p>Use this code to reset your TechReserve password:</p>
-                <p style="font-size:28px;font-weight:800;letter-spacing:4px;color:#111827;">%s</p>
-                <p>This code expires in 15 minutes.</p>
-                <p>If you did not request this, you can ignore this email.</p>
-            </div>',
-            htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8'),
-            htmlspecialchars($code, ENT_QUOTES, 'UTF-8')
-        );
-    }
 }

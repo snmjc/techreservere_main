@@ -2,6 +2,7 @@ export const AUTH_STORAGE_KEYS = Object.freeze({
   token: 'techreserve_auth_token',
   account: 'techreserve_auth_account',
   clerkAccount: 'techreserve_clerk_account',
+  rememberedLoginEmail: 'techreserve_remembered_login_email',
 });
 
 export function readStoredToken() {

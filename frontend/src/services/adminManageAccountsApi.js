@@ -1,10 +1,10 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-const AUTH_ACCOUNT_STORAGE_KEY = 'techreserve_auth_account';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 
 function createLocalBackendToken() {
   try {
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_ACCOUNT_STORAGE_KEY);
+    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
     if (!accountString && !isLocalDev) return null;
 
     const account = accountString ? JSON.parse(accountString) : {};

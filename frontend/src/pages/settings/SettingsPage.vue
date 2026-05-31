@@ -214,6 +214,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 
 const authStore = useAuthenticationStore();
 
@@ -560,14 +561,14 @@ function syncAuthAccount(account) {
   };
 
   authStore.accountData = nextAccount;
-  localStorage.setItem('techreserve_auth_account', JSON.stringify(nextAccount));
+  localStorage.setItem(AUTH_STORAGE_KEYS.account, JSON.stringify(nextAccount));
 
   if (authStore.clerkAccountData) {
     authStore.clerkAccountData = {
       ...authStore.clerkAccountData,
       ...account,
     };
-    localStorage.setItem('techreserve_clerk_account', JSON.stringify(authStore.clerkAccountData));
+    localStorage.setItem(AUTH_STORAGE_KEYS.clerkAccount, JSON.stringify(authStore.clerkAccountData));
   }
 }
 </script>

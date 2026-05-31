@@ -153,6 +153,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSignUp, useAuth } from '@clerk/vue';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const { signUp, isLoaded } = useSignUp();
@@ -229,7 +230,7 @@ async function handleRegister() {
     } else if (result.status === 'complete') {
       await saveToPostgres(result.createdUserId);
       await signOut.value();
-      router.push({ name: 'clerkLoginPage' });
+      router.push({ name: ROUTE_NAMES.clerkLogin });
     }
   } catch (err) {
     errorMessage.value = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Registration failed. Please try again.';
@@ -247,7 +248,7 @@ async function handleVerification() {
     if (result.status === 'complete') {
       await saveToPostgres(result.createdUserId);
       await signOut.value();
-      router.push({ name: 'clerkLoginPage' });
+      router.push({ name: ROUTE_NAMES.clerkLogin });
     }
   } catch (err) {
     errorMessage.value = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid code. Please try again.';
@@ -295,7 +296,7 @@ async function saveToPostgres(clerkUserId) {
 }
 
 function navigateToLogin() {
-  router.push({ name: 'clerkLoginPage' });
+  router.push({ name: ROUTE_NAMES.clerkLogin });
 }
 </script>
 

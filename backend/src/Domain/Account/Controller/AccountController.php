@@ -4,7 +4,10 @@ namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\DTO\AccountUpdateRequestDTO;
 use App\Domain\Account\Service\AccountProfileService;
+use App\Domain\Account\Service\AccountSettingsValidationService;
 use App\Domain\Account\Service\AccountUpdateService;
+use App\Domain\Authentication\Service\AuthenticationClerkService;
+use App\Domain\Authentication\Service\PasswordPolicyService;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
@@ -14,7 +17,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/api/v1/accounts')]
 class AccountController extends AbstractController
@@ -22,20 +24,26 @@ class AccountController extends AbstractController
     use JsonResponseTrait;
 
     private AccountProfileService $accountProfileService;
+    private AccountSettingsValidationService $accountSettingsValidationService;
     private AccountUpdateService $accountUpdateService;
+    private AuthenticationClerkService $authenticationClerkService;
     private Connection $connection;
-    private HttpClientInterface $httpClient;
+    private PasswordPolicyService $passwordPolicyService;
 
     public function __construct(
         AccountProfileService $accountProfileService,
+        AccountSettingsValidationService $accountSettingsValidationService,
         AccountUpdateService $accountUpdateService,
+        AuthenticationClerkService $authenticationClerkService,
         Connection $connection,
-        HttpClientInterface $httpClient
+        PasswordPolicyService $passwordPolicyService
     ) {
         $this->accountProfileService = $accountProfileService;
+        $this->accountSettingsValidationService = $accountSettingsValidationService;
         $this->accountUpdateService = $accountUpdateService;
+        $this->authenticationClerkService = $authenticationClerkService;
         $this->connection = $connection;
-        $this->httpClient = $httpClient;
+        $this->passwordPolicyService = $passwordPolicyService;
     }
 
     #[Route('/me', name: 'account_get_my_profile', methods: ['GET'])]
@@ -86,8 +94,8 @@ class AccountController extends AbstractController
             return $this->createErrorResponse('ValidationError', 'Invalid request body.', 422);
         }
 
-        $lastName = $this->normalizePersonName((string)($requestBody['lastName'] ?? ''));
-        $firstName = $this->normalizePersonName((string)($requestBody['firstName'] ?? ''));
+        $lastName = $this->accountSettingsValidationService->normalizePersonName((string)($requestBody['lastName'] ?? ''));
+        $firstName = $this->accountSettingsValidationService->normalizePersonName((string)($requestBody['firstName'] ?? ''));
         $contactNumber = preg_replace('/\D+/', '', (string)($requestBody['contactNumber'] ?? '')) ?? '';
         if (str_starts_with($contactNumber, '09')) {
             $contactNumber = substr($contactNumber, 1);
@@ -96,7 +104,7 @@ class AccountController extends AbstractController
             ? trim((string)$requestBody['profilePhotoData'])
             : null;
 
-        $validationError = $this->validateEditableAccountSettings($firstName, $lastName, $contactNumber, $profilePhotoData);
+        $validationError = $this->accountSettingsValidationService->validateEditableAccountSettings($firstName, $lastName, $contactNumber, $profilePhotoData);
         if ($validationError !== null) {
             return $this->createErrorResponse('ValidationError', $validationError, 422);
         }
@@ -159,7 +167,7 @@ class AccountController extends AbstractController
             return $this->createErrorResponse('ValidationError', 'New password and confirmation password do not match.', 422);
         }
 
-        if (!$this->isStrongPassword($newPassword)) {
+        if (!$this->passwordPolicyService->isStrongPassword($newPassword)) {
             return $this->createErrorResponse('ValidationError', 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.', 422);
         }
 
@@ -217,7 +225,7 @@ class AccountController extends AbstractController
 
         $newPassword = (string)($requestBody['newPassword'] ?? '');
 
-        if (!$this->isStrongPassword($newPassword)) {
+        if (!$this->passwordPolicyService->isStrongPassword($newPassword)) {
             return $this->createErrorResponse('ValidationError', 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.', 422);
         }
 
@@ -411,8 +419,8 @@ class AccountController extends AbstractController
             );
         }
 
-        $lastName = $this->normalizePersonName((string)($requestBody['lastName'] ?? ''));
-        $firstName = $this->normalizePersonName((string)($requestBody['firstName'] ?? ''));
+        $lastName = $this->accountSettingsValidationService->normalizePersonName((string)($requestBody['lastName'] ?? ''));
+        $firstName = $this->accountSettingsValidationService->normalizePersonName((string)($requestBody['firstName'] ?? ''));
         $contactNumber = preg_replace('/\D+/', '', (string)($requestBody['contactNumber'] ?? '')) ?? '';
         if (str_starts_with($contactNumber, '09')) {
             $contactNumber = substr($contactNumber, 1);
@@ -422,7 +430,7 @@ class AccountController extends AbstractController
             ? trim((string)$requestBody['profilePhotoData'])
             : null;
 
-        $validationError = $this->validateEditableAccountSettings($firstName, $lastName, $contactNumber, $profilePhotoData, $profilePhotoName);
+        $validationError = $this->accountSettingsValidationService->validateEditableAccountSettings($firstName, $lastName, $contactNumber, $profilePhotoData, $profilePhotoName);
         if ($validationError !== null) {
             return $this->createErrorResponse('ValidationError', $validationError, 422);
         }
@@ -601,7 +609,7 @@ class AccountController extends AbstractController
             $this->connection->commit();
 
             if ($clerkUserId !== '') {
-                $this->deleteClerkUser($clerkUserId);
+                $this->authenticationClerkService->deleteUser($clerkUserId);
             }
         } catch (\Throwable $exception) {
             $this->connection->rollBack();
@@ -911,11 +919,6 @@ class AccountController extends AbstractController
         return mb_strlen($value) >= 2 && preg_match('/^[A-Za-z]+(?: [A-Za-z]+)*$/', $value) === 1;
     }
 
-    private function isStrongPassword(string $password): bool
-    {
-        return preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/', $password) === 1;
-    }
-
     private function isValidJpegDataUrl(string $profilePhotoData): bool
     {
         if (preg_match('/^data:image\/jpeg;base64,([A-Za-z0-9+\/=\r\n]+)$/', $profilePhotoData, $matches) !== 1) {
@@ -934,7 +937,7 @@ class AccountController extends AbstractController
 
     private function validateResponsibleAdminEmail(Request $request, string $confirmedAdminEmail, string $actionName): ?JsonResponse
     {
-        $normalizedConfirmedAdminEmail = $this->normalizeEmailForConfirmation($confirmedAdminEmail);
+        $normalizedConfirmedAdminEmail = $this->accountSettingsValidationService->normalizeEmailForConfirmation($confirmedAdminEmail);
         $authenticatedAdminId = $this->resolveAuthenticatedAccountIdentifier($request);
 
         if ($normalizedConfirmedAdminEmail === '' || $authenticatedAdminId <= 0) {
@@ -956,7 +959,7 @@ class AccountController extends AbstractController
             ['accountIdentifier' => ParameterType::INTEGER]
         );
 
-        $responsibleAdminEmail = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
+        $responsibleAdminEmail = $this->accountSettingsValidationService->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
         if (!$confirmedAdmin || $normalizedConfirmedAdminEmail !== $responsibleAdminEmail) {
             return $this->createErrorResponse(
                 'SecurityConfirmationFailed',
@@ -970,7 +973,7 @@ class AccountController extends AbstractController
 
     private function validateResponsibleAdminCredentials(int $authenticatedAdminId, string $confirmedAdminEmail, string $confirmedAdminPassword, string $actionName): ?JsonResponse
     {
-        $normalizedConfirmedAdminEmail = $this->normalizeEmailForConfirmation($confirmedAdminEmail);
+        $normalizedConfirmedAdminEmail = $this->accountSettingsValidationService->normalizeEmailForConfirmation($confirmedAdminEmail);
 
         if ($normalizedConfirmedAdminEmail === '' || $authenticatedAdminId <= 0) {
             return $this->createErrorResponse(
@@ -999,7 +1002,7 @@ class AccountController extends AbstractController
             ['accountIdentifier' => ParameterType::INTEGER]
         );
 
-        $responsibleAdminEmail = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
+        $responsibleAdminEmail = $this->accountSettingsValidationService->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
         if (!$confirmedAdmin || $normalizedConfirmedAdminEmail !== $responsibleAdminEmail) {
             return $this->createErrorResponse(
                 'SecurityConfirmationFailed',

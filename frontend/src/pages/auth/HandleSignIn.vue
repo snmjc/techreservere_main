@@ -22,6 +22,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth, useUser } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const { getToken } = useAuth();
@@ -79,18 +80,18 @@ async function processSignIn() {
     console.log('[HandleSignIn] Account status:', accountStatus, 'Role:', userRole);
 
     if (accountStatus === 'pending') {
-      console.log('[HandleSignIn] Redirecting to requestPendingPage');
-      router.push({ name: 'requestPendingPage' });
+      console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.requestPending);
+      router.push({ name: ROUTE_NAMES.requestPending });
     } else if (accountStatus === 'approved') {
       if (userRole === 'ROLE_ADMIN') {
-        console.log('[HandleSignIn] Redirecting to adminDashboardPage');
-        router.push({ name: 'adminDashboardPage' });
+        console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.adminDashboard);
+        router.push({ name: ROUTE_NAMES.adminDashboard });
       } else if (userRole === 'ROLE_FACULTY') {
-        console.log('[HandleSignIn] Redirecting to facultyDashboardPage');
-        router.push({ name: 'facultyDashboardPage' });
+        console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.facultyDashboard);
+        router.push({ name: ROUTE_NAMES.facultyDashboard });
       } else {
-        console.log('[HandleSignIn] Redirecting to borrowerMyReservationsPage');
-        router.push({ name: 'borrowerMyReservationsPage' });
+        console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.borrowerMyReservations);
+        router.push({ name: ROUTE_NAMES.borrowerMyReservations });
       }
     } else {
       state.value = 'error';

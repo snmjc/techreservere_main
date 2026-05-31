@@ -12,6 +12,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import { getClerkToken, signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { resolveRole } from '@/modules/authentication/utils/roleUtils.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const { isLoaded, isSignedIn, user } = useUser();
@@ -84,7 +85,7 @@ async function routeAfterLogin() {
   if (!backendAccount) {
     authStore.performLogout();
     await signOutClerk(signOut);
-    router.replace({ name: 'clerkLoginPage' });
+    router.replace({ name: ROUTE_NAMES.clerkLogin });
     return;
   }
   const backendStatus = resolveBackendAccountStatus(backendAccount);
@@ -103,7 +104,7 @@ async function routeAfterLogin() {
       isActive: false,
       authProvider: 'clerk',
     });
-    router.replace({ name: 'accountDeactivatedPage' });
+    router.replace({ name: ROUTE_NAMES.accountDeactivated });
     return;
   }
 
@@ -123,11 +124,11 @@ async function routeAfterLogin() {
   });
 
   if (authStore.clerkAccountStatus === 'pending') {
-    router.replace({ name: 'requestPendingPage' });
+    router.replace({ name: ROUTE_NAMES.requestPending });
   } else if (authStore.userRole === 'ROLE_ADMIN') {
-    router.replace({ name: 'adminDashboardPage' });
+    router.replace({ name: ROUTE_NAMES.adminDashboard });
   } else {
-    router.replace({ name: 'borrowerMyReservationsPage' });
+    router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
   }
 }
 
@@ -138,7 +139,7 @@ watch([isLoaded, isSignedIn, user], async ([loaded, signedIn, clerkUser]) => {
     if (authStore.accountData?.authProvider === 'clerk') {
       authStore.performLogout();
     }
-    router.replace({ name: 'clerkLoginPage' });
+    router.replace({ name: ROUTE_NAMES.clerkLogin });
     return;
   }
 

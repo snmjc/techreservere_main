@@ -81,7 +81,7 @@
 
             <p class="techreserve-local-login-signup">
               Don't have an account?
-              <router-link :to="{ name: 'customSignUpPage' }">Sign up</router-link>
+              <router-link :to="{ name: ROUTE_NAMES.customSignUp }">Sign up</router-link>
             </p>
           </form>
 
@@ -161,7 +161,9 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const authStore = useAuthenticationStore();
@@ -183,7 +185,7 @@ const resetPasswordMessage = ref('');
 const resetSignIn = ref(null);
 
 onMounted(() => {
-  const rememberedEmail = localStorage.getItem('techreserve_remembered_login_email');
+  const rememberedEmail = localStorage.getItem(AUTH_STORAGE_KEYS.rememberedLoginEmail);
   if (rememberedEmail) {
     emailAddress.value = rememberedEmail;
     rememberMeChecked.value = true;
@@ -205,7 +207,7 @@ async function handleLocalLogin() {
 
     if (error?.errorType === 'AccountDisabled') {
       authStore.performLogout();
-      router.replace({ name: 'accountDeactivatedPage' });
+      router.replace({ name: ROUTE_NAMES.accountDeactivated });
       return;
     }
 
@@ -243,7 +245,7 @@ async function handleClerkPasswordLogin() {
 
     rememberLoginEmailPreference();
     await clerk.setActive({ session: clerkSignIn.createdSessionId });
-    router.replace({ name: 'postLoginPage' });
+    router.replace({ name: ROUTE_NAMES.postLogin });
   } catch (error) {
     loginError.value = resolveClerkErrorMessage(error);
   }
@@ -303,18 +305,18 @@ function routeAfterBackendLogin(account) {
   rememberLoginEmailPreference();
 
   if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
-    router.replace({ name: 'adminDashboardPage' });
+    router.replace({ name: ROUTE_NAMES.adminDashboard });
     return;
   }
 
-  router.replace({ name: 'borrowerMyReservationsPage' });
+  router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
 }
 
 function rememberLoginEmailPreference() {
   if (rememberMeChecked.value) {
-    localStorage.setItem('techreserve_remembered_login_email', emailAddress.value);
+    localStorage.setItem(AUTH_STORAGE_KEYS.rememberedLoginEmail, emailAddress.value);
   } else {
-    localStorage.removeItem('techreserve_remembered_login_email');
+    localStorage.removeItem(AUTH_STORAGE_KEYS.rememberedLoginEmail);
   }
 }
 
@@ -458,7 +460,7 @@ async function submitResetPassword() {
 
     await clerk.setActive({ session: result.createdSessionId });
     await syncPostgresPasswordFromClerk(resetPasswordText.value);
-    router.replace({ name: 'postLoginPage' });
+    router.replace({ name: ROUTE_NAMES.postLogin });
   } catch (error) {
     resetPasswordError.value = resolveClerkErrorMessage(error);
   }

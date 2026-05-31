@@ -207,8 +207,8 @@ import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 
-const AUTH_ACCOUNT_STORAGE_KEY = 'techreserve_auth_account';
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
@@ -441,7 +441,7 @@ function buildHeaders(includeJson = false) {
 function createLocalBackendToken() {
   try {
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_ACCOUNT_STORAGE_KEY);
+    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
     if (!accountString && !isLocalDev) return null;
     const account = accountString ? JSON.parse(accountString) : {};
     return btoa(JSON.stringify({

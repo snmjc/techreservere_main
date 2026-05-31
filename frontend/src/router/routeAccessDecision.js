@@ -1,4 +1,6 @@
-const AUTH_PAGE_NAMES = ['loginPage', 'signUpPage'];
+import { ROUTE_NAMES } from '@/router/routeNames.js';
+
+const AUTH_PAGE_NAMES = [ROUTE_NAMES.login, ROUTE_NAMES.signUp];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
@@ -14,13 +16,13 @@ export function resolveAccountStatus(authStore) {
 
 export function getDashboardRouteForRole(userRole) {
   return userRole === 'ROLE_ADMIN'
-    ? { name: 'adminDashboardPage' }
-    : { name: 'borrowerMyReservationsPage' };
+    ? { name: ROUTE_NAMES.adminDashboard }
+    : { name: ROUTE_NAMES.borrowerMyReservations };
 }
 
 export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {
-  if (accountStatus === 'disabled' && toRoute.name !== 'accountDeactivatedPage') {
-    return { name: 'accountDeactivatedPage' };
+  if (accountStatus === 'disabled' && toRoute.name !== ROUTE_NAMES.accountDeactivated) {
+    return { name: ROUTE_NAMES.accountDeactivated };
   }
 
   if (AUTH_PAGE_NAMES.includes(toRoute.name) && isSignedIn && accountStatus === 'approved') {
@@ -31,22 +33,22 @@ export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, 
 }
 
 export function evaluateProtectedRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {
-  if (!isSignedIn && toRoute.name !== 'handleSignInPage') {
-    return { name: 'clerkLoginPage' };
+  if (!isSignedIn && toRoute.name !== ROUTE_NAMES.handleSignIn) {
+    return { name: ROUTE_NAMES.clerkLogin };
   }
 
   if (accountStatus === 'pending') {
-    return toRoute.name === 'requestPendingPage'
+    return toRoute.name === ROUTE_NAMES.requestPending
       ? true
-      : { name: 'requestPendingPage' };
+      : { name: ROUTE_NAMES.requestPending };
   }
 
   if (accountStatus === 'disabled') {
-    return { name: 'accountDeactivatedPage' };
+    return { name: ROUTE_NAMES.accountDeactivated };
   }
 
   if (accountStatus === 'rejected') {
-    return { name: 'clerkLoginPage' };
+    return { name: ROUTE_NAMES.clerkLogin };
   }
 
   const allowedRoles = toRoute.meta?.allowedRoles ?? null;

@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUser } from '@clerk/vue'
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js'
+import { ROUTE_NAMES } from '@/router/routeNames.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,19 +22,19 @@ watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
     }
 
     if (route.meta?.requiresAuth) {
-      router.replace({ name: 'clerkLoginPage' })
+      router.replace({ name: ROUTE_NAMES.clerkLogin })
     }
     return
   }
 
   if (authStore.isAuthenticated) return
 
-  if (route.name === 'clerkLoginPage') return
+  if (route.name === ROUTE_NAMES.clerkLogin) return
 
   // Signed-in Clerk users must pass through PostLogin so the User Accounts DB
   // remains the source of truth for role, status, and dashboard destination.
-  if (route.name !== 'postLoginPage') {
-    router.replace({ name: 'postLoginPage' })
+  if (route.name !== ROUTE_NAMES.postLogin) {
+    router.replace({ name: ROUTE_NAMES.postLogin })
   }
 }, { immediate: true })
 </script>

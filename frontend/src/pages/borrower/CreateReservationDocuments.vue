@@ -166,6 +166,7 @@ import './css/CreateReservationDocuments.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
@@ -249,7 +250,7 @@ async function handleSubmitReservationRequest() {
       recommendationDocumentsList.value = [];
       
       // Navigate to borrower My Reservations which will automatically load fresh data
-      router.push({ name: 'borrowerMyReservationsPage' });
+      router.push({ name: ROUTE_NAMES.borrowerMyReservations });
     }
   } catch (error) {
     submissionError.value = error.message || 'Failed to submit reservation. Please try again.';

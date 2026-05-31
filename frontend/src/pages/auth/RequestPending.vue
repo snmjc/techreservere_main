@@ -102,6 +102,7 @@ import { useUser, useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const { user, isSignedIn } = useUser();
@@ -120,7 +121,7 @@ const userName = computed(() => {
 
 onMounted(() => {
   if (!isSignedIn.value && !authStore.accountData) {
-    router.push({ name: 'clerkLoginPage' });
+    router.push({ name: ROUTE_NAMES.clerkLogin });
   }
 });
 
@@ -152,9 +153,9 @@ async function checkApprovalStatus() {
 
     if (status === 'approved' || account.isApproved === true) {
       if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
-        router.push({ name: 'adminDashboardPage' });
+        router.push({ name: ROUTE_NAMES.adminDashboard });
       } else {
-        router.push({ name: 'borrowerMyReservationsPage' });
+        router.push({ name: ROUTE_NAMES.borrowerMyReservations });
       }
       return;
     }
