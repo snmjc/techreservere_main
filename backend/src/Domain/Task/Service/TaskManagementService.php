@@ -24,61 +24,27 @@ class TaskManagementService
         $this->taskValidationService = $taskValidationService;
     }
 
-    // ===== AI GENERATED: createTask =====
-    // Purpose: Create a new task linked to a reservation
-    // Inputs: task fields
-    // Returns: TaskResponseDTO
-
     public function createTask(TaskMutationRequestDTO $request): TaskResponseDTO
     {
-        $this->taskValidationService->validateMutation($request);
-
-        $entity = new TaskEntity();
-        $this->applyMutation($entity, $request);
-
-        $this->taskRepository->persistTask($entity);
-        return $this->taskResponseMapperService->transformEntityToDTO($entity);
+        return $this->saveMutation(new TaskEntity(), $request);
     }
 
     public function updateTask(int $taskIdentifier, TaskMutationRequestDTO $request): TaskResponseDTO
     {
-        $entity = $this->taskRepository->find($taskIdentifier);
-        if ($entity === null) {
-            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
-        }
-
-        $this->taskValidationService->validateMutation($request);
-        $this->applyMutation($entity, $request);
-
-        $this->taskRepository->persistTask($entity);
-        return $this->taskResponseMapperService->transformEntityToDTO($entity);
+        return $this->saveMutation($this->findTaskOrFail($taskIdentifier), $request);
     }
 
     public function deleteTask(int $taskIdentifier): void
     {
-        $entity = $this->taskRepository->find($taskIdentifier);
-        if ($entity === null) {
-            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
-        }
-
-        $this->taskRepository->deleteTask($entity);
+        $this->taskRepository->deleteTask($this->findTaskOrFail($taskIdentifier));
     }
-
-    // ===== AI GENERATED: updateTaskStatus =====
-    // Purpose: Update task status
-    // Inputs: taskIdentifier (int), newStatus (string)
-    // Returns: TaskResponseDTO
 
     public function updateTaskStatus(int $taskIdentifier, string $newStatus): TaskResponseDTO
     {
-        $entity = $this->taskRepository->find($taskIdentifier);
-        if ($entity === null) {
-            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
-        }
-
+        $entity = $this->findTaskOrFail($taskIdentifier);
         $this->taskValidationService->validateStatus($newStatus);
-
         $entity->setTaskStatus($newStatus);
+
         $this->taskRepository->persistTask($entity);
         return $this->taskResponseMapperService->transformEntityToDTO($entity);
     }
@@ -106,5 +72,24 @@ class TaskManagementService
         $entity->setReservationIdentifier($request->reservationIdentifier);
         $entity->setAssignedToAccountId($request->assignedToAccountId);
         $entity->setDueDateTimestamp($this->taskValidationService->parseDueDate($request->dueDateTimestamp));
+    }
+
+    private function saveMutation(TaskEntity $entity, TaskMutationRequestDTO $request): TaskResponseDTO
+    {
+        $this->taskValidationService->validateMutation($request);
+        $this->applyMutation($entity, $request);
+
+        $this->taskRepository->persistTask($entity);
+        return $this->taskResponseMapperService->transformEntityToDTO($entity);
+    }
+
+    private function findTaskOrFail(int $taskIdentifier): TaskEntity
+    {
+        $entity = $this->taskRepository->find($taskIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
+        }
+
+        return $entity;
     }
 }

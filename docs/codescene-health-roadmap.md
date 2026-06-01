@@ -240,6 +240,7 @@ Expected impact after completed work:
 - Missed-goal follow-up: `AccountController.php` now delegates account reads, staff writes, admin security confirmation, account deletion, and authenticated account resolution to focused services.
 - Missed-goal follow-up: `ClerkTokenVerifier.php` now delegates local token resolution, Clerk token resolution, JWT decoding, primary email lookup, and account identity building to small infrastructure services.
 - Task module: moderate improvement from removing repeated primitive arguments, inline task reads/mapping, and history-log persistence from controller/service hotspots.
+- Task module follow-up: `TaskController.php` now delegates task CRUD orchestration, emergency override checks, admin confirmation, linked-record validation, and response shaping to `TaskWorkflowService`; `TaskManagementService.php` now shares one mutation persistence path for create/update.
 - `UserRegistrationController.php`: major improvement from extracting Clerk registration, public signup requests, wishlist user/staff creation, and wishlist approval orchestration into focused services. The controller is now a route/response layer instead of the owner of those workflows.
 - Auth Vue hotspots: meaningful improvement from moving `ClerkLogin.vue`, `CustomSignUp.vue`, `PostLogin.vue`, `SignUp.vue`, and `SettingsPage.vue` script logic into composables while preserving templates and styling.
 
