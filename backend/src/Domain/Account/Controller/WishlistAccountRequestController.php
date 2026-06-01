@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Domain\Account\Controller;
+
+use App\Domain\Account\Service\UserRegistrationWorkflowService;
+use App\Shared\Traits\RequestPayloadTrait;
+use App\Shared\Traits\ServiceResultResponseTrait;
+use App\Shared\Utils\RequiresRoles;
+use App\Shared\Utils\RoleConstants;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/api/v1/users')]
+#[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+class WishlistAccountRequestController
+{
+    use RequestPayloadTrait;
+    use ServiceResultResponseTrait;
+
+    public function __construct(private readonly UserRegistrationWorkflowService $workflowService)
+    {
+    }
+
+    #[Route('/wishlist', name: 'list_wishlist_users', methods: ['GET'])]
+    public function listWishlistUsers(): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->listWishlistUsers(),
+            'WishlistUsersFailed',
+            'Unable to load wishlist users.'
+        );
+    }
+
+    #[Route('/wishlist/admin-accounts', name: 'create_wishlist_admin_account', methods: ['POST'])]
+    public function createWishlistAdminAccount(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->createWishlistAdminAccount($this->jsonBody($request)),
+            'CreateAdminAccountFailed',
+            'Failed to create admin account.'
+        );
+    }
+
+    #[Route('/wishlist/user-accounts', name: 'create_wishlist_user_account', methods: ['POST'])]
+    public function createWishlistUserAccount(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->createWishlistUserAccount($this->jsonBody($request)),
+            'CreateUserAccountFailed',
+            'Failed to create user account.'
+        );
+    }
+
+    #[Route('/wishlist/employee-accounts', name: 'create_wishlist_employee_account', methods: ['POST'])]
+    public function createWishlistEmployeeAccount(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->createWishlistEmployeeAccount($this->jsonBody($request)),
+            'CreateEmployeeAccountFailed',
+            'Failed to create employee account.'
+        );
+    }
+
+    #[Route('/{accountIdentifier}/approve', name: 'approve_user', methods: ['POST'])]
+    public function approveUser(Request $request, int $accountIdentifier): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->approveUser(
+                $accountIdentifier,
+                $this->jsonBody($request),
+                $request->attributes->get('authenticatedIdentity', []),
+                $request->headers->get('Authorization', '')
+            ),
+            'ApproveAccountFailed',
+            'Unable to send the invitation.'
+        );
+    }
+
+    #[Route('/{accountIdentifier}/reject', name: 'reject_user', methods: ['POST'])]
+    public function rejectUser(int $accountIdentifier, Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->rejectUser($accountIdentifier, $this->jsonBody($request)),
+            'RejectUserFailed',
+            'Unable to reject this request.'
+        );
+    }
+
+    #[Route('/{accountIdentifier}/delete-request', name: 'delete_wishlist_account_request', methods: ['DELETE'])]
+    public function deleteWishlistAccountRequest(int $accountIdentifier, Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->deleteWishlistAccountRequest(
+                $accountIdentifier,
+                $this->jsonBody($request),
+                $request->attributes->get('authenticatedIdentity', []),
+                $request->headers->get('Authorization', '')
+            ),
+            'DeleteAccountRequestFailed',
+            'Unable to delete account request.'
+        );
+    }
+}
