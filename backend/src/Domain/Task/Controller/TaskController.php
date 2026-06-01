@@ -2,7 +2,11 @@
 
 namespace App\Domain\Task\Controller;
 
+use App\Domain\Task\DTO\TaskMutationRequestDTO;
+use App\Domain\Task\Service\TaskHistoryLogService;
+use App\Domain\Task\Service\TaskLinkedRecordValidator;
 use App\Domain\Task\Service\TaskManagementService;
+use App\Domain\Task\Service\TaskReadService;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
@@ -21,11 +25,22 @@ class TaskController extends AbstractController
     use JsonResponseTrait;
 
     private TaskManagementService $taskManagementService;
+    private TaskReadService $taskReadService;
+    private TaskHistoryLogService $taskHistoryLogService;
+    private TaskLinkedRecordValidator $taskLinkedRecordValidator;
     private Connection $connection;
 
-    public function __construct(TaskManagementService $taskManagementService, Connection $connection)
-    {
+    public function __construct(
+        TaskManagementService $taskManagementService,
+        TaskReadService $taskReadService,
+        TaskHistoryLogService $taskHistoryLogService,
+        TaskLinkedRecordValidator $taskLinkedRecordValidator,
+        Connection $connection
+    ) {
         $this->taskManagementService = $taskManagementService;
+        $this->taskReadService = $taskReadService;
+        $this->taskHistoryLogService = $taskHistoryLogService;
+        $this->taskLinkedRecordValidator = $taskLinkedRecordValidator;
         $this->connection = $connection;
     }
 
@@ -33,7 +48,7 @@ class TaskController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function listTasks(): JsonResponse
     {
-        return $this->createSuccessResponse(['tasks' => $this->fetchTaskRows()]);
+        return $this->createSuccessResponse(['tasks' => $this->taskReadService->fetchTaskRows()]);
     }
 
     #[Route('', name: 'task_create', methods: ['POST'])]
@@ -54,21 +69,13 @@ class TaskController extends AbstractController
         try {
             $reservationIdentifier = $this->normalizeNullableInt($body['reservationIdentifier'] ?? null);
             $assignedToAccountId = $this->normalizeNullableInt($body['assignedToAccountId'] ?? null);
-            $this->validateLinkedRecords($reservationIdentifier, $assignedToAccountId);
+            $this->taskLinkedRecordValidator->validateLinkedRecords($reservationIdentifier, $assignedToAccountId);
 
-            $dto = $this->taskManagementService->createTask(
-                taskTitle: $body['taskTitle'] ?? '',
-                taskDescription: $body['taskDescription'] ?? null,
-                taskType: $body['taskType'] ?? '',
-                taskStatus: $body['taskStatus'] ?? 'Pending',
-                reservationIdentifier: $reservationIdentifier,
-                assignedToAccountId: $assignedToAccountId,
-                dueDateTimestamp: $this->normalizeNullableString($body['dueDateTimestamp'] ?? null)
-            );
-            $this->syncHistoryLog($dto->taskIdentifier, $reservationIdentifier, $assignedToAccountId);
+            $dto = $this->taskManagementService->createTask($this->buildTaskMutationRequest($body, $reservationIdentifier, $assignedToAccountId));
+            $this->taskHistoryLogService->syncHistoryLog($dto->taskIdentifier, $reservationIdentifier, $assignedToAccountId);
 
             return $this->createSuccessResponse([
-                'task' => $this->fetchTaskById($dto->taskIdentifier),
+                'task' => $this->taskReadService->fetchTaskById($dto->taskIdentifier),
             ], 201);
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('TaskValidationFailed', $exception->getMessage(), 422);
@@ -93,22 +100,13 @@ class TaskController extends AbstractController
         try {
             $reservationIdentifier = $this->normalizeNullableInt($body['reservationIdentifier'] ?? null);
             $assignedToAccountId = $this->normalizeNullableInt($body['assignedToAccountId'] ?? null);
-            $this->validateLinkedRecords($reservationIdentifier, $assignedToAccountId);
+            $this->taskLinkedRecordValidator->validateLinkedRecords($reservationIdentifier, $assignedToAccountId);
 
-            $dto = $this->taskManagementService->updateTask(
-                taskIdentifier: $taskIdentifier,
-                taskTitle: $body['taskTitle'] ?? '',
-                taskDescription: $body['taskDescription'] ?? null,
-                taskType: $body['taskType'] ?? '',
-                taskStatus: $body['taskStatus'] ?? 'Pending',
-                reservationIdentifier: $reservationIdentifier,
-                assignedToAccountId: $assignedToAccountId,
-                dueDateTimestamp: $this->normalizeNullableString($body['dueDateTimestamp'] ?? null)
-            );
-            $this->syncHistoryLog($dto->taskIdentifier, $reservationIdentifier, $assignedToAccountId);
+            $dto = $this->taskManagementService->updateTask($taskIdentifier, $this->buildTaskMutationRequest($body, $reservationIdentifier, $assignedToAccountId));
+            $this->taskHistoryLogService->syncHistoryLog($dto->taskIdentifier, $reservationIdentifier, $assignedToAccountId);
 
             return $this->createSuccessResponse([
-                'task' => $this->fetchTaskById($dto->taskIdentifier),
+                'task' => $this->taskReadService->fetchTaskById($dto->taskIdentifier),
             ]);
         } catch (DomainNotFoundException $exception) {
             return $this->createErrorResponse('TaskNotFound', $exception->getMessage(), 404);
@@ -196,6 +194,19 @@ class TaskController extends AbstractController
         );
     }
 
+    private function buildTaskMutationRequest(array $body, ?int $reservationIdentifier, ?int $assignedToAccountId): TaskMutationRequestDTO
+    {
+        return new TaskMutationRequestDTO(
+            taskTitle: $body['taskTitle'] ?? '',
+            taskDescription: $body['taskDescription'] ?? null,
+            taskType: $body['taskType'] ?? '',
+            taskStatus: $body['taskStatus'] ?? 'Pending',
+            reservationIdentifier: $reservationIdentifier,
+            assignedToAccountId: $assignedToAccountId,
+            dueDateTimestamp: $this->normalizeNullableString($body['dueDateTimestamp'] ?? null)
+        );
+    }
+
     private function validateTaskPayloadBasics(array $body): ?JsonResponse
     {
         $taskTitle = trim((string)($body['taskTitle'] ?? ''));
@@ -219,155 +230,6 @@ class TaskController extends AbstractController
         }
 
         return null;
-    }
-
-    private function validateLinkedRecords(?int $reservationIdentifier, ?int $assignedToAccountId): void
-    {
-        if ($reservationIdentifier !== null) {
-            $reservationExists = (bool)$this->connection->fetchOne(
-                'SELECT 1 FROM reservations WHERE reservation_identifier = :reservationIdentifier',
-                ['reservationIdentifier' => $reservationIdentifier],
-                ['reservationIdentifier' => ParameterType::INTEGER]
-            );
-            if (!$reservationExists) {
-                throw new DomainValidationException('Selected reservation was not found.');
-            }
-        }
-
-        if ($assignedToAccountId !== null) {
-            $staffExists = (bool)$this->connection->fetchOne(
-                "SELECT 1
-                 FROM accounts
-                 LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-                 WHERE accounts.account_identifier = :accountIdentifier
-                   AND accounts.role_designation = 'ROLE_STAFF'
-                   AND COALESCE(accounts.is_active, TRUE) = TRUE",
-                ['accountIdentifier' => $assignedToAccountId],
-                ['accountIdentifier' => ParameterType::INTEGER]
-            );
-            if (!$staffExists) {
-                throw new DomainValidationException('Selected assigned staff was not found or is inactive.');
-            }
-        }
-    }
-
-    private function syncHistoryLog(int $taskIdentifier, ?int $reservationIdentifier, ?int $assignedToAccountId): void
-    {
-        $this->connection->executeStatement(
-            'DELETE FROM history_logs WHERE task_assignment_id = :taskIdentifier',
-            ['taskIdentifier' => $taskIdentifier],
-            ['taskIdentifier' => ParameterType::INTEGER]
-        );
-
-        if ($reservationIdentifier === null || $assignedToAccountId === null) {
-            return;
-        }
-
-        $staffId = $this->connection->fetchOne(
-            'SELECT id FROM staff_info WHERE account_identifier = :accountIdentifier',
-            ['accountIdentifier' => $assignedToAccountId],
-            ['accountIdentifier' => ParameterType::INTEGER]
-        );
-
-        if (!$staffId) {
-            return;
-        }
-
-        $this->connection->executeStatement(
-            'INSERT INTO history_logs (staff_id, reservation_id, task_assignment_id)
-             VALUES (:staffId, :reservationIdentifier, :taskIdentifier)
-             ON CONFLICT (staff_id, reservation_id, task_assignment_id) DO NOTHING',
-            [
-                'staffId' => (int)$staffId,
-                'reservationIdentifier' => $reservationIdentifier,
-                'taskIdentifier' => $taskIdentifier,
-            ],
-            [
-                'staffId' => ParameterType::INTEGER,
-                'reservationIdentifier' => ParameterType::INTEGER,
-                'taskIdentifier' => ParameterType::INTEGER,
-            ]
-        );
-    }
-
-    private function fetchTaskById(int $taskIdentifier): ?array
-    {
-        $rows = $this->fetchTaskRows($taskIdentifier);
-        return $rows[0] ?? null;
-    }
-
-    private function fetchTaskRows(?int $taskIdentifier = null): array
-    {
-        $params = [];
-        $types = [];
-        $where = '';
-        if ($taskIdentifier !== null) {
-            $where = 'WHERE tasks.task_identifier = :taskIdentifier';
-            $params['taskIdentifier'] = $taskIdentifier;
-            $types['taskIdentifier'] = ParameterType::INTEGER;
-        }
-
-        $rows = $this->connection->fetchAllAssociative(
-            "SELECT tasks.task_identifier,
-                    tasks.reservation_identifier,
-                    tasks.task_title,
-                    tasks.task_description,
-                    tasks.task_type,
-                    tasks.task_status,
-                    tasks.assigned_to_account_id,
-                    tasks.due_date_timestamp,
-                    tasks.created_timestamp,
-                    reservations.reservation_code,
-                    reservations.organization_name,
-                    reservations.event_date_time,
-                    reservations.current_status AS reservation_status,
-                    staff_info.employee_id_number AS staff_employee_id_number,
-                    COALESCE(staff_info.first_name, accounts.first_name) AS staff_first_name,
-                    COALESCE(staff_info.last_name, accounts.last_name) AS staff_last_name,
-                    COALESCE(staff_info.role, accounts.department) AS staff_role
-             FROM tasks
-             LEFT JOIN reservations ON reservations.reservation_identifier = tasks.reservation_identifier
-             LEFT JOIN accounts ON accounts.account_identifier = tasks.assigned_to_account_id
-             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             {$where}
-             ORDER BY COALESCE(tasks.due_date_timestamp, tasks.created_timestamp) DESC, tasks.task_identifier DESC",
-            $params,
-            $types
-        );
-
-        return array_map(fn (array $row): array => $this->mapTaskRow($row), $rows);
-    }
-
-    private function mapTaskRow(array $row): array
-    {
-        $reservationIdentifier = $row['reservation_identifier'] !== null ? (int)$row['reservation_identifier'] : null;
-        $reservationLabel = null;
-        if ($reservationIdentifier !== null) {
-            $reservationParts = [
-                $row['reservation_code'] ? (string)$row['reservation_code'] : '#' . $reservationIdentifier,
-                $row['organization_name'] ? (string)$row['organization_name'] : null,
-            ];
-            $reservationLabel = implode(' - ', array_filter($reservationParts));
-        }
-
-        $staffName = trim(sprintf('%s %s', (string)($row['staff_first_name'] ?? ''), (string)($row['staff_last_name'] ?? '')));
-
-        return [
-            'taskIdentifier' => (int)$row['task_identifier'],
-            'reservationIdentifier' => $reservationIdentifier,
-            'reservationLabel' => $reservationLabel,
-            'reservationStatus' => $row['reservation_status'] ? (string)$row['reservation_status'] : null,
-            'taskTitle' => (string)$row['task_title'],
-            'taskDescription' => $row['task_description'] ? (string)$row['task_description'] : null,
-            'taskType' => (string)$row['task_type'],
-            'taskStatus' => (string)$row['task_status'],
-            'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
-            'assignedStaffName' => $staffName !== '' ? $staffName : null,
-            'assignedStaffIdNumber' => $row['staff_employee_id_number'] ? (string)$row['staff_employee_id_number'] : null,
-            'assignedStaffRole' => $row['staff_role'] ? (string)$row['staff_role'] : null,
-            'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
-            'createdTimestamp' => (string)$row['created_timestamp'],
-        ];
     }
 
     private function validateResponsibleAdminCredentials(int $authenticatedAdminId, string $confirmedAdminEmail, string $confirmedAdminPassword, string $actionName): ?JsonResponse

@@ -2,9 +2,6 @@
 
 namespace App\Infrastructure\Auth;
 
-use App\Domain\Account\Repository\AccountRepository;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-
 class ClerkTokenVerifier
 {
     // ===== AI GENERATED: ClerkTokenVerifier =====
@@ -17,17 +14,18 @@ class ClerkTokenVerifier
     // 3. Look up account in database by clerkUserId
     // 4. Return normalized identity array with accountIdentifier
 
-    private string $clerkSecretKey;
     private string $clerkApiBaseUrl;
     private string $clerkJwtIssuer;
-    private HttpClientInterface $httpClient;
-    private AccountRepository $accountRepository;
+    private LocalTokenIdentityResolver $localTokenIdentityResolver;
+    private ClerkTokenIdentityResolver $clerkTokenIdentityResolver;
 
-    public function __construct(HttpClientInterface $httpClient, AccountRepository $accountRepository)
+    public function __construct(
+        LocalTokenIdentityResolver $localTokenIdentityResolver,
+        ClerkTokenIdentityResolver $clerkTokenIdentityResolver
+    )
     {
-        $this->httpClient = $httpClient;
-        $this->accountRepository = $accountRepository;
-        $this->clerkSecretKey = $_ENV['CLERK_SECRET_KEY'] ?? '';
+        $this->localTokenIdentityResolver = $localTokenIdentityResolver;
+        $this->clerkTokenIdentityResolver = $clerkTokenIdentityResolver;
         $this->clerkApiBaseUrl = $_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com';
         $this->clerkJwtIssuer = $_ENV['CLERK_JWT_ISSUER'] ?? 'https://primary-rooster-80.clerk.accounts.dev';
         
@@ -48,116 +46,16 @@ class ClerkTokenVerifier
 
     public function verifyTokenAndGetIdentity(string $bearerToken): array
     {
-        // Try to decode as simple base64 token from login endpoint first
         try {
-            $decoded = json_decode(base64_decode($bearerToken), true);
-            if (is_array($decoded) && isset($decoded['accountId'])) {
-                // This is a custom token from the login endpoint
-                $account = $this->accountRepository->find($decoded['accountId']);
-                if ($account === null) {
-                    if (($_ENV['APP_ENV'] ?? 'prod') === 'dev' && ($decoded['role'] ?? null) === 'ROLE_ADMIN') {
-                        return [
-                            'accountIdentifier' => (int) $decoded['accountId'],
-                            'emailAddress' => (string) ($decoded['email'] ?? 'local-admin@techreserve.dev'),
-                            'firstName' => 'Local',
-                            'lastName' => 'Admin',
-                            'roleDesignation' => 'ROLE_ADMIN',
-                            'status' => 'approved',
-                            'isApproved' => true,
-                        ];
-                    }
-
-                    throw new ClerkVerificationFailedException('Account not found for accountId: ' . $decoded['accountId']);
-                }
-                
-                // Check token expiration
-                if (isset($decoded['exp']) && $decoded['exp'] < time()) {
-                    throw new ClerkVerificationFailedException('Token has expired');
-                }
-
-                if (!$account->getIsApproved()) {
-                    throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
-                }
-
-                if ($account->getStatus() !== 'approved') {
-                    throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only approved accounts can access the system.');
-                }
-
-                if (!$account->getIsActive()) {
-                    throw new ClerkVerificationFailedException('Account is disabled. Please contact an administrator.');
-                }
-                
-                return [
-                    'accountIdentifier' => $account->getAccountIdentifier(),
-                    'emailAddress' => $account->getEmailAddress(),
-                    'firstName' => $account->getFirstName(),
-                    'lastName' => $account->getLastName(),
-                    'roleDesignation' => $account->getRoleDesignation(),
-                    'status' => $account->getStatus(),
-                    'isApproved' => $account->getIsApproved(),
-                ];
+            $localIdentity = $this->localTokenIdentityResolver->resolve($bearerToken);
+            if ($localIdentity !== null) {
+                return $localIdentity;
             }
-        } catch (\Throwable $e) {
-            // Not a custom token, try Clerk verification
+        } catch (\Throwable) {
         }
         
-        // Decode Clerk session JWT to extract sub (Clerk user ID)
         try {
-            $payload = $this->decodeJwtPayload($bearerToken);
-            $clerkUserId = $payload['sub'] ?? '';
-
-            if (empty($clerkUserId)) {
-                throw new ClerkVerificationFailedException('JWT missing sub claim (Clerk user ID).');
-            }
-
-            // Check token expiry
-            if (isset($payload['exp']) && $payload['exp'] < time()) {
-                throw new ClerkVerificationFailedException('Clerk session token has expired.');
-            }
-
-            // Look up account in database by clerkUserId
-            $account = $this->accountRepository->findOneByClerkUserId($clerkUserId);
-
-            if ($account === null) {
-                $emailAddress = $this->resolvePrimaryEmailAddress($clerkUserId);
-                if ($emailAddress !== '') {
-                    $account = $this->accountRepository->findOneByEmailAddress($emailAddress);
-                    if ($account !== null && $account->getClerkUserId() !== $clerkUserId) {
-                        $account->setClerkUserId($clerkUserId);
-                        $this->accountRepository->persistAccount($account);
-                    }
-                }
-            }
-
-            if ($account === null) {
-                throw new ClerkVerificationFailedException('Account not found for clerkUserId: ' . $clerkUserId);
-            }
-
-            // Check if account is approved
-            if (!$account->getIsApproved()) {
-                throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
-            }
-
-            // Check account status
-            if ($account->getStatus() !== 'approved') {
-                throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only approved accounts can access the system.');
-            }
-
-            // Check if account is active
-            if (!$account->getIsActive()) {
-                throw new ClerkVerificationFailedException('Account is disabled. Please contact an administrator.');
-            }
-
-            return [
-                'accountIdentifier' => $account->getAccountIdentifier(),
-                'clerkUserId'       => $clerkUserId,
-                'emailAddress'      => $account->getEmailAddress(),
-                'firstName'         => $account->getFirstName(),
-                'lastName'          => $account->getLastName(),
-                'roleDesignation'   => $account->getRoleDesignation(),
-                'status'            => $account->getStatus(),
-                'isApproved'        => $account->getIsApproved(),
-            ];
+            return $this->clerkTokenIdentityResolver->resolve($bearerToken);
         } catch (ClerkVerificationFailedException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
@@ -165,54 +63,6 @@ class ClerkTokenVerifier
                 'Clerk token verification failed: ' . $exception->getMessage(),
                 $exception
             );
-        }
-    }
-
-    private function decodeJwtPayload(string $token): array
-    {
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            throw new ClerkVerificationFailedException('Invalid JWT format.');
-        }
-        $padded  = strtr($parts[1], '-_', '+/') . str_repeat('=', (4 - strlen($parts[1]) % 4) % 4);
-        $payload = json_decode(base64_decode($padded), true);
-        if (!is_array($payload)) {
-            throw new ClerkVerificationFailedException('Failed to decode JWT payload.');
-        }
-        return $payload;
-    }
-
-    private function resolvePrimaryEmailAddress(string $clerkUserId): string
-    {
-        if ($this->clerkSecretKey === '') {
-            return '';
-        }
-
-        try {
-            $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl . '/v1/users/' . rawurlencode($clerkUserId), [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->clerkSecretKey,
-                    'Accept' => 'application/json',
-                ],
-            ]);
-
-            if ($response->getStatusCode() >= 400) {
-                return '';
-            }
-
-            $userData = $response->toArray(false);
-            $primaryEmailAddressId = (string)($userData['primary_email_address_id'] ?? '');
-
-            foreach (($userData['email_addresses'] ?? []) as $emailAddress) {
-                if ((string)($emailAddress['id'] ?? '') === $primaryEmailAddressId) {
-                    return trim((string)($emailAddress['email_address'] ?? ''));
-                }
-            }
-
-            $firstEmailAddress = $userData['email_addresses'][0]['email_address'] ?? '';
-            return trim((string)$firstEmailAddress);
-        } catch (\Throwable $exception) {
-            return '';
         }
     }
 }

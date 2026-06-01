@@ -24,6 +24,8 @@ Completed health work:
 - `AuthenticationController.php` and `AccountController.php`: duplicated password-strength policy moved to `PasswordPolicyService`.
 - `AuthenticationController.php`: Clerk password lookup/update moved to `AuthenticationClerkService`; reset-code email rendering/sending moved to `PasswordResetEmailService`.
 - `AccountController.php`: settings/profile validation moved to `AccountSettingsValidationService`; account response mapping moved to `AccountResponseMapperService`; account status/action rules moved to `AccountLifecyclePolicyService`; Clerk delete delegated to `AuthenticationClerkService`.
+- `TaskManagementService.php`: repeated primitive task arguments moved into `TaskMutationRequestDTO`; task validation and entity-to-DTO mapping moved into focused services.
+- `TaskController.php`: task read/query mapping, linked-record validation, and history-log syncing moved into dedicated task services.
 - `UserRegistrationController.php`: branded accepted-account email construction and mail sending moved to `AccountAcceptanceEmailService`.
 - `UserRegistrationController.php`: Clerk invitation/signup provisioning moved to `AccountClerkProvisioningService`.
 
@@ -81,6 +83,8 @@ The most important rule for this project is: controllers and pages should coordi
 | `frontend/src/pages/admin/ManageFacilities.vue` | Medium | Facility CRUD and UI state in one page | Extract facility API/composable and modal components |
 | `backend/src/Domain/Dashboard/Service/DashboardAggregationService.php` | Medium | Aggregation services can grow broad queries | Split per dashboard metric when complexity grows |
 | `backend/src/Domain/Venue/Service/VenueManagementService.php` | Low | Small now, but venue rules should stay service-owned | Keep repository/service boundary clean |
+| `backend/src/Domain/Task/Service/TaskManagementService.php` | Medium | Declining from complex methods, repeated primitive argument lists, status strings, and entity mapping in one service | Keep orchestration in service; move validation/DTO mapping into focused services |
+| `backend/src/Domain/Task/Controller/TaskController.php` | Medium | Declining from duplicate controller paths, inline SQL reads, history-log sync, security confirmation, and response mapping | Keep routes thin; delegate reads, history sync, linked-record validation, and task mutation DTO creation |
 | `frontend/src/pages/borrower/CreateReservationDocuments.vue` | Medium | File validation/upload flow mixed with page rendering | Extract document upload validation composable |
 
 ## 5. Root Causes
@@ -232,8 +236,12 @@ Expected impact after completed work:
 - Auth/router coupling: moderate improvement from central route-name and storage-key ownership.
 - `AuthenticationController.php`: moderate improvement from removing direct Clerk HTTP and mail-template responsibilities.
 - `AccountController.php`: moderate improvement from reducing private helpers and moving mapping/validation/lifecycle rules into cohesive services.
-- `UserRegistrationController.php`: modest improvement so far; major improvement requires more service extraction.
-- `UserRegistrationController.php`: stronger improvement expected after Clerk provisioning and accepted-account email extraction; remaining hotspot is registration/approval orchestration.
+- Missed-goal follow-up: `AuthenticationController.php` is now a thin response wrapper around login, Clerk preflight, password reset, and registration services.
+- Missed-goal follow-up: `AccountController.php` now delegates account reads, staff writes, admin security confirmation, account deletion, and authenticated account resolution to focused services.
+- Missed-goal follow-up: `ClerkTokenVerifier.php` now delegates local token resolution, Clerk token resolution, JWT decoding, primary email lookup, and account identity building to small infrastructure services.
+- Task module: moderate improvement from removing repeated primitive arguments, inline task reads/mapping, and history-log persistence from controller/service hotspots.
+- `UserRegistrationController.php`: major improvement from extracting Clerk registration, public signup requests, wishlist user/staff creation, and wishlist approval orchestration into focused services. The controller is now a route/response layer instead of the owner of those workflows.
+- Auth Vue hotspots: meaningful improvement from moving `ClerkLogin.vue`, `CustomSignUp.vue`, `PostLogin.vue`, `SignUp.vue`, and `SettingsPage.vue` script logic into composables while preserving templates and styling.
 
 Expected impact after the next two phases:
 
