@@ -2,10 +2,7 @@
 
 namespace App\Domain\Account\Controller;
 
-use App\Domain\Authentication\Service\AuthenticationLoginService;
-use App\Domain\Authentication\Service\AuthenticationRegistrationService;
-use App\Domain\Authentication\Service\ClerkLoginPreflightService;
-use App\Domain\Authentication\Service\PasswordResetCodeService;
+use App\Domain\Authentication\Service\AuthenticationWorkflowService;
 use App\Shared\Traits\JsonResponseTrait;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,21 +13,8 @@ class AuthenticationController
 {
     use JsonResponseTrait;
 
-    private AuthenticationLoginService $authenticationLoginService;
-    private ClerkLoginPreflightService $clerkLoginPreflightService;
-    private PasswordResetCodeService $passwordResetCodeService;
-    private AuthenticationRegistrationService $authenticationRegistrationService;
-
-    public function __construct(
-        AuthenticationLoginService $authenticationLoginService,
-        ClerkLoginPreflightService $clerkLoginPreflightService,
-        PasswordResetCodeService $passwordResetCodeService,
-        AuthenticationRegistrationService $authenticationRegistrationService
-    ) {
-        $this->authenticationLoginService = $authenticationLoginService;
-        $this->clerkLoginPreflightService = $clerkLoginPreflightService;
-        $this->passwordResetCodeService = $passwordResetCodeService;
-        $this->authenticationRegistrationService = $authenticationRegistrationService;
+    public function __construct(private readonly AuthenticationWorkflowService $workflowService)
+    {
     }
 
     #[Route('/login', name: 'auth_login', methods: ['POST'])]
@@ -49,7 +33,7 @@ class AuthenticationController
             );
         }
 
-        return $this->serviceResultToResponse($this->authenticationLoginService->login($emailAddress, $passwordText));
+        return $this->serviceResultToResponse($this->workflowService->login($emailAddress, $passwordText));
     }
 
     #[Route('/clerk-login-preflight', name: 'auth_clerk_login_preflight', methods: ['POST'])]
@@ -66,7 +50,7 @@ class AuthenticationController
             );
         }
 
-        return $this->serviceResultToResponse($this->clerkLoginPreflightService->check($emailAddress));
+        return $this->serviceResultToResponse($this->workflowService->clerkLoginPreflight($emailAddress));
     }
 
     #[Route('/password-reset/request', name: 'auth_password_reset_request', methods: ['POST'])]
@@ -79,7 +63,7 @@ class AuthenticationController
             return $this->createErrorResponse('ValidationError', 'A valid email address is required.', 422);
         }
 
-        return $this->serviceResultToResponse($this->passwordResetCodeService->requestReset($emailAddress));
+        return $this->serviceResultToResponse($this->workflowService->requestPasswordReset($emailAddress));
     }
 
     #[Route('/password-reset/confirm', name: 'auth_password_reset_confirm', methods: ['POST'])]
@@ -95,7 +79,7 @@ class AuthenticationController
             return $this->createErrorResponse('ValidationError', 'Email address and reset code are required.', 422);
         }
 
-        return $this->serviceResultToResponse($this->passwordResetCodeService->confirmReset($emailAddress, $code, $newPassword, $confirmPassword));
+        return $this->serviceResultToResponse($this->workflowService->confirmPasswordReset($emailAddress, $code, $newPassword, $confirmPassword));
     }
 
     #[Route('/register', name: 'auth_register', methods: ['POST'])]
@@ -119,7 +103,7 @@ class AuthenticationController
             }
 
             return $this->serviceResultToResponse(
-                $this->authenticationRegistrationService->register($firstName, $lastName, $emailAddress, $passwordText)
+                $this->workflowService->register($firstName, $lastName, $emailAddress, $passwordText)
             );
         } catch (\Exception $exception) {
             error_log('Registration error: ' . $exception->getMessage());

@@ -96,85 +96,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useUser, useAuth } from '@clerk/vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
-import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
-import { ROUTE_NAMES } from '@/router/routeNames.js';
+import { useRequestPendingPage } from './composables/useRequestPendingPage.js';
 
-const router = useRouter();
-const { user, isSignedIn } = useUser();
-const { signOut, getToken } = useAuth();
-const authStore = useAuthenticationStore();
-
-const isChecking = ref(false);
-const statusMessage = ref('');
-const statusMessageType = ref('info');
-
-const userEmail = computed(() => user.value?.primaryEmailAddress?.emailAddress || authStore.accountData?.emailAddress || '');
-const userName = computed(() => {
-  const clerkName = `${user.value?.firstName || ''} ${user.value?.lastName || ''}`.trim();
-  return clerkName || authStore.userFullName || '';
-});
-
-onMounted(() => {
-  if (!isSignedIn.value && !authStore.accountData) {
-    router.push({ name: ROUTE_NAMES.clerkLogin });
-  }
-});
-
-async function handleLogout() {
-  try {
-    await signOutClerk(signOut);
-  } finally {
-    authStore.performLogout();
-    redirectToPostLogoutHome();
-  }
-}
-
-async function checkApprovalStatus() {
-  isChecking.value = true;
-  statusMessage.value = '';
-  statusMessageType.value = 'info';
-
-  try {
-    const account = await authStore.loadClerkAccount(getToken);
-
-    if (!account) {
-      statusMessageType.value = 'error';
-      statusMessage.value = 'Unable to verify your account right now. Please try again later.';
-      return;
-    }
-
-    const status = String(account.status || '').toLowerCase();
-    const role = String(account.roleDesignation || '').toUpperCase();
-
-    if (status === 'approved' || account.isApproved === true) {
-      if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
-        router.push({ name: ROUTE_NAMES.adminDashboard });
-      } else {
-        router.push({ name: ROUTE_NAMES.borrowerMyReservations });
-      }
-      return;
-    }
-
-    if (status === 'rejected' || status === 'denied') {
-      statusMessageType.value = 'error';
-      statusMessage.value = 'Your registration was not approved. Please contact the administrator.';
-      return;
-    }
-
-    statusMessage.value = 'Your account is still pending approval. Please check again later.';
-  } catch (error) {
-    console.error('Error checking approval status:', error);
-    statusMessageType.value = 'error';
-    statusMessage.value = 'Unable to check approval status. Please try again later.';
-  } finally {
-    isChecking.value = false;
-  }
-}
+const {
+  isChecking,
+  statusMessage,
+  statusMessageType,
+  userEmail,
+  userName,
+  handleLogout,
+  checkApprovalStatus,
+} = useRequestPendingPage();
 </script>
 
 <style scoped>
