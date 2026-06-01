@@ -1,10 +1,10 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-const AUTH_ACCOUNT_STORAGE_KEY = 'techreserve_auth_account';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 
 function createLocalBackendToken() {
   try {
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_ACCOUNT_STORAGE_KEY);
+    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
     if (!accountString && !isLocalDev) return null;
 
     const account = accountString ? JSON.parse(accountString) : {};
@@ -68,12 +68,11 @@ export const adminManageAccountsApi = {
     }
   },
 
-  async updateAccountAccess(accountIdentifier, isActive, token) {
+  async getEmployeeWorkLogs(accountIdentifier, token) {
     try {
-      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/access`), {
-        method: 'PATCH',
-        headers: buildHeaders(token, true),
-        body: JSON.stringify({ isActive }),
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/work-logs`), {
+        method: 'GET',
+        headers: buildHeaders(token),
       });
       return parseResponse(response);
     } catch (error) {
@@ -81,12 +80,25 @@ export const adminManageAccountsApi = {
     }
   },
 
-  async deleteAccount(accountIdentifier, confirmEmail, token) {
+  async updateAccountAccess(accountIdentifier, isActive, token, payload = {}) {
+    try {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}/access`), {
+        method: 'PATCH',
+        headers: buildHeaders(token, true),
+        body: JSON.stringify({ isActive, ...payload }),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async deleteAccount(accountIdentifier, confirmationPayload, token) {
     try {
       const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}`), {
         method: 'DELETE',
         headers: buildHeaders(token, true),
-        body: JSON.stringify({ confirmEmail }),
+        body: JSON.stringify(confirmationPayload),
       });
       return parseResponse(response);
     } catch (error) {

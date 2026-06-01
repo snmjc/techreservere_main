@@ -13,6 +13,20 @@ class PendingUserController
 {
     use JsonResponseTrait;
 
+    private const PENDING_USER_COLUMNS = '
+        id,
+        email,
+        full_name,
+        department,
+        organization,
+        phone,
+        status,
+        created_at,
+        approved_at,
+        rejected_at,
+        rejection_reason
+    ';
+
     private Connection $connection;
 
     public function __construct(Connection $connection)
@@ -26,7 +40,7 @@ class PendingUserController
         try {
             $status = $request->query->get('status');
 
-            $sql = 'SELECT * FROM pending_users';
+            $sql = 'SELECT ' . self::PENDING_USER_COLUMNS . ' FROM pending_users';
             $params = [];
 
             if ($status) {
@@ -85,10 +99,7 @@ class PendingUserController
                 'created_at' => $now,
             ]);
 
-            $record = $this->connection->fetchAssociative(
-                'SELECT * FROM pending_users WHERE id = :id',
-                ['id' => $id]
-            );
+            $record = $this->fetchPendingUserById($id);
 
             return $this->createSuccessResponse($record, 201);
         } catch (\Exception $e) {
@@ -111,10 +122,7 @@ class PendingUserController
                 return $this->createErrorResponse('NotFound', 'Pending user not found.', 404);
             }
 
-            $record = $this->connection->fetchAssociative(
-                'SELECT * FROM pending_users WHERE id = :id',
-                ['id' => $id]
-            );
+            $record = $this->fetchPendingUserById($id);
 
             return $this->createSuccessResponse($record);
         } catch (\Exception $e) {
@@ -140,10 +148,7 @@ class PendingUserController
                 return $this->createErrorResponse('NotFound', 'Pending user not found.', 404);
             }
 
-            $record = $this->connection->fetchAssociative(
-                'SELECT * FROM pending_users WHERE id = :id',
-                ['id' => $id]
-            );
+            $record = $this->fetchPendingUserById($id);
 
             return $this->createSuccessResponse($record);
         } catch (\Exception $e) {
@@ -160,6 +165,14 @@ class PendingUserController
             mt_rand(0, 0x0fff) | 0x4000,
             mt_rand(0, 0x3fff) | 0x8000,
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+    }
+
+    private function fetchPendingUserById(string $id): array|false
+    {
+        return $this->connection->fetchAssociative(
+            'SELECT ' . self::PENDING_USER_COLUMNS . ' FROM pending_users WHERE id = :id',
+            ['id' => $id]
         );
     }
 }

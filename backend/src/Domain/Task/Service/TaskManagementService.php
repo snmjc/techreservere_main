@@ -2,19 +2,26 @@
 
 namespace App\Domain\Task\Service;
 
+use App\Domain\Task\DTO\TaskMutationRequestDTO;
 use App\Domain\Task\DTO\TaskResponseDTO;
 use App\Domain\Task\Entity\TaskEntity;
 use App\Domain\Task\Repository\TaskRepository;
 use App\Shared\Exceptions\DomainNotFoundException;
-use App\Shared\Exceptions\DomainValidationException;
 
 class TaskManagementService
 {
     private TaskRepository $taskRepository;
+    private TaskResponseMapperService $taskResponseMapperService;
+    private TaskValidationService $taskValidationService;
 
-    public function __construct(TaskRepository $taskRepository)
-    {
+    public function __construct(
+        TaskRepository $taskRepository,
+        TaskResponseMapperService $taskResponseMapperService,
+        TaskValidationService $taskValidationService
+    ) {
         $this->taskRepository = $taskRepository;
+        $this->taskResponseMapperService = $taskResponseMapperService;
+        $this->taskValidationService = $taskValidationService;
     }
 
     // ===== AI GENERATED: createTask =====
@@ -22,25 +29,39 @@ class TaskManagementService
     // Inputs: task fields
     // Returns: TaskResponseDTO
 
-    public function createTask(string $taskTitle, ?string $taskDescription, string $taskType, ?int $reservationIdentifier, ?int $assignedToAccountId, ?string $dueDateTimestamp): TaskResponseDTO
+    public function createTask(TaskMutationRequestDTO $request): TaskResponseDTO
     {
-        if (empty($taskTitle)) {
-            throw new DomainValidationException('Task title is required.');
-        }
+        $this->taskValidationService->validateMutation($request);
 
         $entity = new TaskEntity();
-        $entity->setTaskTitle($taskTitle);
-        $entity->setTaskDescription($taskDescription);
-        $entity->setTaskType($taskType);
-        $entity->setReservationIdentifier($reservationIdentifier);
-        $entity->setAssignedToAccountId($assignedToAccountId);
-
-        if ($dueDateTimestamp !== null) {
-            $entity->setDueDateTimestamp(new \DateTime($dueDateTimestamp));
-        }
+        $this->applyMutation($entity, $request);
 
         $this->taskRepository->persistTask($entity);
-        return $this->transformEntityToDTO($entity);
+        return $this->taskResponseMapperService->transformEntityToDTO($entity);
+    }
+
+    public function updateTask(int $taskIdentifier, TaskMutationRequestDTO $request): TaskResponseDTO
+    {
+        $entity = $this->taskRepository->find($taskIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
+        }
+
+        $this->taskValidationService->validateMutation($request);
+        $this->applyMutation($entity, $request);
+
+        $this->taskRepository->persistTask($entity);
+        return $this->taskResponseMapperService->transformEntityToDTO($entity);
+    }
+
+    public function deleteTask(int $taskIdentifier): void
+    {
+        $entity = $this->taskRepository->find($taskIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
+        }
+
+        $this->taskRepository->deleteTask($entity);
     }
 
     // ===== AI GENERATED: updateTaskStatus =====
@@ -55,42 +76,35 @@ class TaskManagementService
             throw new DomainNotFoundException('Task not found: ' . $taskIdentifier);
         }
 
-        $allowedStatuses = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
-        if (!in_array($newStatus, $allowedStatuses, true)) {
-            throw new DomainValidationException('Invalid task status: ' . $newStatus);
-        }
+        $this->taskValidationService->validateStatus($newStatus);
 
         $entity->setTaskStatus($newStatus);
         $this->taskRepository->persistTask($entity);
-        return $this->transformEntityToDTO($entity);
+        return $this->taskResponseMapperService->transformEntityToDTO($entity);
     }
 
     /** @return TaskResponseDTO[] */
     public function getAllTasks(): array
     {
         $entities = $this->taskRepository->findAllTasks();
-        return array_map(fn($e) => $this->transformEntityToDTO($e), $entities);
+        return array_map(fn($e) => $this->taskResponseMapperService->transformEntityToDTO($e), $entities);
     }
 
     /** @return TaskResponseDTO[] */
     public function getTasksByReservation(int $reservationIdentifier): array
     {
         $entities = $this->taskRepository->findByReservationIdentifier($reservationIdentifier);
-        return array_map(fn($e) => $this->transformEntityToDTO($e), $entities);
+        return array_map(fn($e) => $this->taskResponseMapperService->transformEntityToDTO($e), $entities);
     }
 
-    private function transformEntityToDTO(TaskEntity $entity): TaskResponseDTO
+    private function applyMutation(TaskEntity $entity, TaskMutationRequestDTO $request): void
     {
-        return new TaskResponseDTO(
-            taskIdentifier: $entity->getTaskIdentifier(),
-            reservationIdentifier: $entity->getReservationIdentifier(),
-            taskTitle: $entity->getTaskTitle(),
-            taskDescription: $entity->getTaskDescription(),
-            taskType: $entity->getTaskType(),
-            taskStatus: $entity->getTaskStatus(),
-            assignedToAccountId: $entity->getAssignedToAccountId(),
-            dueDateTimestamp: $entity->getDueDateTimestamp()?->format(\DateTime::ATOM),
-            createdTimestamp: $entity->getCreatedTimestamp()->format(\DateTime::ATOM)
-        );
+        $entity->setTaskTitle(trim($request->taskTitle));
+        $entity->setTaskDescription($this->taskValidationService->normalizeOptionalText($request->taskDescription));
+        $entity->setTaskType(trim($request->taskType));
+        $entity->setTaskStatus(trim($request->taskStatus));
+        $entity->setReservationIdentifier($request->reservationIdentifier);
+        $entity->setAssignedToAccountId($request->assignedToAccountId);
+        $entity->setDueDateTimestamp($this->taskValidationService->parseDueDate($request->dueDateTimestamp));
     }
 }

@@ -1,0 +1,144 @@
+<?php
+
+namespace App\Domain\Account\Service\Wishlist;
+
+use Doctrine\DBAL\Connection;
+
+class WishlistAccountReadService
+{
+    public function __construct(private readonly Connection $connection)
+    {
+    }
+
+    public function getWishlistAccounts(): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT DISTINCT ON (LOWER(accounts.email_address))
+                    accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
+                    accounts.email_address, accounts.role_designation, accounts.department,
+                    accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
+                    accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
+                    accounts.signup_supporting_document_data,
+                    staff_info.employee_id_number AS staff_employee_id_number,
+                    staff_info.first_name AS staff_first_name,
+                    staff_info.last_name AS staff_last_name,
+                    staff_info.phone_number AS staff_phone_number,
+                    staff_info.role AS staff_role,
+                    staff_info.image_url AS staff_image_url,
+                    latest_invitation.status AS invite_status,
+                    latest_invitation.invited_by AS invite_invited_by,
+                    latest_invitation.created_at AS invite_sent_at,
+                    latest_invitation.expires_at AS invite_expires_at,
+                    latest_invitation.accepted_at AS invite_accepted_at
+             FROM accounts
+             LEFT JOIN LATERAL (
+                SELECT status, invited_by, created_at, expires_at, accepted_at
+                FROM invitations
+                WHERE LOWER(email) = LOWER(accounts.email_address)
+                ORDER BY created_at DESC
+                LIMIT 1
+             ) latest_invitation ON TRUE
+             LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
+             WHERE (
+                COALESCE(accounts.is_approved, FALSE) = FALSE
+                AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
+             )
+             OR (
+                latest_invitation.accepted_at IS NOT NULL
+                AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
+             )
+             ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
+        );
+
+        return array_map(fn (array $row): array => $this->mapWishlistAccountRow($row), $rows);
+    }
+
+    private function mapWishlistAccountRow(array $row): array
+    {
+        $roleDesignation = (string)($row['role_designation'] ?? 'ROLE_BORROWER');
+        $department = strtolower((string)($row['department'] ?? ''));
+        $isAdmin = str_contains(strtoupper($roleDesignation), 'ADMIN');
+        $normalizedRole = strtoupper($roleDesignation);
+        $isEmployee = !$isAdmin && (
+            str_contains($normalizedRole, 'STAFF') ||
+            str_contains($normalizedRole, 'EMPLOYEE') ||
+            str_contains($department, 'staff') ||
+            str_contains($department, 'employee') ||
+            str_contains($department, 'technical') ||
+            str_contains($department, 'maintenance')
+        );
+        $accountType = $isAdmin ? 'Admin' : ($isEmployee ? 'Employee' : 'User');
+        $employeeRoleLabel = str_contains($department, 'faculty') || str_contains($normalizedRole, 'FACULTY')
+            ? 'Faculty'
+            : ($department !== '' ? ucwords($department) : 'Technical Staff');
+        $roleLabel = $isAdmin ? 'Admin' : ($isEmployee ? $employeeRoleLabel : 'User: Student');
+
+        return [
+            'accountIdentifier' => (int)$row['account_identifier'],
+            'idNumber' => ($isEmployee && !empty($row['staff_employee_id_number'])) ? (string)$row['staff_employee_id_number'] : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT)),
+            'lastName' => ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'],
+            'firstName' => ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'],
+            'emailAddress' => (string)$row['email_address'],
+            'contactNumber' => ($isEmployee && !empty($row['staff_phone_number'])) ? (string)$row['staff_phone_number'] : ($row['contact_number'] ? (string)$row['contact_number'] : null),
+            'roleDesignation' => $roleDesignation,
+            'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,
+            'accountType' => $accountType,
+            'accountStatus' => $this->resolveWishlistStatus($row),
+            'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
+            'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
+            'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
+            'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
+            'registeredAt' => (string)$row['created_timestamp'],
+            'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
+            'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
+            'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
+            'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
+            'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
+        ];
+    }
+
+    private function resolveWishlistStatus(array $row): string
+    {
+        if (!empty($row['invite_accepted_at'])) {
+            return 'verified';
+        }
+
+        $status = strtolower((string)($row['status'] ?? 'pending'));
+        if (in_array($status, ['rejected', 'denied'], true)) {
+            return $status;
+        }
+
+        if (!empty($row['invite_expires_at'])) {
+            try {
+                $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
+                return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'unverified';
+            } catch (\Throwable) {
+                return $status;
+            }
+        }
+
+        if ($status === 'invited') {
+            return 'unverified';
+        }
+
+        if ($status === 'approved' || $status === 'verified') {
+            return 'verified';
+        }
+
+        return 'not_invited';
+    }
+
+    private function toDatabaseBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+}

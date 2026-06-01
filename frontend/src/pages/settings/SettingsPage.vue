@@ -1,4 +1,3 @@
-<!-- ===== Settings Page with Tabs ===== -->
 <template>
   <AdminSidebarLayoutComponent
     :role-label="userRole"
@@ -6,312 +5,242 @@
   >
     <div class="settings-page">
       <div class="settings-wrapper">
-        <!-- Header with Tabs -->
         <div class="settings-header">
-        <h1>Settings</h1>
-        <div class="settings-tabs">
-          <button
-            v-for="tab in settingsTabs"
-            :key="tab.value"
-            @click="activeTab = tab.value"
-            :class="['settings-tab', { active: activeTab === tab.value }]"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Account Settings Tab -->
-      <div v-if="activeTab === 'account'" class="settings-card">
-        <div class="card-header">
-          <span class="card-icon">✏️</span>
-          <div>
-            <h2>Profile</h2>
-            <p>Manage your profile display</p>
+          <h1>Settings</h1>
+          <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+            <button
+              v-for="tab in settingsTabs"
+              :key="tab.value"
+              type="button"
+              :class="['settings-tab', { active: activeTab === tab.value }]"
+              @click="selectTab(tab.value)"
+            >
+              {{ tab.label }}
+            </button>
           </div>
         </div>
 
-        <div class="card-content">
-          <div class="profile-section">
-            <!-- Profile Photo -->
-            <div class="profile-photo-container">
-              <div class="profile-photo">👤</div>
-              <button class="change-photo-btn">Change Photo</button>
+        <p v-if="loadError" class="settings-alert error">{{ loadError }}</p>
+        <p v-else-if="isLoadingProfile" class="settings-alert">Loading account settings...</p>
+
+        <section v-if="activeTab === 'account'" class="settings-card">
+          <div class="card-header">
+            <div>
+              <h2>Account Settings</h2>
+              <p>Update your profile information saved in the User Accounts database.</p>
+            </div>
+          </div>
+
+          <div class="card-content account-grid">
+            <div class="profile-summary">
+              <div class="profile-photo">
+                <img v-if="accountProfile.profilePhotoData" :src="accountProfile.profilePhotoData" alt="Profile photo" />
+                <span v-else>{{ accountInitials }}</span>
+              </div>
+              <div>
+                <p class="profile-name">{{ fullName || 'Account User' }}</p>
+                <p class="profile-meta">{{ accountProfile.emailAddress || 'No email address' }}</p>
+                <p class="profile-meta">{{ accountProfile.roleLabel || accountProfile.accountType || 'No role' }}</p>
+              </div>
             </div>
 
-            <!-- Profile Info -->
-            <div class="profile-info">
+            <div class="readonly-grid">
               <div class="info-item">
-                <label>Full Name</label>
-                <p>{{ formData.fullName }}</p>
+                <label>ID Number</label>
+                <p>{{ accountProfile.idNumber || 'Not set' }}</p>
               </div>
-
               <div class="info-item">
                 <label>Email Address</label>
-                <p>{{ formData.email }}</p>
+                <p>{{ accountProfile.emailAddress || 'Not set' }}</p>
               </div>
-
+              <div class="info-item">
+                <label>Role</label>
+                <p>{{ accountProfile.roleLabel || accountProfile.roleDesignation || 'Not set' }}</p>
+              </div>
               <div class="info-item">
                 <label>Phone Number</label>
-                <p>{{ formData.phone }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary">Save Changes</button>
-      </div>
-
-      <!-- Security Tab -->
-      <div v-if="activeTab === 'security'" class="settings-card">
-        <div class="card-header">
-          <span class="card-icon">🔒</span>
-          <div>
-            <h2>Security</h2>
-            <p>Manage your password and account security settings</p>
-          </div>
-        </div>
-
-        <div class="card-content">
-          <div class="security-section">
-            <!-- Change Password -->
-            <div class="security-subsection">
-              <h3>Change Password</h3>
-              <p class="subsection-label">Current Password</p>
-
-              <div class="form-group">
-                <div class="password-input-wrapper">
-                  <input
-                    type="password"
-                    placeholder="Enter your current password"
-                    class="password-input"
-                  />
-                  <button class="toggle-password-btn">👁️</button>
-                </div>
-              </div>
-
-              <p class="subsection-label">New Password</p>
-
-              <div class="form-group">
-                <div class="password-input-wrapper">
-                  <input
-                    type="password"
-                    placeholder="Enter your new password"
-                    class="password-input"
-                  />
-                  <button class="toggle-password-btn">👁️</button>
-                </div>
-
-                <div class="password-requirements">
-                  <p class="requirement">
-                    <span class="check">✓</span> At least 8 characters
-                  </p>
-                  <p class="requirement">
-                    <span class="check">✓</span> One uppercase letter
-                  </p>
-                  <p class="requirement">
-                    <span class="check">✓</span> One number
-                  </p>
-                  <p class="requirement">
-                    <span class="check">✓</span> One special character
-                  </p>
-                </div>
-              </div>
-
-              <p class="subsection-label">Confirm New Password</p>
-
-              <div class="form-group">
-                <div class="password-input-wrapper">
-                  <input
-                    type="password"
-                    placeholder="Confirm your new password"
-                    class="password-input"
-                  />
-                  <button class="toggle-password-btn">👁️</button>
-                </div>
+                <p>{{ accountProfile.contactNumber || 'Not set' }}</p>
               </div>
             </div>
 
-            <!-- Two-Factor Authentication -->
-            <div class="two-fa-section">
-              <div class="two-fa-card">
-                <div class="two-fa-icon">🛡️</div>
-                <div class="two-fa-content">
-                  <h3>Two-Step Verification</h3>
-                  <p>Add an extra layer of security to your account</p>
-                  <p class="two-fa-status">Two-Step Verification is ON</p>
-                  <button class="btn btn-secondary">Manage</button>
-                </div>
+            <form class="settings-form" @submit.prevent="saveAccountSettings">
+              <div class="form-row">
+                <label for="firstName">First Name</label>
+                <input
+                  id="firstName"
+                  v-model.trim="accountForm.firstName"
+                  type="text"
+                  autocomplete="given-name"
+                  :disabled="isSavingAccount"
+                />
               </div>
+
+              <div class="form-row">
+                <label for="lastName">Last Name</label>
+                <input
+                  id="lastName"
+                  v-model.trim="accountForm.lastName"
+                  type="text"
+                  autocomplete="family-name"
+                  :disabled="isSavingAccount"
+                />
+              </div>
+
+              <div class="form-row">
+                <label for="phoneNumber">Phone Number (10 digits, starts with 9)</label>
+                <input
+                  id="phoneNumber"
+                  v-model.trim="accountForm.contactNumber"
+                  type="tel"
+                  inputmode="numeric"
+                  maxlength="10"
+                  placeholder="9XXXXXXXXX"
+                  :disabled="isSavingAccount"
+                  @input="sanitizePhoneInput"
+                />
+              </div>
+
+              <div class="form-row">
+                <label for="profilePhoto">Profile Photo (.jpg only)</label>
+                <input
+                  id="profilePhoto"
+                  ref="profilePhotoInput"
+                  type="file"
+                  accept=".jpg,image/jpeg"
+                  :disabled="isSavingAccount"
+                  @change="handlePhotoChange"
+                />
+                <p v-if="selectedPhotoName" class="field-hint">{{ selectedPhotoName }}</p>
+              </div>
+
+              <p v-if="accountError" class="settings-alert error">{{ accountError }}</p>
+              <p v-if="accountSuccess" class="settings-alert success">{{ accountSuccess }}</p>
+
+              <button class="btn btn-primary" type="submit" :disabled="isSavingAccount">
+                {{ isSavingAccount ? 'Saving...' : 'Save Changes' }}
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <section v-if="activeTab === 'security'" class="settings-card">
+          <div class="card-header">
+            <div>
+              <h2>Security</h2>
+              <p>Update the local password used for TechReserve sign-in.</p>
             </div>
           </div>
-        </div>
 
-        <button class="btn btn-primary">Update Password</button>
-      </div>
+          <form class="settings-form" @submit.prevent="updatePassword">
+            <div class="form-row">
+              <label for="currentPassword">Current Password</label>
+              <input
+                id="currentPassword"
+                v-model="passwordForm.currentPassword"
+                type="password"
+                autocomplete="current-password"
+                :disabled="isUpdatingPassword"
+              />
+            </div>
 
-      <!-- Preferences Tab -->
-      <div v-if="activeTab === 'preferences'" class="settings-card">
-        <div class="card-header">
-          <span class="card-icon">⚙️</span>
-          <div>
-            <h2>Preferences</h2>
-            <p>Customize your experience and notification settings</p>
+            <div class="form-row">
+              <label for="newPassword">New Password</label>
+              <input
+                id="newPassword"
+                v-model="passwordForm.newPassword"
+                type="password"
+                autocomplete="new-password"
+                :disabled="isUpdatingPassword"
+              />
+              <div class="password-requirements">
+                <p :class="['requirement', { met: passwordRequirements.length }]">At least 8 characters</p>
+                <p :class="['requirement', { met: passwordRequirements.upper }]">One uppercase letter</p>
+                <p :class="['requirement', { met: passwordRequirements.lower }]">One lowercase letter</p>
+                <p :class="['requirement', { met: passwordRequirements.number }]">One number</p>
+                <p :class="['requirement', { met: passwordRequirements.special }]">One special character</p>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input
+                id="confirmPassword"
+                v-model="passwordForm.confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                :disabled="isUpdatingPassword"
+              />
+            </div>
+
+            <p v-if="passwordError" class="settings-alert error">{{ passwordError }}</p>
+            <p v-if="passwordSuccess" class="settings-alert success">{{ passwordSuccess }}</p>
+
+            <button class="btn btn-primary" type="submit" :disabled="isUpdatingPassword">
+              {{ isUpdatingPassword ? 'Updating...' : 'Update Password' }}
+            </button>
+          </form>
+        </section>
+
+        <section v-if="activeTab === 'preferences'" class="settings-card">
+          <div class="card-header">
+            <div>
+              <h2>Preferences</h2>
+              <p>Notification preferences are retained for the current session.</p>
+            </div>
           </div>
-        </div>
 
-        <div class="card-content">
-          <!-- Notification Preferences -->
           <div class="preferences-subsection">
-            <h3>Notification Preferences</h3>
-            <p class="subsection-description">Choose what notifications you want to receive</p>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">📅</div>
-                <div class="preference-text">
-                  <h4>Reservation Updates</h4>
-                  <p>Receive updates about your reservations</p>
-                </div>
+            <div class="preference-item" v-for="item in preferenceItems" :key="item.label">
+              <div class="preference-text">
+                <h4>{{ item.label }}</h4>
+                <p>{{ item.description }}</p>
               </div>
               <label class="toggle-switch">
-                <input type="checkbox" checked />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">⏰</div>
-                <div class="preference-text">
-                  <h4>Upcoming Reminders</h4>
-                  <p>Reminder for upcoming reservations</p>
-                </div>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" checked />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">🏢</div>
-                <div class="preference-text">
-                  <h4>Facilities Announcements</h4>
-                  <p>Important facility announcements</p>
-                </div>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">🔔</div>
-                <div class="preference-text">
-                  <h4>System Notifications</h4>
-                  <p>System updates and maintenance notices</p>
-                </div>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" checked />
+                <input type="checkbox" v-model="item.enabled" />
                 <span class="slider"></span>
               </label>
             </div>
           </div>
-
-          <!-- Display Preferences -->
-          <div class="preferences-subsection">
-            <h3>Display Preferences</h3>
-            <p class="subsection-description">Customize the system to your preferences</p>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">🌐</div>
-                <div class="preference-text">
-                  <h4>Language</h4>
-                  <p>Choose your preferred language</p>
-                </div>
-              </div>
-              <select class="preference-select">
-                <option>English</option>
-                <option>Filipino</option>
-                <option>Spanish</option>
-              </select>
-            </div>
-
-            <div class="preference-item">
-              <div class="preference-info">
-                <div class="preference-icon">⏱️</div>
-                <div class="preference-text">
-                  <h4>Time Format</h4>
-                  <p>Choose your preferred time format</p>
-                </div>
-              </div>
-              <select class="preference-select">
-                <option>12-Hour (AM/PM)</option>
-                <option>24-Hour</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary">Save Preferences</button>
-      </div>
+        </section>
       </div>
     </div>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
-import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useSettingsPage } from './composables/useSettingsPage.js';
 
-const authStore = useAuthenticationStore();
-
-const activeTab = ref('account');
-
-const settingsTabs = [
-  { label: 'Account Settings', value: 'account' },
-  { label: 'Security', value: 'security' },
-  { label: 'Preferences', value: 'preferences' }
-];
-
-const currentAccount = computed(() => authStore.accountData || authStore.clerkAccountData || {});
-
-const formData = computed(() => {
-  const account = currentAccount.value;
-  const firstName = String(account.firstName || '').trim();
-  const lastName = String(account.lastName || '').trim();
-  const fullName = [firstName, lastName].filter(Boolean).join(' ');
-
-  return {
-    fullName: fullName || 'Account User',
-    email: account.emailAddress || account.email || 'No email address',
-    phone: account.contactNumber || account.phone || 'No phone number',
-  };
-});
-
-const userRole = computed(() => {
-  return authStore.userRole === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : 'BORROWER';
-});
-
-const navigationItems = computed(() => {
-  if (authStore.userRole === 'ROLE_ADMIN') {
-    return adminNavigationItems;
-  }
-  return borrowerNavigationItems;
-});
+const {
+  activeTab,
+  isLoadingProfile,
+  isSavingAccount,
+  isUpdatingPassword,
+  loadError,
+  accountError,
+  accountSuccess,
+  passwordError,
+  passwordSuccess,
+  selectedPhotoName,
+  profilePhotoInput,
+  accountProfile,
+  accountForm,
+  passwordForm,
+  settingsTabs,
+  preferenceItems,
+  userRole,
+  navigationItems,
+  fullName,
+  accountInitials,
+  passwordRequirements,
+  selectTab,
+  saveAccountSettings,
+  updatePassword,
+  handlePhotoChange,
+  sanitizePhoneInput,
+} = useSettingsPage();
 </script>
 
 <style scoped>
 @import './css/SettingsPage.css';
 </style>
-
-

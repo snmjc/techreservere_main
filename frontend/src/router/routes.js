@@ -7,6 +7,8 @@
 // 2. Export as array
 
 import { RBAC_ACTION, RBAC_CAPABILITY, RBAC_SCOPE } from '@/shared/constants/rbacPermissions.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const rbacAny = (...permissions) => ({ any: permissions });
 const permission = (capability, action, scope = RBAC_SCOPE.ALL) => ({ capability, action, scope });
@@ -22,19 +24,21 @@ export const routeDefinitions = [
       // Avoid bouncing signed-in users back to the login screen (Clerk may redirect to `/` after sign-in).
       // We intentionally use localStorage here because the Pinia store may not be initialized yet.
       try {
-        const accountString = localStorage.getItem('techreserve_auth_account');
+        const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
         if (accountString) {
           const account = JSON.parse(accountString);
+          const status = String(account?.status || account?.accountStatus || '').trim().toLowerCase();
+          if (account?.isActive === false || status === 'disabled') return { name: ROUTE_NAMES.accountDeactivated };
           const rawRole = account?.roleDesignation ?? account?.role ?? null;
           const role = rawRole ? String(rawRole).trim().toUpperCase() : null;
-          if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: 'adminDashboardPage' };
-          if (role === 'ROLE_BORROWER' || role === 'BORROWER') return { name: 'borrowerMyReservationsPage' };
-          return { name: 'borrowerMyReservationsPage' };
+          if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: ROUTE_NAMES.adminDashboard };
+          if (role === 'ROLE_BORROWER' || role === 'BORROWER') return { name: ROUTE_NAMES.borrowerMyReservations };
+          return { name: ROUTE_NAMES.borrowerMyReservations };
         }
       } catch (e) {
         // ignore parse errors and fall through to login
       }
-      return { name: 'clerkLoginPage' };
+      return { name: ROUTE_NAMES.clerkLogin };
     },
   },
   {
@@ -43,7 +47,7 @@ export const routeDefinitions = [
   },
   {
     path: '/clerk-login',
-    name: 'clerkLoginPage',
+    name: ROUTE_NAMES.clerkLogin,
     component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
       requiresAuth: false,
@@ -52,7 +56,7 @@ export const routeDefinitions = [
   },
   {
     path: '/clerk-login/:pathMatch(.*)*',
-    name: 'clerkLoginPage',
+    name: ROUTE_NAMES.clerkLogin,
     component: () => import('@/pages/auth/ClerkLogin.vue'),
     meta: {
       requiresAuth: false,
@@ -61,7 +65,7 @@ export const routeDefinitions = [
   },
   {
     path: '/auth/post-login',
-    name: 'postLoginPage',
+    name: ROUTE_NAMES.postLogin,
     component: () => import('@/pages/auth/PostLogin.vue'),
     meta: {
       requiresAuth: false,
@@ -69,9 +73,18 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/account-deactivated',
+    name: ROUTE_NAMES.accountDeactivated,
+    component: () => import('@/pages/auth/AccountDeactivated.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
+  },
+  {
     path: '/signup',
-    name: 'signUpPage',
-    component: () => import('@/pages/auth/SignUp.vue'),
+    name: ROUTE_NAMES.signUp,
+    redirect: '/sign-up',
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -79,7 +92,7 @@ export const routeDefinitions = [
   },
   {
     path: '/request-pending',
-    name: 'requestPendingPage',
+    name: ROUTE_NAMES.requestPending,
     component: () => import('@/pages/auth/RequestPending.vue'),
     meta: {
       requiresAuth: false,
@@ -88,7 +101,7 @@ export const routeDefinitions = [
   },
   {
     path: '/dashboard',
-    name: 'dashboardPage',
+    name: ROUTE_NAMES.dashboard,
     component: () => import('@/pages/borrower/MyReservations.vue'),
     meta: {
       requiresAuth: true,
@@ -98,14 +111,14 @@ export const routeDefinitions = [
   },
   {
     path: '/sign-up',
-    name: 'customSignUpPage',
+    name: ROUTE_NAMES.customSignUp,
     component: () => import('@/pages/auth/CustomSignUp.vue'),
     beforeEnter: (toRoute) => {
       const queryKeys = Object.keys(toRoute.query || {});
       const hasInvitationQuery = queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key));
       if (hasInvitationQuery) {
         return {
-          name: 'clerkLoginPage',
+          name: ROUTE_NAMES.clerkLogin,
           query: toRoute.query,
           hash: toRoute.hash,
         };
@@ -132,7 +145,7 @@ export const routeDefinitions = [
   },
   {
     path: '/admin/dashboard',
-    name: 'adminDashboardPage',
+    name: ROUTE_NAMES.adminDashboard,
     component: () => import('@/pages/admin/Dashboard.vue'),
     meta: {
       requiresAuth: true,
@@ -184,7 +197,7 @@ export const routeDefinitions = [
   {
     path: '/admin/task-assignments',
     name: 'adminTaskAssignmentsPage',
-    component: () => import('@/pages/admin/AdminInvitations.vue'),
+    component: () => import('@/pages/admin/AdminTaskAssignments.vue'),
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
@@ -283,7 +296,7 @@ export const routeDefinitions = [
   // Borrower/Requester routes
   {
     path: '/borrower/my-reservations',
-    name: 'borrowerMyReservationsPage',
+    name: ROUTE_NAMES.borrowerMyReservations,
     component: () => import('@/pages/borrower/MyReservations.vue'),
     meta: {
       requiresAuth: true,
@@ -293,7 +306,7 @@ export const routeDefinitions = [
   },
   {
     path: '/borrower/create-reservation',
-    name: 'borrowerCreateReservationPage',
+    name: ROUTE_NAMES.borrowerCreateReservation,
     component: () => import('@/pages/borrower/CreateReservation.vue'),
     meta: {
       requiresAuth: true,
@@ -376,7 +389,7 @@ export const routeDefinitions = [
   },
   {
     path: '/borrower/view-reservation-list',
-    name: 'borrowerViewReservationListPage',
+    name: ROUTE_NAMES.borrowerViewReservationList,
     component: () => import('@/pages/borrower/ViewReservationList.vue'),
     meta: {
       requiresAuth: true,
@@ -396,7 +409,7 @@ export const routeDefinitions = [
   },
   {
     path: '/borrower/approved-requests-logs',
-    name: 'borrowerApprovedRequestsLogsPage',
+    name: ROUTE_NAMES.borrowerApprovedRequestsLogs,
     component: () => import('@/pages/borrower/ApprovedRequestsLogs.vue'),
     meta: {
       requiresAuth: true,
@@ -406,7 +419,7 @@ export const routeDefinitions = [
   },
   {
     path: '/borrower/pending-requests-logs',
-    name: 'borrowerPendingRequestsLogsPage',
+    name: ROUTE_NAMES.borrowerPendingRequestsLogs,
     component: () => import('@/pages/borrower/PendingRequestsLogs.vue'),
     meta: {
       requiresAuth: true,
@@ -416,7 +429,7 @@ export const routeDefinitions = [
   },
   {
     path: '/borrower/completed-reservations-logs',
-    name: 'borrowerCompletedReservationsLogsPage',
+    name: ROUTE_NAMES.borrowerCompletedReservationsLogs,
     component: () => import('@/pages/borrower/CompletedReservationsLogs.vue'),
     meta: {
       requiresAuth: true,

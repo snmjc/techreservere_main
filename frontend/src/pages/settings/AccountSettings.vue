@@ -274,6 +274,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 
 const authStore = useAuthenticationStore();
 
@@ -338,7 +339,7 @@ const saveChanges = () => {
     authStore.accountData.contactNumber = formData.value.phone;
 
     // Update localStorage
-    localStorage.setItem('techreserve_auth_account', JSON.stringify(authStore.accountData));
+    localStorage.setItem(AUTH_STORAGE_KEYS.account, JSON.stringify(authStore.accountData));
   }
 
   alert('Account information saved successfully!');

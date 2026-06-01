@@ -92,6 +92,7 @@ import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const requestStore = useRequestStore();
@@ -136,6 +137,6 @@ function getTypeBadgeClass(requestType) {
 }
 
 function navigateBackToMyReservations() {
-  router.push({ name: 'borrowerMyReservationsPage' });
+  router.push({ name: ROUTE_NAMES.borrowerMyReservations });
 }
 </script>

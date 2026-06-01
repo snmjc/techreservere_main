@@ -190,6 +190,22 @@
                         <path d="m6 6 12 12" />
                       </svg>
                     </button>
+                    <button
+                      v-if="editListMode"
+                      class="admin-wishlist-icon-button admin-wishlist-icon-button--delete"
+                      type="button"
+                      aria-label="Delete account request"
+                      title="Delete account request"
+                      @click="openDeleteModal(account)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -214,28 +230,47 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>View Account</h2>
-            <p>Verify system account and send an invite.</p>
+            <p>Review account and invitation details from the database.</p>
           </div>
 
           <div class="admin-wishlist-view-account-grid">
             <div class="admin-wishlist-view-account-main">
-              <p><strong>ID Number:</strong> <span>{{ selectedAccount.idNumber }}</span></p>
               <p><strong>Last Name:</strong> <span>{{ selectedAccount.lastName }}</span></p>
               <p><strong>First Name:</strong> <span>{{ selectedAccount.firstName }}</span></p>
-              <p><strong>{{ getEmailLabel(selectedAccount) }}</strong> <span>{{ selectedAccount.emailAddress }}</span></p>
-              <p v-if="selectedAccount.accountType === 'Employee'"><strong>Phone:</strong> <span>{{ selectedAccount.contactNumber }}</span></p>
+              <p><strong>ID Number:</strong> <span>{{ selectedAccount.idNumber }}</span></p>
+              <p><strong>Email:</strong> <span>{{ selectedAccount.emailAddress }}</span></p>
               <p><strong>Role:</strong> <span>{{ selectedAccount.role }}</span></p>
               <p><strong>Account Status:</strong> <span>{{ getStatusLabel(selectedAccount.accountStatus) }}</span></p>
-              <p v-if="selectedAccount.accountType !== 'Employee'"><strong>Account Registered:</strong> <span>{{ formatDisplayDate(selectedAccount.registeredAt) }}</span></p>
+              <p><strong>Account Registered:</strong> <span>{{ formatDisplayDateTime(selectedAccount.registeredAt) }}</span></p>
+              <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
+              <p><strong>Proof File:</strong> <span>{{ selectedAccount.supportingDocumentName || 'N/A' }}</span></p>
             </div>
             <div class="admin-wishlist-view-account-side">
-              <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
-              <div>
-                <p><strong>Invite Sent:</strong> <span>{{ formatNullableDate(selectedAccount.inviteSentAt) }}</span></p>
-                <p><strong>Expires:</strong> <span>{{ formatNullableDate(selectedAccount.inviteExpiresAt) }}</span></p>
-                <p><strong>Accepted:</strong> <span>{{ formatNullableDate(selectedAccount.inviteAcceptedAt) }}</span></p>
-              </div>
+              <p><strong>Invite Sent:</strong> <span>{{ getInviteSentStatus(selectedAccount) }}</span></p>
+              <p><strong>Invited By:</strong> <span>{{ selectedAccount.inviteInvitedBy || 'N/A' }}</span></p>
+              <p><strong>Invite Sent Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteSentAt) }}</span></p>
+              <p><strong>Expiration Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteExpiresAt) }}</span></p>
+              <p><strong>Accepted Status:</strong> <span>{{ getAcceptedStatus(selectedAccount) }}</span></p>
+              <p><strong>Accepted Date:</strong> <span>{{ formatNullableDateTime(selectedAccount.inviteAcceptedAt) }}</span></p>
             </div>
+          </div>
+
+          <div v-if="selectedAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
+            <a
+              class="admin-wishlist-proof-link"
+              :href="selectedAccount.supportingDocumentData"
+              target="_blank"
+              rel="noopener"
+            >
+              {{ isPdfProof(selectedAccount) ? 'Preview uploaded PDF' : 'View uploaded proof' }}
+            </a>
+            <a
+              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
+              :href="selectedAccount.supportingDocumentData"
+              :download="selectedAccount.supportingDocumentName || 'signup-proof'"
+            >
+              Download proof
+            </a>
           </div>
 
           <div class="admin-wishlist-modal-actions">
@@ -250,9 +285,9 @@
         </section>
       </div>
 
-      <div v-if="approvalAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeApprovalModal">
+      <div v-if="approvalAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeApprovalModal()">
         <section class="admin-wishlist-approval-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeApprovalModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeApprovalModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -277,8 +312,12 @@
               </em>
               <div class="admin-wishlist-invite-details">
                 <p>
-                  <span>Name</span>
-                  <strong>{{ approvalAccount.fullName }}</strong>
+                  <span>Last Name</span>
+                  <strong>{{ approvalAccount.lastName }}</strong>
+                </p>
+                <p>
+                  <span>First Name</span>
+                  <strong>{{ approvalAccount.firstName }}</strong>
                 </p>
                 <p>
                   <span>ID Number</span>
@@ -292,8 +331,30 @@
                   <span>Role</span>
                   <strong>{{ approvalAccount.role }}</strong>
                 </p>
+                <p v-if="approvalMode === 'resend'">
+                  <span>Last Invite Sent</span>
+                  <strong>{{ formatNullableDateTime(approvalAccount.inviteSentAt) }}</strong>
+                </p>
               </div>
             </div>
+          </div>
+
+          <div v-if="approvalAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
+            <a
+              class="admin-wishlist-proof-link"
+              :href="approvalAccount.supportingDocumentData"
+              target="_blank"
+              rel="noopener"
+            >
+              {{ isPdfProof(approvalAccount) ? 'Preview uploaded PDF' : 'View uploaded proof' }}
+            </a>
+            <a
+              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
+              :href="approvalAccount.supportingDocumentData"
+              :download="approvalAccount.supportingDocumentName || 'signup-proof'"
+            >
+              Download proof
+            </a>
           </div>
 
           <label class="admin-wishlist-confirm-field">
@@ -303,6 +364,7 @@
               type="email"
               :placeholder="currentAdminEmail || 'admin@fit.edu.ph'"
               autocomplete="off"
+              :disabled="isProcessing"
             />
           </label>
 
@@ -340,7 +402,7 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>Deny Account Request</h2>
-            <p>This will mark the account request as denied and prevent it from being invited.</p>
+            <p>Review the request email before confirming denial. This will prevent the account from being invited.</p>
           </div>
 
           <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">
@@ -364,7 +426,7 @@
                   <strong>{{ denialAccount.idNumber }}</strong>
                 </p>
                 <p>
-                  <span>{{ getApprovalEmailLabel(denialAccount) }}</span>
+                  <span>Email to deny</span>
                   <strong>{{ denialAccount.emailAddress }}</strong>
                 </p>
                 <p>
@@ -376,7 +438,7 @@
           </div>
 
           <label class="admin-wishlist-confirm-field">
-            <span>Type <strong>{{ denialAccount.emailAddress }}</strong> to confirm denial:</span>
+            <span>Type the exact email <strong>{{ denialAccount.emailAddress }}</strong> to confirm denial:</span>
             <input
               v-model.trim="denialConfirmEmail"
               type="email"
@@ -408,9 +470,98 @@
         </section>
       </div>
 
-      <div v-if="showAddAdminModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeAddAdminModal">
+      <div v-if="deleteAccountRequest" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeDeleteModal">
+        <section class="admin-wishlist-denial-modal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeDeleteModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="admin-wishlist-modal-heading">
+            <h2>Delete Account Request</h2>
+            <p>This will permanently remove the request and its invitation record from the database.</p>
+          </div>
+
+          <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">
+            <span class="admin-wishlist-avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            </span>
+            <div class="admin-wishlist-invite-summary">
+              <em :class="getAccountTypeBadgeClass(deleteAccountRequest.accountType)">
+                {{ deleteAccountRequest.accountType }}
+              </em>
+              <div class="admin-wishlist-invite-details">
+                <p>
+                  <span>Name</span>
+                  <strong>{{ deleteAccountRequest.fullName }}</strong>
+                </p>
+                <p>
+                  <span>ID Number</span>
+                  <strong>{{ deleteAccountRequest.idNumber }}</strong>
+                </p>
+                <p>
+                  <span>Email to delete</span>
+                  <strong>{{ deleteAccountRequest.emailAddress }}</strong>
+                </p>
+                <p>
+                  <span>Role</span>
+                  <strong>{{ deleteAccountRequest.role }}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <label class="admin-wishlist-confirm-field">
+            <span>Type the exact email <strong>{{ deleteAccountRequest.emailAddress }}</strong> to confirm deletion:</span>
+            <input
+              v-model.trim="deleteConfirmEmail"
+              type="email"
+              :placeholder="deleteAccountRequest.emailAddress"
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="admin-wishlist-confirm-field">
+            <span>Type your admin password to confirm deletion:</span>
+            <input
+              v-model="deleteConfirmPassword"
+              type="password"
+              placeholder="Admin password"
+              autocomplete="current-password"
+            />
+          </label>
+
+          <p v-if="deleteFormError" class="admin-wishlist-add-error">{{ deleteFormError }}</p>
+
+          <div class="admin-wishlist-modal-actions">
+            <button
+              class="admin-wishlist-cancel-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="closeDeleteModal"
+            >
+              Cancel
+            </button>
+            <button
+              class="admin-wishlist-deny-button"
+              type="button"
+              :disabled="isProcessing || !isDeleteConfirmationReady"
+              @click="deleteWishlistAccount"
+            >
+              {{ isProcessing ? 'Deleting...' : 'Delete Request' }}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="showAddAdminModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeAddAdminModal()">
         <section class="admin-wishlist-add-admin-modal admin-wishlist-create-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeAddAdminModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeAddAdminModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -439,6 +590,7 @@
                 placeholder="Last Name"
                 minlength="2"
                 required
+                :disabled="isProcessing"
                 @input="sanitizeAdminNameField('lastName')"
               />
             </label>
@@ -450,16 +602,21 @@
                 placeholder="First Name"
                 minlength="2"
                 required
+                :disabled="isProcessing"
                 @input="sanitizeAdminNameField('firstName')"
               />
             </label>
             <label class="admin-wishlist-field-wide">
               <span>Email</span>
-              <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required />
+              <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required :disabled="isProcessing" />
             </label>
             <label>
               <span>ID Number</span>
-              <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required />
+              <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required :disabled="isProcessing" />
+            </label>
+            <label class="admin-wishlist-field-wide">
+              <span>Default Password</span>
+              <input type="text" value="admin123" readonly disabled />
             </label>
 
             <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
@@ -593,9 +750,9 @@
         </section>
       </div>
 
-      <div v-if="showAddEmployeeModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeAddEmployeeModal">
+      <div v-if="showAddEmployeeModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeAddEmployeeModal()">
         <section class="admin-wishlist-add-employee-modal admin-wishlist-create-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeAddEmployeeModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeAddEmployeeModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -603,8 +760,8 @@
           </button>
 
           <div class="admin-wishlist-modal-heading admin-wishlist-modal-heading--employee">
-            <h2>Add Employee Account</h2>
-            <p>Create an employee request record for verification.</p>
+            <h2>Add Staff Account</h2>
+            <p>Create a staff request record for verification.</p>
           </div>
 
           <div class="admin-wishlist-add-section-label">
@@ -618,92 +775,40 @@
           <form class="admin-wishlist-add-form" @submit.prevent="createEmployeeAccount">
             <label>
               <span>Last Name</span>
-              <input v-model.trim="addEmployeeForm.lastName" type="text" placeholder="Zefanya" required />
+              <input v-model.trim="addEmployeeForm.lastName" type="text" placeholder="Dela Cruz" required @input="sanitizeEmployeeNameField('lastName')" />
             </label>
             <label>
               <span>First Name</span>
-              <input v-model.trim="addEmployeeForm.firstName" type="text" placeholder="Nicole" required />
-            </label>
-            <label class="admin-wishlist-field-wide">
-              <span>Email</span>
-              <input v-model.trim="addEmployeeForm.emailAddress" type="email" placeholder="nicolezefanya@gmail.com" required />
+              <input v-model.trim="addEmployeeForm.firstName" type="text" placeholder="Juan" required @input="sanitizeEmployeeNameField('firstName')" />
             </label>
             <label>
               <span>Phone</span>
-              <input v-model.trim="addEmployeeForm.phone" type="tel" placeholder="0912 345 6789" required />
+              <input
+                v-model.trim="addEmployeeForm.phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="9123456789"
+                required
+                @input="sanitizeEmployeePhone"
+              />
             </label>
             <label>
-              <span>ID Number</span>
+              <span>Work ID Number</span>
               <input v-model.trim="addEmployeeForm.idNumber" type="text" placeholder="2023-****" required />
             </label>
             <label class="admin-wishlist-field-wide">
               <span>Role</span>
-              <input v-model.trim="addEmployeeForm.role" type="text" placeholder="Maintenance Staff" required />
-            </label>
-            <label>
-              <span>Password</span>
-              <span class="admin-wishlist-password-field">
-                <input
-                  v-model="addEmployeeForm.password"
-                  :type="showAddEmployeePassword ? 'text' : 'password'"
-                  placeholder="Password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="admin-wishlist-password-toggle"
-                  :aria-label="showAddEmployeePassword ? 'Hide password' : 'Show password'"
-                  @click="showAddEmployeePassword = !showAddEmployeePassword"
-                >
-                  <svg v-if="showAddEmployeePassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3l18 18" />
-                    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                    <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                    <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </button>
-              </span>
-            </label>
-            <label>
-              <span>Confirm Password</span>
-              <span class="admin-wishlist-password-field">
-                <input
-                  v-model="addEmployeeForm.confirmPassword"
-                  :type="showAddEmployeeConfirmPassword ? 'text' : 'password'"
-                  placeholder="Confirm Password"
-                  required
-                />
-                <button
-                  type="button"
-                  class="admin-wishlist-password-toggle"
-                  :aria-label="showAddEmployeeConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
-                  @click="showAddEmployeeConfirmPassword = !showAddEmployeeConfirmPassword"
-                >
-                  <svg v-if="showAddEmployeeConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3l18 18" />
-                    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                    <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                    <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </button>
-              </span>
+              <input v-model="addEmployeeForm.role" type="text" readonly />
             </label>
 
             <p v-if="addEmployeeError" class="admin-wishlist-add-error">{{ addEmployeeError }}</p>
 
             <div class="admin-wishlist-modal-actions">
-              <button class="admin-wishlist-cancel-button" type="button" @click="closeAddEmployeeModal">
+              <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddEmployeeModal">
                 Cancel
               </button>
-              <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing">
+              <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing || !isEmployeeCreateFormReady">
                 {{ isProcessing ? 'Creating...' : 'Create Account' }}
               </button>
             </div>
@@ -722,6 +827,27 @@ import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
+import {
+  formatCreateAccountError,
+  formatDisplayDateTime,
+  formatNullableDateTime,
+  getAcceptedStatus,
+  getAccountTypeBadgeClass,
+  getApprovalEmailLabel,
+  getInviteSentStatus,
+  getSortRoleName,
+  getStatusClass,
+  getStatusLabel,
+  getUniqueRequestAccounts,
+  getUserRoleName,
+  isPdfProof,
+  normalizeEmailForConfirmation,
+  normalizeWishlistAccount,
+  sanitizeNameInput,
+  sanitizePhoneInput,
+  validateAdminAccountForm as validateAdminFormValues,
+  validateEmployeeAccountForm as validateEmployeeFormValues,
+} from './wishlist/adminWishlistHelpers.js';
 
 const authStore = useAuthenticationStore();
 
@@ -746,6 +872,10 @@ const approvalMode = ref('send');
 const denialAccount = ref(null);
 const denialConfirmEmail = ref('');
 const denialFormError = ref('');
+const deleteAccountRequest = ref(null);
+const deleteConfirmEmail = ref('');
+const deleteConfirmPassword = ref('');
+const deleteFormError = ref('');
 const toastMessage = ref('');
 const loadErrorMessage = ref('');
 const wishlistAccounts = ref([]);
@@ -783,62 +913,10 @@ const addUserForm = reactive({
 const addEmployeeForm = reactive({
   lastName: '',
   firstName: '',
-  emailAddress: '',
   phone: '',
   idNumber: '',
   role: 'Maintenance Staff',
-  password: '',
-  confirmPassword: '',
 });
-
-const fallbackWishlistAccounts = [
-  {
-    accountIdentifier: 20240001,
-    idNumber: '2024*****',
-    firstName: 'Karin',
-    lastName: 'Dela Fuente',
-    emailAddress: 'kdelafuente@fit.edu.ph',
-    roleDesignation: 'ROLE_ADMIN',
-    roleLabel: 'Admin',
-    accountType: 'Admin',
-    accountStatus: 'pending',
-    registeredAt: '2026-05-15T08:30:00+08:00',
-    inviteSentAt: null,
-    inviteExpiresAt: null,
-    inviteAcceptedAt: null,
-  },
-  {
-    accountIdentifier: 20230002,
-    idNumber: '2023*****',
-    firstName: 'Anabela',
-    lastName: 'Valdes',
-    emailAddress: 'avaldes@fit.edu.ph',
-    roleDesignation: 'ROLE_BORROWER',
-    roleLabel: 'User: Student',
-    accountType: 'User',
-    accountStatus: 'pending',
-    registeredAt: '2026-05-16T10:15:00+08:00',
-    inviteSentAt: null,
-    inviteExpiresAt: null,
-    inviteAcceptedAt: null,
-  },
-  {
-    accountIdentifier: 20220003,
-    idNumber: '2022*****',
-    firstName: 'Miguel',
-    lastName: 'Santos',
-    emailAddress: 'msantos@fit.edu.ph',
-    roleDesignation: 'ROLE_BORROWER',
-    roleLabel: 'User: Faculty',
-    accountType: 'Employee',
-    contactNumber: '09170000003',
-    accountStatus: 'expired',
-    registeredAt: '2026-05-14T14:05:00+08:00',
-    inviteSentAt: '2026-05-17T09:00:00+08:00',
-    inviteExpiresAt: '2026-05-24T09:00:00+08:00',
-    inviteAcceptedAt: null,
-  },
-];
 
 const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
@@ -854,6 +932,12 @@ const isDenialConfirmationReady = computed(() => (
   Boolean(denialAccount.value)
   && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
 ));
+const isDeleteConfirmationReady = computed(() => (
+  Boolean(deleteAccountRequest.value)
+  && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)
+  && deleteConfirmPassword.value.trim() !== ''
+));
+const isEmployeeCreateFormReady = computed(() => validateEmployeeFormValues(addEmployeeForm) === '');
 
 const wishlistTabs = computed(() => {
   const accounts = normalizedAccounts.value;
@@ -921,142 +1005,20 @@ async function loadWishlistAccounts() {
   isLoading.value = false;
 }
 
-function normalizeWishlistAccount(account) {
-  const roleDesignation = account.roleDesignation || account.role_designation || 'ROLE_BORROWER';
-  const firstName = account.firstName || account.first_name || '';
-  const lastName = account.lastName || account.last_name || '';
-  const emailAddress = account.emailAddress || account.email_address || '';
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const inviteSentAt = account.inviteSentAt || account.invite_sent_at || null;
-  const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
-  const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
-  const accountStatus = resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt);
-  const idNumber = account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A';
-  const contactNumber = account.contactNumber || account.contact_number || account.phone || 'N/A';
-
-  return {
-    ...account,
-    accountIdentifier: account.accountIdentifier || account.account_identifier || idNumber,
-    idNumber: formatIdNumber(idNumber),
-    firstName,
-    lastName,
-    fullName: `${firstName} ${lastName}`.trim(),
-    emailAddress,
-    contactNumber,
-    roleDesignation,
-    role: resolveRoleName(account, roleDesignation),
-    roleLabel: account.roleLabel || resolveRoleLabel(account, roleDesignation),
-    accountType,
-    accountStatus,
-    registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
-    inviteSentAt,
-    inviteExpiresAt,
-    inviteAcceptedAt,
-    initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'TR',
-  };
-}
-
-function getUniqueRequestAccounts(accounts) {
-  const accountsByEmail = new Map();
-  accounts.forEach((account) => {
-    const emailKey = normalizeEmailForConfirmation(account.emailAddress);
-    if (!emailKey) return;
-
-    const existingAccount = accountsByEmail.get(emailKey);
-    if (!existingAccount || new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime()) {
-      accountsByEmail.set(emailKey, account);
-    }
-  });
-
-  return Array.from(accountsByEmail.values());
-}
-
-function resolveAccountType(account, roleDesignation) {
-  const normalizedRole = String(roleDesignation).toUpperCase();
-  if (normalizedRole.includes('ADMIN')) return 'Admin';
-  if (normalizedRole.includes('STAFF') || normalizedRole.includes('EMPLOYEE')) return 'Employee';
-  const department = String(account.department || '').toLowerCase();
-  if (department.includes('staff') || department.includes('employee') || department.includes('technical') || department.includes('maintenance')) return 'Employee';
-  return 'User';
-}
-
-function resolveRoleLabel(account, roleDesignation) {
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  if (String(roleDesignation).toUpperCase().includes('ADMIN')) return 'Admin';
-  if (accountType === 'Employee') return resolveRoleName({ ...account, accountType }, roleDesignation);
-  const department = String(account.department || '').toLowerCase();
-  if (department.includes('faculty') || department.includes('employee')) return 'User: Faculty';
-  return 'User: Student';
-}
-
-function resolveRoleName(account, roleDesignation) {
-  if (String(roleDesignation).toUpperCase().includes('ADMIN')) return 'Administrator';
-  const accountType = account.accountType || resolveAccountType(account, roleDesignation);
-  const rawRole = account.role || account.roleName || account.roleLabel || '';
-  const department = String(account.department || '');
-  if (accountType === 'Employee') {
-    const employeeRole = formatEmployeeRoleName(rawRole);
-    if (employeeRole) return employeeRole;
-    if (/faculty/i.test(rawRole) || /faculty/i.test(department)) return 'Faculty';
-    const departmentRole = formatEmployeeRoleName(department);
-    if (departmentRole) return departmentRole;
-    return 'Technical Staff';
-  }
-  if (/faculty/i.test(rawRole) || /faculty/i.test(department)) return 'Faculty';
-  return 'Student';
-}
-
-function getSortRoleName(account) {
-  return account.accountType === 'User' ? getUserRoleName(account) : account.role;
-}
-
-function getUserRoleName(account) {
-  const roleText = `${account?.role || ''} ${account?.roleLabel || ''} ${account?.roleDesignation || ''}`.toLowerCase();
-  return roleText.includes('faculty') ? 'Faculty' : 'Student';
-}
-
-function getApprovalEmailLabel(account) {
-  if (account?.accountType === 'Employee') return 'Employee company email';
-  return account?.accountType === 'User' ? 'FIT email address' : 'Email address';
-}
-
-function formatEmployeeRoleName(value) {
-  const normalized = String(value || '').trim();
-  if (!normalized || /^user:/i.test(normalized)) return '';
-  if (/^role_/i.test(normalized)) return '';
-  return normalized
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getEmailLabel(account) {
-  return account?.accountType === 'Employee' ? 'Email Address:' : 'FIT Email Address:';
-}
-
-function getAccountTypeBadgeClass(accountType) {
-  return {
-    'admin-wishlist-account-type-badge--employee': accountType === 'Employee',
-    'admin-wishlist-account-type-badge--admin': accountType === 'Admin',
-    'admin-wishlist-account-type-badge--user': accountType === 'User',
-  };
-}
-
-function formatIdNumber(idNumber) {
-  const value = String(idNumber);
-  if (value.includes('*') || value === 'N/A') return value;
-  if (value.length <= 4) return value;
-  return `${value.slice(0, 4)}*****`;
-}
-
 function openViewModal(account) {
   selectedAccount.value = account;
 }
 
 function openApprovalModal(account = selectedAccount.value, mode = 'send') {
   if (!account) return;
-  if (mode === 'resend' && !canResendInvite(account)) return;
-  if (mode !== 'resend' && !canSendInvite(account)) return;
+  if (mode === 'resend' && !canResendInvite(account)) {
+    showToast('Resend invite is only available after the previous invitation expires.');
+    return;
+  }
+  if (mode !== 'resend' && !canSendInvite(account)) {
+    showToast('Send invite is only available for accounts that are not invited.');
+    return;
+  }
   approvalAccount.value = account;
   approvalMode.value = mode === 'resend' ? 'resend' : 'send';
   approvalForm.emailAddress = account.emailAddress;
@@ -1072,6 +1034,7 @@ function closeModals() {
   selectedAccount.value = null;
   closeApprovalModal();
   closeDenialModal();
+  closeDeleteModal();
 }
 
 function closeApprovalModal() {
@@ -1092,6 +1055,21 @@ function closeDenialModal() {
   denialAccount.value = null;
   denialConfirmEmail.value = '';
   denialFormError.value = '';
+}
+
+function openDeleteModal(account) {
+  if (!account) return;
+  deleteAccountRequest.value = account;
+  deleteConfirmEmail.value = '';
+  deleteConfirmPassword.value = '';
+  deleteFormError.value = '';
+}
+
+function closeDeleteModal() {
+  deleteAccountRequest.value = null;
+  deleteConfirmEmail.value = '';
+  deleteConfirmPassword.value = '';
+  deleteFormError.value = '';
 }
 
 function openAddAccountModal() {
@@ -1140,25 +1118,33 @@ function openAddEmployeeModal() {
 
 function closeAddEmployeeModal() {
   showAddEmployeeModal.value = false;
-  addEmployeeError.value = '';
-  showAddEmployeePassword.value = false;
-  showAddEmployeeConfirmPassword.value = false;
+  resetAddEmployeeForm();
 }
 
 async function createAdminAccount() {
+  if (isProcessing.value) return;
+
   addAdminError.value = '';
 
-  const validationError = validateAdminAccountForm();
+  const validationError = validateAdminFormValues(addAdminForm);
   if (validationError) {
     addAdminError.value = validationError;
     return;
   }
 
   const emailExists = normalizedAccounts.value.some(
-    (account) => account.emailAddress.toLowerCase() === addAdminForm.emailAddress.toLowerCase()
+    (account) => normalizeEmailForConfirmation(account.emailAddress) === normalizeEmailForConfirmation(addAdminForm.emailAddress)
   );
   if (emailExists) {
     addAdminError.value = 'An account with this email already exists in Requests Hub.';
+    return;
+  }
+
+  const idNumberExists = normalizedAccounts.value.some(
+    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addAdminForm.idNumber.trim().toLowerCase()
+  );
+  if (idNumberExists) {
+    addAdminError.value = 'An account with this ID number already exists in Requests Hub.';
     return;
   }
 
@@ -1180,9 +1166,9 @@ async function createAdminAccount() {
 
   activeTab.value = 'admin';
   showAddAdminModal.value = false;
+  resetAddAdminForm();
   await loadWishlistAccounts();
   showToast('Account created!');
-  resetAddAdminForm();
 }
 
 function resetAddAdminForm() {
@@ -1194,38 +1180,7 @@ function resetAddAdminForm() {
 }
 
 function sanitizeAdminNameField(fieldName) {
-  addAdminForm[fieldName] = String(addAdminForm[fieldName] || '').replace(/[^A-Za-z ]+/g, '').replace(/\s{2,}/g, ' ');
-}
-
-function validateAdminAccountForm() {
-  const lastName = addAdminForm.lastName.trim();
-  const firstName = addAdminForm.firstName.trim();
-  const emailAddress = addAdminForm.emailAddress.trim().toLowerCase();
-
-  if (!isValidAdminName(lastName)) {
-    return 'Last name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (!isValidAdminName(firstName)) {
-    return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
-  }
-
-  if (!isInstitutionalAdminEmail(emailAddress)) {
-    return 'Admin account must use a valid institutional email address.';
-  }
-
-  return '';
-}
-
-function isValidAdminName(value) {
-  const normalized = String(value || '').trim();
-  const letterCount = (normalized.match(/[A-Za-z]/g) || []).length;
-  return letterCount >= 2 && /^[A-Za-z ]+$/.test(normalized);
-}
-
-function isInstitutionalAdminEmail(emailAddress) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
-    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@techreserve.edu.ph'));
+  addAdminForm[fieldName] = sanitizeNameInput(addAdminForm[fieldName]);
 }
 
 async function createUserAccount() {
@@ -1283,29 +1238,38 @@ function resetAddUserForm() {
 }
 
 async function createEmployeeAccount() {
+  if (isProcessing.value) return;
+
   addEmployeeError.value = '';
 
-  if (addEmployeeForm.password !== addEmployeeForm.confirmPassword) {
-    addEmployeeError.value = 'Password and confirm password must match.';
+  const validationError = validateEmployeeFormValues(addEmployeeForm);
+  if (validationError) {
+    addEmployeeError.value = validationError;
     return;
   }
 
-  const emailExists = normalizedAccounts.value.some(
-    (account) => account.emailAddress.toLowerCase() === addEmployeeForm.emailAddress.toLowerCase()
+  const idNumberExists = normalizedAccounts.value.some(
+    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addEmployeeForm.idNumber.trim().toLowerCase()
   );
-  if (emailExists) {
-    addEmployeeError.value = 'An account with this email already exists in Requests Hub.';
+  if (idNumberExists) {
+    addEmployeeError.value = 'A staff account with this Work ID number already exists.';
+    return;
+  }
+
+  const phoneExists = normalizedAccounts.value.some(
+    (account) => String(account.contactNumber || '').replace(/\D/g, '') === addEmployeeForm.phone
+  );
+  if (phoneExists) {
+    addEmployeeError.value = 'A staff account with this phone number already exists.';
     return;
   }
 
   const accountPayload = {
     lastName: addEmployeeForm.lastName,
     firstName: addEmployeeForm.firstName,
-    emailAddress: addEmployeeForm.emailAddress,
     phone: addEmployeeForm.phone,
     idNumber: addEmployeeForm.idNumber,
     role: addEmployeeForm.role,
-    passwordText: addEmployeeForm.password,
   };
 
   isProcessing.value = true;
@@ -1327,34 +1291,24 @@ async function createEmployeeAccount() {
 function resetAddEmployeeForm() {
   addEmployeeForm.lastName = '';
   addEmployeeForm.firstName = '';
-  addEmployeeForm.emailAddress = '';
   addEmployeeForm.phone = '';
   addEmployeeForm.idNumber = '';
   addEmployeeForm.role = 'Maintenance Staff';
-  addEmployeeForm.password = '';
-  addEmployeeForm.confirmPassword = '';
   showAddEmployeePassword.value = false;
   showAddEmployeeConfirmPassword.value = false;
   addEmployeeError.value = '';
 }
 
-function formatCreateAccountError(result, accountType) {
-  const conflict = result?.data?.conflict;
-  if (!conflict) {
-    return result?.error || `Unable to create ${accountType} account.`;
-  }
+function sanitizeEmployeeNameField(fieldName) {
+  addEmployeeForm[fieldName] = sanitizeNameInput(addEmployeeForm[fieldName]);
+}
 
-  const fullName = `${conflict.firstName || ''} ${conflict.lastName || ''}`.trim() || 'Existing account';
-  const status = getStatusLabel(conflict.status);
-  const location = conflict.isApproved || String(conflict.status).toLowerCase() === 'approved'
-    ? 'Manage Accounts'
-    : 'Requests Hub or Manage Accounts';
-  const matchedField = conflict.matchedField === 'idNumber' ? 'ID number' : 'email';
-
-  return `This ${matchedField} is already used by ${fullName} (${conflict.emailAddress}, ${conflict.accountType}, ${status}). Check ${location}.`;
+function sanitizeEmployeePhone() {
+  addEmployeeForm.phone = sanitizePhoneInput(addEmployeeForm.phone);
 }
 
 async function verifyAccount() {
+  if (isProcessing.value) return;
   if (!approvalAccount.value) return;
   if (!currentAdminEmail.value) {
     approvalFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
@@ -1409,42 +1363,37 @@ async function denyAccount() {
   isProcessing.value = false;
 }
 
-function removeAccountFromWishlist(accountIdentifier) {
-  wishlistAccounts.value = wishlistAccounts.value.filter((account) => {
-    const currentIdentifier = account.accountIdentifier || account.account_identifier;
-    return String(currentIdentifier) !== String(accountIdentifier);
-  });
-}
-
-function updateAccountStatus(accountIdentifier, status) {
-  wishlistAccounts.value = wishlistAccounts.value.map((account) => {
-    const currentIdentifier = account.accountIdentifier || account.account_identifier;
-    if (String(currentIdentifier) !== String(accountIdentifier)) return account;
-    return { ...account, accountStatus: status, status };
-  });
-}
-
-function normalizeEmailForConfirmation(value) {
-  return String(value || '')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .replace(/\s+/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-function resolveRequestStatus(status, inviteAcceptedAt, inviteExpiresAt) {
-  const normalized = String(status || 'pending').toLowerCase();
-  if (inviteAcceptedAt || normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'verified';
-  if (normalized === 'rejected' || normalized === 'denied') return 'rejected';
-  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() < Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
-    return 'expired';
+async function deleteWishlistAccount() {
+  if (!deleteAccountRequest.value) return;
+  if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)) {
+    deleteFormError.value = 'Please type the exact email address to delete this request.';
+    return;
   }
-  if (inviteExpiresAt && new Date(inviteExpiresAt).getTime() >= Date.now() && normalized !== 'rejected' && normalized !== 'denied') {
-    return 'unverified';
+  if (deleteConfirmPassword.value.trim() === '') {
+    deleteFormError.value = 'Please type your admin password to delete this request.';
+    return;
   }
-  if (normalized === 'invited' || normalized === 'unverified') return 'unverified';
-  if (normalized === 'pending' || normalized === 'not_invited') return 'not_invited';
-  return normalized;
+
+  isProcessing.value = true;
+  const result = await adminWishlistApi.deleteAccountRequest(
+    deleteAccountRequest.value.accountIdentifier,
+    authStore.authToken,
+    {
+      confirmEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
+      confirmedAdminPassword: deleteConfirmPassword.value,
+    },
+  );
+  if (result.success) {
+    approvalAccount.value = null;
+    selectedAccount.value = null;
+    closeDeleteModal();
+    await loadWishlistAccounts();
+    showToast('Account request deleted.');
+  } else {
+    deleteFormError.value = result.error || 'Unable to delete account request.';
+    showToast(deleteFormError.value);
+  }
+  isProcessing.value = false;
 }
 
 function canSendInvite(account) {
@@ -1452,7 +1401,9 @@ function canSendInvite(account) {
 }
 
 function canResendInvite(account) {
-  return String(account?.accountStatus || '').toLowerCase() === 'expired' && !isProcessing.value;
+  return String(account?.accountStatus || '').toLowerCase() === 'expired'
+    && Boolean(account?.inviteSentAt)
+    && !isProcessing.value;
 }
 
 function getInviteModalTitle(account) {
@@ -1462,7 +1413,7 @@ function getInviteModalTitle(account) {
 
 function getInviteModalDescription(account) {
   if (approvalMode.value === 'resend') {
-    return 'The previous invitation expired. Confirm the responsible admin before sending a new invitation link.';
+    return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
   }
 
   return account?.accountType === 'Employee'
@@ -1476,39 +1427,6 @@ function getInviteSubmitLabel(account) {
 
 function getInviteSuccessMessage(account) {
   return approvalMode.value === 'resend' ? 'Invitation resent!' : 'Invitation sent!';
-}
-
-function getStatusLabel(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'approved' || normalized === 'verified' || normalized === 'accepted') return 'Verified';
-  if (normalized === 'not_invited' || normalized === 'pending') return 'Not invited';
-  if (normalized === 'invited' || normalized === 'unverified') return 'Unverified';
-  if (normalized === 'expired') return 'Expired';
-  if (normalized === 'rejected' || normalized === 'denied') return 'Denied';
-  return 'Unverified';
-}
-
-function getStatusClass(status) {
-  const normalized = String(status || '').toLowerCase();
-  if (normalized === 'rejected' || normalized === 'denied') return 'admin-wishlist-status--denied';
-  if (normalized === 'invited' || normalized === 'unverified') return 'admin-wishlist-status--invited';
-  if (normalized === 'accepted' || normalized === 'approved' || normalized === 'verified') return 'admin-wishlist-status--accepted';
-  if (normalized === 'expired') return 'admin-wishlist-status--expired';
-  return 'admin-wishlist-status--pending';
-}
-
-function formatDisplayDate(value) {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
-function formatNullableDate(value) {
-  if (!value) return 'N/A';
-  return formatDisplayDate(value);
 }
 
 function showToast(message) {

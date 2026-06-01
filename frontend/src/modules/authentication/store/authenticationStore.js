@@ -7,10 +7,14 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { loginRequest } from '../services/authenticationService.js';
 import { apiUrl as buildApiUrl } from '@/shared/utils/apiBase.js';
-
-const STORAGE_KEY_TOKEN = 'techreserve_auth_token';
-const STORAGE_KEY_ACCOUNT = 'techreserve_auth_account';
-const STORAGE_KEY_CLERK_ACCOUNT = 'techreserve_clerk_account';
+import {
+  AUTH_STORAGE_KEYS,
+  clearAuthStorage,
+  readStoredJson,
+  readStoredToken,
+  writeStoredJson,
+  writeStoredToken,
+} from '../utils/authStorage.js';
 
 function normalizeRole(rawRole) {
   if (!rawRole) return null;
@@ -29,21 +33,8 @@ function normalizeRole(rawRole) {
  * @description Pinia store managing authentication state, login/logout, and session persistence.
  */
 export const useAuthenticationStore = defineStore('authentication', () => {
-  const storedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
-  const authToken = ref(
-    storedToken && storedToken !== 'null' && storedToken !== 'undefined' ? storedToken : null
-  );
-  
-  const accountString = localStorage.getItem(STORAGE_KEY_ACCOUNT);
-  let accountDataValue = null;
-  if (accountString && accountString !== 'undefined') {
-    try {
-      accountDataValue = JSON.parse(accountString);
-    } catch (e) {
-      console.error('Failed to parse account data from localStorage:', e);
-      accountDataValue = null;
-    }
-  }
+  const authToken = ref(readStoredToken());
+  const accountDataValue = readStoredJson(AUTH_STORAGE_KEYS.account);
   const accountData = ref(accountDataValue);
 
   const isAuthenticated = computed(() => {
@@ -63,15 +54,11 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   });
 
   // ── Clerk bridge ──────────────────────────────────────────────────────────
-  const clerkAccountString = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
-  let clerkAccountValue = null;
-  if (clerkAccountString && clerkAccountString !== 'undefined') {
-    try { clerkAccountValue = JSON.parse(clerkAccountString); } catch (_) {}
-  }
+  let clerkAccountValue = readStoredJson(AUTH_STORAGE_KEYS.clerkAccount);
 
   if (!clerkAccountValue && accountDataValue?.authProvider === 'clerk') {
     clerkAccountValue = accountDataValue;
-    localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(clerkAccountValue));
+    writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, clerkAccountValue);
   }
 
   const clerkAccountData = ref(clerkAccountValue);
@@ -86,25 +73,19 @@ export const useAuthenticationStore = defineStore('authentication', () => {
 
   async function loadClerkAccount(getTokenFn) {
     try {
-      console.log('[loadClerkAccount] Starting...');
       const token = await getTokenFn();
-      console.log('[loadClerkAccount] Token received:', token ? 'YES' : 'NO');
       
       // If no token available, try to load from localStorage as fallback
       if (!token) {
-        console.log('[loadClerkAccount] No token, checking localStorage...');
-        const storedAccount = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
+        const storedAccount = readStoredJson(AUTH_STORAGE_KEYS.clerkAccount);
         if (storedAccount) {
-          console.log('[loadClerkAccount] Using fallback from localStorage');
-          clerkAccountData.value = JSON.parse(storedAccount);
+          clerkAccountData.value = storedAccount;
           return clerkAccountData.value;
         }
-        console.log('[loadClerkAccount] No token and no stored account');
         return null;
       }
 
       const accountApiUrl = buildApiUrl('/api/v1/users/me');
-      console.log('[loadClerkAccount] Fetching from:', accountApiUrl);
       
       const response = await fetch(
         accountApiUrl,
@@ -116,47 +97,29 @@ export const useAuthenticationStore = defineStore('authentication', () => {
         }
       );
 
-      console.log('[loadClerkAccount] Response status:', response.status, response.statusText);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.log('[loadClerkAccount] Response not OK:', response.status, errorText);
         clerkAccountData.value = null;
-        localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
-        
-        // Don't throw error, just return null for auth failures
-        if (response.status === 401 || response.status === 403) {
-          console.log('[loadClerkAccount] Authentication failed, user may need to log in again');
-        }
+        localStorage.removeItem(AUTH_STORAGE_KEYS.clerkAccount);
         return null;
       }
 
       const data = await response.json();
-      console.log('[loadClerkAccount] Response data:', data);
       
       if (!data.data || !data.data.account) {
-        console.log('[loadClerkAccount] No account data in response');
         clerkAccountData.value = null;
-        localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.clerkAccount);
         return null;
       }
       
       clerkAccountData.value = data.data.account;
-      console.log('[loadClerkAccount] Account loaded successfully:', {
-        id: clerkAccountData.value.accountIdentifier,
-        status: clerkAccountData.value.status,
-        role: clerkAccountData.value.roleDesignation
-      });
       
-      localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(clerkAccountData.value));
+      writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, clerkAccountData.value);
       return clerkAccountData.value;
     } catch (err) {
-      console.error('[loadClerkAccount] Network error:', err);
       // Try fallback from localStorage on error
-      const storedAccount = localStorage.getItem(STORAGE_KEY_CLERK_ACCOUNT);
+      const storedAccount = readStoredJson(AUTH_STORAGE_KEYS.clerkAccount);
       if (storedAccount) {
-        console.log('[loadClerkAccount] Using fallback from localStorage after error');
-        clerkAccountData.value = JSON.parse(storedAccount);
+        clerkAccountData.value = storedAccount;
         return clerkAccountData.value;
       }
       return null;
@@ -165,7 +128,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
 
   function setClerkSignedOut() {
     clerkAccountData.value = null;
-    localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.clerkAccount);
   }
 
   /**
@@ -185,8 +148,8 @@ export const useAuthenticationStore = defineStore('authentication', () => {
         roleDesignation: normalizeRole(response.account?.roleDesignation ?? response.account?.role),
       };
 
-      localStorage.setItem(STORAGE_KEY_TOKEN, response.token);
-      localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(accountData.value));
+      writeStoredToken(response.token);
+      writeStoredJson(AUTH_STORAGE_KEYS.account, accountData.value);
 
       return response.account;
     } catch (error) {
@@ -213,12 +176,12 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     clerkAccountData.value = normalizedAccount;
 
     if (token) {
-      localStorage.setItem(STORAGE_KEY_TOKEN, token);
+      writeStoredToken(token);
     } else {
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      writeStoredToken(null);
     }
-    localStorage.setItem(STORAGE_KEY_ACCOUNT, JSON.stringify(normalizedAccount));
-    localStorage.setItem(STORAGE_KEY_CLERK_ACCOUNT, JSON.stringify(normalizedAccount));
+    writeStoredJson(AUTH_STORAGE_KEYS.account, normalizedAccount);
+    writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, normalizedAccount);
   }
 
   /**
@@ -229,9 +192,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     authToken.value = null;
     accountData.value = null;
     clerkAccountData.value = null;
-    localStorage.removeItem(STORAGE_KEY_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_ACCOUNT);
-    localStorage.removeItem(STORAGE_KEY_CLERK_ACCOUNT);
+    clearAuthStorage();
   }
 
   return {

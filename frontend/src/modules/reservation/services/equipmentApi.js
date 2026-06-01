@@ -1,14 +1,17 @@
 import axios from 'axios';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import {
+  buildAuthorizationHeaders,
+  buildJsonAuthorizationHeaders,
+  getStoredAuthToken,
+} from '@/shared/utils/authToken.js';
 
 const equipmentApi = {
   async listEquipment() {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/equipment'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -18,12 +21,10 @@ const equipmentApi = {
   },
 
   async getEquipmentById(equipmentIdentifier) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.get(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -33,13 +34,10 @@ const equipmentApi = {
   },
 
   async createEquipment(equipmentData) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.post(apiUrl('/api/v1/equipment'), equipmentData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {
@@ -49,13 +47,10 @@ const equipmentApi = {
   },
 
   async updateEquipment(equipmentIdentifier, equipmentData) {
-    const authToken = localStorage.getItem('techreserve_auth_token') || localStorage.getItem('authToken') || localStorage.getItem('clerkToken');
+    const authToken = getStoredAuthToken();
     try {
       const response = await axios.put(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), equipmentData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        }
+        headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
     } catch (error) {

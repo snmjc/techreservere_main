@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname), '');
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || apiBase || 'http://localhost:8000';
+  const frontendTunnelHost = 'monitors-invisible-provider-smooth.trycloudflare.com';
+  const frontendTunnelUrl = `https://${frontendTunnelHost}`;
   const clerkSources = [
     'https://*.clerk.accounts.dev',
     'https://*.clerk.dev',
@@ -36,7 +38,7 @@ export default defineConfig(({ mode }) => {
       // Bind to all interfaces so the dev server is reachable from the host
       host: true,
       port: 5173,
-      allowedHosts: ['provide-gourmet-technology-antiques.trycloudflare.com'],
+      allowedHosts: [frontendTunnelHost],
       // Dev-only CSP: allows Vue/DevTools and some dependencies that use eval in development.
       // Remove/replace with a strict CSP for production builds.
       headers: {
@@ -48,7 +50,7 @@ export default defineConfig(({ mode }) => {
           `style-src 'self' 'unsafe-inline' ${clerkSources}`,
           `img-src 'self' data: blob: ${clerkSources}`,
           // Allow API + HMR websocket + Clerk (if enabled)
-          `connect-src 'self' ${apiBase} ws://localhost:5173 ws://127.0.0.1:5173 ${clerkSources}`,
+          `connect-src 'self' ${apiBase} ${frontendTunnelUrl} wss://${frontendTunnelHost} ws://localhost:5173 ws://127.0.0.1:5173 ${clerkSources}`,
           `frame-src 'self' ${clerkSources}`,
           "font-src 'self' data: https://fonts.gstatic.com",
           "worker-src 'self' blob:",

@@ -5,6 +5,7 @@ namespace App\Tests\Feature\Middleware;
 use App\Infrastructure\Auth\ClerkTokenVerifier;
 use App\Infrastructure\Auth\ClerkVerificationFailedException;
 use App\Middleware\AuthenticationMiddleware;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,6 +17,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 // Purpose: Feature tests for AuthenticationMiddleware
 // Tests: public route bypass, missing token 401, invalid token 401, valid token passes
 
+#[AllowMockObjectsWithoutExpectations]
 class AuthenticationMiddlewareTest extends TestCase
 {
     private ClerkTokenVerifier|MockObject $clerkTokenVerifier;
@@ -23,13 +25,14 @@ class AuthenticationMiddlewareTest extends TestCase
 
     protected function setUp(): void
     {
+        $_ENV['APP_ENV'] = 'test';
         $this->clerkTokenVerifier = $this->createMock(ClerkTokenVerifier::class);
         $this->middleware = new AuthenticationMiddleware($this->clerkTokenVerifier);
     }
 
     public function testPublicRouteBypassesAuthentication(): void
     {
-        $request = Request::create('/api/v1/health', 'GET');
+        $request = Request::create('/health', 'GET');
         $event = $this->createRequestEvent($request);
 
         $this->clerkTokenVerifier

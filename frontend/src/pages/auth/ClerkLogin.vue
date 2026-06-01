@@ -33,7 +33,7 @@
     <section class="clerk-login-form-panel">
       <div class="clerk-login-form-content">
         <div class="clerk-login-card">
-          <form class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
+          <form v-if="!isResettingPassword" class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
             <h2 class="techreserve-local-login-title">Welcome to TechReserve</h2>
             <p v-if="loginError" class="techreserve-local-login-error">{{ loginError }}</p>
 
@@ -69,15 +69,11 @@
               <button
                 type="button"
                 class="techreserve-local-login-link"
-                @click="handleForgotPassword"
+                @click="showResetPasswordForm"
               >
                 Forgot password?
               </button>
             </div>
-
-            <p v-if="forgotPasswordMessage" class="techreserve-local-login-info">
-              {{ forgotPasswordMessage }}
-            </p>
 
             <button class="techreserve-local-login-button" type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
@@ -85,8 +81,71 @@
 
             <p class="techreserve-local-login-signup">
               Don't have an account?
-              <router-link :to="{ name: 'customSignUpPage' }">Sign up</router-link>
+              <router-link :to="{ name: ROUTE_NAMES.customSignUp }">Sign up</router-link>
             </p>
+          </form>
+
+          <form v-else class="techreserve-local-login-form" @submit.prevent="handleResetPasswordSubmit">
+            <h2 class="techreserve-local-login-title">Reset your password</h2>
+            <p v-if="resetPasswordError" class="techreserve-local-login-error">{{ resetPasswordError }}</p>
+            <p v-if="resetPasswordMessage" class="techreserve-local-login-info">{{ resetPasswordMessage }}</p>
+
+            <label class="techreserve-local-login-field">
+              <span>Email address</span>
+              <input
+                v-model.trim="resetEmailAddress"
+                type="email"
+                autocomplete="username"
+                required
+                :disabled="resetCodeSent"
+              />
+            </label>
+
+            <template v-if="resetCodeSent">
+              <label class="techreserve-local-login-field">
+                <span>Email code</span>
+                <input
+                  v-model.trim="resetCodeText"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  required
+                />
+              </label>
+
+              <label class="techreserve-local-login-field">
+                <span>New password</span>
+                <input
+                  v-model="resetPasswordText"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+              </label>
+
+              <label class="techreserve-local-login-field">
+                <span>Confirm new password</span>
+                <input
+                  v-model="resetPasswordConfirmText"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+              </label>
+            </template>
+
+            <button class="techreserve-local-login-button" type="submit" :disabled="isResetSubmitting">
+              {{ resolveResetPasswordButtonText() }}
+            </button>
+
+            <button
+              type="button"
+              class="techreserve-local-login-secondary-button"
+              :disabled="isResetSubmitting"
+              @click="hideResetPasswordForm"
+            >
+              Back to sign in
+            </button>
           </form>
         </div>
       </div>
@@ -99,130 +158,31 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
 
-const router = useRouter();
-const authStore = useAuthenticationStore();
+const {
+  ROUTE_NAMES,
+  emailAddress,
+  passwordText,
+  rememberMeChecked,
+  loginError,
+  isSubmitting,
+  isResettingPassword,
+  isResetSubmitting,
+  resetCodeSent,
+  resetEmailAddress,
+  resetCodeText,
+  resetPasswordText,
+  resetPasswordConfirmText,
+  resetPasswordError,
+  resetPasswordMessage,
+  handleLocalLogin,
+  showResetPasswordForm,
+  hideResetPasswordForm,
+  resolveResetPasswordButtonText,
+  handleResetPasswordSubmit,
+} = useClerkLoginPage();
 
-const emailAddress = ref('admin@techreserve.edu.ph');
-const passwordText = ref('');
-const rememberMeChecked = ref(false);
-const loginError = ref('');
-const forgotPasswordMessage = ref('');
-const isSubmitting = ref(false);
-
-onMounted(() => {
-  const rememberedEmail = localStorage.getItem('techreserve_remembered_login_email');
-  if (rememberedEmail) {
-    emailAddress.value = rememberedEmail;
-    rememberMeChecked.value = true;
-  }
-});
-
-async function handleLocalLogin() {
-  loginError.value = '';
-  forgotPasswordMessage.value = '';
-  isSubmitting.value = true;
-
-  try {
-    const account = await authStore.performLogin(emailAddress.value, passwordText.value);
-    routeAfterBackendLogin(account);
-  } catch (error) {
-    if (error?.errorType === 'LocalPasswordUnavailable') {
-      await handleClerkPasswordLogin();
-      return;
-    }
-
-    loginError.value = error?.message || 'Invalid email address or password.';
-  } finally {
-    isSubmitting.value = false;
-  }
-}
-
-async function handleClerkPasswordLogin() {
-  const clerk = await waitForClerk();
-
-  if (!clerk?.client?.signIn || !clerk?.setActive) {
-    loginError.value = 'Clerk authentication is still loading. Please try again.';
-    return;
-  }
-
-  try {
-    const clerkSignIn = await clerk.client.signIn.create({
-      identifier: emailAddress.value,
-      password: passwordText.value,
-      strategy: 'password',
-    });
-
-    if (clerkSignIn.status !== 'complete' || !clerkSignIn.createdSessionId) {
-      loginError.value = 'This account needs additional Clerk verification before sign-in can continue.';
-      return;
-    }
-
-    rememberLoginEmailPreference();
-    await clerk.setActive({ session: clerkSignIn.createdSessionId });
-    router.replace({ name: 'postLoginPage' });
-  } catch (error) {
-    loginError.value = resolveClerkErrorMessage(error);
-  }
-}
-
-function waitForClerk(timeoutMs = 4000) {
-  if (window.Clerk?.loaded) {
-    return Promise.resolve(window.Clerk);
-  }
-
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    const timer = window.setInterval(() => {
-      if (window.Clerk?.loaded) {
-        window.clearInterval(timer);
-        resolve(window.Clerk);
-        return;
-      }
-
-      if (Date.now() - startedAt >= timeoutMs) {
-        window.clearInterval(timer);
-        resolve(window.Clerk || null);
-      }
-    }, 100);
-  });
-}
-
-function routeAfterBackendLogin(account) {
-  const role = String(account?.roleDesignation || '').toUpperCase();
-
-  rememberLoginEmailPreference();
-
-  if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
-    router.replace({ name: 'adminDashboardPage' });
-    return;
-  }
-
-  router.replace({ name: 'borrowerMyReservationsPage' });
-}
-
-function rememberLoginEmailPreference() {
-  if (rememberMeChecked.value) {
-    localStorage.setItem('techreserve_remembered_login_email', emailAddress.value);
-  } else {
-    localStorage.removeItem('techreserve_remembered_login_email');
-  }
-}
-
-function resolveClerkErrorMessage(error) {
-  const clerkError = error?.errors?.[0];
-  if (clerkError?.longMessage) return clerkError.longMessage;
-  if (clerkError?.message) return clerkError.message;
-  return error?.message || 'Invalid email address or password.';
-}
-
-function handleForgotPassword() {
-  loginError.value = '';
-  forgotPasswordMessage.value = 'For local database accounts, password reset is handled by the system administrator.';
-}
 </script>
 
 <style scoped>
@@ -453,6 +413,10 @@ function handleForgotPassword() {
   margin-top: -0.15rem;
 }
 
+.techreserve-local-login-options-single {
+  justify-content: flex-start;
+}
+
 .techreserve-local-login-remember {
   display: inline-flex;
   align-items: center;
@@ -517,6 +481,28 @@ function handleForgotPassword() {
 }
 
 .techreserve-local-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.techreserve-local-login-secondary-button {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid #cfd8d3;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.techreserve-local-login-secondary-button:hover:not(:disabled) {
+  border-color: #08784a;
+  color: #08784a;
+}
+
+.techreserve-local-login-secondary-button:disabled {
   cursor: not-allowed;
   opacity: 0.62;
 }

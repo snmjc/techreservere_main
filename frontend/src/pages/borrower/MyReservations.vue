@@ -139,6 +139,7 @@ import './css/MyReservations.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const requestStore = useRequestStore();
@@ -185,7 +186,7 @@ const reservationStats = computed(() => [
 onMounted(async () => {
   try {
     if (!authStore.isAuthenticated) {
-      router.push({ name: 'clerkLoginPage' });
+      router.push({ name: ROUTE_NAMES.clerkLogin });
       return;
     }
 
@@ -196,23 +197,23 @@ onMounted(async () => {
 });
 
 function navigateToCreateReservation() {
-  router.push({ name: 'borrowerCreateReservationPage' });
+  router.push({ name: ROUTE_NAMES.borrowerCreateReservation });
 }
 
 function navigateToViewReservationList() {
-  router.push({ name: 'borrowerViewReservationListPage' });
+  router.push({ name: ROUTE_NAMES.borrowerViewReservationList });
 }
 
 function navigateToApprovedRequestsLogs() {
-  router.push({ name: 'borrowerApprovedRequestsLogsPage' });
+  router.push({ name: ROUTE_NAMES.borrowerApprovedRequestsLogs });
 }
 
 function navigateToPendingRequestsLogs() {
-  router.push({ name: 'borrowerPendingRequestsLogsPage' });
+  router.push({ name: ROUTE_NAMES.borrowerPendingRequestsLogs });
 }
 
 function navigateToCompletedReservationsLogs() {
-  router.push({ name: 'borrowerCompletedReservationsLogsPage' });
+  router.push({ name: ROUTE_NAMES.borrowerCompletedReservationsLogs });
 }
 
 function navigateToPastRecords() {

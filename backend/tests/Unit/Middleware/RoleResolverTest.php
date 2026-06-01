@@ -6,6 +6,7 @@ use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Middleware\RoleResolver;
 use App\Shared\Utils\RoleConstants;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -13,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 // Purpose: Unit tests for RoleResolver middleware component
 // Tests: resolve admin role, resolve borrower role, default when missing, default when empty email
 
+#[AllowMockObjectsWithoutExpectations]
 class RoleResolverTest extends TestCase
 {
     private AccountRepository|MockObject $accountRepository;

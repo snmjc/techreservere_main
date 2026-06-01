@@ -38,7 +38,9 @@ services:
       CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
-      MAILER_DSN: "${MAILER_DSN:-null://null}"
+      MAILER_DSN: "${MAILER_DSN:-smtp://resend:${RESEND_API_KEY:-}@smtp.resend.com:587?encryption=tls}"
+      MAILER_FROM: "${MAILER_FROM:-onboarding@resend.dev}"
+      MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
     depends_on:
       database:
         condition: service_healthy

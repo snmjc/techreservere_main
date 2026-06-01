@@ -149,154 +149,22 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useSignUp, useAuth } from '@clerk/vue';
-import { apiUrl } from '@/shared/utils/apiBase.js';
+import { useLegacySignUpPage } from './composables/useLegacySignUpPage.js';
 
-const router = useRouter();
-const { signUp, isLoaded } = useSignUp();
-const { signOut } = useAuth();
-
-const showVerification = ref(false);
-const isLoading = ref(false);
-const errorMessage = ref('');
-const verificationCode = ref('');
-
-const form = ref({
-  lastName: '',
-  firstName: '',
-  idNumber: '',
-  email: '',
-  department: '',
-  role: 'ROLE_BORROWER',
-  password: '',
-  confirmPassword: '',
-  agreed: false,
-  file: null,
-});
-
-const isStudentRole = computed(() => form.value.role === 'ROLE_BORROWER');
-
-watch(
-  () => form.value.role,
-  (role) => {
-    if (role === 'ROLE_FACULTY') {
-      removeFile();
-    }
-  },
-);
-
-function handleFileChange(event) {
-  const file = event.target.files[0];
-  if (file) form.value.file = file;
-}
-
-function removeFile() {
-  form.value.file = null;
-  const input = document.getElementById('supporting-file');
-  if (input) input.value = '';
-}
-
-async function handleRegister() {
-  errorMessage.value = '';
-
-  if (form.value.password !== form.value.confirmPassword) {
-    errorMessage.value = 'Passwords do not match.';
-    return;
-  }
-  if (!form.value.agreed) {
-    errorMessage.value = 'Please agree to the Facilities Office policies.';
-    return;
-  }
-  if (!isLoaded.value) {
-    errorMessage.value = 'Authentication service not ready. Please try again.';
-    return;
-  }
-
-  isLoading.value = true;
-  try {
-    const result = await signUp.value.create({
-      emailAddress: form.value.email,
-      password: form.value.password,
-      firstName: form.value.firstName,
-      lastName: form.value.lastName,
-    });
-
-    if (result.status === 'missing_requirements') {
-      await signUp.value.prepareEmailAddressVerification({ strategy: 'email_code' });
-      showVerification.value = true;
-    } else if (result.status === 'complete') {
-      await saveToPostgres(result.createdUserId);
-      await signOut.value();
-      router.push({ name: 'clerkLoginPage' });
-    }
-  } catch (err) {
-    errorMessage.value = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Registration failed. Please try again.';
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-async function handleVerification() {
-  if (!verificationCode.value) return;
-  isLoading.value = true;
-  errorMessage.value = '';
-  try {
-    const result = await signUp.value.attemptEmailAddressVerification({ code: verificationCode.value });
-    if (result.status === 'complete') {
-      await saveToPostgres(result.createdUserId);
-      await signOut.value();
-      router.push({ name: 'clerkLoginPage' });
-    }
-  } catch (err) {
-    errorMessage.value = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || 'Invalid code. Please try again.';
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-async function resendCode() {
-  try {
-    await signUp.value.prepareEmailAddressVerification({ strategy: 'email_code' });
-    errorMessage.value = '';
-  } catch (err) {
-    errorMessage.value = 'Failed to resend code.';
-  }
-}
-
-async function saveToPostgres(clerkUserId) {
-  try {
-    const response = await fetch(apiUrl('/api/v1/users/register'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        clerkUserId,
-        firstName: form.value.firstName,
-        lastName: form.value.lastName,
-        emailAddress: form.value.email,
-        role: form.value.role,
-        contactNumber: form.value.idNumber,
-        department: form.value.department,
-      }),
-    });
-    if (!response.ok && response.status !== 409) {
-      const errorData = await response.json();
-      console.error('Failed to save user to PostgreSQL:', errorData);
-      throw new Error(errorData.message || 'Failed to save to PostgreSQL');
-    }
-    const data = await response.json();
-    console.log('Account saved to PostgreSQL:', data);
-    return data;
-  } catch (err) {
-    console.error('Error saving to PostgreSQL:', err);
-    throw err;
-  }
-}
-
-function navigateToLogin() {
-  router.push({ name: 'clerkLoginPage' });
-}
+const {
+  showVerification,
+  isLoading,
+  errorMessage,
+  verificationCode,
+  form,
+  isStudentRole,
+  handleFileChange,
+  removeFile,
+  handleRegister,
+  handleVerification,
+  resendCode,
+  navigateToLogin,
+} = useLegacySignUpPage();
 </script>
 
 <style scoped>

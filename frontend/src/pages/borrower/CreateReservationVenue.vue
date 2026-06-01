@@ -204,6 +204,7 @@ import './css/CreateReservationVenue.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
@@ -404,7 +405,7 @@ function handleVenueChipSelection(venueRecord) {
  * @returns {void}
  */
 function navigateToPreviousPage() {
-  router.push({ name: 'borrowerCreateReservationPage' });
+  router.push({ name: ROUTE_NAMES.borrowerCreateReservation });
 }
 
 /**
