@@ -121,7 +121,7 @@ export function useClerkLoginPage() {
   function routeAfterBackendLogin(account) {
     const role = String(account?.roleDesignation || '').toUpperCase();
     rememberLoginEmailPreference();
-    router.replace({ name: role === 'ROLE_ADMIN' || role === 'ADMIN' ? ROUTE_NAMES.adminDashboard : ROUTE_NAMES.borrowerMyReservations });
+    router.replace({ name: getLandingRouteName(role) });
   }
 
   function rememberLoginEmailPreference() {
@@ -323,6 +323,12 @@ export function useClerkLoginPage() {
     resolveResetPasswordButtonText,
     handleResetPasswordSubmit,
   };
+}
+
+function getLandingRouteName(role) {
+  if (role === 'ROLE_ADMIN' || role === 'ADMIN') return ROUTE_NAMES.adminDashboard;
+  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.settings;
+  return ROUTE_NAMES.borrowerMyReservations;
 }
 
 function waitForClerk(timeoutMs = 4000) {

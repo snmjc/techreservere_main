@@ -13,5 +13,6 @@ export function resolveRole(rawRole, emailAddress = '') {
   const value = String(rawRole).trim().toUpperCase();
   if (value === 'ROLE_ADMIN' || value === 'ADMIN') return 'ROLE_ADMIN';
   if (value === 'ROLE_BORROWER' || value === 'BORROWER') return 'ROLE_BORROWER';
+  if (value === 'ROLE_STAFF' || value === 'STAFF' || value === 'EMPLOYEE') return 'ROLE_STAFF';
   return value.startsWith('ROLE_') ? value : 'ROLE_BORROWER';
 }

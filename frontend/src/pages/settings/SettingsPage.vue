@@ -120,6 +120,14 @@
                 {{ isSavingAccount ? 'Saving...' : 'Save Changes' }}
               </button>
             </form>
+
+            <EmployeeWorkLogSheet
+              :is-visible="isEmployeeAccount"
+              :work-logs="employeeWorkLogs"
+              :loading="workLogsLoading"
+              :error="workLogsError"
+              @refresh="loadEmployeeWorkLogs"
+            />
           </div>
         </section>
 
@@ -209,6 +217,7 @@
 
 <script setup>
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import EmployeeWorkLogSheet from './components/EmployeeWorkLogSheet.vue';
 import { useSettingsPage } from './composables/useSettingsPage.js';
 
 const {
@@ -226,14 +235,19 @@ const {
   accountProfile,
   accountForm,
   passwordForm,
+  employeeWorkLogs,
+  workLogsLoading,
+  workLogsError,
   settingsTabs,
   preferenceItems,
   userRole,
   navigationItems,
   fullName,
   accountInitials,
+  isEmployeeAccount,
   passwordRequirements,
   selectTab,
+  loadEmployeeWorkLogs,
   saveAccountSettings,
   updatePassword,
   handlePhotoChange,

@@ -15,9 +15,9 @@ export function resolveAccountStatus(authStore) {
 }
 
 export function getDashboardRouteForRole(userRole) {
-  return userRole === 'ROLE_ADMIN'
-    ? { name: ROUTE_NAMES.adminDashboard }
-    : { name: ROUTE_NAMES.borrowerMyReservations };
+  if (userRole === 'ROLE_ADMIN') return { name: ROUTE_NAMES.adminDashboard };
+  if (userRole === 'ROLE_STAFF') return { name: ROUTE_NAMES.settings };
+  return { name: ROUTE_NAMES.borrowerMyReservations };
 }
 
 export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {

@@ -21,7 +21,7 @@ class AccountController extends AbstractController
     }
 
     #[Route('/me', name: 'account_get_my_profile', methods: ['GET'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function getMyProfile(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
@@ -30,14 +30,14 @@ class AccountController extends AbstractController
     }
 
     #[Route('/me/settings', name: 'account_get_my_settings', methods: ['GET'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function getMySettings(Request $request): JsonResponse
     {
         return $this->serviceResultResponse($this->workflowService->getMySettings($request));
     }
 
     #[Route('/me/settings', name: 'account_update_my_settings', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function updateMySettings(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
@@ -46,7 +46,7 @@ class AccountController extends AbstractController
     }
 
     #[Route('/me/password', name: 'account_update_my_password', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function updateMyPassword(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
@@ -55,7 +55,7 @@ class AccountController extends AbstractController
     }
 
     #[Route('/me/password/sync-from-clerk', name: 'account_sync_clerk_password', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function syncPasswordFromClerk(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
@@ -84,6 +84,13 @@ class AccountController extends AbstractController
         return $this->serviceResultResponse(
             $this->workflowService->updateAccount($accountIdentifier, $this->jsonBody($request))
         );
+    }
+
+    #[Route('/me/work-logs', name: 'account_my_employee_work_logs', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_STAFF, RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getMyEmployeeWorkLogs(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse($this->workflowService->getMyEmployeeWorkLogs($request));
     }
 
     #[Route('/{accountIdentifier}/work-logs', name: 'account_employee_work_logs', requirements: ['accountIdentifier' => '\d+'], methods: ['GET'])]

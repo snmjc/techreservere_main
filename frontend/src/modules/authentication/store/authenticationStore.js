@@ -24,6 +24,7 @@ function normalizeRole(rawRole) {
   const upper = value.toUpperCase();
   if (upper === 'ROLE_ADMIN' || upper === 'ADMIN') return 'ROLE_ADMIN';
   if (upper === 'ROLE_BORROWER' || upper === 'BORROWER') return 'ROLE_BORROWER';
+  if (upper === 'ROLE_STAFF' || upper === 'STAFF' || upper === 'EMPLOYEE') return 'ROLE_STAFF';
 
   return upper.startsWith('ROLE_') ? upper : value;
 }

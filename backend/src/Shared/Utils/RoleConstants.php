@@ -14,11 +14,13 @@ class RoleConstants
 
     public const ROLE_ADMIN = 'ROLE_ADMIN';
     public const ROLE_BORROWER = 'ROLE_BORROWER';
+    public const ROLE_STAFF = 'ROLE_STAFF';
     public const ROLE_DEVELOPER = 'ROLE_DEVELOPER';
 
     public const ALL_ROLES = [
         self::ROLE_ADMIN,
         self::ROLE_BORROWER,
+        self::ROLE_STAFF,
         self::ROLE_DEVELOPER,
     ];
 }

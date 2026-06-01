@@ -100,6 +100,8 @@ function routeWithBackendAccount({ authStore, router, token, backendAccount, cle
     router.replace({ name: ROUTE_NAMES.requestPending });
   } else if (authStore.userRole === 'ROLE_ADMIN') {
     router.replace({ name: ROUTE_NAMES.adminDashboard });
+  } else if (authStore.userRole === 'ROLE_STAFF') {
+    router.replace({ name: ROUTE_NAMES.settings });
   } else {
     router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
   }

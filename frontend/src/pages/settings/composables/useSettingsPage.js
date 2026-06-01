@@ -18,6 +18,9 @@ export function useSettingsPage() {
   const passwordSuccess = ref('');
   const selectedPhotoName = ref('');
   const profilePhotoInput = ref(null);
+  const employeeWorkLogs = ref([]);
+  const workLogsLoading = ref(false);
+  const workLogsError = ref('');
   const accountProfile = reactive(createEmptyAccountProfile());
   const accountForm = reactive(createEmptyAccountForm());
   const passwordForm = reactive(createEmptyPasswordForm());
@@ -33,10 +36,11 @@ export function useSettingsPage() {
     { label: 'Preferences', value: 'preferences' },
   ];
 
-  const userRole = computed(() => (authStore.userRole === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : 'BORROWER'));
-  const navigationItems = computed(() => (authStore.userRole === 'ROLE_ADMIN' ? adminNavigationItems : borrowerNavigationItems));
+  const userRole = computed(() => resolveRoleLabel(authStore.userRole));
+  const navigationItems = computed(() => resolveNavigationItems(authStore.userRole));
   const fullName = computed(() => [accountProfile.firstName, accountProfile.lastName].filter(Boolean).join(' '));
   const accountInitials = computed(() => `${accountProfile.firstName?.charAt(0) || ''}${accountProfile.lastName?.charAt(0) || ''}`.toUpperCase() || 'U');
+  const isEmployeeAccount = computed(() => isEmployeeProfile(accountProfile));
   const passwordRequirements = computed(() => ({
     length: passwordForm.newPassword.length >= 8,
     upper: /[A-Z]/.test(passwordForm.newPassword),
@@ -67,6 +71,7 @@ export function useSettingsPage() {
       const payload = await requestJson('/api/v1/accounts/me/settings', { headers: buildAuthHeaders() });
       applyAccountProfile(payload.data?.account || {});
       fillAccountFormFromProfile();
+      await loadEmployeeWorkLogs();
     } catch (error) {
       loadError.value = error.message || 'Unable to load account settings.';
     } finally {
@@ -131,6 +136,25 @@ export function useSettingsPage() {
       passwordError.value = error.message || 'Unable to update password.';
     } finally {
       isUpdatingPassword.value = false;
+    }
+  }
+
+  async function loadEmployeeWorkLogs() {
+    employeeWorkLogs.value = [];
+    workLogsError.value = '';
+
+    if (!isEmployeeAccount.value) {
+      return;
+    }
+
+    workLogsLoading.value = true;
+    try {
+      const payload = await requestJson('/api/v1/accounts/me/work-logs', { headers: buildAuthHeaders() });
+      employeeWorkLogs.value = payload.data?.workLogs || [];
+    } catch (error) {
+      workLogsError.value = error.message || 'Unable to load work logs.';
+    } finally {
+      workLogsLoading.value = false;
     }
   }
 
@@ -223,6 +247,7 @@ export function useSettingsPage() {
     accountSuccess.value = '';
     passwordError.value = '';
     passwordSuccess.value = '';
+    workLogsError.value = '';
   }
 
   return {
@@ -240,19 +265,44 @@ export function useSettingsPage() {
     accountProfile,
     accountForm,
     passwordForm,
+    employeeWorkLogs,
+    workLogsLoading,
+    workLogsError,
     settingsTabs,
     preferenceItems,
     userRole,
     navigationItems,
     fullName,
     accountInitials,
+    isEmployeeAccount,
     passwordRequirements,
     selectTab,
+    loadEmployeeWorkLogs,
     saveAccountSettings,
     updatePassword,
     handlePhotoChange,
     sanitizePhoneInput,
   };
+}
+
+const employeeNavigationItems = [
+  {
+    routeName: 'settingsPage',
+    label: 'Account & Work Logs',
+    iconSvg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h3"/></svg>',
+  },
+];
+
+function resolveRoleLabel(role) {
+  if (role === 'ROLE_ADMIN') return 'ADMINISTRATOR';
+  if (role === 'ROLE_STAFF') return 'EMPLOYEE';
+  return 'BORROWER';
+}
+
+function resolveNavigationItems(role) {
+  if (role === 'ROLE_ADMIN') return adminNavigationItems;
+  if (role === 'ROLE_STAFF') return employeeNavigationItems;
+  return borrowerNavigationItems;
 }
 
 async function requestJson(path, options) {
@@ -378,4 +428,11 @@ function clearFileInput(profilePhotoInput) {
 
 function isValidName(value) {
   return /^[A-Za-z]+(?: [A-Za-z]+)*$/.test(value) && value.trim().length >= 2;
+}
+
+function isEmployeeProfile(accountProfile) {
+  const accountType = String(accountProfile.accountType || '').toLowerCase();
+  const roleDesignation = String(accountProfile.roleDesignation || '').toUpperCase();
+
+  return accountType === 'employee' || roleDesignation.includes('STAFF') || roleDesignation.includes('EMPLOYEE');
 }

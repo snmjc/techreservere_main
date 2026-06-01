@@ -32,6 +32,7 @@ export const routeDefinitions = [
           const rawRole = account?.roleDesignation ?? account?.role ?? null;
           const role = rawRole ? String(rawRole).trim().toUpperCase() : null;
           if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: ROUTE_NAMES.adminDashboard };
+          if (role === 'ROLE_STAFF' || role === 'STAFF') return { name: ROUTE_NAMES.settings };
           if (role === 'ROLE_BORROWER' || role === 'BORROWER') return { name: ROUTE_NAMES.borrowerMyReservations };
           return { name: ROUTE_NAMES.borrowerMyReservations };
         }
@@ -465,7 +466,7 @@ export const routeDefinitions = [
     meta: {
       title: 'Settings',
       requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN', 'ROLE_STAFF'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
     },
   },
@@ -476,7 +477,7 @@ export const routeDefinitions = [
     meta: {
       title: 'Settings',
       requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN', 'ROLE_STAFF'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
@@ -487,7 +488,7 @@ export const routeDefinitions = [
     meta: {
       title: 'Settings',
       requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN', 'ROLE_STAFF'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },
@@ -498,7 +499,7 @@ export const routeDefinitions = [
     meta: {
       title: 'Settings',
       requiresAuth: true,
-      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN', 'ROLE_STAFF'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.UPDATE)),
     },
   },

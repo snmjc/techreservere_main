@@ -84,6 +84,16 @@ class AccountWorkflowService
 
     public function getEmployeeWorkLogs(int $accountIdentifier): array
     {
+        return $this->buildEmployeeWorkLogsResponse($accountIdentifier);
+    }
+
+    public function getMyEmployeeWorkLogs(Request $request): array
+    {
+        return $this->buildEmployeeWorkLogsResponse($this->resolveAuthenticatedAccountIdentifier($request));
+    }
+
+    private function buildEmployeeWorkLogsResponse(int $accountIdentifier): array
+    {
         $account = $this->accountReadService->getAccountStateById($accountIdentifier);
         if (!$account) {
             return $this->error('AccountNotFound', 'Account not found.', 404);
