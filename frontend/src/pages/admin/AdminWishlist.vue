@@ -828,6 +828,8 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import {
+  buildEmployeeAccountPayload,
+  filterWishlistAccounts,
   formatCreateAccountError,
   formatDisplayDateTime,
   formatNullableDateTime,
@@ -835,11 +837,10 @@ import {
   getAccountTypeBadgeClass,
   getApprovalEmailLabel,
   getInviteSentStatus,
-  getSortRoleName,
   getStatusClass,
   getStatusLabel,
   getUniqueRequestAccounts,
-  getUserRoleName,
+  getEmployeeCreateError,
   isPdfProof,
   normalizeEmailForConfirmation,
   normalizeWishlistAccount,
@@ -949,35 +950,13 @@ const wishlistTabs = computed(() => {
 });
 
 const filteredWishlistAccounts = computed(() => {
-  const query = searchText.value.trim().toLowerCase();
-  const currentType = activeTab.value === 'admin' ? 'Admin' : activeTab.value === 'employee' ? 'Employee' : 'User';
-
-  return normalizedAccounts.value
-    .filter((account) => account.accountType === currentType)
-    .filter((account) => statusFilter.value === 'all' || account.accountStatus === statusFilter.value)
-    .filter((account) => activeTab.value !== 'user' || userRoleFilter.value === 'all' || getUserRoleName(account).toLowerCase() === userRoleFilter.value)
-    .filter((account) => {
-      if (!query) return true;
-      return [
-        account.idNumber,
-        account.firstName,
-        account.lastName,
-        account.emailAddress,
-        account.roleLabel,
-      ].some((value) => String(value).toLowerCase().includes(query));
-    })
-    .sort((first, second) => {
-      if (sortMode.value === 'name') {
-        return `${first.lastName} ${first.firstName}`.localeCompare(`${second.lastName} ${second.firstName}`);
-      }
-      if (sortMode.value === 'role') {
-        return getSortRoleName(first).localeCompare(getSortRoleName(second)) || `${first.lastName} ${first.firstName}`.localeCompare(`${second.lastName} ${second.firstName}`);
-      }
-      if (sortMode.value === 'status') {
-        return getStatusLabel(first.accountStatus).localeCompare(getStatusLabel(second.accountStatus));
-      }
-      return new Date(second.registeredAt).getTime() - new Date(first.registeredAt).getTime();
-    });
+  return filterWishlistAccounts(normalizedAccounts.value, {
+    activeTab: activeTab.value,
+    searchText: searchText.value,
+    sortMode: sortMode.value,
+    statusFilter: statusFilter.value,
+    userRoleFilter: userRoleFilter.value,
+  });
 });
 
 onMounted(() => {
@@ -1242,38 +1221,11 @@ async function createEmployeeAccount() {
 
   addEmployeeError.value = '';
 
-  const validationError = validateEmployeeFormValues(addEmployeeForm);
-  if (validationError) {
-    addEmployeeError.value = validationError;
-    return;
-  }
-
-  const idNumberExists = normalizedAccounts.value.some(
-    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addEmployeeForm.idNumber.trim().toLowerCase()
-  );
-  if (idNumberExists) {
-    addEmployeeError.value = 'A staff account with this Work ID number already exists.';
-    return;
-  }
-
-  const phoneExists = normalizedAccounts.value.some(
-    (account) => String(account.contactNumber || '').replace(/\D/g, '') === addEmployeeForm.phone
-  );
-  if (phoneExists) {
-    addEmployeeError.value = 'A staff account with this phone number already exists.';
-    return;
-  }
-
-  const accountPayload = {
-    lastName: addEmployeeForm.lastName,
-    firstName: addEmployeeForm.firstName,
-    phone: addEmployeeForm.phone,
-    idNumber: addEmployeeForm.idNumber,
-    role: addEmployeeForm.role,
-  };
+  const validationError = getEmployeeCreateError(addEmployeeForm, normalizedAccounts.value);
+  if (validationError) return setEmployeeCreateError(validationError);
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.createEmployeeAccount(accountPayload, authStore.authToken);
+  const result = await adminWishlistApi.createEmployeeAccount(buildEmployeeAccountPayload(addEmployeeForm), authStore.authToken);
   isProcessing.value = false;
 
   if (!result.success) {
@@ -1286,6 +1238,10 @@ async function createEmployeeAccount() {
   await loadWishlistAccounts();
   showToast('Account created!');
   resetAddEmployeeForm();
+}
+
+function setEmployeeCreateError(message) {
+  addEmployeeError.value = message;
 }
 
 function resetAddEmployeeForm() {
