@@ -447,6 +447,16 @@
             />
           </label>
 
+          <label class="admin-wishlist-confirm-field">
+            <span>Type your admin password to confirm denial:</span>
+            <input
+              v-model="denialConfirmPassword"
+              type="password"
+              placeholder="Admin password"
+              autocomplete="current-password"
+            />
+          </label>
+
           <p v-if="denialFormError" class="admin-wishlist-add-error">{{ denialFormError }}</p>
 
           <div class="admin-wishlist-modal-actions">
@@ -872,6 +882,7 @@ const approvalAccount = ref(null);
 const approvalMode = ref('send');
 const denialAccount = ref(null);
 const denialConfirmEmail = ref('');
+const denialConfirmPassword = ref('');
 const denialFormError = ref('');
 const deleteAccountRequest = ref(null);
 const deleteConfirmEmail = ref('');
@@ -932,6 +943,7 @@ const isApprovalConfirmationReady = computed(() => (
 const isDenialConfirmationReady = computed(() => (
   Boolean(denialAccount.value)
   && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
+  && denialConfirmPassword.value.trim() !== ''
 ));
 const isDeleteConfirmationReady = computed(() => (
   Boolean(deleteAccountRequest.value)
@@ -1027,12 +1039,14 @@ function openDenialModal(account) {
   if (!account) return;
   denialAccount.value = account;
   denialConfirmEmail.value = '';
+  denialConfirmPassword.value = '';
   denialFormError.value = '';
 }
 
 function closeDenialModal() {
   denialAccount.value = null;
   denialConfirmEmail.value = '';
+  denialConfirmPassword.value = '';
   denialFormError.value = '';
 }
 
@@ -1299,12 +1313,19 @@ async function denyAccount() {
     denialFormError.value = 'Please type the exact email address to deny this request.';
     return;
   }
+  if (denialConfirmPassword.value.trim() === '') {
+    denialFormError.value = 'Please type your admin password to deny this request.';
+    return;
+  }
 
   isProcessing.value = true;
   const result = await adminWishlistApi.denyAccount(
     denialAccount.value.accountIdentifier,
     authStore.authToken,
-    { confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value) },
+    {
+      confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value),
+      confirmedAdminPassword: denialConfirmPassword.value,
+    },
   );
   if (result.success) {
     approvalAccount.value = null;

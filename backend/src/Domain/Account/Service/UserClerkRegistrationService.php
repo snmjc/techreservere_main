@@ -44,7 +44,6 @@ class UserClerkRegistrationService
     {
         $emailAddress = trim($requestBody['emailAddress'] ?? '');
         $contactNumber = trim($requestBody['contactNumber'] ?? '');
-        $invitedBy = $requestBody['invitedBy'] ?? null;
         $isAdminEmail = $this->isAdminEmail($emailAddress);
 
         return [
@@ -56,8 +55,8 @@ class UserClerkRegistrationService
             'contactNumber' => $contactNumber,
             'department' => trim($requestBody['department'] ?? ''),
             'idNumber' => trim($requestBody['idNumber'] ?? $requestBody['studentIdNumber'] ?? $contactNumber),
-            'status' => ($invitedBy || $isAdminEmail) ? 'approved' : 'pending',
-            'isApproved' => (bool)($invitedBy || $isAdminEmail),
+            'status' => $isAdminEmail ? 'approved' : 'pending',
+            'isApproved' => $isAdminEmail,
             'isAdminEmail' => $isAdminEmail,
         ];
     }
@@ -78,6 +77,10 @@ class UserClerkRegistrationService
             ]);
         }
 
+        if (!$this->canUseExistingClerkAccount($account, $registration)) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
         return $this->success('Account already registered.', [
             'accountIdentifier' => $account->getAccountIdentifier(),
             'clerkUserId' => $account->getClerkUserId(),
@@ -88,6 +91,14 @@ class UserClerkRegistrationService
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
         ]);
+    }
+
+    private function canUseExistingClerkAccount(AccountEntity $account, array $registration): bool
+    {
+        $status = strtolower($account->getStatus());
+
+        return ($account->getIsApproved() && $status === 'approved')
+            || $this->isAcceptableInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -206,6 +217,10 @@ class UserClerkRegistrationService
 
     private function createNewAccount(array $registration): array
     {
+        if (!$registration['isAdminEmail']) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
         try {
             $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(

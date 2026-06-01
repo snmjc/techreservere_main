@@ -14,7 +14,12 @@ class WishlistRequestDecisionService
     ) {
     }
 
-    public function reject(int $accountIdentifier, string $confirmEmail): array
+    public function reject(
+        int $accountIdentifier,
+        string $confirmEmail,
+        int $authenticatedAdminId,
+        string $confirmedAdminPassword
+    ): array
     {
         $account = $this->accountRepository->find($accountIdentifier);
         if ($account === null) {
@@ -27,6 +32,11 @@ class WishlistRequestDecisionService
                 'Please type the exact email address to deny this request.',
                 422
             );
+        }
+
+        $adminPasswordError = $this->validateResponsibleAdminPassword($authenticatedAdminId, $confirmedAdminPassword, 'denying');
+        if ($adminPasswordError !== null) {
+            return $adminPasswordError;
         }
 
         $account->setStatus('rejected');

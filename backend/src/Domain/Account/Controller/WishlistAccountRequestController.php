@@ -81,7 +81,12 @@ class WishlistAccountRequestController
     public function rejectUser(int $accountIdentifier, Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->workflowService->rejectUser($accountIdentifier, $this->jsonBody($request)),
+            $this->workflowService->rejectUser(
+                $accountIdentifier,
+                $this->jsonBody($request),
+                $request->attributes->get('authenticatedIdentity', []),
+                $request->headers->get('Authorization', '')
+            ),
             'RejectUserFailed',
             'Unable to reject this request.'
         );

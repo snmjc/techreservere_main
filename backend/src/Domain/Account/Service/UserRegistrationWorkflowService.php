@@ -135,11 +135,13 @@ class UserRegistrationWorkflowService
         );
     }
 
-    public function rejectUser(int $accountIdentifier, array $requestBody): array
+    public function rejectUser(int $accountIdentifier, array $requestBody, array $authenticatedIdentity, string $authorizationHeader): array
     {
         return $this->wishlistRequestDecisionService->reject(
             $accountIdentifier,
-            (string)($requestBody['confirmEmail'] ?? '')
+            (string)($requestBody['confirmEmail'] ?? ''),
+            $this->resolveAuthenticatedAccountIdentifier($authenticatedIdentity, $authorizationHeader),
+            (string)($requestBody['confirmedAdminPassword'] ?? '')
         );
     }
 

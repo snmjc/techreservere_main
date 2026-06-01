@@ -9,7 +9,6 @@ class PublicSignupRequestService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
         private readonly AccountConflictLookupService $accountConflictLookupService
     ) {
     }
@@ -143,23 +142,6 @@ class PublicSignupRequestService
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        try {
-            $clerkUserId = $this->accountClerkProvisioningService->ensureSignupUser(
-                $payload['emailAddress'],
-                $payload['firstName'],
-                $payload['lastName'],
-                $payload['passwordText'],
-                $roleLabel,
-                $payload['idNumber']
-            );
-        } catch (\Throwable $exception) {
-            return $this->error(
-                'ClerkSignupUserFailed',
-                'Clerk could not create or update this signup account: ' . $exception->getMessage(),
-                502
-            );
-        }
-
         $this->connection->executeStatement(
             'UPDATE accounts
              SET last_name = :lastName,
@@ -176,7 +158,7 @@ class PublicSignupRequestService
                  created_timestamp = :createdTimestamp,
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
-            $this->buildReusableSignupParameters($existingEmailAccount, $payload, $clerkUserId, $now),
+            $this->buildReusableSignupParameters($existingEmailAccount, $payload, $now),
             $this->buildReusableSignupTypes($payload)
         );
 
@@ -186,7 +168,7 @@ class PublicSignupRequestService
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
-            'clerkUserId' => $clerkUserId,
+            'clerkUserId' => null,
             'roleDesignation' => 'ROLE_BORROWER',
             'roleLabel' => 'User: ' . $roleLabel,
             'accountType' => 'User',
@@ -202,27 +184,18 @@ class PublicSignupRequestService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         try {
-            $clerkUserId = $this->accountClerkProvisioningService->ensureSignupUser(
-                $payload['emailAddress'],
-                $payload['firstName'],
-                $payload['lastName'],
-                $payload['passwordText'],
-                $roleLabel,
-                $payload['idNumber']
-            );
-
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
                      signup_supporting_document_name, signup_supporting_document_mime_type, signup_supporting_document_data,
                      failed_login_attempts, created_timestamp, updated_timestamp)
-                 VALUES
+                VALUES
                     (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :supportingDocumentName, :supportingDocumentMimeType, :supportingDocumentData,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildNewSignupParameters($payload, $roleLabel, $clerkUserId, $now),
+                $this->buildNewSignupParameters($payload, $roleLabel, $now),
                 $this->buildNewSignupTypes($payload)
             );
 
@@ -232,7 +205,7 @@ class PublicSignupRequestService
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
-                'clerkUserId' => $clerkUserId,
+                'clerkUserId' => null,
                 'roleDesignation' => 'ROLE_BORROWER',
                 'roleLabel' => 'User: ' . $roleLabel,
                 'accountType' => 'User',
@@ -259,13 +232,13 @@ class PublicSignupRequestService
         );
     }
 
-    private function buildReusableSignupParameters(array $existingEmailAccount, array $payload, string $clerkUserId, string $now): array
+    private function buildReusableSignupParameters(array $existingEmailAccount, array $payload, string $now): array
     {
         return [
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'department' => strtolower($payload['role']) === 'faculty' ? 'Faculty' : 'Student',
-            'clerkUserId' => $clerkUserId,
+            'clerkUserId' => null,
             'passwordHash' => password_hash($payload['passwordText'], PASSWORD_BCRYPT),
             'supportingDocumentName' => $payload['supportingDocumentName'] ?: null,
             'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] ?: null,
@@ -285,7 +258,7 @@ class PublicSignupRequestService
             'lastName' => ParameterType::STRING,
             'firstName' => ParameterType::STRING,
             'department' => ParameterType::STRING,
-            'clerkUserId' => ParameterType::STRING,
+            'clerkUserId' => ParameterType::NULL,
             'passwordHash' => ParameterType::STRING,
             'supportingDocumentName' => $payload['supportingDocumentName'] === '' ? ParameterType::NULL : ParameterType::STRING,
             'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] === '' ? ParameterType::NULL : ParameterType::STRING,
@@ -299,7 +272,7 @@ class PublicSignupRequestService
         ];
     }
 
-    private function buildNewSignupParameters(array $payload, string $roleLabel, string $clerkUserId, string $now): array
+    private function buildNewSignupParameters(array $payload, string $roleLabel, string $now): array
     {
         return [
             'lastName' => $payload['lastName'],
@@ -309,7 +282,7 @@ class PublicSignupRequestService
             'idNumber' => $payload['idNumber'],
             'department' => $roleLabel,
             'contactNumber' => null,
-            'clerkUserId' => $clerkUserId,
+            'clerkUserId' => null,
             'passwordHash' => password_hash($payload['passwordText'], PASSWORD_BCRYPT),
             'status' => 'pending',
             'isApproved' => false,
@@ -333,7 +306,7 @@ class PublicSignupRequestService
             'idNumber' => ParameterType::STRING,
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::NULL,
-            'clerkUserId' => ParameterType::STRING,
+            'clerkUserId' => ParameterType::NULL,
             'passwordHash' => ParameterType::STRING,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
