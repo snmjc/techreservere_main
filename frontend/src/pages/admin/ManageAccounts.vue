@@ -437,508 +437,72 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ManageAccounts.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { adminManageAccountsApi } from '@/services/adminManageAccountsApi.js';
-import {
+import { useManageAccountsPage } from './composables/useManageAccountsPage.js';
+
+const {
+  activeAccountTab,
+  searchQueryText,
+  showingFilterValue,
+  sortMode,
+  userRoleFilter,
+  isLoading,
+  isProcessing,
+  toastMessage,
+  loadErrorMessage,
+  modalErrorMessage,
+  viewAccount,
+  updateAccount,
+  accessAccount,
+  workLogsAccount,
+  employeeWorkLogs,
+  workLogsLoading,
+  workLogsError,
+  expandedWorkLogIds,
+  accessMode,
+  confirmEmailText,
+  confirmPasswordText,
+  updateForm,
+  pageTitle,
+  pageDescription,
+  manageAccountsColumnCount,
+  isAccessConfirmationReady,
+  isUpdateFormReady,
+  accountTabs,
+  filteredAccounts,
+  handleRefreshAccounts,
+  handleTabChange,
+  handleToggleSortOrder,
+  openViewModal,
+  openWorkLogs,
+  canViewWorkLogs,
+  toggleWorkLog,
+  openUpdateModal,
+  openAccessModal,
+  getAccessModalTitle,
+  getAccessModalDescription,
+  getAccessModalActionLabel,
+  getAccessConfirmationLabel,
+  getAccessConfirmationPlaceholder,
+  closeModals,
+  sanitizeUpdateNameField,
+  sanitizeUpdatePhone,
+  handleUpdateProfilePhotoChange,
+  saveAccountChanges,
+  confirmAccessChange,
+  getUpdateEmailLabel,
   canActivateAccount,
   canDisableAccount,
   canUpdateAccount,
-  compareManageAccounts,
   formatAssignments,
   formatDateTime,
   formatNullableDateTime,
   formatReservationDetails,
   getAccountTypeClass,
-  getDefaultAccountTab,
   getEmailLabel,
-  getEmployeeRoleOptions,
-  getRoleOptions,
   getStatusClass,
-  getUpdateAccountTypeForPayload as resolveUpdateAccountTypeForPayload,
-  getUpdateRoleLabelForPayload as resolveUpdateRoleLabelForPayload,
-  getUserRoleName,
-  normalizeAccount,
-  normalizeEmailForConfirmation,
-  normalizeUpdateRoleDesignation,
-  sanitizeAccountNameInput,
-  sanitizeAccountPhoneInput,
-  validateManageAccountUpdateForm,
-} from './manageAccounts/manageAccountsHelpers.js';
-
-const authStore = useAuthenticationStore();
-const activeAccountTab = ref(getDefaultAccountTab());
-const searchQueryText = ref('');
-const showingFilterValue = ref('all');
-const sortMode = ref('created');
-const userRoleFilter = ref('all');
-const sortOrderAscending = ref(true);
-const isLoading = ref(false);
-const isProcessing = ref(false);
-const toastMessage = ref('');
-const loadErrorMessage = ref('');
-const modalErrorMessage = ref('');
-const accounts = ref([]);
-const viewAccount = ref(null);
-const updateAccount = ref(null);
-const accessAccount = ref(null);
-const workLogsAccount = ref(null);
-const employeeWorkLogs = ref([]);
-const workLogsLoading = ref(false);
-const workLogsError = ref('');
-const expandedWorkLogIds = ref(new Set());
-const accessMode = ref('disable');
-const confirmEmailText = ref('');
-const confirmPasswordText = ref('');
-
-const updateForm = reactive({
-  idNumber: '',
-  lastName: '',
-  firstName: '',
-  emailAddress: '',
-  contactNumber: '',
-  roleDesignation: 'ROLE_ADMIN',
-  roleLabel: 'Admin',
-  accountType: 'Admin',
-  profilePhotoName: '',
-  profilePhotoData: '',
-  profilePhotoPreview: '',
-});
-
-const normalizedAccounts = computed(() => accounts.value.map(normalizeAccount));
-const isEmployeeUpdateModal = computed(() => updateAccount.value?.accountType === 'Employee');
-const pageTitle = computed(() => 'Manage Accounts');
-const pageDescription = computed(() => 'Manage and oversee system accounts in TechReserve.');
-const manageAccountsColumnCount = computed(() => (activeAccountTab.value === 'employee' ? 7 : 6));
-const currentAdminEmail = computed(() => {
-  const account = authStore.accountData || authStore.clerkAccountData || {};
-  return String(account.emailAddress || account.email || '').trim();
-});
-const isAccessConfirmationReady = computed(() => {
-  if (isProcessing.value || !accessAccount.value) return false;
-  if (confirmEmailText.value.trim() === '') return false;
-
-  if (accessMode.value === 'delete') {
-    return confirmPasswordText.value.trim() !== '';
-  }
-
-  return true;
-});
-const isUpdateFormReady = computed(() => validateUpdateAccountForm() === '');
-
-const accountTabs = computed(() => [
-  { label: 'Admin', value: 'admin', count: normalizedAccounts.value.filter((account) => account.accountType === 'Admin').length },
-  { label: 'User', value: 'user', count: normalizedAccounts.value.filter((account) => account.accountType === 'User').length },
-  { label: 'Employee', value: 'employee', count: normalizedAccounts.value.filter((account) => account.accountType === 'Employee').length },
-]);
-
-const filteredAccounts = computed(() => {
-  const type = activeAccountTab.value === 'admin' ? 'Admin' : activeAccountTab.value === 'employee' ? 'Employee' : 'User';
-  const query = searchQueryText.value.trim().toLowerCase();
-
-  return normalizedAccounts.value
-    .filter((account) => account.accountType === type)
-    .filter((account) => showingFilterValue.value === 'all' || account.accountStatus.toLowerCase() === showingFilterValue.value)
-    .filter((account) => activeAccountTab.value !== 'user' || userRoleFilter.value === 'all' || getUserRoleName(account).toLowerCase() === userRoleFilter.value)
-    .filter((account) => {
-      if (!query) return true;
-      return [account.idNumber, account.fullName, account.emailAddress, account.roleLabel].some((value) => String(value).toLowerCase().includes(query));
-    })
-    .sort((first, second) => {
-      const result = compareAccounts(first, second);
-      return sortOrderAscending.value ? result : -result;
-    });
-});
-
-onMounted(() => {
-  loadAccounts();
-});
-
-async function loadAccounts({ showLoading = true } = {}) {
-  if (showLoading) isLoading.value = true;
-  loadErrorMessage.value = '';
-  const result = await adminManageAccountsApi.getAccounts(authStore.authToken);
-  if (result.success) {
-    accounts.value = result.data.accounts || [];
-  } else {
-    loadErrorMessage.value = result.error || 'Unable to load accounts.';
-  }
-  if (showLoading) isLoading.value = false;
-}
-
-async function handleRefreshAccounts() {
-  await loadAccounts();
-  if (!loadErrorMessage.value) {
-    showToast('Accounts refreshed.');
-  }
-}
-
-function handleTabChange(tabName) {
-  activeAccountTab.value = tabName;
-  searchQueryText.value = '';
-  showingFilterValue.value = 'all';
-  userRoleFilter.value = 'all';
-  closeModals();
-}
-
-function handleToggleSortOrder() {
-  sortOrderAscending.value = !sortOrderAscending.value;
-}
-
-function compareAccounts(first, second) {
-  return compareManageAccounts(first, second, sortMode.value);
-}
-
-function openViewModal(account) {
-  viewAccount.value = account;
-}
-
-async function openWorkLogs(account) {
-  if (!canViewWorkLogs(account)) return;
-  workLogsAccount.value = account;
-  employeeWorkLogs.value = [];
-  workLogsError.value = '';
-  expandedWorkLogIds.value = new Set();
-  workLogsLoading.value = true;
-
-  const result = await adminManageAccountsApi.getEmployeeWorkLogs(account.accountIdentifier, authStore.authToken);
-  workLogsLoading.value = false;
-
-  if (!result.success) {
-    workLogsError.value = result.error || 'Unable to load work logs.';
-    return;
-  }
-
-  employeeWorkLogs.value = result.data.workLogs || [];
-}
-
-function canViewWorkLogs(account) {
-  return account?.accountType === 'Employee';
-}
-
-function toggleWorkLog(taskIdentifier) {
-  const nextExpanded = new Set(expandedWorkLogIds.value);
-  if (nextExpanded.has(taskIdentifier)) {
-    nextExpanded.delete(taskIdentifier);
-  } else {
-    nextExpanded.add(taskIdentifier);
-  }
-  expandedWorkLogIds.value = nextExpanded;
-}
-
-function openUpdateModal(account) {
-  if (!canUpdateAccount(account)) {
-    showToast('Only active accounts can be updated.');
-    return;
-  }
-
-  updateAccount.value = account;
-  updateForm.idNumber = account.rawIdNumber || account.idNumber;
-  updateForm.lastName = account.lastName;
-  updateForm.firstName = account.firstName;
-  updateForm.emailAddress = account.emailAddress;
-  updateForm.contactNumber = account.contactNumber || '';
-  updateForm.roleDesignation = normalizeUpdateRoleDesignation(account.accountType, account.roleLabel);
-  updateForm.roleLabel = account.roleLabel;
-  updateForm.accountType = account.accountType;
-  updateForm.profilePhotoName = '';
-  updateForm.profilePhotoData = '';
-  updateForm.profilePhotoPreview = account.profilePhotoData || '';
-  if (account.accountType === 'Employee' && !getEmployeeRoleOptions().includes(updateForm.roleLabel)) {
-    updateForm.roleLabel = account.roleLabel || 'Technical Staff';
-  }
-  modalErrorMessage.value = '';
-}
-
-function openAccessModal(account, mode) {
-  if (mode === 'disable' && !canDisableAccount(account)) {
-    showToast('Only active accounts can be disabled.');
-    return;
-  }
-
-  if (mode === 'activate' && !canActivateAccount(account)) {
-    showToast('Only disabled accounts can be reactivated.');
-    return;
-  }
-
-  accessAccount.value = account;
-  accessMode.value = mode;
-  confirmEmailText.value = '';
-  modalErrorMessage.value = '';
-}
-
-function getAccessModalTitle() {
-  if (accessMode.value === 'delete') return 'Delete Account';
-  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Reactivate Account';
-}
-
-function getAccessModalDescription() {
-  if (accessMode.value === 'delete') return 'This will permanently delete the account and its invitation records from the database.';
-  return accessMode.value === 'disable'
-    ? 'This will deactivate the account and prevent access to the system.'
-    : 'This will reactivate the account and restore access to the system.';
-}
-
-function getAccessModalActionLabel() {
-  if (isProcessing.value) {
-    if (accessMode.value === 'delete') return 'Deleting...';
-    return accessMode.value === 'disable' ? 'Deactivating...' : 'Reactivating...';
-  }
-  if (accessMode.value === 'delete') return 'Delete Account';
-  return accessMode.value === 'disable' ? 'Deactivate Account' : 'Reactivate Account';
-}
-
-function getAccessConfirmationLabel() {
-  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
-    const actionName = accessMode.value === 'activate'
-      ? 'reactivation'
-      : accessMode.value === 'disable'
-        ? 'deactivation'
-        : 'deletion';
-    return `Type your admin email ${currentAdminEmail.value || 'from your account'} to confirm ${actionName}:`;
-  }
-
-  return `Type ${accessAccount.value?.emailAddress || 'the account email'} to confirm:`;
-}
-
-function getAccessConfirmationPlaceholder() {
-  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
-    return currentAdminEmail.value || 'admin@techreserve.edu.ph';
-  }
-
-  return accessAccount.value?.emailAddress || '';
-}
-
-function closeModals() {
-  viewAccount.value = null;
-  updateAccount.value = null;
-  accessAccount.value = null;
-  workLogsAccount.value = null;
-  employeeWorkLogs.value = [];
-  workLogsLoading.value = false;
-  workLogsError.value = '';
-  expandedWorkLogIds.value = new Set();
-  confirmEmailText.value = '';
-  confirmPasswordText.value = '';
-  resetUpdateForm();
-  modalErrorMessage.value = '';
-}
-
-function resetUpdateForm() {
-  updateForm.idNumber = '';
-  updateForm.lastName = '';
-  updateForm.firstName = '';
-  updateForm.emailAddress = '';
-  updateForm.contactNumber = '';
-  updateForm.roleDesignation = 'ROLE_ADMIN';
-  updateForm.roleLabel = 'Admin';
-  updateForm.accountType = 'Admin';
-  updateForm.profilePhotoName = '';
-  updateForm.profilePhotoData = '';
-  updateForm.profilePhotoPreview = '';
-}
-
-function sanitizeUpdateNameField(fieldName) {
-  updateForm[fieldName] = sanitizeAccountNameInput(updateForm[fieldName]);
-}
-
-function sanitizeUpdatePhone() {
-  updateForm.contactNumber = sanitizeAccountPhoneInput(updateForm.contactNumber);
-}
-
-function validateUpdateAccountForm() {
-  return validateManageAccountUpdateForm(updateForm);
-}
-
-function handleUpdateProfilePhotoChange(event) {
-  const file = event.target.files?.[0] || null;
-  updateForm.profilePhotoName = '';
-  updateForm.profilePhotoData = '';
-
-  if (!file) {
-    updateForm.profilePhotoPreview = updateAccount.value?.profilePhotoData || '';
-    modalErrorMessage.value = '';
-    return;
-  }
-
-  if (!file.name.toLowerCase().endsWith('.jpg') || file.type !== 'image/jpeg') {
-    modalErrorMessage.value = 'Profile photo must be a .jpg image only.';
-    event.target.value = '';
-    updateForm.profilePhotoPreview = updateAccount.value?.profilePhotoData || '';
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    updateForm.profilePhotoName = file.name;
-    updateForm.profilePhotoData = String(reader.result || '');
-    updateForm.profilePhotoPreview = updateForm.profilePhotoData;
-    modalErrorMessage.value = '';
-  };
-  reader.onerror = () => {
-    modalErrorMessage.value = 'Unable to read profile photo.';
-    event.target.value = '';
-  };
-  reader.readAsDataURL(file);
-}
-
-async function saveAccountChanges() {
-  if (!updateAccount.value) return;
-  if (isProcessing.value) return;
-
-  const validationError = validateUpdateAccountForm();
-  if (validationError) {
-    modalErrorMessage.value = validationError;
-    return;
-  }
-
-  isProcessing.value = true;
-  const result = await adminManageAccountsApi.updateAccount(updateAccount.value.accountIdentifier, {
-    lastName: updateForm.lastName,
-    firstName: updateForm.firstName,
-    contactNumber: updateForm.contactNumber,
-    profilePhotoName: updateForm.profilePhotoName,
-    profilePhotoData: updateForm.profilePhotoData,
-  }, authStore.authToken);
-  isProcessing.value = false;
-
-  if (!result.success) {
-    modalErrorMessage.value = result.error || 'Unable to save changes.';
-    return;
-  }
-
-  upsertAccount(result.data.account);
-  closeModals();
-  showToast('Changes saved!');
-}
-
-async function confirmAccessChange() {
-  if (!accessAccount.value) return;
-  if (isProcessing.value) return;
-
-  if (accessMode.value === 'activate' || accessMode.value === 'disable' || accessMode.value === 'delete') {
-    if (!currentAdminEmail.value) {
-      modalErrorMessage.value = 'Unable to verify the admin in-charge. Please sign in again.';
-      return;
-    }
-
-    if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
-      modalErrorMessage.value = accessMode.value === 'activate'
-        ? 'Please type your exact admin email to reactivate this account.'
-        : accessMode.value === 'disable'
-          ? 'Please type your exact admin email to deactivate this account.'
-          : 'Please type your exact admin email to delete this account.';
-      return;
-    }
-  } else if (normalizeEmailForConfirmation(confirmEmailText.value) !== normalizeEmailForConfirmation(accessAccount.value.emailAddress)) {
-    modalErrorMessage.value = 'Please type the exact account email address to confirm.';
-    return;
-  }
-
-  if (accessMode.value === 'delete') {
-    if (confirmPasswordText.value.trim() === '') {
-      modalErrorMessage.value = 'Please type your admin password to delete this account.';
-      return;
-    }
-
-    isProcessing.value = true;
-    const result = await adminManageAccountsApi.deleteAccount(
-      accessAccount.value.accountIdentifier,
-      {
-        confirmedAdminEmail: normalizeEmailForConfirmation(confirmEmailText.value),
-        confirmedAdminPassword: confirmPasswordText.value,
-      },
-      authStore.authToken,
-    );
-    isProcessing.value = false;
-
-    if (!result.success) {
-      modalErrorMessage.value = result.error || 'Unable to delete account.';
-      return;
-    }
-
-    removeAccount(accessAccount.value.accountIdentifier);
-    closeModals();
-    showToast('Account deleted!');
-    return;
-  }
-
-  const shouldActivate = accessMode.value === 'activate';
-  isProcessing.value = true;
-  const result = await adminManageAccountsApi.updateAccountAccess(
-    accessAccount.value.accountIdentifier,
-    shouldActivate,
-    authStore.authToken,
-    { confirmedAdminEmail: normalizeEmailForConfirmation(confirmEmailText.value) },
-  );
-  isProcessing.value = false;
-
-  if (!result.success) {
-    modalErrorMessage.value = result.error || 'Unable to update account access.';
-    return;
-  }
-
-  upsertAccount(result.data.account);
-  closeModals();
-  showToast(shouldActivate ? 'Account reactivated!' : 'Account deactivated!');
-  await loadAccounts({ showLoading: false });
-}
-
-function removeAccount(accountIdentifier) {
-  accounts.value = accounts.value.filter((account) => String(account.accountIdentifier) !== String(accountIdentifier));
-}
-
-function upsertAccount(updatedAccount) {
-  if (!updatedAccount) return;
-  const index = accounts.value.findIndex((account) => String(account.accountIdentifier) === String(updatedAccount.accountIdentifier));
-  if (index >= 0) {
-    accounts.value.splice(index, 1, updatedAccount);
-  } else {
-    accounts.value.unshift(updatedAccount);
-  }
-}
-
-function getUpdateEmailLabel() {
-  return updateForm.accountType === 'Employee' || isEmployeeUpdateModal.value ? 'Email:' : 'FIT Email Address:';
-}
-
-function getUpdateRoleOptions() {
-  if (isEmployeeUpdateModal.value) {
-    return updateForm.accountType === 'Admin' ? ['Admin'] : getEmployeeRoleOptions();
-  }
-  return getRoleOptions(updateAccount.value);
-}
-
-function handleUpdateAccountTypeChange() {
-  if (updateForm.accountType === 'Admin') {
-    updateForm.roleLabel = 'Admin';
-    updateForm.roleDesignation = 'ROLE_ADMIN';
-    return;
-  }
-
-  updateForm.roleDesignation = 'ROLE_STAFF';
-  if (!getEmployeeRoleOptions().includes(updateForm.roleLabel)) {
-    updateForm.roleLabel = 'Technical Staff';
-  }
-}
-
-function getUpdateAccountTypeForPayload() {
-  return resolveUpdateAccountTypeForPayload(updateForm, isEmployeeUpdateModal.value);
-}
-
-function getUpdateRoleLabelForPayload(accountType) {
-  return resolveUpdateRoleLabelForPayload(accountType, updateForm);
-}
-
-function showToast(message) {
-  toastMessage.value = message;
-  window.setTimeout(() => {
-    if (toastMessage.value === message) toastMessage.value = '';
-  }, 2800);
-}
-
+} = useManageAccountsPage();
 </script>
