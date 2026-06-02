@@ -14,7 +14,22 @@ class AccountAcceptanceEmailService
     public function shouldUseBrandedMailer(): bool
     {
         $mailerDsn = strtolower(trim((string)($_ENV['MAILER_DSN'] ?? '')));
-        return $mailerDsn !== '' && !str_starts_with($mailerDsn, 'null://');
+        if ($mailerDsn === '' || str_starts_with($mailerDsn, 'null://')) {
+            return false;
+        }
+
+        $dsnParts = parse_url($mailerDsn);
+        if (!is_array($dsnParts)) {
+            return false;
+        }
+
+        $scheme = strtolower((string)($dsnParts['scheme'] ?? ''));
+        if (in_array($scheme, ['smtp', 'smtps'], true)) {
+            return (string)($dsnParts['user'] ?? '') !== ''
+                && (string)($dsnParts['pass'] ?? '') !== '';
+        }
+
+        return true;
     }
 
     public function sendAcceptedAccountEmail(array $account, string $loginUrl): array

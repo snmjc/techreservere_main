@@ -196,6 +196,12 @@
   background: var(--tr-page);
   border: 1px solid var(--tr-border);
   border-radius: 8px;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.my-reservations-timeline-step:hover {
+  background: #f1fbf6;
+  border-color: rgba(8, 115, 79, 0.32);
 }
 
 .my-reservations-timeline-step span {
@@ -227,15 +233,12 @@
 }
 
 .my-reservations-timeline-step.is-complete span,
-.my-reservations-timeline-step.is-current span {
+.my-reservations-timeline-step.is-current span,
+.my-reservations-timeline-step:nth-child(3) span,
+.my-reservations-timeline-step:nth-child(4) span {
   color: #ffffff;
   background: var(--tr-green-700);
   border-color: var(--tr-green-700);
-}
-
-.my-reservations-timeline-step.is-current {
-  border-color: rgba(8, 115, 79, 0.32);
-  background: #f1fbf6;
 }
 
 .my-reservations-action-list {

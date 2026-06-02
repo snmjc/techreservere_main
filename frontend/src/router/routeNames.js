@@ -15,5 +15,6 @@ export const ROUTE_NAMES = Object.freeze({
   borrowerApprovedRequestsLogs: 'borrowerApprovedRequestsLogsPage',
   borrowerPendingRequestsLogs: 'borrowerPendingRequestsLogsPage',
   borrowerCompletedReservationsLogs: 'borrowerCompletedReservationsLogsPage',
+  settings: 'settingsPage',
   facultyDashboard: 'facultyDashboardPage',
 });

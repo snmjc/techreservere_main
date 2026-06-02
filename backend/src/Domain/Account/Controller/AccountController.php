@@ -2,17 +2,7 @@
 
 namespace App\Domain\Account\Controller;
 
-use App\Domain\Account\DTO\AccountUpdateRequestDTO;
-use App\Domain\Account\Service\AccountAccessService;
-use App\Domain\Account\Service\AccountDeletionService;
-use App\Domain\Account\Service\AccountProfileService;
-use App\Domain\Account\Service\AccountReadService;
-use App\Domain\Account\Service\AccountSelfService;
-use App\Domain\Account\Service\AccountSettingsValidationService;
-use App\Domain\Account\Service\AccountUpdateService;
-use App\Domain\Account\Service\AdminAccountDetailsService;
-use App\Domain\Account\Service\AdminSecurityConfirmationService;
-use App\Domain\Account\Service\AuthenticatedAccountResolver;
+use App\Domain\Account\Service\AccountWorkflowService;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
@@ -26,92 +16,50 @@ class AccountController extends AbstractController
 {
     use JsonResponseTrait;
 
-    private AccountProfileService $accountProfileService;
-    private AccountReadService $accountReadService;
-    private AccountSelfService $accountSelfService;
-    private AccountUpdateService $accountUpdateService;
-    private AccountAccessService $accountAccessService;
-    private AdminAccountDetailsService $adminAccountDetailsService;
-    private AccountDeletionService $accountDeletionService;
-    private AdminSecurityConfirmationService $adminSecurityConfirmationService;
-    private AuthenticatedAccountResolver $authenticatedAccountResolver;
-
-    public function __construct(
-        AccountProfileService $accountProfileService,
-        AccountReadService $accountReadService,
-        AccountSelfService $accountSelfService,
-        AccountUpdateService $accountUpdateService,
-        AccountAccessService $accountAccessService,
-        AdminAccountDetailsService $adminAccountDetailsService,
-        AccountDeletionService $accountDeletionService,
-        AdminSecurityConfirmationService $adminSecurityConfirmationService,
-        AuthenticatedAccountResolver $authenticatedAccountResolver
-    ) {
-        $this->accountProfileService = $accountProfileService;
-        $this->accountReadService = $accountReadService;
-        $this->accountSelfService = $accountSelfService;
-        $this->accountUpdateService = $accountUpdateService;
-        $this->accountAccessService = $accountAccessService;
-        $this->adminAccountDetailsService = $adminAccountDetailsService;
-        $this->accountDeletionService = $accountDeletionService;
-        $this->adminSecurityConfirmationService = $adminSecurityConfirmationService;
-        $this->authenticatedAccountResolver = $authenticatedAccountResolver;
+    public function __construct(private readonly AccountWorkflowService $workflowService)
+    {
     }
 
     #[Route('/me', name: 'account_get_my_profile', methods: ['GET'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function getMyProfile(Request $request): JsonResponse
     {
-        $authenticatedIdentity = $request->attributes->get('authenticatedIdentity');
-        $emailAddress = $authenticatedIdentity['emailAddress'] ?? '';
-
-        $profileDTO = $this->accountProfileService->getAccountProfileByEmail($emailAddress);
-
-        return $this->createSuccessResponse($profileDTO->toResponseArray());
-    }
-
-    #[Route('/me/settings', name: 'account_get_my_settings', methods: ['GET'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
-    public function getMySettings(Request $request): JsonResponse
-    {
         return $this->serviceResultResponse(
-            $this->accountSelfService->getSettings($this->resolveAuthenticatedAccountIdentifier($request))
+            $this->workflowService->getMyProfile($request->attributes->get('authenticatedIdentity', []))
         );
     }
 
+    #[Route('/me/settings', name: 'account_get_my_settings', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
+    public function getMySettings(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse($this->workflowService->getMySettings($request));
+    }
+
     #[Route('/me/settings', name: 'account_update_my_settings', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function updateMySettings(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->accountSelfService->updateSettings(
-                $this->resolveAuthenticatedAccountIdentifier($request),
-                json_decode($request->getContent(), true)
-            )
+            $this->workflowService->updateMySettings($request, $this->decodedJson($request))
         );
     }
 
     #[Route('/me/password', name: 'account_update_my_password', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function updateMyPassword(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->accountSelfService->updatePassword(
-                $this->resolveAuthenticatedAccountIdentifier($request),
-                json_decode($request->getContent(), true)
-            )
+            $this->workflowService->updateMyPassword($request, $this->decodedJson($request))
         );
     }
 
     #[Route('/me/password/sync-from-clerk', name: 'account_sync_clerk_password', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_STAFF, RoleConstants::ROLE_DEVELOPER])]
     public function syncPasswordFromClerk(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->accountSelfService->syncPasswordFromClerk(
-                $this->resolveAuthenticatedAccountIdentifier($request),
-                json_decode($request->getContent(), true)
-            )
+            $this->workflowService->syncPasswordFromClerk($request, $this->decodedJson($request))
         );
     }
 
@@ -119,67 +67,45 @@ class AccountController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getAllAccounts(): JsonResponse
     {
-        return $this->createSuccessResponse([
-            'accounts' => $this->accountReadService->getAcceptedAccounts(),
-        ]);
+        return $this->serviceResultResponse($this->workflowService->getAllAccounts());
     }
 
     #[Route('/{accountIdentifier}', name: 'account_get_by_id', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getAccountById(int $accountIdentifier): JsonResponse
     {
-        $profileDTO = $this->accountProfileService->getAccountProfileById($accountIdentifier);
-
-        return $this->createSuccessResponse($profileDTO->toResponseArray());
+        return $this->serviceResultResponse($this->workflowService->getAccountById($accountIdentifier));
     }
 
     #[Route('/{accountIdentifier}', name: 'account_update', methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateAccount(int $accountIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-
-        $updateDTO = new AccountUpdateRequestDTO(
-            contactNumber: $requestBody['contactNumber'] ?? null,
-            roleDesignation: $requestBody['roleDesignation'] ?? null
+        return $this->serviceResultResponse(
+            $this->workflowService->updateAccount($accountIdentifier, $this->jsonBody($request))
         );
+    }
 
-        $updatedProfile = $this->accountUpdateService->updateAccountProfile($accountIdentifier, $updateDTO);
-
-        return $this->createSuccessResponse($updatedProfile->toResponseArray());
+    #[Route('/me/work-logs', name: 'account_my_employee_work_logs', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_STAFF, RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getMyEmployeeWorkLogs(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse($this->workflowService->getMyEmployeeWorkLogs($request));
     }
 
     #[Route('/{accountIdentifier}/work-logs', name: 'account_employee_work_logs', requirements: ['accountIdentifier' => '\d+'], methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getEmployeeWorkLogs(int $accountIdentifier): JsonResponse
     {
-        $account = $this->accountReadService->getAccountStateById($accountIdentifier);
-        if (!$account) {
-            return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
-        }
-
-        $mappedAccount = $this->accountReadService->getMappedAccountById($accountIdentifier);
-        if (($mappedAccount['accountType'] ?? '') !== 'Employee') {
-            return $this->createErrorResponse(
-                'WorkLogsUnavailable',
-                'Work logs are only available for employee accounts.',
-                422
-            );
-        }
-
-        return $this->createSuccessResponse([
-            'account' => $mappedAccount,
-            'workLogs' => $this->accountReadService->getEmployeeWorkLogs($accountIdentifier),
-        ]);
+        return $this->serviceResultResponse($this->workflowService->getEmployeeWorkLogs($accountIdentifier));
     }
 
     #[Route('/{accountIdentifier}/admin-details', name: 'account_update_admin_details', methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateAdminAccountDetails(int $accountIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
         return $this->serviceResultResponse(
-            $this->adminAccountDetailsService->updateDetails($accountIdentifier, $requestBody)
+            $this->workflowService->updateAdminAccountDetails($accountIdentifier, $this->jsonBody($request))
         );
     }
 
@@ -187,14 +113,8 @@ class AccountController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateAccountAccess(int $accountIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
         return $this->serviceResultResponse(
-            $this->accountAccessService->updateAccess(
-                $accountIdentifier,
-                (bool)($requestBody['isActive'] ?? false),
-                $this->resolveAuthenticatedAccountIdentifier($request),
-                (string)($requestBody['confirmedAdminEmail'] ?? '')
-            )
+            $this->workflowService->updateAccountAccess($accountIdentifier, $request, $this->jsonBody($request))
         );
     }
 
@@ -202,67 +122,21 @@ class AccountController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function deleteAccount(int $accountIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-        $account = $this->accountReadService->getAccountStateById($accountIdentifier);
-
-        if (!$account) {
-            return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
-        }
-
-        $authenticatedAdminId = $this->resolveAuthenticatedAccountIdentifier($request);
-        if ($authenticatedAdminId === $accountIdentifier) {
-            return $this->createErrorResponse('AccountActionNotAllowed', 'You cannot delete your own signed-in account.', 403);
-        }
-
-        $securityConfirmationError = $this->validateResponsibleAdminCredentials(
-            $authenticatedAdminId,
-            (string)($requestBody['confirmedAdminEmail'] ?? ''),
-            (string)($requestBody['confirmedAdminPassword'] ?? ''),
-            'deleting'
-        );
-        if ($securityConfirmationError !== null) {
-            return $securityConfirmationError;
-        }
-
-        try {
-            $deletedRows = $this->accountDeletionService->deleteAccount($account, $accountIdentifier);
-        } catch (\Throwable $exception) {
-            return $this->createErrorResponse(
-                'DeleteAccountFailed',
-                'Unable to delete account: ' . $exception->getMessage(),
-                500
-            );
-        }
-
-        if ($deletedRows === 0) {
-            return $this->createErrorResponse('AccountNotFound', 'Account not found.', 404);
-        }
-
-        return $this->createSuccessResponse([
-            'message' => 'Account deleted.',
-            'accountIdentifier' => $accountIdentifier,
-        ]);
-    }
-
-    private function validateResponsibleAdminCredentials(int $authenticatedAdminId, string $confirmedAdminEmail, string $confirmedAdminPassword, string $actionName): ?JsonResponse
-    {
-        return $this->securityConfirmationError(
-            $this->adminSecurityConfirmationService->validateAdminCredentials($authenticatedAdminId, $confirmedAdminEmail, $confirmedAdminPassword, $actionName)
+        return $this->serviceResultResponse(
+            $this->workflowService->deleteAccount($accountIdentifier, $request, $this->jsonBody($request))
         );
     }
 
-    private function resolveAuthenticatedAccountIdentifier(Request $request): int
+    private function jsonBody(Request $request): array
     {
-        return $this->authenticatedAccountResolver->resolveAccountIdentifier($request);
+        $requestBody = $this->decodedJson($request);
+
+        return is_array($requestBody) ? $requestBody : [];
     }
 
-    private function securityConfirmationError(?string $message): ?JsonResponse
+    private function decodedJson(Request $request): mixed
     {
-        if ($message === null) {
-            return null;
-        }
-
-        return $this->createErrorResponse('SecurityConfirmationFailed', $message, 422);
+        return json_decode($request->getContent(), true);
     }
 
     private function serviceResultResponse(array $result): JsonResponse

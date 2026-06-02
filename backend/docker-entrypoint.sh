@@ -18,7 +18,8 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-techreserve_pass}
 CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
 CLERK_API_BASE_URL=${CLERK_API_BASE_URL:-https://api.clerk.com}
 CLERK_JWT_ISSUER=${CLERK_JWT_ISSUER:-}
-DEFAULT_URI=${DEFAULT_URI:-http://localhost:8000}
+DEFAULT_URI=${DEFAULT_URI:-https://topic-recorded-listprice-verde.trycloudflare.com}
+FRONTEND_URL=${FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com}
 EOF
   fi
 fi

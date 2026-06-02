@@ -44,11 +44,19 @@ class ClerkTokenIdentityResolver
         }
 
         $account = $this->accountRepository->findOneByEmailAddress($emailAddress);
-        if ($account !== null && $account->getClerkUserId() !== $clerkUserId) {
+        if ($account !== null && $this->canAttachClerkUserId($account, $clerkUserId)) {
             $account->setClerkUserId($clerkUserId);
             $this->accountRepository->persistAccount($account);
         }
 
         return $account;
+    }
+
+    private function canAttachClerkUserId(\App\Domain\Account\Entity\AccountEntity $account, string $clerkUserId): bool
+    {
+        return $account->getClerkUserId() !== $clerkUserId
+            && $account->getIsApproved()
+            && $account->getIsActive()
+            && strtolower($account->getStatus()) === 'approved';
     }
 }

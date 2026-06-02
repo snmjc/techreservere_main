@@ -1,0 +1,87 @@
+import { normalizeEmailForConfirmation } from './wishlistTextHelpers.js';
+import { resolveRequestStatus } from './wishlistStatusHelpers.js';
+import { resolveAccountType, resolveRoleLabel, resolveRoleName } from './wishlistRoleHelpers.js';
+
+export function normalizeWishlistAccount(account) {
+  const source = normalizeWishlistAccountSource(account);
+  const accountType = account.accountType || resolveAccountType(account, source.roleDesignation);
+
+  return {
+    ...account,
+    accountIdentifier: account.accountIdentifier || account.account_identifier || source.idNumber,
+    rawIdNumber: String(source.idNumber),
+    idNumber: formatIdNumber(source.idNumber),
+    firstName: source.firstName,
+    lastName: source.lastName,
+    fullName: `${source.firstName} ${source.lastName}`.trim(),
+    emailAddress: source.emailAddress,
+    contactNumber: source.contactNumber,
+    supportingDocumentName: account.supportingDocumentName || account.signup_supporting_document_name || null,
+    supportingDocumentMimeType: account.supportingDocumentMimeType || account.signup_supporting_document_mime_type || null,
+    supportingDocumentData: account.supportingDocumentData || account.signup_supporting_document_data || null,
+    roleDesignation: source.roleDesignation,
+    role: resolveRoleName(account, source.roleDesignation),
+    roleLabel: account.roleLabel || resolveRoleLabel(account, source.roleDesignation),
+    accountType,
+    accountStatus: source.accountStatus,
+    registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
+    inviteStatus: source.inviteStatus,
+    inviteInvitedBy: source.inviteInvitedBy,
+    inviteSentAt: source.inviteSentAt,
+    inviteExpiresAt: source.inviteExpiresAt,
+    inviteAcceptedAt: source.inviteAcceptedAt,
+    initials: `${source.firstName.charAt(0)}${source.lastName.charAt(0)}`.toUpperCase() || 'TR',
+  };
+}
+
+export function getUniqueRequestAccounts(accounts) {
+  const accountsByEmail = new Map();
+  accounts.forEach((account) => {
+    const emailKey = normalizeEmailForConfirmation(account.emailAddress);
+    if (!emailKey) return;
+
+    const existingAccount = accountsByEmail.get(emailKey);
+    if (!existingAccount || isNewerAccount(account, existingAccount)) {
+      accountsByEmail.set(emailKey, account);
+    }
+  });
+
+  return Array.from(accountsByEmail.values());
+}
+
+export function isPdfProof(account) {
+  const mimeType = String(account?.supportingDocumentMimeType || '').toLowerCase();
+  const fileName = String(account?.supportingDocumentName || '').toLowerCase();
+  return mimeType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
+export function formatIdNumber(idNumber) {
+  const value = String(idNumber);
+  if (value.includes('*') || value === 'N/A') return value;
+  if (value.length <= 4) return value;
+  return `${value.slice(0, 4)}*****`;
+}
+
+function normalizeWishlistAccountSource(account) {
+  const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
+  const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
+
+  return {
+    roleDesignation: account.roleDesignation || account.role_designation || 'ROLE_BORROWER',
+    firstName: account.firstName || account.first_name || '',
+    lastName: account.lastName || account.last_name || '',
+    emailAddress: account.emailAddress || account.email_address || '',
+    inviteSentAt: account.inviteSentAt || account.invite_sent_at || null,
+    inviteExpiresAt,
+    inviteAcceptedAt,
+    inviteStatus: account.inviteStatus || account.invite_status || null,
+    inviteInvitedBy: account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || null,
+    accountStatus: resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt),
+    idNumber: account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A',
+    contactNumber: account.contactNumber || account.contact_number || account.phone || 'N/A',
+  };
+}
+
+function isNewerAccount(account, existingAccount) {
+  return new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime();
+}

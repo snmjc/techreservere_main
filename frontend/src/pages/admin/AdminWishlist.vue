@@ -76,6 +76,7 @@
               <option value="all">All</option>
               <option value="not_invited">Not invited</option>
               <option value="verified">Verified</option>
+              <option value="approved">Approved</option>
               <option value="unverified">Unverified</option>
               <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
@@ -118,6 +119,7 @@
                 <th>Name</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Proof</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -136,6 +138,25 @@
                   </span>
                 </td>
                 <td>
+                  <div v-if="account.supportingDocumentData" class="admin-wishlist-proof-cell">
+                    <a
+                      :href="account.supportingDocumentData"
+                      target="_blank"
+                      rel="noopener"
+                      :title="account.supportingDocumentName || 'Preview proof'"
+                    >
+                      Preview
+                    </a>
+                    <a
+                      :href="account.supportingDocumentData"
+                      :download="account.supportingDocumentName || 'signup-proof'"
+                    >
+                      Download
+                    </a>
+                  </div>
+                  <span v-else class="admin-wishlist-proof-empty">N/A</span>
+                </td>
+                <td>
                   <div class="admin-wishlist-actions">
                     <button
                       class="admin-wishlist-icon-button"
@@ -152,8 +173,8 @@
                     <button
                       class="admin-wishlist-icon-button admin-wishlist-icon-button--invite"
                       type="button"
-                      aria-label="Send invite"
-                      title="Send invite"
+                      aria-label="Approve and email"
+                      title="Approve and email"
                       :disabled="!canSendInvite(account)"
                       @click="openApprovalModal(account, 'send')"
                     >
@@ -175,6 +196,18 @@
                         <path d="M3 21v-5h5" />
                         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                         <path d="M16 8h5V3" />
+                      </svg>
+                    </button>
+                    <button
+                      class="admin-wishlist-icon-button admin-wishlist-icon-button--verify"
+                      type="button"
+                      aria-label="Verify email and approve"
+                      title="Verify email and approve"
+                      :disabled="!canVerifyEmail(account)"
+                      @click="openApprovalModal(account, 'verify')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </button>
                     <button
@@ -210,7 +243,7 @@
                 </td>
               </tr>
               <tr v-if="filteredWishlistAccounts.length === 0">
-                <td colspan="6" class="admin-wishlist-empty-row">
+                <td colspan="7" class="admin-wishlist-empty-row">
                   No request accounts match the current filters.
                 </td>
               </tr>
@@ -331,9 +364,13 @@
                   <span>Role</span>
                   <strong>{{ approvalAccount.role }}</strong>
                 </p>
-                <p v-if="approvalMode === 'resend'">
+                <p v-if="approvalMode === 'resend' || approvalMode === 'verify'">
                   <span>Last Invite Sent</span>
                   <strong>{{ formatNullableDateTime(approvalAccount.inviteSentAt) }}</strong>
+                </p>
+                <p v-if="approvalMode === 'verify'">
+                  <span>Email Verified</span>
+                  <strong>{{ formatNullableDateTime(approvalAccount.inviteAcceptedAt) }}</strong>
                 </p>
               </div>
             </div>
@@ -385,7 +422,7 @@
               :disabled="isProcessing || !isApprovalConfirmationReady"
               @click="verifyAccount"
             >
-              {{ isProcessing ? 'Sending...' : getInviteSubmitLabel(approvalAccount) }}
+              {{ isProcessing ? getProcessingLabel() : getInviteSubmitLabel(approvalAccount) }}
             </button>
           </div>
         </section>
@@ -444,6 +481,16 @@
               type="email"
               :placeholder="denialAccount.emailAddress"
               autocomplete="off"
+            />
+          </label>
+
+          <label class="admin-wishlist-confirm-field">
+            <span>Type your admin password to confirm denial:</span>
+            <input
+              v-model="denialConfirmPassword"
+              type="password"
+              placeholder="Admin password"
+              autocomplete="current-password"
             />
           </label>
 
@@ -828,6 +875,8 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import {
+  buildEmployeeAccountPayload,
+  filterWishlistAccounts,
   formatCreateAccountError,
   formatDisplayDateTime,
   formatNullableDateTime,
@@ -835,11 +884,10 @@ import {
   getAccountTypeBadgeClass,
   getApprovalEmailLabel,
   getInviteSentStatus,
-  getSortRoleName,
   getStatusClass,
   getStatusLabel,
   getUniqueRequestAccounts,
-  getUserRoleName,
+  getEmployeeCreateError,
   isPdfProof,
   normalizeEmailForConfirmation,
   normalizeWishlistAccount,
@@ -871,6 +919,7 @@ const approvalAccount = ref(null);
 const approvalMode = ref('send');
 const denialAccount = ref(null);
 const denialConfirmEmail = ref('');
+const denialConfirmPassword = ref('');
 const denialFormError = ref('');
 const deleteAccountRequest = ref(null);
 const deleteConfirmEmail = ref('');
@@ -931,6 +980,7 @@ const isApprovalConfirmationReady = computed(() => (
 const isDenialConfirmationReady = computed(() => (
   Boolean(denialAccount.value)
   && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
+  && denialConfirmPassword.value.trim() !== ''
 ));
 const isDeleteConfirmationReady = computed(() => (
   Boolean(deleteAccountRequest.value)
@@ -949,35 +999,13 @@ const wishlistTabs = computed(() => {
 });
 
 const filteredWishlistAccounts = computed(() => {
-  const query = searchText.value.trim().toLowerCase();
-  const currentType = activeTab.value === 'admin' ? 'Admin' : activeTab.value === 'employee' ? 'Employee' : 'User';
-
-  return normalizedAccounts.value
-    .filter((account) => account.accountType === currentType)
-    .filter((account) => statusFilter.value === 'all' || account.accountStatus === statusFilter.value)
-    .filter((account) => activeTab.value !== 'user' || userRoleFilter.value === 'all' || getUserRoleName(account).toLowerCase() === userRoleFilter.value)
-    .filter((account) => {
-      if (!query) return true;
-      return [
-        account.idNumber,
-        account.firstName,
-        account.lastName,
-        account.emailAddress,
-        account.roleLabel,
-      ].some((value) => String(value).toLowerCase().includes(query));
-    })
-    .sort((first, second) => {
-      if (sortMode.value === 'name') {
-        return `${first.lastName} ${first.firstName}`.localeCompare(`${second.lastName} ${second.firstName}`);
-      }
-      if (sortMode.value === 'role') {
-        return getSortRoleName(first).localeCompare(getSortRoleName(second)) || `${first.lastName} ${first.firstName}`.localeCompare(`${second.lastName} ${second.firstName}`);
-      }
-      if (sortMode.value === 'status') {
-        return getStatusLabel(first.accountStatus).localeCompare(getStatusLabel(second.accountStatus));
-      }
-      return new Date(second.registeredAt).getTime() - new Date(first.registeredAt).getTime();
-    });
+  return filterWishlistAccounts(normalizedAccounts.value, {
+    activeTab: activeTab.value,
+    searchText: searchText.value,
+    sortMode: sortMode.value,
+    statusFilter: statusFilter.value,
+    userRoleFilter: userRoleFilter.value,
+  });
 });
 
 onMounted(() => {
@@ -1015,12 +1043,16 @@ function openApprovalModal(account = selectedAccount.value, mode = 'send') {
     showToast('Resend invite is only available after the previous invitation expires.');
     return;
   }
-  if (mode !== 'resend' && !canSendInvite(account)) {
+  if (mode === 'verify' && !canVerifyEmail(account)) {
+    showToast('Verify email is only available after the user accepts the invitation.');
+    return;
+  }
+  if (mode === 'send' && !canSendInvite(account)) {
     showToast('Send invite is only available for accounts that are not invited.');
     return;
   }
   approvalAccount.value = account;
-  approvalMode.value = mode === 'resend' ? 'resend' : 'send';
+  approvalMode.value = ['resend', 'verify'].includes(mode) ? mode : 'send';
   approvalForm.emailAddress = account.emailAddress;
   approvalForm.role = account.roleDesignation;
   approvalForm.idNumber = account.idNumber;
@@ -1048,12 +1080,14 @@ function openDenialModal(account) {
   if (!account) return;
   denialAccount.value = account;
   denialConfirmEmail.value = '';
+  denialConfirmPassword.value = '';
   denialFormError.value = '';
 }
 
 function closeDenialModal() {
   denialAccount.value = null;
   denialConfirmEmail.value = '';
+  denialConfirmPassword.value = '';
   denialFormError.value = '';
 }
 
@@ -1242,38 +1276,11 @@ async function createEmployeeAccount() {
 
   addEmployeeError.value = '';
 
-  const validationError = validateEmployeeFormValues(addEmployeeForm);
-  if (validationError) {
-    addEmployeeError.value = validationError;
-    return;
-  }
-
-  const idNumberExists = normalizedAccounts.value.some(
-    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addEmployeeForm.idNumber.trim().toLowerCase()
-  );
-  if (idNumberExists) {
-    addEmployeeError.value = 'A staff account with this Work ID number already exists.';
-    return;
-  }
-
-  const phoneExists = normalizedAccounts.value.some(
-    (account) => String(account.contactNumber || '').replace(/\D/g, '') === addEmployeeForm.phone
-  );
-  if (phoneExists) {
-    addEmployeeError.value = 'A staff account with this phone number already exists.';
-    return;
-  }
-
-  const accountPayload = {
-    lastName: addEmployeeForm.lastName,
-    firstName: addEmployeeForm.firstName,
-    phone: addEmployeeForm.phone,
-    idNumber: addEmployeeForm.idNumber,
-    role: addEmployeeForm.role,
-  };
+  const validationError = getEmployeeCreateError(addEmployeeForm, normalizedAccounts.value);
+  if (validationError) return setEmployeeCreateError(validationError);
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.createEmployeeAccount(accountPayload, authStore.authToken);
+  const result = await adminWishlistApi.createEmployeeAccount(buildEmployeeAccountPayload(addEmployeeForm), authStore.authToken);
   isProcessing.value = false;
 
   if (!result.success) {
@@ -1286,6 +1293,10 @@ async function createEmployeeAccount() {
   await loadWishlistAccounts();
   showToast('Account created!');
   resetAddEmployeeForm();
+}
+
+function setEmployeeCreateError(message) {
+  addEmployeeError.value = message;
 }
 
 function resetAddEmployeeForm() {
@@ -1315,12 +1326,17 @@ async function verifyAccount() {
     return;
   }
   if (normalizeEmailForConfirmation(approvalForm.confirmEmail) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
-    approvalFormError.value = 'Please type your exact admin email to send the invite.';
+    approvalFormError.value = approvalMode.value === 'verify'
+      ? 'Please type your exact admin email to approve access.'
+      : 'Please type your exact admin email to send the invite.';
     return;
   }
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.verifyAccount(
+  const action = approvalMode.value === 'verify'
+    ? adminWishlistApi.verifyEmailAndApproveAccount
+    : adminWishlistApi.verifyAccount;
+  const result = await action(
     approvalAccount.value.accountIdentifier,
     authStore.authToken,
     { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
@@ -1343,12 +1359,19 @@ async function denyAccount() {
     denialFormError.value = 'Please type the exact email address to deny this request.';
     return;
   }
+  if (denialConfirmPassword.value.trim() === '') {
+    denialFormError.value = 'Please type your admin password to deny this request.';
+    return;
+  }
 
   isProcessing.value = true;
   const result = await adminWishlistApi.denyAccount(
     denialAccount.value.accountIdentifier,
     authStore.authToken,
-    { confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value) },
+    {
+      confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value),
+      confirmedAdminPassword: denialConfirmPassword.value,
+    },
   );
   if (result.success) {
     approvalAccount.value = null;
@@ -1406,27 +1429,45 @@ function canResendInvite(account) {
     && !isProcessing.value;
 }
 
+function canVerifyEmail(account) {
+  return String(account?.accountStatus || '').toLowerCase() === 'verified'
+    && Boolean(account?.inviteAcceptedAt)
+    && !isProcessing.value;
+}
+
 function getInviteModalTitle(account) {
   if (approvalMode.value === 'resend') return 'Resend Invite';
-  return account?.accountType === 'Employee' ? 'Ready to Invite Employee' : 'Send Invite';
+  if (approvalMode.value === 'verify') return 'Verify Email';
+  return account?.accountType === 'Employee' ? 'Approve Employee' : 'Approve Account';
 }
 
 function getInviteModalDescription(account) {
   if (approvalMode.value === 'resend') {
     return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
   }
+  if (approvalMode.value === 'verify') {
+    return 'The invitation was accepted. Confirm the responsible admin before approving system access.';
+  }
 
   return account?.accountType === 'Employee'
-    ? 'Review the worker information before sending the invitation.'
-    : 'This will verify the account and send an invitation link to their email for system access.';
+    ? 'Review the worker information before approving access and sending the Clerk invitation email.'
+    : 'This will approve the account, move it to Manage Accounts as Active, and send the Clerk invitation email.';
 }
 
 function getInviteSubmitLabel(account) {
-  return approvalMode.value === 'resend' ? 'Resend Invite' : 'Send Invite';
+  if (approvalMode.value === 'resend') return 'Resend Invite';
+  if (approvalMode.value === 'verify') return 'Approve Access';
+  return 'Approve & Email';
 }
 
 function getInviteSuccessMessage(account) {
-  return approvalMode.value === 'resend' ? 'Invitation resent!' : 'Invitation sent!';
+  if (approvalMode.value === 'resend') return 'Invitation resent!';
+  if (approvalMode.value === 'verify') return 'Email verified and account approved!';
+  return 'Account approved and email sent!';
+}
+
+function getProcessingLabel() {
+  return approvalMode.value === 'verify' || approvalMode.value === 'send' ? 'Approving...' : 'Sending...';
 }
 
 function showToast(message) {

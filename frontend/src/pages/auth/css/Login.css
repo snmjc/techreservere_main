@@ -206,19 +206,6 @@
   cursor: pointer;
 }
 
-.login-form-forgot-link {
-  font-size: 0.85rem;
-  color: #1a8a4a;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.login-form-forgot-link:hover {
-  color: #145a30;
-  text-decoration: underline;
-}
-
 /* ========================================= */
 /* SUBMIT BUTTON                             */
 /* ========================================= */

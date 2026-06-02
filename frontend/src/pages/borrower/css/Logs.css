@@ -179,6 +179,12 @@
   vertical-align: middle;
 }
 
+.logs-empty-row {
+  padding: 1.5rem;
+  text-align: center;
+  color: #666666;
+}
+
 /* ========================================= */
 /* FACILITY CELL                             */
 /* ========================================= */

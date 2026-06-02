@@ -65,6 +65,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         VITE_API_BASE_URL: "https://techreserve.farahkenawy.codes"
+        VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY}"
+        VITE_FRONTEND_URL: "https://techreserve.farahkenawy.codes/"
     container_name: techreserve_frontend
     restart: unless-stopped
     expose:

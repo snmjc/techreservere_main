@@ -50,59 +50,6 @@
           <form v-if="!awaitingVerification" class="custom-signup-form" @submit.prevent="handleSignUp">
             <div class="custom-signup-field-grid">
               <div class="custom-signup-row">
-                <label for="role">Role</label>
-                <select id="role" v-model="formData.role" class="custom-signup-select">
-                  <option value="Student">Student</option>
-                  <option value="Faculty">Faculty</option>
-                </select>
-              </div>
-
-              <div class="custom-signup-role-boundary custom-signup-row-wide">
-                <div class="custom-signup-role-boundary-header">
-                  <span class="custom-signup-role-boundary-label">User Verification</span>
-                  <strong>{{ formData.role }}</strong>
-                </div>
-
-                <div v-if="isStudentRole" class="custom-signup-file-section">
-                  <label for="studentSupportingFile">Supporting File</label>
-                  <div class="custom-signup-file-control">
-                    <input
-                      id="studentSupportingFile"
-                      ref="studentSupportingFileInput"
-                      type="file"
-                      accept=".pdf,application/pdf"
-                      class="custom-signup-file-input"
-                      @change="handleStudentSupportingFileChange"
-                    />
-                    <button type="button" class="custom-signup-file-button" @click="openStudentSupportingFile">
-                      Choose File
-                    </button>
-                    <span v-if="formData.supportingFile" class="custom-signup-file-name">
-                      {{ formData.supportingFile.name }}
-                    </span>
-                    <span v-else class="custom-signup-file-placeholder">No file chosen</span>
-                    <button
-                      v-if="formData.supportingFile"
-                      type="button"
-                      class="custom-signup-file-remove"
-                      aria-label="Remove selected file"
-                      @click="removeStudentSupportingFile"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                  <p class="custom-signup-role-boundary-note">
-                    Required for student requests: attach a valid student ID or enrollment proof as a PDF.
-                  </p>
-                </div>
-
-                <div v-else class="custom-signup-faculty-note">
-                  <strong>No file upload needed for faculty.</strong>
-                  <span>Recommended: use your official FIT faculty email and complete your department details for admin verification.</span>
-                </div>
-              </div>
-
-              <div class="custom-signup-row">
                 <label for="firstName">First Name</label>
                 <input
                   id="firstName"
@@ -214,6 +161,59 @@
                       <path d="M9.88 9.88a3 3 0 0 0 4.24 4.24" />
                     </svg>
                   </button>
+                </div>
+              </div>
+
+              <div class="custom-signup-row custom-signup-row-wide">
+                <label for="role">Role</label>
+                <select id="role" v-model="formData.role" class="custom-signup-select">
+                  <option value="Student">Student</option>
+                  <option value="Faculty">Faculty</option>
+                </select>
+              </div>
+
+              <div class="custom-signup-role-boundary custom-signup-row-wide">
+                <div class="custom-signup-role-boundary-header">
+                  <span class="custom-signup-role-boundary-label">User Verification</span>
+                  <strong>{{ formData.role }}</strong>
+                </div>
+
+                <div v-if="isStudentRole" class="custom-signup-file-section">
+                  <label for="studentSupportingFile">Supporting File</label>
+                  <div class="custom-signup-file-control">
+                    <input
+                      id="studentSupportingFile"
+                      ref="studentSupportingFileInput"
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      class="custom-signup-file-input"
+                      @change="handleStudentSupportingFileChange"
+                    />
+                    <button type="button" class="custom-signup-file-button" @click="openStudentSupportingFile">
+                      Choose File
+                    </button>
+                    <span v-if="formData.supportingFile" class="custom-signup-file-name">
+                      {{ formData.supportingFile.name }}
+                    </span>
+                    <span v-else class="custom-signup-file-placeholder">No file chosen</span>
+                    <button
+                      v-if="formData.supportingFile"
+                      type="button"
+                      class="custom-signup-file-remove"
+                      aria-label="Remove selected file"
+                      @click="removeStudentSupportingFile"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <p class="custom-signup-role-boundary-note">
+                    Required for student requests: attach a valid student ID or enrollment proof as a PDF.
+                  </p>
+                </div>
+
+                <div v-else class="custom-signup-faculty-note">
+                  <strong>No file upload needed for faculty.</strong>
+                  <span>Recommended: use your official FIT faculty email and complete your department details for admin verification.</span>
                 </div>
               </div>
             </div>

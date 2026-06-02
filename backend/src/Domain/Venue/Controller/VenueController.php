@@ -2,6 +2,8 @@
 
 namespace App\Domain\Venue\Controller;
 
+use App\Domain\Account\Service\AdminSecurityConfirmationService;
+use App\Domain\Account\Service\AuthenticatedAccountResolver;
 use App\Domain\Venue\Service\VenueManagementService;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
@@ -18,8 +20,11 @@ class VenueController extends AbstractController
 
     private VenueManagementService $venueManagementService;
 
-    public function __construct(VenueManagementService $venueManagementService)
-    {
+    public function __construct(
+        VenueManagementService $venueManagementService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly AuthenticatedAccountResolver $authenticatedAccountResolver
+    ) {
         $this->venueManagementService = $venueManagementService;
     }
 
@@ -72,8 +77,20 @@ class VenueController extends AbstractController
 
     #[Route('/{venueIdentifier}', name: 'venue_delete', methods: ['DELETE'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
-    public function deleteVenue(int $venueIdentifier): JsonResponse
+    public function deleteVenue(int $venueIdentifier, Request $request): JsonResponse
     {
+        $body = json_decode($request->getContent(), true) ?? [];
+        $securityError = $this->adminSecurityConfirmationService->validateAdminCredentials(
+            $this->authenticatedAccountResolver->resolveAccountIdentifier($request),
+            (string)($body['confirmedAdminEmail'] ?? ''),
+            (string)($body['confirmedAdminPassword'] ?? ''),
+            'deleting'
+        );
+
+        if ($securityError !== null) {
+            return $this->createErrorResponse('SecurityConfirmationFailed', $securityError, 422);
+        }
+
         $this->venueManagementService->deleteVenue($venueIdentifier);
         return $this->createSuccessResponse(['message' => 'Venue deleted successfully']);
     }

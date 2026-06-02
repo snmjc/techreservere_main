@@ -109,9 +109,19 @@ const isAdminPortal = computed(() => {
   return props.navigationItems.some((item) => String(item.routeName).startsWith('admin'));
 });
 
-const portalLabel = computed(() => (isAdminPortal.value ? 'Admin Portal' : 'Borrower Portal'));
+const isEmployeePortal = computed(() => String(props.roleLabel).toUpperCase() === 'EMPLOYEE');
 
-const portalSubtitle = computed(() => (isAdminPortal.value ? 'System administrator' : 'Reservation workspace'));
+const portalLabel = computed(() => {
+  if (isAdminPortal.value) return 'Admin Portal';
+  if (isEmployeePortal.value) return 'Employee Portal';
+  return 'Borrower Portal';
+});
+
+const portalSubtitle = computed(() => {
+  if (isAdminPortal.value) return 'System administrator';
+  if (isEmployeePortal.value) return 'Work log workspace';
+  return 'Reservation workspace';
+});
 
 const currentPageTitle = computed(() => currentNavigationItem.value?.label || currentRoute.meta?.title || 'TechReserve');
 

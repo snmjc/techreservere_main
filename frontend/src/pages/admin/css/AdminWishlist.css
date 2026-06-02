@@ -350,6 +350,36 @@
   border-color: #bfdbfe;
 }
 
+.admin-wishlist-icon-button--verify {
+  color: #047857;
+  background: #d1fae5;
+  border-color: #a7f3d0;
+}
+
+.admin-wishlist-proof-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.admin-wishlist-proof-cell a {
+  color: var(--tr-green-700);
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.admin-wishlist-proof-cell a:hover {
+  text-decoration: underline;
+}
+
+.admin-wishlist-proof-empty {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .admin-wishlist-empty-state,
 .admin-wishlist-empty-row {
   padding: 2.4rem 1rem;

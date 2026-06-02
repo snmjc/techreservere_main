@@ -4,20 +4,24 @@ const AUTH_PAGE_NAMES = [ROUTE_NAMES.login, ROUTE_NAMES.signUp];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
-  const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'approved';
+  const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'pending';
   const normalizedStatus = String(rawStatus || '').trim().toLowerCase();
 
   if (account.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
   }
 
+  if (account.isApproved === false && normalizedStatus !== 'approved') {
+    return 'pending';
+  }
+
   return normalizedStatus;
 }
 
 export function getDashboardRouteForRole(userRole) {
-  return userRole === 'ROLE_ADMIN'
-    ? { name: ROUTE_NAMES.adminDashboard }
-    : { name: ROUTE_NAMES.borrowerMyReservations };
+  if (userRole === 'ROLE_ADMIN') return { name: ROUTE_NAMES.adminDashboard };
+  if (userRole === 'ROLE_STAFF') return { name: ROUTE_NAMES.settings };
+  return { name: ROUTE_NAMES.borrowerMyReservations };
 }
 
 export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {

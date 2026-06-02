@@ -2,6 +2,7 @@ import { watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth, useUser } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { verifyClerkLoginAccess } from '@/modules/authentication/services/clerkLoginAccessService.js';
 import { getClerkToken, signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { resolveRole } from '@/modules/authentication/utils/roleUtils.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
@@ -19,6 +20,13 @@ export function usePostLoginRedirect() {
     const token = await resolveClerkSessionToken(getToken);
     const emailAddress = user.value.primaryEmailAddress?.emailAddress || '';
     const roleDesignation = resolveRole(user.value.publicMetadata?.role, emailAddress);
+    const accessCheck = await verifyClerkLoginAccess(emailAddress);
+
+    if (!accessCheck.success) {
+      await resetToLogin(authStore, signOut, router);
+      return;
+    }
+
     const backendAccount = await ensureBackendAccount(user.value, roleDesignation, token);
 
     if (!backendAccount) {
@@ -100,6 +108,8 @@ function routeWithBackendAccount({ authStore, router, token, backendAccount, cle
     router.replace({ name: ROUTE_NAMES.requestPending });
   } else if (authStore.userRole === 'ROLE_ADMIN') {
     router.replace({ name: ROUTE_NAMES.adminDashboard });
+  } else if (authStore.userRole === 'ROLE_STAFF') {
+    router.replace({ name: ROUTE_NAMES.settings });
   } else {
     router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
   }

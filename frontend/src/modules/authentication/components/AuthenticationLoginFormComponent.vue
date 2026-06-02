@@ -42,7 +42,6 @@
         />
         <span>Remember me</span>
       </label>
-      <a href="#" class="login-form-forgot-link">Forgot password?</a>
     </div>
 
     <button

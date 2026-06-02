@@ -44,7 +44,6 @@ class UserClerkRegistrationService
     {
         $emailAddress = trim($requestBody['emailAddress'] ?? '');
         $contactNumber = trim($requestBody['contactNumber'] ?? '');
-        $invitedBy = $requestBody['invitedBy'] ?? null;
         $isAdminEmail = $this->isAdminEmail($emailAddress);
 
         return [
@@ -56,8 +55,8 @@ class UserClerkRegistrationService
             'contactNumber' => $contactNumber,
             'department' => trim($requestBody['department'] ?? ''),
             'idNumber' => trim($requestBody['idNumber'] ?? $requestBody['studentIdNumber'] ?? $contactNumber),
-            'status' => ($invitedBy || $isAdminEmail) ? 'approved' : 'pending',
-            'isApproved' => (bool)($invitedBy || $isAdminEmail),
+            'status' => $isAdminEmail ? 'approved' : 'pending',
+            'isApproved' => $isAdminEmail,
             'isAdminEmail' => $isAdminEmail,
         ];
     }
@@ -78,6 +77,10 @@ class UserClerkRegistrationService
             ]);
         }
 
+        if (!$this->canUseExistingClerkAccount($account, $registration)) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
         return $this->success('Account already registered.', [
             'accountIdentifier' => $account->getAccountIdentifier(),
             'clerkUserId' => $account->getClerkUserId(),
@@ -88,6 +91,13 @@ class UserClerkRegistrationService
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
         ]);
+    }
+
+    private function canUseExistingClerkAccount(AccountEntity $account, array $registration): bool
+    {
+        $status = strtolower($account->getStatus());
+
+        return $account->getIsApproved() && $status === 'approved';
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -168,7 +178,7 @@ class UserClerkRegistrationService
             ]
         );
 
-        if ($nextState['hasAcceptableInvitation'] && $nextState['isApproved']) {
+        if ($nextState['hasOpenInvitation']) {
             $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
         }
 
@@ -190,22 +200,26 @@ class UserClerkRegistrationService
         $existingStatus = strtolower($account->getStatus());
         $existingRole = strtoupper(trim($account->getRoleDesignation()));
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
-        $hasAcceptableInvitation = $this->isAcceptableInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptableInvitation;
+        $hasOpenInvitation = $this->isOpenInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
         $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : $existingStatus;
+        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'hasAcceptableInvitation' => $hasAcceptableInvitation,
+            'hasOpenInvitation' => $hasOpenInvitation,
         ];
     }
 
     private function createNewAccount(array $registration): array
     {
+        if (!$registration['isAdminEmail']) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
         try {
             $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
@@ -303,10 +317,10 @@ class UserClerkRegistrationService
         return $invitation ?: null;
     }
 
-    private function isAcceptableInvitation(?array $invitation): bool
+    private function isOpenInvitation(?array $invitation): bool
     {
         if ($invitation === null || !empty($invitation['accepted_at'])) {
-            return $invitation !== null && !empty($invitation['accepted_at']);
+            return false;
         }
 
         $status = strtolower((string)($invitation['status'] ?? 'pending'));

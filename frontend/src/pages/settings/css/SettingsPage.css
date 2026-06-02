@@ -265,6 +265,143 @@
   margin: 0;
 }
 
+.employee-work-log-section {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.employee-work-log-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e0e7e3;
+}
+
+.employee-work-log-header h2 {
+  color: #111827;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.employee-work-log-header p {
+  color: #52615a;
+  font-size: 0.88rem;
+  margin: 0.25rem 0 0;
+}
+
+.employee-work-log-empty {
+  border: 1px dashed #b9c8c0;
+  border-radius: 6px;
+  color: #52615a;
+  font-weight: 700;
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+}
+
+.employee-work-log-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.employee-work-log-card {
+  border: 1px solid #d8e4de;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.employee-work-log-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border: 0;
+  background: #f9fcfa;
+  color: #111827;
+  cursor: pointer;
+  padding: 1rem;
+  text-align: left;
+}
+
+.employee-work-log-summary:hover {
+  background: #f1f7f4;
+}
+
+.employee-work-log-main {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.employee-work-log-main strong {
+  overflow-wrap: anywhere;
+}
+
+.employee-work-log-main span {
+  color: #52615a;
+  font-size: 0.86rem;
+}
+
+.employee-work-log-status {
+  border-radius: 999px;
+  background: #e6f6ec;
+  color: #0c6530;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.65rem;
+  white-space: nowrap;
+}
+
+.employee-work-log-details {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 1rem;
+}
+
+.employee-work-log-detail-group {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.employee-work-log-detail-group h3 {
+  color: #1f2f28;
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.employee-work-log-detail-group dl {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.employee-work-log-detail-group dl div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.employee-work-log-detail-group dt {
+  color: #52615a;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.employee-work-log-detail-group dd {
+  color: #111827;
+  font-size: 0.9rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* Security Styles */
 .security-section {
   display: flex;
@@ -569,5 +706,18 @@ input:checked + .slider:before {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .employee-work-log-header,
+  .employee-work-log-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-work-log-header {
+    display: grid;
+  }
+
+  .employee-work-log-details {
+    grid-template-columns: 1fr;
   }
 }

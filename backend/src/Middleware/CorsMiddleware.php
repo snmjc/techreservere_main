@@ -25,7 +25,7 @@ class CorsMiddleware implements EventSubscriberInterface
         // Handle preflight OPTIONS requests
         if ($request->getMethod() === 'OPTIONS') {
             $response = new Response();
-            $this->addCorsHeaders($response);
+            $this->addCorsHeaders($response, $request);
             $event->setResponse($response);
             $event->stopPropagation();
         }
@@ -34,12 +34,23 @@ class CorsMiddleware implements EventSubscriberInterface
     public function onKernelResponse(ResponseEvent $event): void
     {
         $response = $event->getResponse();
-        $this->addCorsHeaders($response);
+        $this->addCorsHeaders($response, $event->getRequest());
     }
 
-    private function addCorsHeaders(Response $response): void
+    private function addCorsHeaders(Response $response, Request $request): void
     {
-        $response->headers->set('Access-Control-Allow-Origin', 'http://localhost:5173');
+        $origin = $request->headers->get('Origin', '');
+        $allowedOrigins = array_filter(array_unique([
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'https://techreserve.farahkenawy.codes',
+            rtrim((string)($_ENV['FRONTEND_URL'] ?? ''), '/'),
+            rtrim((string)($_ENV['DEV_FRONTEND_URL'] ?? ''), '/'),
+            'https://topic-recorded-listprice-verde.trycloudflare.com',
+        ]));
+        $allowedOrigin = in_array($origin, $allowedOrigins, true) ? $origin : $allowedOrigins[0];
+
+        $response->headers->set('Access-Control-Allow-Origin', $allowedOrigin);
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         $response->headers->set('Access-Control-Allow-Credentials', 'true');

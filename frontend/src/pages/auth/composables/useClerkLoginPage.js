@@ -2,7 +2,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
-import { apiUrl } from '@/shared/utils/apiBase.js';
+import { verifyClerkLoginAccess } from '@/modules/authentication/services/clerkLoginAccessService.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 export function useClerkLoginPage() {
@@ -67,6 +67,12 @@ export function useClerkLoginPage() {
     }
 
     try {
+      const preflightResult = await verifyClerkLoginAccess(emailAddress.value);
+      if (!preflightResult.success) {
+        loginError.value = preflightResult.error || 'Please wait for an administrator invitation before signing in.';
+        return;
+      }
+
       const clerkSignIn = await clerk.client.signIn.create({
         identifier: emailAddress.value,
         password: passwordText.value,
@@ -78,12 +84,6 @@ export function useClerkLoginPage() {
         return;
       }
 
-      const preflightResult = await verifyClerkLoginAllowed();
-      if (!preflightResult.success) {
-        loginError.value = preflightResult.error || 'Please wait for an administrator invitation before signing in.';
-        return;
-      }
-
       rememberLoginEmailPreference();
       await clerk.setActive({ session: clerkSignIn.createdSessionId });
       router.replace({ name: ROUTE_NAMES.postLogin });
@@ -92,36 +92,10 @@ export function useClerkLoginPage() {
     }
   }
 
-  async function verifyClerkLoginAllowed() {
-    try {
-      const response = await fetch(apiUrl('/api/v1/auth/clerk-login-preflight'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailAddress: emailAddress.value }),
-      });
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        return {
-          success: false,
-          errorType: result.errorType || result.type || '',
-          error: result.errorMessage || result.message || 'Please wait for an administrator invitation before signing in.',
-        };
-      }
-
-      return { success: true, data: result.data ?? result };
-    } catch (error) {
-      return {
-        success: false,
-        error: error?.message || 'Unable to verify invitation status. Please try again.',
-      };
-    }
-  }
-
   function routeAfterBackendLogin(account) {
     const role = String(account?.roleDesignation || '').toUpperCase();
     rememberLoginEmailPreference();
-    router.replace({ name: role === 'ROLE_ADMIN' || role === 'ADMIN' ? ROUTE_NAMES.adminDashboard : ROUTE_NAMES.borrowerMyReservations });
+    router.replace({ name: getLandingRouteName(role) });
   }
 
   function rememberLoginEmailPreference() {
@@ -323,6 +297,12 @@ export function useClerkLoginPage() {
     resolveResetPasswordButtonText,
     handleResetPasswordSubmit,
   };
+}
+
+function getLandingRouteName(role) {
+  if (role === 'ROLE_ADMIN' || role === 'ADMIN') return ROUTE_NAMES.adminDashboard;
+  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.settings;
+  return ROUTE_NAMES.borrowerMyReservations;
 }
 
 function waitForClerk(timeoutMs = 4000) {

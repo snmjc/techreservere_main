@@ -154,6 +154,79 @@
       @close="handleEquipmentModalClose"
       @saved="handleEquipmentModalSaved"
     />
+
+    <div
+      v-if="deleteVenueRecord"
+      class="manage-facilities-modal-overlay"
+      @click.self="!isDeletingVenue && closeDeleteVenueModal()"
+    >
+      <section class="manage-facilities-delete-modal">
+        <button
+          class="manage-facilities-modal-close"
+          type="button"
+          aria-label="Close"
+          :disabled="isDeletingVenue"
+          @click="closeDeleteVenueModal"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading">
+          <h2>Delete Venue</h2>
+          <p>This action permanently removes the venue from TechReserve.</p>
+        </div>
+
+        <div class="manage-facilities-delete-summary">
+          <p><strong>Venue</strong><span>{{ deleteVenueRecord.venueName }}</span></p>
+          <p><strong>Location</strong><span>{{ deleteVenueRecord.venueLocation || 'N/A' }}</span></p>
+          <p><strong>Floor</strong><span>{{ deleteVenueRecord.floorLevel || 'N/A' }}</span></p>
+        </div>
+
+        <label class="manage-facilities-confirm-field">
+          <span>Type your admin email to confirm deletion:</span>
+          <input
+            v-model.trim="deleteConfirmEmail"
+            type="email"
+            :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="manage-facilities-confirm-field">
+          <span>Type your admin password to confirm deletion:</span>
+          <input
+            v-model="deleteConfirmPassword"
+            type="password"
+            placeholder="Admin password"
+            autocomplete="current-password"
+          />
+        </label>
+
+        <p v-if="deleteVenueError" class="manage-facilities-modal-error">{{ deleteVenueError }}</p>
+
+        <div class="manage-facilities-modal-actions">
+          <button
+            class="manage-facilities-cancel-button"
+            type="button"
+            :disabled="isDeletingVenue"
+            @click="closeDeleteVenueModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="manage-facilities-delete-confirm-button"
+            type="button"
+            :disabled="isDeletingVenue || !isDeleteVenueReady"
+            @click="confirmDeleteVenue"
+          >
+            {{ isDeletingVenue ? 'Deleting...' : 'Delete Venue' }}
+          </button>
+        </div>
+      </section>
+    </div>
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -168,7 +241,9 @@ import FacilityEquipmentGridComponent from '@/modules/facility/components/Facili
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
+const authStore = useAuthenticationStore();
 const activeFacilityTab = ref('venue');
 const availabilityFilter = ref('all');
 const showingFilterValue = ref('all');
@@ -182,6 +257,20 @@ const selectedEquipment = ref(null);
 
 const venuesList = ref([]);
 const loading = ref(false);
+const deleteVenueRecord = ref(null);
+const deleteConfirmEmail = ref('');
+const deleteConfirmPassword = ref('');
+const deleteVenueError = ref('');
+const isDeletingVenue = ref(false);
+
+const currentAdminEmail = computed(() =>
+  authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
+);
+const isDeleteVenueReady = computed(() =>
+  Boolean(deleteVenueRecord.value)
+  && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
+  && deleteConfirmPassword.value.trim() !== ''
+);
 
 const floorOrder = [
   '18th Floor', '17th Floor', '16th Floor', '15th Floor', '8th Floor',
@@ -364,15 +453,48 @@ async function fetchVenues() {
   }
 }
 
-async function handleDeleteVenue(venueIdentifier) {
-  if (confirm('Are you sure you want to delete this venue?')) {
-    try {
-      await venueApi.deleteVenue(venueIdentifier);
-      fetchVenues();
-    } catch (error) {
-      console.error('Error deleting venue:', error);
-      alert('Failed to delete venue. Please try again.');
-    }
+function handleDeleteVenue(venueIdentifier) {
+  deleteVenueRecord.value = venuesList.value.find((venue) => venue.venueIdentifier === venueIdentifier) || null;
+  deleteConfirmEmail.value = '';
+  deleteConfirmPassword.value = '';
+  deleteVenueError.value = '';
+}
+
+function closeDeleteVenueModal() {
+  if (isDeletingVenue.value) return;
+  deleteVenueRecord.value = null;
+  deleteConfirmEmail.value = '';
+  deleteConfirmPassword.value = '';
+  deleteVenueError.value = '';
+}
+
+async function confirmDeleteVenue() {
+  if (!deleteVenueRecord.value || isDeletingVenue.value) return;
+
+  if (!currentAdminEmail.value) {
+    deleteVenueError.value = 'Unable to verify the admin in-charge. Please sign in again.';
+    return;
+  }
+
+  if (!isDeleteVenueReady.value) {
+    deleteVenueError.value = 'Please type your exact admin email and password to delete this venue.';
+    return;
+  }
+
+  try {
+    isDeletingVenue.value = true;
+    await venueApi.deleteVenue(deleteVenueRecord.value.venueIdentifier, {
+      confirmedAdminEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
+      confirmedAdminPassword: deleteConfirmPassword.value,
+    });
+    isDeletingVenue.value = false;
+    closeDeleteVenueModal();
+    await fetchVenues();
+  } catch (error) {
+    console.error('Error deleting venue:', error);
+    deleteVenueError.value = error?.response?.data?.errorMessage || 'Failed to delete venue. Please try again.';
+  } finally {
+    isDeletingVenue.value = false;
   }
 }
 
@@ -398,6 +520,10 @@ async function handleToggleAvailability(venue) {
 onMounted(() => {
   fetchVenues();
 });
+
+function normalizeEmailForConfirmation(emailAddress) {
+  return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
+}
 
 /**
  * @constant {Array<Object>} equipmentCategoriesList
