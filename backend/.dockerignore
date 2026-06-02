@@ -1,0 +1,8 @@
+.git
+.phpunit.cache
+.env
+.env.*
+var/
+vendor/
+compose*.yaml
+compose*.yml

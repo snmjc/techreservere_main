@@ -148,7 +148,7 @@ class WishlistAccountApprovalService
         $now = new \DateTimeImmutable();
         $expiresAt = $now->modify('+7 days');
         $invitationToken = bin2hex(random_bytes(24));
-        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173'), '/');
+        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
         $redirectUrl = $frontendUrl . '/clerk-login';
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
 

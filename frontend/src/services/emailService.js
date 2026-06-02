@@ -1,4 +1,5 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { frontendUrl } from '@/shared/utils/frontendBaseUrl.js';
 
 export const emailService = {
   // Send invitation email
@@ -14,7 +15,7 @@ export const emailService = {
           recipientName: invitationData.name,
           inviterName: invitationData.inviterName,
           inviterOrganization: invitationData.inviterOrganization,
-          invitationLink: `${window.location.origin}/accept-invitation?token=${invitationData.token}`,
+          invitationLink: frontendUrl(`/accept-invitation?token=${encodeURIComponent(invitationData.token)}`),
           organizationName: invitationData.organizationName,
           supportEmail: invitationData.supportEmail || 'support@techreserve.com',
           liveChatUrl: invitationData.liveChatUrl || 'https://live.techreserve.com'
@@ -43,7 +44,7 @@ export const emailService = {
         body: JSON.stringify({
           recipientEmail: userData.email,
           recipientName: userData.fullName,
-          loginUrl: `${window.location.origin}/login`,
+          loginUrl: frontendUrl('/login'),
           organizationName: userData.organization || 'TechReserve',
           supportEmail: userData.supportEmail || 'support@techreserve.com'
         })
