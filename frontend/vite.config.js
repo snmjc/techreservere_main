@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname), '');
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || apiBase || 'http://localhost:8000';
-  const frontendTunnelHost = 'monitors-invisible-provider-smooth.trycloudflare.com';
+  const frontendTunnelHost = getUrlHost(env.VITE_DEV_FRONTEND_URL) || 'topic-recorded-listprice-verde.trycloudflare.com';
   const frontendTunnelUrl = `https://${frontendTunnelHost}`;
   const clerkSources = [
     'https://*.clerk.accounts.dev',
@@ -79,3 +79,11 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
+function getUrlHost(value) {
+  try {
+    return new URL(value).hostname;
+  } catch (error) {
+    return '';
+  }
+}

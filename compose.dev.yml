@@ -38,7 +38,8 @@ services:
       CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
       CLERK_WEBHOOK_SIGNING_SECRET: "${CLERK_WEBHOOK_SIGNING_SECRET:-}"
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
-      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
+      FRONTEND_URL: "${FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com}"
+      DEV_FRONTEND_URL: "${DEV_FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com}"
       MAILER_DSN: "${MAILER_DSN:-smtp://resend:${RESEND_API_KEY:-}@smtp.resend.com:587?encryption=tls}"
       MAILER_FROM: "${MAILER_FROM:-onboarding@resend.dev}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
@@ -86,7 +87,7 @@ services:
       VITE_API_PROXY_TARGET: "${VITE_API_PROXY_TARGET:-http://backend:8000}"
       VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY:-}"
       VITE_FRONTEND_URL: "${VITE_FRONTEND_URL:-https://techreserve.farahkenawy.codes/}"
-      VITE_DEV_FRONTEND_URL: "${VITE_DEV_FRONTEND_URL:-http://localhost:5173/}"
+      VITE_DEV_FRONTEND_URL: "${VITE_DEV_FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com/}"
     ports:
       - "${FRONTEND_EXTERNAL_PORT:-5173}:5173"
     depends_on:

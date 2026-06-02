@@ -1,15 +1,18 @@
 const PRODUCTION_FRONTEND_URL = 'https://techreserve.farahkenawy.codes/';
-const DEVELOPMENT_FRONTEND_URL = 'http://localhost:5173/';
+const DEVELOPMENT_FRONTEND_URL = 'https://topic-recorded-listprice-verde.trycloudflare.com/';
 
 export function resolveFrontendBaseUrl() {
-  const isLocalHost = typeof window !== 'undefined'
-    && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const isDevelopmentHost = typeof window !== 'undefined'
+    && (
+      ['localhost', '127.0.0.1'].includes(window.location.hostname)
+      || window.location.hostname.endsWith('.trycloudflare.com')
+    );
 
-  const configuredUrl = isLocalHost
+  const configuredUrl = isDevelopmentHost
     ? import.meta.env.VITE_DEV_FRONTEND_URL
     : import.meta.env.VITE_FRONTEND_URL;
 
-  return normalizeFrontendUrl(configuredUrl || (isLocalHost ? DEVELOPMENT_FRONTEND_URL : PRODUCTION_FRONTEND_URL));
+  return normalizeFrontendUrl(configuredUrl || (isDevelopmentHost ? DEVELOPMENT_FRONTEND_URL : PRODUCTION_FRONTEND_URL));
 }
 
 export function frontendUrl(path = '/') {
