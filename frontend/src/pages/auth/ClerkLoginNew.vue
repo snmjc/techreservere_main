@@ -43,13 +43,12 @@
             <input id="password" type="password" placeholder="••••••••••••••••" class="form-input" />
           </div>
 
-          <!-- Remember Me & Forgot Password -->
+          <!-- Remember Me -->
           <div class="form-options">
             <label class="checkbox-label">
               <input type="checkbox" />
               <span>Remember me</span>
             </label>
-            <a href="#" class="forgot-password">Forgot password?</a>
           </div>
 
           <!-- Sign In Button -->
@@ -408,18 +407,6 @@ const handleSignIn = () => {
   width: 16px;
   height: 16px;
   cursor: pointer;
-}
-
-.forgot-password {
-  color: #1a6e3a;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.3s ease;
-}
-
-.forgot-password:hover {
-  color: #145a30;
-  text-decoration: underline;
 }
 
 /* ===== SIGN IN BUTTON ===== */

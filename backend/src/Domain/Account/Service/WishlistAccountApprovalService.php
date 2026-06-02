@@ -51,6 +51,68 @@ class WishlistAccountApprovalService
         return $this->sendAndRecordInvitation($account, $accountIdentifier, $invitedBy);
     }
 
+    public function verifyEmailAndApprove(int $accountIdentifier, array $requestBody, int $authenticatedAdminId): array
+    {
+        $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
+        $adminError = $this->validateAdminConfirmation($confirmedAdminEmail, $authenticatedAdminId);
+
+        if ($adminError !== null) {
+            return $adminError;
+        }
+
+        $confirmedAdmin = $this->findConfirmedAdmin($authenticatedAdminId);
+        $adminEmailAddress = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
+
+        if (!$confirmedAdmin || $confirmedAdminEmail !== $adminEmailAddress) {
+            return $this->error(
+                'SecurityConfirmationFailed',
+                'Please type your exact admin email before approving access.',
+                422
+            );
+        }
+
+        $account = $this->findEmailVerifiedAccount($accountIdentifier);
+        if (!$account) {
+            return $this->error(
+                'WishlistAccountNotFound',
+                'This account is not ready for email verification approval.',
+                404
+            );
+        }
+
+        $now = new \DateTimeImmutable();
+        $this->connection->executeStatement(
+            'UPDATE accounts
+             SET status = :status, is_approved = :isApproved, is_active = :isActive, updated_timestamp = :updatedTimestamp
+             WHERE account_identifier = :accountIdentifier',
+            [
+                'status' => 'approved',
+                'isApproved' => true,
+                'isActive' => true,
+                'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
+                'accountIdentifier' => $accountIdentifier,
+            ],
+            [
+                'status' => ParameterType::STRING,
+                'isApproved' => ParameterType::BOOLEAN,
+                'isActive' => ParameterType::BOOLEAN,
+                'updatedTimestamp' => ParameterType::STRING,
+                'accountIdentifier' => ParameterType::INTEGER,
+            ]
+        );
+
+        return $this->success([
+            'message' => 'Email verified and account approved.',
+            'account' => [
+                'accountIdentifier' => (int)$account['account_identifier'],
+                'emailAddress' => (string)$account['email_address'],
+                'roleDesignation' => (string)$account['role_designation'],
+                'status' => 'approved',
+                'isApproved' => true,
+            ],
+        ]);
+    }
+
     private function validateAdminConfirmation(string $confirmedAdminEmail, int $authenticatedAdminId): ?array
     {
         if ($confirmedAdminEmail === '') {
@@ -97,6 +159,29 @@ class WishlistAccountApprovalService
              WHERE account_identifier = :accountIdentifier
                AND COALESCE(is_approved, FALSE) = FALSE
                AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'rejected', 'disabled')",
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+    }
+
+    private function findEmailVerifiedAccount(int $accountIdentifier): array|false
+    {
+        return $this->connection->fetchAssociative(
+            "SELECT accounts.account_identifier, accounts.email_address, accounts.role_designation,
+                    accounts.status, accounts.is_approved,
+                    latest_invitation.accepted_at AS invite_accepted_at
+             FROM accounts
+             LEFT JOIN LATERAL (
+                SELECT accepted_at
+                FROM invitations
+                WHERE LOWER(email) = LOWER(accounts.email_address)
+                ORDER BY created_at DESC
+                LIMIT 1
+             ) latest_invitation ON TRUE
+             WHERE accounts.account_identifier = :accountIdentifier
+               AND COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND LOWER(COALESCE(accounts.status, 'pending')) = 'invited'
+               AND latest_invitation.accepted_at IS NOT NULL",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
@@ -179,8 +264,9 @@ class WishlistAccountApprovalService
                 'accountIdentifier' => (int)$account['account_identifier'],
                 'emailAddress' => (string)$account['email_address'],
                 'roleDesignation' => (string)$account['role_designation'],
-                'status' => 'invited',
-                'isApproved' => false,
+                'status' => 'approved',
+                'isApproved' => true,
+                'isActive' => true,
             ],
             'invitation' => [
                 'emailAddress' => (string)$account['email_address'],
@@ -195,6 +281,7 @@ class WishlistAccountApprovalService
                 'invitationUrl' => $clerkInvitationUrl,
                 'sentBy' => $invitedBy,
                 'emailSent' => true,
+                'movesToManageAccounts' => true,
             ],
         ]);
     }
@@ -238,17 +325,19 @@ class WishlistAccountApprovalService
         try {
             $this->connection->executeStatement(
                 'UPDATE accounts
-                 SET status = :status, is_approved = :isApproved, updated_timestamp = :updatedTimestamp
+                 SET status = :status, is_approved = :isApproved, is_active = :isActive, updated_timestamp = :updatedTimestamp
                  WHERE account_identifier = :accountIdentifier',
                 [
-                    'status' => 'invited',
-                    'isApproved' => false,
+                    'status' => 'approved',
+                    'isApproved' => true,
+                    'isActive' => true,
                     'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
                     'accountIdentifier' => $accountIdentifier,
                 ],
                 [
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
+                    'isActive' => ParameterType::BOOLEAN,
                     'updatedTimestamp' => ParameterType::STRING,
                     'accountIdentifier' => ParameterType::INTEGER,
                 ]

@@ -135,6 +135,15 @@ class UserRegistrationWorkflowService
         );
     }
 
+    public function verifyEmailAndApproveUser(int $accountIdentifier, array $requestBody, array $authenticatedIdentity, string $authorizationHeader): array
+    {
+        return $this->wishlistAccountApprovalService->verifyEmailAndApprove(
+            $accountIdentifier,
+            $requestBody,
+            $this->resolveAuthenticatedAccountIdentifier($authenticatedIdentity, $authorizationHeader)
+        );
+    }
+
     public function rejectUser(int $accountIdentifier, array $requestBody, array $authenticatedIdentity, string $authorizationHeader): array
     {
         return $this->wishlistRequestDecisionService->reject(

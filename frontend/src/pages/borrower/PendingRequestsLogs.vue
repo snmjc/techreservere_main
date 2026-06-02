@@ -77,7 +77,6 @@
             <td class="logs-td">{{ log.date }}</td>
             <td class="logs-td">
               <div class="logs-facility">
-                <img v-if="log.facilityImage" :src="log.facilityImage" :alt="log.facility" class="logs-facility-image" />
                 <span>{{ log.facility }}</span>
               </div>
             </td>
@@ -94,13 +93,14 @@
             </td>
             <td class="logs-td">{{ log.submitted }}</td>
           </tr>
+          <tr v-if="isLoading">
+            <td colspan="9" class="logs-td logs-empty-row">Loading pending requests...</td>
+          </tr>
+          <tr v-else-if="filteredLogs.length === 0">
+            <td colspan="9" class="logs-td logs-empty-row">No pending request logs found.</td>
+          </tr>
         </tbody>
       </table>
-
-      <!-- No Results Message -->
-      <div v-if="filteredLogs.length === 0" class="logs-no-results">
-        No pending request logs found matching your search.
-      </div>
     </div>
 
     <!-- Footer -->
@@ -111,103 +111,54 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
+const authStore = useAuthenticationStore();
 const searchQuery = ref('');
 const sortBy = ref('date');
 const sortOrder = ref('asc');
+const isLoading = ref(false);
 
-const mockLogs = ref([
-  {
-    id: 1,
-    reservationId: 'RES-2026-016',
-    name: 'Thomas Anderson',
-    role: 'Student',
-    date: '2026-05-30 9:00 AM',
-    facility: 'Grand Ballroom',
-    facilityImage: 'https://via.placeholder.com/50?text=Ballroom',
-    type: 'Venue',
-    purpose: 'Student Organization - Annual Gala Event',
-    status: 'Pending',
-    submitted: '2026-05-28 3:45 PM'
-  },
-  {
-    id: 2,
-    reservationId: 'RES-2026-017',
-    name: 'Jessica White',
-    role: 'Faculty',
-    date: '2026-06-01 2:00 PM',
-    facility: 'Outdoor Pavilion',
-    facilityImage: 'https://via.placeholder.com/50?text=Pavilion',
-    type: 'Venue',
-    purpose: 'Department Picnic - Team Building Event',
-    status: 'Pending',
-    submitted: '2026-05-29 10:15 AM'
-  },
-  {
-    id: 3,
-    reservationId: 'RES-2026-018',
-    name: 'Mark Johnson',
-    role: 'Student',
-    date: '2026-06-03 11:00 AM',
-    facility: 'Computer Lab A',
-    facilityImage: 'https://via.placeholder.com/50?text=Lab',
-    type: 'Venue',
-    purpose: 'Workshop - Python Programming Basics',
-    status: 'Pending',
-    submitted: '2026-05-29 2:30 PM'
-  },
-  {
-    id: 4,
-    reservationId: 'RES-2026-019',
-    name: 'Laura Davis',
-    role: 'Student',
-    date: '2026-06-05 3:30 PM',
-    facility: 'Theater Auditorium',
-    facilityImage: 'https://via.placeholder.com/50?text=Theater',
-    type: 'Venue',
-    purpose: 'Drama Club - Spring Production Performance',
-    status: 'Pending',
-    submitted: '2026-05-30 9:00 AM'
-  },
-  {
-    id: 5,
-    reservationId: 'RES-2026-020',
-    name: 'Steven Taylor',
-    role: 'Student',
-    date: '2026-06-07 1:00 PM',
-    facility: 'Science Lab B',
-    facilityImage: 'https://via.placeholder.com/50?text=Science',
-    type: 'Venue',
-    purpose: 'Research Project - Chemistry Experiment',
-    status: 'Pending',
-    submitted: '2026-05-30 11:45 AM'
-  },
-  {
-    id: 6,
-    reservationId: 'RES-2026-021',
-    name: 'Nicole Harris',
-    role: 'Student',
-    date: '2026-06-09 10:00 AM',
-    facility: 'Art Studio',
-    facilityImage: 'https://via.placeholder.com/50?text=Art+Studio',
-    type: 'Venue',
-    purpose: 'Art Exhibition - Student Artwork Display',
-    status: 'Pending',
-    submitted: '2026-05-31 1:20 PM'
+onMounted(async () => {
+  isLoading.value = true;
+
+  try {
+    await requestStore.fetchReservations();
+  } catch (error) {
+    console.error('Error fetching pending request logs:', error);
+  } finally {
+    isLoading.value = false;
   }
-]);
+});
+
+const pendingLogs = computed(() =>
+  (requestStore.pendingRequestsList || []).map((record) => ({
+    id: record.requestIdentifier,
+    reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier),
+    name: record.requesterFullName || 'User',
+    role: authStore.userRole || record.requesterRole || 'Borrower',
+    date: formatDateTime(record.requestSchedule),
+    facility: record.facilityName || 'N/A',
+    type: record.requestType || 'Reservation',
+    purpose: record.requestPurpose || 'N/A',
+    status: normalizePendingStatus(record.requestStatus),
+    submitted: formatDateTime(record.requestedDate),
+    sortDate: getDateSortValue(record.requestSchedule),
+  }))
+);
 
 const filteredLogs = computed(() => {
-  let logs = [...mockLogs.value];
+  let logs = [...pendingLogs.value];
 
-  // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     logs = logs.filter(log =>
@@ -221,8 +172,8 @@ const filteredLogs = computed(() => {
     let compareA, compareB;
 
     if (sortBy.value === 'date') {
-      compareA = new Date(a.date);
-      compareB = new Date(b.date);
+      compareA = a.sortDate;
+      compareB = b.sortDate;
     } else if (sortBy.value === 'name') {
       compareA = a.name.toLowerCase();
       compareB = b.name.toLowerCase();
@@ -251,5 +202,30 @@ function handleGoBack() {
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+function normalizePendingStatus(status) {
+  return status === 'Pending Review' ? 'Pending' : status || 'Pending';
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function getDateSortValue(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 </script>

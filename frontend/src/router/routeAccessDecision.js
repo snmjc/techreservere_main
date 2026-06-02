@@ -4,11 +4,15 @@ const AUTH_PAGE_NAMES = [ROUTE_NAMES.login, ROUTE_NAMES.signUp];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
-  const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'approved';
+  const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'pending';
   const normalizedStatus = String(rawStatus || '').trim().toLowerCase();
 
   if (account.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
+  }
+
+  if (account.isApproved === false && normalizedStatus !== 'approved') {
+    return 'pending';
   }
 
   return normalizedStatus;

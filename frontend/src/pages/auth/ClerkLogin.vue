@@ -49,12 +49,50 @@
 
             <label class="techreserve-local-login-field">
               <span>Password</span>
-              <input
-                v-model="passwordText"
-                type="password"
-                autocomplete="current-password"
-                required
-              />
+              <div class="techreserve-local-login-password-control">
+                <input
+                  v-model="passwordText"
+                  :type="isPasswordVisible ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="techreserve-local-login-password-toggle"
+                  :aria-label="isPasswordVisible ? 'Hide password' : 'Show password'"
+                  :title="isPasswordVisible ? 'Hide password' : 'Show password'"
+                  @click="togglePasswordVisibility"
+                >
+                  <svg
+                    v-if="isPasswordVisible"
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2 2l20 20" />
+                    <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                    <path d="M9.88 4.24A10.9 10.9 0 0 1 12 4c5 0 9 5 10 8a11.8 11.8 0 0 1-2.03 3.17" />
+                    <path d="M6.61 6.61A12.2 12.2 0 0 0 2 12c1 3 5 8 10 8a10.8 10.8 0 0 0 5.39-1.61" />
+                  </svg>
+                  <svg
+                    v-else
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button>
+              </div>
             </label>
 
             <div class="techreserve-local-login-options">
@@ -65,14 +103,6 @@
                 />
                 <span>Remember me</span>
               </label>
-
-              <button
-                type="button"
-                class="techreserve-local-login-link"
-                @click="showResetPasswordForm"
-              >
-                Forgot password?
-              </button>
             </div>
 
             <button class="techreserve-local-login-button" type="submit" :disabled="isSubmitting">
@@ -159,6 +189,13 @@
 
 <script setup>
 import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
+import { ref } from 'vue';
+
+const isPasswordVisible = ref(false);
+
+function togglePasswordVisibility() {
+  isPasswordVisible.value = !isPasswordVisible.value;
+}
 
 const {
   ROUTE_NAMES,
@@ -177,7 +214,6 @@ const {
   resetPasswordError,
   resetPasswordMessage,
   handleLocalLogin,
-  showResetPasswordForm,
   hideResetPasswordForm,
   resolveResetPasswordButtonText,
   handleResetPasswordSubmit,
@@ -405,10 +441,49 @@ const {
   outline: none;
 }
 
+.techreserve-local-login-password-control {
+  position: relative;
+  width: 100%;
+}
+
+.techreserve-local-login-password-control input {
+  padding-right: 2.75rem;
+}
+
+.techreserve-local-login-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.42rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #5f6b66;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.techreserve-local-login-password-toggle:hover,
+.techreserve-local-login-password-toggle:focus-visible {
+  background: #edf5f0;
+  color: #08784a;
+  outline: none;
+}
+
+.techreserve-local-login-password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .techreserve-local-login-options {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.8rem;
   margin-top: -0.15rem;
 }
@@ -435,17 +510,6 @@ const {
   accent-color: #08784a;
 }
 
-.techreserve-local-login-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #08784a;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.techreserve-local-login-link:hover,
 .techreserve-local-login-signup a:hover {
   color: #05613d;
   text-decoration: underline;

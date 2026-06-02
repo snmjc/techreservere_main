@@ -40,7 +40,7 @@ services:
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
       FRONTEND_URL: "${FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com}"
       DEV_FRONTEND_URL: "${DEV_FRONTEND_URL:-https://topic-recorded-listprice-verde.trycloudflare.com}"
-      MAILER_DSN: "${MAILER_DSN:-smtp://resend:${RESEND_API_KEY:-}@smtp.resend.com:587?encryption=tls}"
+      MAILER_DSN: "${MAILER_DSN:-null://null}"
       MAILER_FROM: "${MAILER_FROM:-onboarding@resend.dev}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
     depends_on:

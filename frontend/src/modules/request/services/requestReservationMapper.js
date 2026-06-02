@@ -11,6 +11,10 @@ export function normalizeReservationListResponse(response) {
     return response.reservations;
   }
 
+  if (Array.isArray(response?.data?.reservations)) {
+    return response.data.reservations;
+  }
+
   if (Array.isArray(response?.data)) {
     return response.data;
   }
@@ -72,14 +76,20 @@ function addReservationToBucket(buckets, reservation) {
 }
 
 function mapReservationRecord(reservation) {
+  const requestedEquipmentList = Array.isArray(reservation?.requestedEquipmentList)
+    ? reservation.requestedEquipmentList
+    : [];
+
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
+    requestDisplayIdentifier: reservation?.reservationCode || reservation?.reservationIdentifier || 'N/A',
     requesterFullName: reservation?.organizationName || 'User',
     requesterRole: 'Borrower',
     requestSchedule: reservation?.eventDateTime || 'N/A',
     requestQuantity: reservation?.requestedQuantity || 0,
-    requestType: reservation?.requestedEquipmentList?.length > 0 ? 'Equipment' : 'Venue',
+    requestType: requestedEquipmentList.length > 0 ? 'Equipment' : 'Venue',
     requestPurpose: reservation?.purposeDescription || 'N/A',
+    facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
     activityTime: reservation?.eventDateTime || 'N/A',
@@ -88,6 +98,28 @@ function mapReservationRecord(reservation) {
     requestStatus: reservation?.currentStatus || 'Unknown',
     reservationSummary: mapRequestedEquipment(reservation?.requestedEquipmentList),
   };
+}
+
+function getReservationFacilityName(reservation, requestedEquipmentList) {
+  if (reservation?.venueName) {
+    return reservation.venueName;
+  }
+
+  if (reservation?.facilityName) {
+    return reservation.facilityName;
+  }
+
+  if (reservation?.venueIdentifier) {
+    return `Venue #${reservation.venueIdentifier}`;
+  }
+
+  if (requestedEquipmentList.length > 0) {
+    return mapRequestedEquipment(requestedEquipmentList)
+      .map((equipment) => equipment.itemName)
+      .join(', ');
+  }
+
+  return 'N/A';
 }
 
 function mapRequestedEquipment(requestedEquipmentList = []) {

@@ -76,6 +76,7 @@
               <option value="all">All</option>
               <option value="not_invited">Not invited</option>
               <option value="verified">Verified</option>
+              <option value="approved">Approved</option>
               <option value="unverified">Unverified</option>
               <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
@@ -118,6 +119,7 @@
                 <th>Name</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Proof</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -136,6 +138,25 @@
                   </span>
                 </td>
                 <td>
+                  <div v-if="account.supportingDocumentData" class="admin-wishlist-proof-cell">
+                    <a
+                      :href="account.supportingDocumentData"
+                      target="_blank"
+                      rel="noopener"
+                      :title="account.supportingDocumentName || 'Preview proof'"
+                    >
+                      Preview
+                    </a>
+                    <a
+                      :href="account.supportingDocumentData"
+                      :download="account.supportingDocumentName || 'signup-proof'"
+                    >
+                      Download
+                    </a>
+                  </div>
+                  <span v-else class="admin-wishlist-proof-empty">N/A</span>
+                </td>
+                <td>
                   <div class="admin-wishlist-actions">
                     <button
                       class="admin-wishlist-icon-button"
@@ -152,8 +173,8 @@
                     <button
                       class="admin-wishlist-icon-button admin-wishlist-icon-button--invite"
                       type="button"
-                      aria-label="Send invite"
-                      title="Send invite"
+                      aria-label="Approve and email"
+                      title="Approve and email"
                       :disabled="!canSendInvite(account)"
                       @click="openApprovalModal(account, 'send')"
                     >
@@ -175,6 +196,18 @@
                         <path d="M3 21v-5h5" />
                         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                         <path d="M16 8h5V3" />
+                      </svg>
+                    </button>
+                    <button
+                      class="admin-wishlist-icon-button admin-wishlist-icon-button--verify"
+                      type="button"
+                      aria-label="Verify email and approve"
+                      title="Verify email and approve"
+                      :disabled="!canVerifyEmail(account)"
+                      @click="openApprovalModal(account, 'verify')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </button>
                     <button
@@ -210,7 +243,7 @@
                 </td>
               </tr>
               <tr v-if="filteredWishlistAccounts.length === 0">
-                <td colspan="6" class="admin-wishlist-empty-row">
+                <td colspan="7" class="admin-wishlist-empty-row">
                   No request accounts match the current filters.
                 </td>
               </tr>
@@ -331,9 +364,13 @@
                   <span>Role</span>
                   <strong>{{ approvalAccount.role }}</strong>
                 </p>
-                <p v-if="approvalMode === 'resend'">
+                <p v-if="approvalMode === 'resend' || approvalMode === 'verify'">
                   <span>Last Invite Sent</span>
                   <strong>{{ formatNullableDateTime(approvalAccount.inviteSentAt) }}</strong>
+                </p>
+                <p v-if="approvalMode === 'verify'">
+                  <span>Email Verified</span>
+                  <strong>{{ formatNullableDateTime(approvalAccount.inviteAcceptedAt) }}</strong>
                 </p>
               </div>
             </div>
@@ -385,7 +422,7 @@
               :disabled="isProcessing || !isApprovalConfirmationReady"
               @click="verifyAccount"
             >
-              {{ isProcessing ? 'Sending...' : getInviteSubmitLabel(approvalAccount) }}
+              {{ isProcessing ? getProcessingLabel() : getInviteSubmitLabel(approvalAccount) }}
             </button>
           </div>
         </section>
@@ -1006,12 +1043,16 @@ function openApprovalModal(account = selectedAccount.value, mode = 'send') {
     showToast('Resend invite is only available after the previous invitation expires.');
     return;
   }
-  if (mode !== 'resend' && !canSendInvite(account)) {
+  if (mode === 'verify' && !canVerifyEmail(account)) {
+    showToast('Verify email is only available after the user accepts the invitation.');
+    return;
+  }
+  if (mode === 'send' && !canSendInvite(account)) {
     showToast('Send invite is only available for accounts that are not invited.');
     return;
   }
   approvalAccount.value = account;
-  approvalMode.value = mode === 'resend' ? 'resend' : 'send';
+  approvalMode.value = ['resend', 'verify'].includes(mode) ? mode : 'send';
   approvalForm.emailAddress = account.emailAddress;
   approvalForm.role = account.roleDesignation;
   approvalForm.idNumber = account.idNumber;
@@ -1285,12 +1326,17 @@ async function verifyAccount() {
     return;
   }
   if (normalizeEmailForConfirmation(approvalForm.confirmEmail) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
-    approvalFormError.value = 'Please type your exact admin email to send the invite.';
+    approvalFormError.value = approvalMode.value === 'verify'
+      ? 'Please type your exact admin email to approve access.'
+      : 'Please type your exact admin email to send the invite.';
     return;
   }
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.verifyAccount(
+  const action = approvalMode.value === 'verify'
+    ? adminWishlistApi.verifyEmailAndApproveAccount
+    : adminWishlistApi.verifyAccount;
+  const result = await action(
     approvalAccount.value.accountIdentifier,
     authStore.authToken,
     { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
@@ -1383,27 +1429,45 @@ function canResendInvite(account) {
     && !isProcessing.value;
 }
 
+function canVerifyEmail(account) {
+  return String(account?.accountStatus || '').toLowerCase() === 'verified'
+    && Boolean(account?.inviteAcceptedAt)
+    && !isProcessing.value;
+}
+
 function getInviteModalTitle(account) {
   if (approvalMode.value === 'resend') return 'Resend Invite';
-  return account?.accountType === 'Employee' ? 'Ready to Invite Employee' : 'Send Invite';
+  if (approvalMode.value === 'verify') return 'Verify Email';
+  return account?.accountType === 'Employee' ? 'Approve Employee' : 'Approve Account';
 }
 
 function getInviteModalDescription(account) {
   if (approvalMode.value === 'resend') {
     return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
   }
+  if (approvalMode.value === 'verify') {
+    return 'The invitation was accepted. Confirm the responsible admin before approving system access.';
+  }
 
   return account?.accountType === 'Employee'
-    ? 'Review the worker information before sending the invitation.'
-    : 'This will verify the account and send an invitation link to their email for system access.';
+    ? 'Review the worker information before approving access and sending the Clerk invitation email.'
+    : 'This will approve the account, move it to Manage Accounts as Active, and send the Clerk invitation email.';
 }
 
 function getInviteSubmitLabel(account) {
-  return approvalMode.value === 'resend' ? 'Resend Invite' : 'Send Invite';
+  if (approvalMode.value === 'resend') return 'Resend Invite';
+  if (approvalMode.value === 'verify') return 'Approve Access';
+  return 'Approve & Email';
 }
 
 function getInviteSuccessMessage(account) {
-  return approvalMode.value === 'resend' ? 'Invitation resent!' : 'Invitation sent!';
+  if (approvalMode.value === 'resend') return 'Invitation resent!';
+  if (approvalMode.value === 'verify') return 'Email verified and account approved!';
+  return 'Account approved and email sent!';
+}
+
+function getProcessingLabel() {
+  return approvalMode.value === 'verify' || approvalMode.value === 'send' ? 'Approving...' : 'Sending...';
 }
 
 function showToast(message) {

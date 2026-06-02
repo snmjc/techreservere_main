@@ -59,11 +59,12 @@ const venueApi = {
     }
   },
 
-  async deleteVenue(venueIdentifier) {
+  async deleteVenue(venueIdentifier, confirmationPayload = {}) {
     const authToken = getStoredAuthToken();
     try {
       const response = await axios.delete(apiUrl(`/api/v1/venues/${venueIdentifier}`), {
-        headers: buildAuthorizationHeaders(authToken)
+        headers: buildJsonAuthorizationHeaders(authToken),
+        data: confirmationPayload
       });
       return response.data;
     } catch (error) {

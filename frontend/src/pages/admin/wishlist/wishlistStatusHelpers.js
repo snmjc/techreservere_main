@@ -1,11 +1,13 @@
 import { toTitleCase } from './wishlistTextHelpers.js';
 
-const VERIFIED_STATUSES = ['approved', 'verified', 'accepted'];
+const APPROVED_STATUSES = ['approved'];
+const VERIFIED_STATUSES = ['verified', 'accepted'];
 const DENIED_STATUSES = ['rejected', 'denied'];
 const INVITED_STATUSES = ['invited', 'unverified'];
 
 export function resolveRequestStatus(status, inviteAcceptedAt, inviteExpiresAt) {
   const normalized = String(status || 'pending').toLowerCase();
+  if (APPROVED_STATUSES.includes(normalized)) return 'approved';
   if (inviteAcceptedAt || VERIFIED_STATUSES.includes(normalized)) return 'verified';
   if (DENIED_STATUSES.includes(normalized)) return 'rejected';
   if (isExpiredInvite(inviteExpiresAt)) return 'expired';
@@ -17,6 +19,7 @@ export function resolveRequestStatus(status, inviteAcceptedAt, inviteExpiresAt) 
 
 export function getStatusLabel(status) {
   const normalized = String(status || '').toLowerCase();
+  if (APPROVED_STATUSES.includes(normalized)) return 'Approved';
   if (VERIFIED_STATUSES.includes(normalized)) return 'Verified';
   if (normalized === 'not_invited' || normalized === 'pending') return 'Not invited';
   if (INVITED_STATUSES.includes(normalized)) return 'Unverified';
@@ -29,7 +32,7 @@ export function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
   if (DENIED_STATUSES.includes(normalized)) return 'admin-wishlist-status--denied';
   if (INVITED_STATUSES.includes(normalized)) return 'admin-wishlist-status--invited';
-  if (VERIFIED_STATUSES.includes(normalized)) return 'admin-wishlist-status--accepted';
+  if ([...APPROVED_STATUSES, ...VERIFIED_STATUSES].includes(normalized)) return 'admin-wishlist-status--accepted';
   if (normalized === 'expired') return 'admin-wishlist-status--expired';
   return 'admin-wishlist-status--pending';
 }

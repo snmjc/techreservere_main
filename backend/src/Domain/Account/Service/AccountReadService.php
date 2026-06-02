@@ -42,10 +42,6 @@ class AccountReadService
                 ) latest_invitation ON TRUE
                 WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
                   AND LOWER(COALESCE(accounts.status, 'pending')) IN ('approved', 'disabled')
-                  AND (
-                    latest_invitation.accepted_at IS NOT NULL
-                    OR accounts.role_designation IN ('ROLE_ADMIN', 'ADMIN', 'ROLE_STAFF')
-                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *

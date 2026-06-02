@@ -77,6 +77,21 @@ class WishlistAccountRequestController
         );
     }
 
+    #[Route('/{accountIdentifier}/verify-email', name: 'verify_email_and_approve_user', methods: ['POST'])]
+    public function verifyEmailAndApproveUser(Request $request, int $accountIdentifier): JsonResponse
+    {
+        return $this->serviceResultResponse(
+            $this->workflowService->verifyEmailAndApproveUser(
+                $accountIdentifier,
+                $this->jsonBody($request),
+                $request->attributes->get('authenticatedIdentity', []),
+                $request->headers->get('Authorization', '')
+            ),
+            'VerifyEmailApprovalFailed',
+            'Unable to approve verified email.'
+        );
+    }
+
     #[Route('/{accountIdentifier}/reject', name: 'reject_user', methods: ['POST'])]
     public function rejectUser(int $accountIdentifier, Request $request): JsonResponse
     {

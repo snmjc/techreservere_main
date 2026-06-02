@@ -130,6 +130,9 @@ class AuthenticationLoginService
             'lastName' => $account->getLastName(),
             'emailAddress' => $account->getEmailAddress(),
             'roleDesignation' => $account->getRoleDesignation(),
+            'status' => $account->getStatus(),
+            'isApproved' => $account->getIsApproved(),
+            'isActive' => $account->getIsActive(),
             'profilePhotoData' => $profilePhotoData ? (string)$profilePhotoData : null,
         ];
     }
