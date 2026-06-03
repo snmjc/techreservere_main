@@ -46,8 +46,8 @@ services:
       APP_DEBUG: "0"
       POSTGRES_HOST: database
       DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB:-techreserve}?serverVersion=15&charset=utf8"
-      DEFAULT_URI: "https://techreserve.farahkenawy.codes"
-      FRONTEND_URL: "https://techreserve.farahkenawy.codes"
+      DEFAULT_URI: "https://spine-interim-art-relate.trycloudflare.com"
+      FRONTEND_URL: "https://spine-interim-art-relate.trycloudflare.com"
       MAILER_DSN: "${MAILER_DSN:-null://null}"
       CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
       CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
@@ -64,9 +64,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        VITE_API_BASE_URL: "https://techreserve.farahkenawy.codes"
+        VITE_API_BASE_URL: "https://spine-interim-art-relate.trycloudflare.com/"
         VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY}"
-        VITE_FRONTEND_URL: "https://techreserve.farahkenawy.codes/"
+        VITE_FRONTEND_URL: "https://spine-interim-art-relate.trycloudflare.com/"
     container_name: techreserve_frontend
     restart: unless-stopped
     expose:

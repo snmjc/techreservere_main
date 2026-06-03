@@ -44,9 +44,9 @@ class CorsMiddleware implements EventSubscriberInterface
             'http://localhost:5173',
             'http://127.0.0.1:5173',
             'https://techreserve.farahkenawy.codes',
+            'https://employers-mall-switches-bookstore.trycloudflare.com',
             rtrim((string)($_ENV['FRONTEND_URL'] ?? ''), '/'),
             rtrim((string)($_ENV['DEV_FRONTEND_URL'] ?? ''), '/'),
-            'https://topic-recorded-listprice-verde.trycloudflare.com',
         ]));
         $allowedOrigin = in_array($origin, $allowedOrigins, true) ? $origin : $allowedOrigins[0];
 

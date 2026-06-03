@@ -7,7 +7,6 @@
 // 2. Export as array
 
 import { RBAC_ACTION, RBAC_CAPABILITY, RBAC_SCOPE } from '@/shared/constants/rbacPermissions.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const rbacAny = (...permissions) => ({ any: permissions });
@@ -20,27 +19,7 @@ const permission = (capability, action, scope = RBAC_SCOPE.ALL) => ({ capability
 export const routeDefinitions = [
   {
     path: '/',
-    redirect: () => {
-      // Avoid bouncing signed-in users back to the login screen (Clerk may redirect to `/` after sign-in).
-      // We intentionally use localStorage here because the Pinia store may not be initialized yet.
-      try {
-        const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
-        if (accountString) {
-          const account = JSON.parse(accountString);
-          const status = String(account?.status || account?.accountStatus || '').trim().toLowerCase();
-          if (account?.isActive === false || status === 'disabled') return { name: ROUTE_NAMES.accountDeactivated };
-          const rawRole = account?.roleDesignation ?? account?.role ?? null;
-          const role = rawRole ? String(rawRole).trim().toUpperCase() : null;
-          if (role === 'ROLE_ADMIN' || role === 'ADMIN') return { name: ROUTE_NAMES.adminDashboard };
-          if (role === 'ROLE_STAFF' || role === 'STAFF') return { name: ROUTE_NAMES.settings };
-          if (role === 'ROLE_BORROWER' || role === 'BORROWER') return { name: ROUTE_NAMES.borrowerMyReservations };
-          return { name: ROUTE_NAMES.borrowerMyReservations };
-        }
-      } catch (e) {
-        // ignore parse errors and fall through to login
-      }
-      return { name: ROUTE_NAMES.clerkLogin };
-    },
+    redirect: { name: ROUTE_NAMES.clerkLogin },
   },
   {
     path: '/login',

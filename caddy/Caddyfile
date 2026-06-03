@@ -1,4 +1,4 @@
-techreserve.farahkenawy.codes {
+techreserve.farahkenawy.codes, employers-mall-switches-bookstore.trycloudflare.com {
     encode gzip
 
     handle /api/* {

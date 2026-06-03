@@ -1,5 +1,5 @@
 const PRODUCTION_FRONTEND_URL = 'https://techreserve.farahkenawy.codes/';
-const DEVELOPMENT_FRONTEND_URL = 'https://topic-recorded-listprice-verde.trycloudflare.com/';
+const DEVELOPMENT_FRONTEND_URL = 'https://employers-mall-switches-bookstore.trycloudflare.com/';
 
 export function resolveFrontendBaseUrl() {
   const isDevelopmentHost = typeof window !== 'undefined'
