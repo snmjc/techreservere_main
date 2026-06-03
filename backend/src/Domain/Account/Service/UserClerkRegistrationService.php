@@ -24,7 +24,7 @@ class UserClerkRegistrationService
     {
         $registration = $this->normalizeRegistrationRequest($requestBody);
 
-        if ($registration['clerkUserId'] === '' || $registration['firstName'] === '' || $registration['lastName'] === '' || $registration['emailAddress'] === '') {
+        if ($this->hasMissingRequiredRegistrationFields($registration)) {
             return $this->error('ValidationError', 'clerkUserId, firstName, lastName, and emailAddress are required.', 400);
         }
 
@@ -39,6 +39,14 @@ class UserClerkRegistrationService
         }
 
         return $this->createNewAccount($registration);
+    }
+
+    private function hasMissingRequiredRegistrationFields(array $registration): bool
+    {
+        return $registration['clerkUserId'] === ''
+            || $registration['firstName'] === ''
+            || $registration['lastName'] === ''
+            || $registration['emailAddress'] === '';
     }
 
     private function normalizeRegistrationRequest(array $requestBody): array
@@ -98,23 +106,33 @@ class UserClerkRegistrationService
                  is_active = :isActive,
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
-            [
-                'roleDesignation' => 'ROLE_ADMIN',
-                'status' => 'approved',
-                'isApproved' => true,
-                'isActive' => true,
-                'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                'accountIdentifier' => $account->getAccountIdentifier(),
-            ],
-            [
-                'roleDesignation' => ParameterType::STRING,
-                'status' => ParameterType::STRING,
-                'isApproved' => ParameterType::BOOLEAN,
-                'isActive' => ParameterType::BOOLEAN,
-                'updatedTimestamp' => ParameterType::STRING,
-                'accountIdentifier' => ParameterType::INTEGER,
-            ]
+            $this->buildAdminPromotionParameters($account),
+            $this->adminPromotionTypes()
         );
+    }
+
+    private function buildAdminPromotionParameters(AccountEntity $account): array
+    {
+        return [
+            'roleDesignation' => 'ROLE_ADMIN',
+            'status' => 'approved',
+            'isApproved' => true,
+            'isActive' => true,
+            'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'accountIdentifier' => $account->getAccountIdentifier(),
+        ];
+    }
+
+    private function adminPromotionTypes(): array
+    {
+        return [
+            'roleDesignation' => ParameterType::STRING,
+            'status' => ParameterType::STRING,
+            'isApproved' => ParameterType::BOOLEAN,
+            'isActive' => ParameterType::BOOLEAN,
+            'updatedTimestamp' => ParameterType::STRING,
+            'accountIdentifier' => ParameterType::INTEGER,
+        ];
     }
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
@@ -169,37 +187,47 @@ class UserClerkRegistrationService
                  is_active = :isActive,
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
-            [
-                'lastName' => $registration['lastName'],
-                'firstName' => $registration['firstName'],
-                'username' => $registration['username'],
-                'roleDesignation' => $nextState['role'],
-                'idNumber' => $registration['idNumber'] ?: null,
-                'department' => $registration['department'] ?: null,
-                'contactNumber' => $registration['contactNumber'] ?: null,
-                'clerkUserId' => $registration['clerkUserId'],
-                'status' => $nextState['status'],
-                'isApproved' => $nextState['isApproved'],
-                'isActive' => $nextState['isActive'],
-                'updatedTimestamp' => $updatedAt,
-                'accountIdentifier' => $account->getAccountIdentifier(),
-            ],
-            [
-                'lastName' => ParameterType::STRING,
-                'firstName' => ParameterType::STRING,
-                'username' => ParameterType::STRING,
-                'roleDesignation' => ParameterType::STRING,
-                'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                'clerkUserId' => ParameterType::STRING,
-                'status' => ParameterType::STRING,
-                'isApproved' => ParameterType::BOOLEAN,
-                'isActive' => ParameterType::BOOLEAN,
-                'updatedTimestamp' => ParameterType::STRING,
-                'accountIdentifier' => ParameterType::INTEGER,
-            ]
+            $this->buildExistingEmailUpdateParameters($account, $registration, $nextState, $updatedAt),
+            $this->existingEmailUpdateTypes($registration)
         );
+    }
+
+    private function buildExistingEmailUpdateParameters(AccountEntity $account, array $registration, array $nextState, string $updatedAt): array
+    {
+        return [
+            'lastName' => $registration['lastName'],
+            'firstName' => $registration['firstName'],
+            'username' => $registration['username'],
+            'roleDesignation' => $nextState['role'],
+            'idNumber' => $registration['idNumber'] ?: null,
+            'department' => $registration['department'] ?: null,
+            'contactNumber' => $registration['contactNumber'] ?: null,
+            'clerkUserId' => $registration['clerkUserId'],
+            'status' => $nextState['status'],
+            'isApproved' => $nextState['isApproved'],
+            'isActive' => $nextState['isActive'],
+            'updatedTimestamp' => $updatedAt,
+            'accountIdentifier' => $account->getAccountIdentifier(),
+        ];
+    }
+
+    private function existingEmailUpdateTypes(array $registration): array
+    {
+        return [
+            'lastName' => ParameterType::STRING,
+            'firstName' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
+            'roleDesignation' => ParameterType::STRING,
+            'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'clerkUserId' => ParameterType::STRING,
+            'status' => ParameterType::STRING,
+            'isApproved' => ParameterType::BOOLEAN,
+            'isActive' => ParameterType::BOOLEAN,
+            'updatedTimestamp' => ParameterType::STRING,
+            'accountIdentifier' => ParameterType::INTEGER,
+        ];
     }
 
     private function createNewAccount(array $registration): array
@@ -219,40 +247,8 @@ class UserClerkRegistrationService
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                [
-                    'lastName' => $registration['lastName'],
-                    'firstName' => $registration['firstName'],
-                    'emailAddress' => $registration['emailAddress'],
-                    'username' => $registration['username'],
-                    'roleDesignation' => $registration['role'],
-                    'idNumber' => $registration['idNumber'] ?: null,
-                    'department' => $registration['department'] ?: null,
-                    'contactNumber' => $registration['contactNumber'] ?: null,
-                    'clerkUserId' => $registration['clerkUserId'],
-                    'status' => $registration['status'],
-                    'isApproved' => $registration['isApproved'],
-                    'isActive' => true,
-                    'failedLoginAttempts' => 0,
-                    'createdTimestamp' => $now,
-                    'updatedTimestamp' => $now,
-                ],
-                [
-                    'lastName' => ParameterType::STRING,
-                    'firstName' => ParameterType::STRING,
-                    'emailAddress' => ParameterType::STRING,
-                    'username' => ParameterType::STRING,
-                    'roleDesignation' => ParameterType::STRING,
-                    'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                    'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                    'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
-                    'clerkUserId' => ParameterType::STRING,
-                    'status' => ParameterType::STRING,
-                    'isApproved' => ParameterType::BOOLEAN,
-                    'isActive' => ParameterType::BOOLEAN,
-                    'failedLoginAttempts' => ParameterType::INTEGER,
-                    'createdTimestamp' => ParameterType::STRING,
-                    'updatedTimestamp' => ParameterType::STRING,
-                ]
+                $this->buildNewAccountParameters($registration, $now),
+                $this->newAccountTypes($registration)
             );
 
             return $this->success('Account registered successfully.', $this->buildRegistrationAccountPayload($registration, [
@@ -267,6 +263,48 @@ class UserClerkRegistrationService
         }
     }
 
+    private function buildNewAccountParameters(array $registration, string $timestamp): array
+    {
+        return [
+            'lastName' => $registration['lastName'],
+            'firstName' => $registration['firstName'],
+            'emailAddress' => $registration['emailAddress'],
+            'username' => $registration['username'],
+            'roleDesignation' => $registration['role'],
+            'idNumber' => $registration['idNumber'] ?: null,
+            'department' => $registration['department'] ?: null,
+            'contactNumber' => $registration['contactNumber'] ?: null,
+            'clerkUserId' => $registration['clerkUserId'],
+            'status' => $registration['status'],
+            'isApproved' => $registration['isApproved'],
+            'isActive' => true,
+            'failedLoginAttempts' => 0,
+            'createdTimestamp' => $timestamp,
+            'updatedTimestamp' => $timestamp,
+        ];
+    }
+
+    private function newAccountTypes(array $registration): array
+    {
+        return [
+            'lastName' => ParameterType::STRING,
+            'firstName' => ParameterType::STRING,
+            'emailAddress' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
+            'roleDesignation' => ParameterType::STRING,
+            'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'clerkUserId' => ParameterType::STRING,
+            'status' => ParameterType::STRING,
+            'isApproved' => ParameterType::BOOLEAN,
+            'isActive' => ParameterType::BOOLEAN,
+            'failedLoginAttempts' => ParameterType::INTEGER,
+            'createdTimestamp' => ParameterType::STRING,
+            'updatedTimestamp' => ParameterType::STRING,
+        ];
+    }
+
     private function isAdminEmail(string $emailAddress): bool
     {
         return in_array(strtolower(trim($emailAddress)), self::ADMIN_EMAIL_ALLOWLIST, true);
@@ -279,14 +317,13 @@ class UserClerkRegistrationService
         }
 
         $role = strtoupper(trim($requestedRole));
-        if ($role === 'ADMIN' || $role === 'ROLE_ADMIN') {
-            return 'ROLE_ADMIN';
-        }
-        if ($role === 'BORROWER' || $role === 'ROLE_BORROWER') {
-            return 'ROLE_BORROWER';
-        }
 
-        return str_starts_with($role, 'ROLE_') ? $role : 'ROLE_BORROWER';
+        return match (true) {
+            in_array($role, ['ADMIN', 'ROLE_ADMIN'], true) => 'ROLE_ADMIN',
+            in_array($role, ['BORROWER', 'ROLE_BORROWER'], true) => 'ROLE_BORROWER',
+            str_starts_with($role, 'ROLE_') => $role,
+            default => 'ROLE_BORROWER',
+        };
     }
 
     private function findLatestInvitationForEmail(string $emailAddress): ?array
@@ -306,12 +343,7 @@ class UserClerkRegistrationService
 
     private function isOpenInvitation(?array $invitation): bool
     {
-        if ($invitation === null || !empty($invitation['accepted_at'])) {
-            return false;
-        }
-
-        $status = strtolower((string)($invitation['status'] ?? 'pending'));
-        if (in_array($status, ['accepted', 'expired', 'rejected', 'denied'], true)) {
+        if (!$this->isPendingInvitationRecord($invitation)) {
             return false;
         }
 
@@ -320,6 +352,16 @@ class UserClerkRegistrationService
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    private function isPendingInvitationRecord(?array $invitation): bool
+    {
+        if ($invitation === null || !empty($invitation['accepted_at'])) {
+            return false;
+        }
+
+        $status = strtolower((string)($invitation['status'] ?? 'pending'));
+        return !in_array($status, ['accepted', 'expired', 'rejected', 'denied'], true);
     }
 
     private function markLatestInvitationAccepted(string $emailAddress, string $acceptedAt): void

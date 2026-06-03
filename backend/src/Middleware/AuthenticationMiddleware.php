@@ -144,49 +144,55 @@ class AuthenticationMiddleware
 
     private function isPublicRoute(string $currentPath, string $httpMethod): bool
     {
-        // Normalize for comparisons (defensive; caller already normalizes).
-        if ($currentPath !== '/') {
-            $currentPath = rtrim($currentPath, '/');
-        }
+        $currentPath = $this->normalizeRequestPath($currentPath);
 
-        foreach (self::PUBLIC_ROUTES as $publicRoute) {
-            if ($currentPath === $publicRoute) {
-                return true;
-            }
-        }
+        return $this->matchesPublicExactRoute($currentPath)
+            || $this->matchesPublicMethodRoute($currentPath, $httpMethod)
+            || $this->matchesPublicPrefixRoute($currentPath)
+            || $this->matchesDevPublicRoute($currentPath)
+            || $this->matchesSymfonyDebugRoute($currentPath);
+    }
 
+    private function matchesPublicExactRoute(string $path): bool
+    {
+        return in_array($path, self::PUBLIC_ROUTES, true);
+    }
+
+    private function matchesPublicMethodRoute(string $path, string $httpMethod): bool
+    {
         foreach (self::PUBLIC_ROUTE_METHODS as $publicRoute => $allowedMethods) {
-            // Handle common variations like trailing slashes.
-            $normalizedPublicRoute = $publicRoute !== '/' ? rtrim($publicRoute, '/') : $publicRoute;
-            if ($currentPath === $normalizedPublicRoute && in_array($httpMethod, $allowedMethods, true)) {
+            if ($path === $this->normalizeRequestPath($publicRoute) && in_array($httpMethod, $allowedMethods, true)) {
                 return true;
             }
-        }
-
-        foreach (self::PUBLIC_ROUTE_PREFIXES as $publicPrefix) {
-            if (str_starts_with($currentPath, $publicPrefix)) {
-                return true;
-            }
-        }
-
-        if (($_ENV['APP_ENV'] ?? 'prod') === 'dev') {
-            if (str_starts_with($currentPath, '/api/v1/users/wishlist')) {
-                return true;
-            }
-
-            if (preg_match('#^/api/v1/users/[^/]+/(approve|reject)$#', $currentPath) === 1) {
-                return true;
-            }
-
-            if (str_starts_with($currentPath, '/api/v1/accounts')) {
-                return true;
-            }
-        }
-
-        if (str_starts_with($currentPath, '/_profiler') || str_starts_with($currentPath, '/_wdt')) {
-            return true;
         }
 
         return false;
+    }
+
+    private function matchesPublicPrefixRoute(string $path): bool
+    {
+        foreach (self::PUBLIC_ROUTE_PREFIXES as $publicPrefix) {
+            if (str_starts_with($path, $publicPrefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function matchesDevPublicRoute(string $path): bool
+    {
+        if (($_ENV['APP_ENV'] ?? 'prod') !== 'dev') {
+            return false;
+        }
+
+        return str_starts_with($path, '/api/v1/users/wishlist')
+            || preg_match('#^/api/v1/users/[^/]+/(approve|reject)$#', $path) === 1
+            || str_starts_with($path, '/api/v1/accounts');
+    }
+
+    private function matchesSymfonyDebugRoute(string $path): bool
+    {
+        return str_starts_with($path, '/_profiler') || str_starts_with($path, '/_wdt');
     }
 }

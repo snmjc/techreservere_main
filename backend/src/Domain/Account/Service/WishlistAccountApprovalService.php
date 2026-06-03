@@ -16,23 +16,8 @@ class WishlistAccountApprovalService
 
     public function approve(int $accountIdentifier, array $requestBody, int $authenticatedAdminId): array
     {
-        $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
-        $adminError = $this->validateAdminConfirmation($confirmedAdminEmail, $authenticatedAdminId);
-
-        if ($adminError !== null) {
-            return $adminError;
-        }
-
-        $confirmedAdmin = $this->findConfirmedAdmin($authenticatedAdminId);
-        $invitedBy = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
-
-        if (!$confirmedAdmin || $confirmedAdminEmail !== $invitedBy) {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                'Please type your exact admin email before sending the invite.',
-                422
-            );
-        }
+        $adminResult = $this->resolveConfirmedAdminEmail($requestBody, $authenticatedAdminId, 'sending the invite');
+        if (!$adminResult['success']) return $adminResult;
 
         $account = $this->findInvitationEligibleAccount($accountIdentifier);
         if (!$account) {
@@ -48,28 +33,13 @@ class WishlistAccountApprovalService
             return $stateError;
         }
 
-        return $this->sendAndRecordInvitation($account, $accountIdentifier, $invitedBy);
+        return $this->sendAndRecordInvitation($account, $accountIdentifier, $adminResult['emailAddress']);
     }
 
     public function verifyEmailAndApprove(int $accountIdentifier, array $requestBody, int $authenticatedAdminId): array
     {
-        $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
-        $adminError = $this->validateAdminConfirmation($confirmedAdminEmail, $authenticatedAdminId);
-
-        if ($adminError !== null) {
-            return $adminError;
-        }
-
-        $confirmedAdmin = $this->findConfirmedAdmin($authenticatedAdminId);
-        $adminEmailAddress = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
-
-        if (!$confirmedAdmin || $confirmedAdminEmail !== $adminEmailAddress) {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                'Please type your exact admin email before approving access.',
-                422
-            );
-        }
+        $adminResult = $this->resolveConfirmedAdminEmail($requestBody, $authenticatedAdminId, 'approving access');
+        if (!$adminResult['success']) return $adminResult;
 
         $account = $this->findEmailVerifiedAccount($accountIdentifier);
         if (!$account) {
@@ -86,18 +56,13 @@ class WishlistAccountApprovalService
 
         return $this->success([
             'message' => 'Email verified and account approved.',
-            'account' => [
-                'accountIdentifier' => (int)$account['account_identifier'],
-                'emailAddress' => (string)$account['email_address'],
-                'roleDesignation' => (string)$account['role_designation'],
-                'status' => 'approved',
-                'isApproved' => true,
-            ],
+            'account' => $this->buildApprovedAccountPayload($account),
         ]);
     }
 
-    private function validateAdminConfirmation(string $confirmedAdminEmail, int $authenticatedAdminId): ?array
+    private function resolveConfirmedAdminEmail(array $requestBody, int $authenticatedAdminId, string $actionLabel): array
     {
+        $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
         if ($confirmedAdminEmail === '') {
             return $this->error(
                 'SecurityConfirmationFailed',
@@ -106,7 +71,21 @@ class WishlistAccountApprovalService
             );
         }
 
-        return null;
+        $confirmedAdmin = $this->findConfirmedAdmin($authenticatedAdminId);
+        $adminEmailAddress = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
+
+        if (!$confirmedAdmin || $confirmedAdminEmail !== $adminEmailAddress) {
+            return $this->error(
+                'SecurityConfirmationFailed',
+                sprintf('Please type your exact admin email before %s.', $actionLabel),
+                422
+            );
+        }
+
+        return [
+            'success' => true,
+            'emailAddress' => $adminEmailAddress,
+        ];
     }
 
     private function findConfirmedAdmin(int $authenticatedAdminId): array|false
@@ -172,7 +151,6 @@ class WishlistAccountApprovalService
 
     private function validateInvitationState(array $account): ?array
     {
-        $now = new \DateTimeImmutable();
         $accountStatus = strtolower((string)($account['status'] ?? 'pending'));
 
         if (!empty($account['invite_accepted_at'])) {
@@ -187,28 +165,51 @@ class WishlistAccountApprovalService
             );
         }
 
+        $existingInviteExpiresAt = $this->resolveInviteExpiresAt($account);
+        if ($existingInviteExpiresAt === null) {
+            return null;
+        }
+
+        if ($existingInviteExpiresAt === false) {
+            return $this->invalidInviteStatusError();
+        }
+
+        if ($existingInviteExpiresAt >= new \DateTimeImmutable()) {
+            return $this->activeInviteError();
+        }
+
+        return null;
+    }
+
+    private function resolveInviteExpiresAt(array $account): \DateTimeImmutable|false|null
+    {
         if (empty($account['invite_expires_at'])) {
             return null;
         }
 
         try {
-            $existingInviteExpiresAt = new \DateTimeImmutable((string)$account['invite_expires_at']);
-            if ($existingInviteExpiresAt >= $now) {
-                return $this->error(
-                    'InviteAlreadySent',
-                    'This account already has an active invitation. Resend is only available after the invitation expires.',
-                    409
-                );
-            }
+            return new \DateTimeImmutable((string)$account['invite_expires_at']);
         } catch (\Throwable) {
-            return $this->error(
-                'InviteStatusInvalid',
-                'The existing invitation status could not be verified. Please refresh Requests Hub and try again.',
-                409
-            );
+            return false;
         }
+    }
 
-        return null;
+    private function activeInviteError(): array
+    {
+        return $this->error(
+            'InviteAlreadySent',
+            'This account already has an active invitation. Resend is only available after the invitation expires.',
+            409
+        );
+    }
+
+    private function invalidInviteStatusError(): array
+    {
+        return $this->error(
+            'InviteStatusInvalid',
+            'The existing invitation status could not be verified. Please refresh Requests Hub and try again.',
+            409
+        );
     }
 
     private function sendAndRecordInvitation(array $account, int $accountIdentifier, string $invitedBy): array
@@ -284,16 +285,7 @@ class WishlistAccountApprovalService
                     (email, invited_by, organization, invitation_token, status, expires_at, created_at, accepted_at)
                  VALUES
                     (:email, :invitedBy, :organization, :invitationToken, :status, :expiresAt, :createdAt, :acceptedAt)',
-                [
-                    'email' => (string)$account['email_address'],
-                    'invitedBy' => $invitedBy,
-                    'organization' => 'TechReserve',
-                    'invitationToken' => $invitationDraft['token'],
-                    'status' => 'pending',
-                    'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d H:i:sP'),
-                    'createdAt' => $invitationDraft['createdAt']->format('Y-m-d H:i:sP'),
-                    'acceptedAt' => null,
-                ],
+                $this->buildInvitationInsertParameters($account, $invitedBy, $invitationDraft),
                 [
                     'email' => ParameterType::STRING,
                     'invitedBy' => ParameterType::STRING,
@@ -316,6 +308,20 @@ class WishlistAccountApprovalService
                 500
             );
         }
+    }
+
+    private function buildInvitationInsertParameters(array $account, string $invitedBy, array $invitationDraft): array
+    {
+        return [
+            'email' => (string)$account['email_address'],
+            'invitedBy' => $invitedBy,
+            'organization' => 'TechReserve',
+            'invitationToken' => $invitationDraft['token'],
+            'status' => 'pending',
+            'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d H:i:sP'),
+            'createdAt' => $invitationDraft['createdAt']->format('Y-m-d H:i:sP'),
+            'acceptedAt' => null,
+        ];
     }
 
     private function approveAccountRow(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
