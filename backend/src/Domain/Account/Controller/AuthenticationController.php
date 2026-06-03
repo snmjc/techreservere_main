@@ -24,13 +24,13 @@ class AuthenticationController
     {
         $requestBody = $this->jsonBody($request);
 
-        $emailAddress = trim($requestBody['emailAddress'] ?? '');
+        $emailAddress = trim($requestBody['emailAddress'] ?? $requestBody['username'] ?? '');
         $passwordText = $requestBody['passwordText'] ?? '';
 
         if (empty($emailAddress) || empty($passwordText)) {
             return $this->createErrorResponse(
                 'ValidationError',
-                'Email address and password are required.',
+                'Username or email address and password are required.',
                 400
             );
         }
@@ -42,12 +42,12 @@ class AuthenticationController
     public function clerkLoginPreflight(Request $request): JsonResponse
     {
         $requestBody = $this->jsonBody($request);
-        $emailAddress = strtolower(trim((string)($requestBody['emailAddress'] ?? '')));
+        $emailAddress = strtolower(trim((string)($requestBody['emailAddress'] ?? $requestBody['username'] ?? '')));
 
-        if ($emailAddress === '' || !filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
+        if ($emailAddress === '') {
             return $this->createErrorResponse(
                 'ValidationError',
-                'A valid email address is required.',
+                'A valid username or email address is required.',
                 422
             );
         }

@@ -141,17 +141,9 @@
                   <div v-if="account.supportingDocumentData" class="admin-wishlist-proof-cell">
                     <a
                       :href="account.supportingDocumentData"
-                      target="_blank"
-                      rel="noopener"
-                      :title="account.supportingDocumentName || 'Preview proof'"
-                    >
-                      Preview
-                    </a>
-                    <a
-                      :href="account.supportingDocumentData"
                       :download="account.supportingDocumentName || 'signup-proof'"
                     >
-                      Download
+                      Download proof
                     </a>
                   </div>
                   <span v-else class="admin-wishlist-proof-empty">N/A</span>
@@ -270,7 +262,8 @@
             <div class="admin-wishlist-view-account-main">
               <p><strong>Last Name:</strong> <span>{{ selectedAccount.lastName }}</span></p>
               <p><strong>First Name:</strong> <span>{{ selectedAccount.firstName }}</span></p>
-              <p><strong>ID Number:</strong> <span>{{ selectedAccount.idNumber }}</span></p>
+              <p><strong>ID Number:</strong> <span>{{ selectedAccount.rawIdNumber || selectedAccount.idNumber }}</span></p>
+              <p><strong>Username:</strong> <span>{{ selectedAccount.username || 'N/A' }}</span></p>
               <p><strong>Email:</strong> <span>{{ selectedAccount.emailAddress }}</span></p>
               <p><strong>Role:</strong> <span>{{ selectedAccount.role }}</span></p>
               <p><strong>Account Status:</strong> <span>{{ getStatusLabel(selectedAccount.accountStatus) }}</span></p>
@@ -291,14 +284,6 @@
           <div v-if="selectedAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
             <a
               class="admin-wishlist-proof-link"
-              :href="selectedAccount.supportingDocumentData"
-              target="_blank"
-              rel="noopener"
-            >
-              {{ isPdfProof(selectedAccount) ? 'Preview uploaded PDF' : 'View uploaded proof' }}
-            </a>
-            <a
-              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
               :href="selectedAccount.supportingDocumentData"
               :download="selectedAccount.supportingDocumentName || 'signup-proof'"
             >
@@ -354,7 +339,11 @@
                 </p>
                 <p>
                   <span>ID Number</span>
-                  <strong>{{ approvalAccount.idNumber }}</strong>
+                  <strong>{{ approvalAccount.rawIdNumber || approvalAccount.idNumber }}</strong>
+                </p>
+                <p>
+                  <span>Username</span>
+                  <strong>{{ approvalAccount.username || 'N/A' }}</strong>
                 </p>
                 <p>
                   <span>{{ getApprovalEmailLabel(approvalAccount) }}</span>
@@ -379,14 +368,6 @@
           <div v-if="approvalAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
             <a
               class="admin-wishlist-proof-link"
-              :href="approvalAccount.supportingDocumentData"
-              target="_blank"
-              rel="noopener"
-            >
-              {{ isPdfProof(approvalAccount) ? 'Preview uploaded PDF' : 'View uploaded proof' }}
-            </a>
-            <a
-              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
               :href="approvalAccount.supportingDocumentData"
               :download="approvalAccount.supportingDocumentName || 'signup-proof'"
             >
@@ -460,7 +441,7 @@
                 </p>
                 <p>
                   <span>ID Number</span>
-                  <strong>{{ denialAccount.idNumber }}</strong>
+                  <strong>{{ denialAccount.rawIdNumber || denialAccount.idNumber }}</strong>
                 </p>
                 <p>
                   <span>Email to deny</span>
@@ -549,7 +530,7 @@
                 </p>
                 <p>
                   <span>ID Number</span>
-                  <strong>{{ deleteAccountRequest.idNumber }}</strong>
+                  <strong>{{ deleteAccountRequest.rawIdNumber || deleteAccountRequest.idNumber }}</strong>
                 </p>
                 <p>
                   <span>Email to delete</span>
@@ -888,7 +869,6 @@ import {
   getStatusLabel,
   getUniqueRequestAccounts,
   getEmployeeCreateError,
-  isPdfProof,
   normalizeEmailForConfirmation,
   normalizeWishlistAccount,
   sanitizeNameInput,
@@ -1055,7 +1035,7 @@ function openApprovalModal(account = selectedAccount.value, mode = 'send') {
   approvalMode.value = ['resend', 'verify'].includes(mode) ? mode : 'send';
   approvalForm.emailAddress = account.emailAddress;
   approvalForm.role = account.roleDesignation;
-  approvalForm.idNumber = account.idNumber;
+  approvalForm.idNumber = account.rawIdNumber || account.idNumber;
   approvalForm.lastName = account.lastName;
   approvalForm.firstName = account.firstName;
   approvalForm.confirmEmail = '';
@@ -1344,8 +1324,8 @@ async function verifyAccount() {
   if (result.success) {
     const successMessage = getInviteSuccessMessage(approvalAccount.value);
     closeModals();
-    await loadWishlistAccounts();
     showToast(successMessage);
+    await loadWishlistAccounts();
   } else {
     approvalFormError.value = result.error || 'Unable to send invite.';
     showToast(approvalFormError.value);
@@ -1461,9 +1441,9 @@ function getInviteSubmitLabel(account) {
 }
 
 function getInviteSuccessMessage(account) {
-  if (approvalMode.value === 'resend') return 'Invitation resent!';
+  if (approvalMode.value === 'resend') return 'Invitation Sent!';
   if (approvalMode.value === 'verify') return 'Email verified and account approved!';
-  return 'Account approved and email sent!';
+  return 'Invitation Sent!';
 }
 
 function getProcessingLabel() {
@@ -1474,6 +1454,6 @@ function showToast(message) {
   toastMessage.value = message;
   window.setTimeout(() => {
     if (toastMessage.value === message) toastMessage.value = '';
-  }, 2800);
+  }, 4200);
 }
 </script>

@@ -3,13 +3,13 @@
 namespace App\Domain\Account\Controller;
 
 use App\Shared\Traits\JsonResponseTrait;
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api/v1/clerk')]
 class ClerkWebhookController
 {
     use JsonResponseTrait;
@@ -21,7 +21,8 @@ class ClerkWebhookController
         $this->connection = $connection;
     }
 
-    #[Route('/webhook', name: 'clerk_webhook', methods: ['POST'])]
+    #[Route('/api/v1/clerk/webhook', name: 'clerk_webhook', methods: ['POST'])]
+    #[Route('/api/clerk/webhook', name: 'clerk_webhook_legacy', methods: ['POST'])]
     public function handleWebhook(Request $request): JsonResponse
     {
         $payload = $request->getContent();
@@ -45,6 +46,17 @@ class ClerkWebhookController
         return $this->createSuccessResponse([
             'received' => true,
             'eventType' => $eventType,
+        ]);
+    }
+
+    #[Route('/api/v1/clerk/webhook', name: 'clerk_webhook_status', methods: ['GET'])]
+    #[Route('/api/clerk/webhook', name: 'clerk_webhook_legacy_status', methods: ['GET'])]
+    public function webhookStatus(): JsonResponse
+    {
+        return $this->createSuccessResponse([
+            'message' => 'Clerk webhook endpoint is available. Configure Clerk to send POST requests to this URL.',
+            'canonicalPath' => '/api/v1/clerk/webhook',
+            'legacyPath' => '/api/clerk/webhook',
         ]);
     }
 
@@ -99,16 +111,19 @@ class ClerkWebhookController
         $this->connection->executeStatement(
             "UPDATE accounts
              SET clerk_user_id = :clerkUserId,
+                 username = COALESCE(NULLIF(username, ''), :username),
                  updated_timestamp = :updatedTimestamp
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                AND (clerk_user_id IS NULL OR clerk_user_id = '' OR clerk_user_id = :clerkUserId)",
             [
                 'clerkUserId' => $clerkUserId,
+                'username' => AccountUsername::fromEmail($emailAddress),
                 'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
                 'emailAddress' => $emailAddress,
             ],
             [
                 'clerkUserId' => ParameterType::STRING,
+                'username' => ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'emailAddress' => ParameterType::STRING,
             ]

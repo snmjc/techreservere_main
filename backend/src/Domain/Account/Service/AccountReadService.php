@@ -18,8 +18,10 @@ class AccountReadService
         $rows = $this->connection->fetchAllAssociative(
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
-                       accounts.email_address, accounts.role_designation, accounts.department, accounts.contact_number,
+                       accounts.email_address, accounts.username, accounts.role_designation, accounts.department, accounts.contact_number,
                        accounts.profile_photo_data,
+                       accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
+                       accounts.signup_supporting_document_data,
                        staff_info.employee_id_number AS staff_employee_id_number,
                        staff_info.first_name AS staff_first_name,
                        staff_info.last_name AS staff_last_name,
@@ -69,9 +71,11 @@ class AccountReadService
     public function getMappedAccountById(int $accountIdentifier): ?array
     {
         $row = $this->connection->fetchAssociative(
-            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.role_designation,
+            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                     accounts.profile_photo_data,
+                    accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
+                    accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -102,9 +106,11 @@ class AccountReadService
     public function getSettingsAccountById(int $accountIdentifier): ?array
     {
         $row = $this->connection->fetchAssociative(
-            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.role_designation,
+            "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                     accounts.last_login_timestamp, accounts.profile_photo_data,
+                    accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
+                    accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -149,6 +155,10 @@ class AccountReadService
                 tasks.due_date_timestamp,
                 tasks.created_timestamp,
                 tasks.updated_timestamp,
+                staff_info.employee_id_number AS staff_employee_id_number,
+                staff_info.first_name AS staff_first_name,
+                staff_info.last_name AS staff_last_name,
+                staff_info.role AS staff_role,
                 reservations.reservation_identifier,
                 reservations.reservation_code,
                 reservations.organization_name,
@@ -175,7 +185,7 @@ class AccountReadService
     public function getAccountStateById(int $accountIdentifier): ?array
     {
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, id_number, email_address, department, clerk_user_id, status, is_approved, is_active
+            'SELECT account_identifier, id_number, email_address, username, department, clerk_user_id, status, is_approved, is_active
              FROM accounts
              WHERE account_identifier = :accountIdentifier',
             ['accountIdentifier' => $accountIdentifier],

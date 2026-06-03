@@ -49,6 +49,7 @@ class AccountResponseMapperService
             'lastName' => $lastName,
             'firstName' => $firstName,
             'emailAddress' => (string)$row['email_address'],
+            'username' => !empty($row['username']) ? (string)$row['username'] : null,
             'roleDesignation' => $this->normalizeRoleDesignation($roleDesignation),
             'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,
             'accountType' => $accountType,
@@ -58,6 +59,9 @@ class AccountResponseMapperService
             'actionPermissions' => $this->accountLifecyclePolicyService->buildActionPermissions($accountStatus, $isApproved),
             'contactNumber' => $contactNumber,
             'profilePhotoData' => $profilePhotoData,
+            'supportingDocumentName' => !empty($row['signup_supporting_document_name']) ? (string)$row['signup_supporting_document_name'] : null,
+            'supportingDocumentMimeType' => !empty($row['signup_supporting_document_mime_type']) ? (string)$row['signup_supporting_document_mime_type'] : null,
+            'supportingDocumentData' => !empty($row['signup_supporting_document_data']) ? (string)$row['signup_supporting_document_data'] : null,
             'createdTimestamp' => (string)$row['created_timestamp'],
             'lastLoginTimestamp' => !empty($row['last_login_timestamp']) ? (string)$row['last_login_timestamp'] : null,
             'inviteSentAt' => !empty($row['invite_sent_at']) ? (string)$row['invite_sent_at'] : null,
@@ -70,6 +74,11 @@ class AccountResponseMapperService
     {
         $equipmentList = $this->decodeJsonList($row['requested_equipment_list'] ?? null);
         $reservationDetails = null;
+        $assignedStaffName = trim(sprintf(
+            '%s %s',
+            (string)($row['staff_first_name'] ?? ''),
+            (string)($row['staff_last_name'] ?? '')
+        ));
 
         if (!empty($row['reservation_identifier'])) {
             $reservationDetails = [
@@ -104,12 +113,20 @@ class AccountResponseMapperService
             'reservationDetails' => $reservationDetails,
             'assignments' => [
                 'assignedToAccountId' => $row['assigned_to_account_id'] !== null ? (int)$row['assigned_to_account_id'] : null,
+                'assignedStaffName' => $assignedStaffName !== '' ? $assignedStaffName : null,
+                'assignedStaffIdNumber' => $row['staff_employee_id_number'] ? (string)$row['staff_employee_id_number'] : null,
+                'assignedStaffRole' => $row['staff_role'] ? (string)$row['staff_role'] : null,
                 'assignmentType' => (string)($row['task_type'] ?? ''),
                 'assignedTask' => (string)$row['task_title'],
+                'taskAssignmentId' => isset($row['task_assignment_id']) ? (int)$row['task_assignment_id'] : null,
             ],
             'fullTaskInformation' => [
+                'taskIdentifier' => (int)$row['task_identifier'],
+                'taskAssignmentId' => isset($row['task_assignment_id']) ? (int)$row['task_assignment_id'] : null,
                 'description' => $row['task_description'] ? (string)$row['task_description'] : null,
                 'type' => (string)($row['task_type'] ?? ''),
+                'status' => (string)($row['task_status'] ?? ''),
+                'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
                 'createdTimestamp' => (string)($row['created_timestamp'] ?? ''),
                 'updatedTimestamp' => (string)($row['updated_timestamp'] ?? ''),
             ],

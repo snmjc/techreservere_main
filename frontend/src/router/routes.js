@@ -47,6 +47,22 @@ export const routeDefinitions = [
     redirect: '/clerk-login',
   },
   {
+    path: '/accept-invitation',
+    redirect: (toRoute) => ({
+      name: ROUTE_NAMES.clerkLogin,
+      query: toRoute.query,
+      hash: toRoute.hash,
+    }),
+  },
+  {
+    path: '/accept-invite',
+    redirect: (toRoute) => ({
+      name: ROUTE_NAMES.clerkLogin,
+      query: toRoute.query,
+      hash: toRoute.hash,
+    }),
+  },
+  {
     path: '/clerk-login',
     name: ROUTE_NAMES.clerkLogin,
     component: () => import('@/pages/auth/ClerkLogin.vue'),

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AccountUsername;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AccountClerkProvisioningService
@@ -26,6 +27,7 @@ class AccountClerkProvisioningService
                 'expires_in_days' => 7,
                 'public_metadata' => [
                     'techreserve_account_identifier' => (int)($account['account_identifier'] ?? 0),
+                    'techreserve_username' => AccountUsername::fromEmail((string)($account['email_address'] ?? '')),
                     'techreserve_role_designation' => (string)($account['role_designation'] ?? ''),
                     'techreserve_id_number' => (string)($account['id_number'] ?? ''),
                     'techreserve_department' => (string)($account['department'] ?? ''),
@@ -52,11 +54,22 @@ class AccountClerkProvisioningService
         $existingClerkUser = $this->findUserByEmail($emailAddress);
         if ($existingClerkUser !== null) {
             $clerkUserId = (string)$existingClerkUser['id'];
-            $this->updateSignupUser($clerkUserId, $firstName, $lastName, $password, $roleLabel, $idNumber);
+            $this->updateSignupUser($clerkUserId, $emailAddress, $firstName, $lastName, $password, $roleLabel, $idNumber);
             return $clerkUserId;
         }
 
         return $this->createSignupUser($emailAddress, $firstName, $lastName, $password, $roleLabel, $idNumber);
+    }
+
+    public function findUserIdByEmail(string $emailAddress): ?string
+    {
+        $existingClerkUser = $this->findUserByEmail($emailAddress);
+        if ($existingClerkUser === null) {
+            return null;
+        }
+
+        $clerkUserId = trim((string)($existingClerkUser['id'] ?? ''));
+        return $clerkUserId !== '' ? $clerkUserId : null;
     }
 
     private function findUserByEmail(string $emailAddress): ?array
@@ -107,10 +120,11 @@ class AccountClerkProvisioningService
             ],
             'json' => [
                 'email_address' => [$emailAddress],
+                'username' => AccountUsername::fromEmail($emailAddress),
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'password' => $password,
-                'public_metadata' => $this->buildPendingUserMetadata($roleLabel, $idNumber),
+                'public_metadata' => $this->buildPendingUserMetadata($emailAddress, $roleLabel, $idNumber),
             ],
         ]);
 
@@ -134,6 +148,7 @@ class AccountClerkProvisioningService
 
     private function updateSignupUser(
         string $clerkUserId,
+        string $emailAddress,
         string $firstName,
         string $lastName,
         string $password,
@@ -154,7 +169,8 @@ class AccountClerkProvisioningService
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'password' => $password,
-                'public_metadata' => $this->buildPendingUserMetadata($roleLabel, $idNumber),
+                'username' => AccountUsername::fromEmail($emailAddress),
+                'public_metadata' => $this->buildPendingUserMetadata($emailAddress, $roleLabel, $idNumber),
             ],
         ]);
 
@@ -179,12 +195,13 @@ class AccountClerkProvisioningService
         return rtrim((string)($_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com'), '/');
     }
 
-    private function buildPendingUserMetadata(string $roleLabel, string $idNumber): array
+    private function buildPendingUserMetadata(string $emailAddress, string $roleLabel, string $idNumber): array
     {
         return [
             'techreserve_account_type' => 'User',
             'techreserve_role_designation' => 'ROLE_BORROWER',
             'techreserve_role_label' => $roleLabel,
+            'techreserve_username' => AccountUsername::fromEmail($emailAddress),
             'techreserve_id_number' => $idNumber,
             'techreserve_approval_status' => 'pending',
         ];

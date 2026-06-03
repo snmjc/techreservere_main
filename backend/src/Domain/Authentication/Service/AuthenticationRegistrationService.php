@@ -3,6 +3,7 @@
 namespace App\Domain\Authentication\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -29,17 +30,19 @@ class AuthenticationRegistrationService
         }
 
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $username = AccountUsername::fromEmail($emailAddress);
         $this->connection->executeStatement(
             'INSERT INTO accounts
-                (last_name, first_name, email_address, password_hash, role_designation,
+                (last_name, first_name, email_address, username, password_hash, role_designation,
                  status, is_approved, is_active, failed_login_attempts, created_timestamp, updated_timestamp)
              VALUES
-                (:lastName, :firstName, :emailAddress, :passwordHash, :roleDesignation,
+                (:lastName, :firstName, :emailAddress, :username, :passwordHash, :roleDesignation,
                  :status, :isApproved, :isActive, :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
             [
                 'lastName' => $lastName,
                 'firstName' => $firstName,
                 'emailAddress' => $emailAddress,
+                'username' => $username,
                 'passwordHash' => password_hash($passwordText, PASSWORD_BCRYPT, ['cost' => 4]),
                 'roleDesignation' => 'ROLE_BORROWER',
                 'status' => 'pending',
@@ -53,6 +56,7 @@ class AuthenticationRegistrationService
                 'lastName' => ParameterType::STRING,
                 'firstName' => ParameterType::STRING,
                 'emailAddress' => ParameterType::STRING,
+                'username' => ParameterType::STRING,
                 'passwordHash' => ParameterType::STRING,
                 'roleDesignation' => ParameterType::STRING,
                 'status' => ParameterType::STRING,
@@ -74,6 +78,7 @@ class AuthenticationRegistrationService
                     'firstName' => $firstName,
                     'lastName' => $lastName,
                     'emailAddress' => $emailAddress,
+                    'username' => $username,
                     'roleDesignation' => 'ROLE_BORROWER',
                 ],
             ],

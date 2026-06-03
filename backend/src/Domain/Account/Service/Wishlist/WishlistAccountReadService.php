@@ -15,7 +15,7 @@ class WishlistAccountReadService
         $rows = $this->connection->fetchAllAssociative(
             "SELECT DISTINCT ON (LOWER(accounts.email_address))
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
-                    accounts.email_address, accounts.role_designation, accounts.department,
+                    accounts.email_address, accounts.username, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,
@@ -79,6 +79,7 @@ class WishlistAccountReadService
             'lastName' => ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'],
             'firstName' => ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'],
             'emailAddress' => (string)$row['email_address'],
+            'username' => $row['username'] ? (string)$row['username'] : null,
             'contactNumber' => ($isEmployee && !empty($row['staff_phone_number'])) ? (string)$row['staff_phone_number'] : ($row['contact_number'] ? (string)$row['contact_number'] : null),
             'roleDesignation' => $roleDesignation,
             'roleLabel' => ($isEmployee && !empty($row['staff_role'])) ? (string)$row['staff_role'] : $roleLabel,

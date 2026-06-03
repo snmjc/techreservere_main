@@ -14,7 +14,7 @@ class AccountConflictLookupService
     public function findByEmail(string $emailAddress): ?array
     {
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, id_number, first_name, last_name, email_address, role_designation,
+            'SELECT account_identifier, id_number, first_name, last_name, email_address, username, role_designation,
                     department, status, is_approved, is_active, clerk_user_id, created_timestamp
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
@@ -33,7 +33,7 @@ class AccountConflictLookupService
                     COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
                     COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
                     COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
-                    accounts.email_address, accounts.role_designation,
+                    accounts.email_address, accounts.username, accounts.role_designation,
                     COALESCE(staff_info.role, accounts.department) AS department,
                     accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp
              FROM accounts
@@ -54,7 +54,7 @@ class AccountConflictLookupService
                     COALESCE(staff_info.employee_id_number, accounts.id_number) AS id_number,
                     COALESCE(staff_info.first_name, accounts.first_name) AS first_name,
                     COALESCE(staff_info.last_name, accounts.last_name) AS last_name,
-                    accounts.email_address, accounts.role_designation,
+                    accounts.email_address, accounts.username, accounts.role_designation,
                     COALESCE(staff_info.role, accounts.department) AS department,
                     COALESCE(staff_info.phone_number, accounts.contact_number) AS contact_number,
                     accounts.status, accounts.is_approved, accounts.is_active, accounts.clerk_user_id, accounts.created_timestamp

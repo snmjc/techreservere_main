@@ -26,6 +26,19 @@ class AccountRepository extends ServiceEntityRepository
         return $this->findOneBy(['emailAddress' => $emailAddress]);
     }
 
+    public function findOneByEmailAddressOrUsername(string $identifier): ?AccountEntity
+    {
+        $normalizedIdentifier = strtolower(trim($identifier));
+
+        return $this->createQueryBuilder('account')
+            ->where('LOWER(account.emailAddress) = :identifier')
+            ->orWhere('LOWER(account.username) = :identifier')
+            ->setParameter('identifier', $normalizedIdentifier)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     // ===== AI GENERATED: findOneByClerkUserId =====
     // Purpose: Find a single account by Clerk user ID
     // Inputs: clerkUserId (string)

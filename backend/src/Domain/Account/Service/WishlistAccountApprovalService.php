@@ -81,14 +81,20 @@ class WishlistAccountApprovalService
         }
 
         $now = new \DateTimeImmutable();
+        $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
         $this->connection->executeStatement(
             'UPDATE accounts
-             SET status = :status, is_approved = :isApproved, is_active = :isActive, updated_timestamp = :updatedTimestamp
+             SET status = :status,
+                 is_approved = :isApproved,
+                 is_active = :isActive,
+                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
+                 updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
                 'status' => 'approved',
                 'isApproved' => true,
                 'isActive' => true,
+                'clerkUserId' => $clerkUserId,
                 'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
             ],
@@ -96,6 +102,7 @@ class WishlistAccountApprovalService
                 'status' => ParameterType::STRING,
                 'isApproved' => ParameterType::BOOLEAN,
                 'isActive' => ParameterType::BOOLEAN,
+                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'accountIdentifier' => ParameterType::INTEGER,
             ]
@@ -253,7 +260,8 @@ class WishlistAccountApprovalService
             return $mailerError;
         }
 
-        $databaseError = $this->recordInvitation($account, $accountIdentifier, $invitedBy, $invitationToken, $now, $expiresAt);
+        $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
+        $databaseError = $this->recordInvitation($account, $accountIdentifier, $invitedBy, $invitationToken, $now, $expiresAt, $clerkUserId);
         if ($databaseError !== null) {
             return $databaseError;
         }
@@ -318,19 +326,25 @@ class WishlistAccountApprovalService
         string $invitedBy,
         string $invitationToken,
         \DateTimeImmutable $now,
-        \DateTimeImmutable $expiresAt
+        \DateTimeImmutable $expiresAt,
+        ?string $clerkUserId
     ): ?array {
         $this->connection->beginTransaction();
 
         try {
             $this->connection->executeStatement(
                 'UPDATE accounts
-                 SET status = :status, is_approved = :isApproved, is_active = :isActive, updated_timestamp = :updatedTimestamp
+                 SET status = :status,
+                     is_approved = :isApproved,
+                     is_active = :isActive,
+                     clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
+                     updated_timestamp = :updatedTimestamp
                  WHERE account_identifier = :accountIdentifier',
                 [
                     'status' => 'approved',
                     'isApproved' => true,
                     'isActive' => true,
+                    'clerkUserId' => $clerkUserId,
                     'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
                     'accountIdentifier' => $accountIdentifier,
                 ],
@@ -338,6 +352,7 @@ class WishlistAccountApprovalService
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
                     'isActive' => ParameterType::BOOLEAN,
+                    'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
                     'updatedTimestamp' => ParameterType::STRING,
                     'accountIdentifier' => ParameterType::INTEGER,
                 ]
@@ -379,6 +394,15 @@ class WishlistAccountApprovalService
                 'Clerk sent the invitation, but the database could not record it: ' . $exception->getMessage(),
                 500
             );
+        }
+    }
+
+    private function findExistingClerkUserId(string $emailAddress): ?string
+    {
+        try {
+            return $this->accountClerkProvisioningService->findUserIdByEmail($emailAddress);
+        } catch (\Throwable) {
+            return null;
         }
     }
 

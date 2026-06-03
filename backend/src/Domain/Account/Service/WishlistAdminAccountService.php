@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -42,6 +43,7 @@ class WishlistAdminAccountService
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
+            'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
             'idNumber' => trim($requestBody['idNumber'] ?? ''),
         ];
     }
@@ -94,11 +96,11 @@ class WishlistAdminAccountService
         try {
             $this->connection->executeStatement(
                 'INSERT INTO accounts
-                    (last_name, first_name, email_address, role_designation, id_number, department,
+                    (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
-                    (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
+                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 $this->buildInsertParameters($payload, $defaultAdminPassword, $now),
@@ -111,6 +113,7 @@ class WishlistAdminAccountService
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
+                'username' => $payload['username'],
                 'roleDesignation' => 'ROLE_ADMIN',
                 'roleLabel' => 'Admin',
                 'accountType' => 'Admin',
@@ -138,6 +141,7 @@ class WishlistAdminAccountService
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
+            'username' => $payload['username'],
             'roleDesignation' => 'ROLE_ADMIN',
             'idNumber' => $payload['idNumber'],
             'department' => 'Administration',
@@ -159,6 +163,7 @@ class WishlistAdminAccountService
             'lastName' => ParameterType::STRING,
             'firstName' => ParameterType::STRING,
             'emailAddress' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
             'idNumber' => ParameterType::STRING,
             'department' => ParameterType::STRING,

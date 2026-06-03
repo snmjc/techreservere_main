@@ -4,6 +4,7 @@ namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -51,6 +52,7 @@ class UserClerkRegistrationService
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'emailAddress' => $emailAddress,
+            'username' => AccountUsername::fromEmail($emailAddress),
             'role' => $this->resolveRole(trim($requestBody['role'] ?? 'ROLE_BORROWER'), $emailAddress),
             'contactNumber' => $contactNumber,
             'department' => trim($requestBody['department'] ?? ''),
@@ -71,6 +73,7 @@ class UserClerkRegistrationService
                 'firstName' => $account->getFirstName(),
                 'lastName' => $account->getLastName(),
                 'emailAddress' => $account->getEmailAddress(),
+                'username' => $account->getUsername(),
                 'roleDesignation' => 'ROLE_ADMIN',
                 'status' => 'approved',
                 'isApproved' => true,
@@ -87,6 +90,7 @@ class UserClerkRegistrationService
             'firstName' => $account->getFirstName(),
             'lastName' => $account->getLastName(),
             'emailAddress' => $account->getEmailAddress(),
+            'username' => $account->getUsername(),
             'roleDesignation' => $account->getRoleDesignation(),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
@@ -138,6 +142,7 @@ class UserClerkRegistrationService
             'UPDATE accounts
              SET last_name = :lastName,
                  first_name = :firstName,
+                 username = :username,
                  role_designation = :roleDesignation,
                  id_number = :idNumber,
                  department = :department,
@@ -151,6 +156,7 @@ class UserClerkRegistrationService
             [
                 'lastName' => $registration['lastName'],
                 'firstName' => $registration['firstName'],
+                'username' => $registration['username'],
                 'roleDesignation' => $nextState['role'],
                 'idNumber' => $registration['idNumber'] ?: null,
                 'department' => $registration['department'] ?: null,
@@ -165,6 +171,7 @@ class UserClerkRegistrationService
             [
                 'lastName' => ParameterType::STRING,
                 'firstName' => ParameterType::STRING,
+                'username' => ParameterType::STRING,
                 'roleDesignation' => ParameterType::STRING,
                 'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
                 'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
@@ -188,6 +195,7 @@ class UserClerkRegistrationService
             'firstName' => $registration['firstName'],
             'lastName' => $registration['lastName'],
             'emailAddress' => $registration['emailAddress'],
+            'username' => $registration['username'],
             'roleDesignation' => $nextState['role'],
             'status' => $nextState['status'],
             'isApproved' => $nextState['isApproved'],
@@ -224,17 +232,18 @@ class UserClerkRegistrationService
             $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
                 'INSERT INTO accounts
-                    (last_name, first_name, email_address, role_designation, id_number, department,
+                    (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, status, is_approved, is_active,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
-                    (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
+                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 [
                     'lastName' => $registration['lastName'],
                     'firstName' => $registration['firstName'],
                     'emailAddress' => $registration['emailAddress'],
+                    'username' => $registration['username'],
                     'roleDesignation' => $registration['role'],
                     'idNumber' => $registration['idNumber'] ?: null,
                     'department' => $registration['department'] ?: null,
@@ -251,6 +260,7 @@ class UserClerkRegistrationService
                     'lastName' => ParameterType::STRING,
                     'firstName' => ParameterType::STRING,
                     'emailAddress' => ParameterType::STRING,
+                    'username' => ParameterType::STRING,
                     'roleDesignation' => ParameterType::STRING,
                     'idNumber' => $registration['idNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
                     'department' => $registration['department'] === '' ? ParameterType::NULL : ParameterType::STRING,
@@ -271,6 +281,7 @@ class UserClerkRegistrationService
                 'firstName' => $registration['firstName'],
                 'lastName' => $registration['lastName'],
                 'emailAddress' => $registration['emailAddress'],
+                'username' => $registration['username'],
                 'roleDesignation' => $registration['role'],
                 'status' => $registration['status'],
                 'isApproved' => $registration['isApproved'],

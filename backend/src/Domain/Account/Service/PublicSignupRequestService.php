@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -45,6 +46,7 @@ class PublicSignupRequestService
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
+            'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
             'idNumber' => trim($requestBody['idNumber'] ?? ''),
             'role' => trim($requestBody['role'] ?? 'Student'),
             'department' => trim($requestBody['department'] ?? ($requestBody['role'] ?? 'Student')),
@@ -146,6 +148,7 @@ class PublicSignupRequestService
             'UPDATE accounts
              SET last_name = :lastName,
                  first_name = :firstName,
+                 username = :username,
                  department = :department,
                  clerk_user_id = :clerkUserId,
                  password_hash = :passwordHash,
@@ -186,12 +189,12 @@ class PublicSignupRequestService
         try {
             $this->connection->executeStatement(
                 'INSERT INTO accounts
-                    (last_name, first_name, email_address, role_designation, id_number, department,
+                    (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
                      signup_supporting_document_name, signup_supporting_document_mime_type, signup_supporting_document_data,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                 VALUES
-                    (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
+                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :supportingDocumentName, :supportingDocumentMimeType, :supportingDocumentData,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
@@ -205,6 +208,7 @@ class PublicSignupRequestService
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
+                'username' => $payload['username'],
                 'clerkUserId' => null,
                 'roleDesignation' => 'ROLE_BORROWER',
                 'roleLabel' => 'User: ' . $roleLabel,
@@ -237,6 +241,7 @@ class PublicSignupRequestService
         return [
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
+            'username' => $payload['username'],
             'department' => strtolower($payload['role']) === 'faculty' ? 'Faculty' : 'Student',
             'clerkUserId' => null,
             'passwordHash' => password_hash($payload['passwordText'], PASSWORD_BCRYPT),
@@ -257,6 +262,7 @@ class PublicSignupRequestService
         return [
             'lastName' => ParameterType::STRING,
             'firstName' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
             'department' => ParameterType::STRING,
             'clerkUserId' => ParameterType::NULL,
             'passwordHash' => ParameterType::STRING,
@@ -278,6 +284,7 @@ class PublicSignupRequestService
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
+            'username' => $payload['username'],
             'roleDesignation' => 'ROLE_BORROWER',
             'idNumber' => $payload['idNumber'],
             'department' => $roleLabel,
@@ -302,6 +309,7 @@ class PublicSignupRequestService
             'lastName' => ParameterType::STRING,
             'firstName' => ParameterType::STRING,
             'emailAddress' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
             'idNumber' => ParameterType::STRING,
             'department' => ParameterType::STRING,

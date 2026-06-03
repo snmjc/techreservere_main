@@ -30,6 +30,7 @@ class AuthenticationMiddleware
         '/api/v1/auth/password-reset/request',
         '/api/v1/auth/password-reset/confirm',
         '/api/v1/clerk/webhook',
+        '/api/clerk/webhook',
         '/api/v1/users/register',
         '/api/v1/users/me',
         '/api/v1/venues',

@@ -14,8 +14,12 @@ export function normalizeAccount(account) {
     lastName,
     fullName: `${firstName} ${lastName}`.trim(),
     emailAddress: account.emailAddress || account.email_address || '',
+    username: account.username || '',
     contactNumber: account.contactNumber || account.contact_number || '',
     profilePhotoData: account.profilePhotoData || account.profile_photo_data || '',
+    supportingDocumentName: account.supportingDocumentName || account.signup_supporting_document_name || null,
+    supportingDocumentMimeType: account.supportingDocumentMimeType || account.signup_supporting_document_mime_type || null,
+    supportingDocumentData: account.supportingDocumentData || account.signup_supporting_document_data || null,
     roleDesignation,
     roleLabel: account.roleLabel || resolveRoleLabel(account, roleDesignation, accountType),
     accountType,
@@ -71,28 +75,46 @@ export function compareManageAccounts(first, second, sortMode) {
   return firstTime - secondTime;
 }
 
-export function formatReservationDetails(reservationDetails) {
-  if (!reservationDetails) return 'No linked reservation.';
-
-  const parts = [
-    reservationDetails.reservationCode || `Reservation #${reservationDetails.reservationIdentifier}`,
-    reservationDetails.organizationName,
-    reservationDetails.activityType,
-    reservationDetails.eventDateTime ? formatNullableDateTime(reservationDetails.eventDateTime) : '',
-    reservationDetails.status,
-  ].filter(Boolean);
-
-  return parts.join(' | ');
+export function getReservationLabel(reservationDetails) {
+  if (!reservationDetails) return 'No linked reservation';
+  return reservationDetails.reservationCode || `Reservation #${reservationDetails.reservationIdentifier || 'N/A'}`;
 }
 
-export function formatAssignments(assignments) {
+export function isPdfProof(account) {
+  const mimeType = String(account?.supportingDocumentMimeType || '').toLowerCase();
+  const fileName = String(account?.supportingDocumentName || '').toLowerCase();
+  return mimeType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
+export function formatEquipmentList(equipmentList) {
+  if (!Array.isArray(equipmentList) || equipmentList.length === 0) return 'N/A';
+
+  return equipmentList
+    .map((equipment) => {
+      if (typeof equipment === 'string') return equipment;
+      return equipment?.name || equipment?.itemName || equipment?.equipmentName || String(equipment);
+    })
+    .filter(Boolean)
+    .join(', ') || 'N/A';
+}
+
+export function formatAssignedEmployee(assignments) {
   if (!assignments) return 'N/A';
 
-  return [
-    assignments.assignedTask,
-    assignments.assignmentType,
-    assignments.assignedToAccountId ? `Account #${assignments.assignedToAccountId}` : '',
-  ].filter(Boolean).join(' | ') || 'N/A';
+  const employeeName = assignments.assignedStaffName || '';
+  const employeeId = assignments.assignedStaffIdNumber ? `ID ${assignments.assignedStaffIdNumber}` : '';
+  const employeeRole = assignments.assignedStaffRole || '';
+  const fallbackAccount = assignments.assignedToAccountId ? `Account #${assignments.assignedToAccountId}` : '';
+
+  return [employeeName || fallbackAccount, employeeId, employeeRole].filter(Boolean).join(' | ') || 'N/A';
+}
+
+export function getWorkLogStatusClass(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized.includes('complete') || normalized.includes('done')) return 'manage-accounts-work-log-status--complete';
+  if (normalized.includes('progress') || normalized.includes('active')) return 'manage-accounts-work-log-status--active';
+  if (normalized.includes('cancel') || normalized.includes('reject')) return 'manage-accounts-work-log-status--danger';
+  return 'manage-accounts-work-log-status--pending';
 }
 
 export function sanitizeAccountNameInput(value) {
