@@ -67,34 +67,18 @@ class UserClerkRegistrationService
     {
         if ($registration['isAdminEmail']) {
             $this->promoteExistingAccountToAdmin($account);
-            return $this->success('Existing account promoted to admin.', [
-                'accountIdentifier' => $account->getAccountIdentifier(),
-                'clerkUserId' => $account->getClerkUserId(),
-                'firstName' => $account->getFirstName(),
-                'lastName' => $account->getLastName(),
-                'emailAddress' => $account->getEmailAddress(),
-                'username' => $account->getUsername(),
+            return $this->success('Existing account promoted to admin.', $this->buildExistingAccountPayload($account, [
                 'roleDesignation' => 'ROLE_ADMIN',
                 'status' => 'approved',
                 'isApproved' => true,
-            ]);
+            ]));
         }
 
         if (!$this->canUseExistingClerkAccount($account, $registration)) {
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
         }
 
-        return $this->success('Account already registered.', [
-            'accountIdentifier' => $account->getAccountIdentifier(),
-            'clerkUserId' => $account->getClerkUserId(),
-            'firstName' => $account->getFirstName(),
-            'lastName' => $account->getLastName(),
-            'emailAddress' => $account->getEmailAddress(),
-            'username' => $account->getUsername(),
-            'roleDesignation' => $account->getRoleDesignation(),
-            'status' => $account->getStatus(),
-            'isApproved' => $account->getIsApproved(),
-        ]);
+        return $this->success('Account already registered.', $this->buildExistingAccountPayload($account));
     }
 
     private function canUseExistingClerkAccount(AccountEntity $account, array $registration): bool
@@ -138,6 +122,38 @@ class UserClerkRegistrationService
         $nextState = $this->resolveExistingEmailAccountState($account, $registration);
         $now = (new \DateTime())->format('Y-m-d H:i:s');
 
+        $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
+
+        if ($nextState['hasOpenInvitation']) {
+            $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
+        }
+
+        return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
+            'accountIdentifier' => $account->getAccountIdentifier(),
+        ]));
+    }
+
+    private function resolveExistingEmailAccountState(AccountEntity $account, array $registration): array
+    {
+        $existingStatus = strtolower($account->getStatus());
+        $existingRole = strtoupper(trim($account->getRoleDesignation()));
+        $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
+        $hasOpenInvitation = $this->isOpenInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
+        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
+        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
+
+        return [
+            'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
+            'isApproved' => $nextIsApproved,
+            'isActive' => $nextIsActive,
+            'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
+            'hasOpenInvitation' => $hasOpenInvitation,
+        ];
+    }
+
+    private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
+    {
         $this->connection->executeStatement(
             'UPDATE accounts
              SET last_name = :lastName,
@@ -165,7 +181,7 @@ class UserClerkRegistrationService
                 'status' => $nextState['status'],
                 'isApproved' => $nextState['isApproved'],
                 'isActive' => $nextState['isActive'],
-                'updatedTimestamp' => $now,
+                'updatedTimestamp' => $updatedAt,
                 'accountIdentifier' => $account->getAccountIdentifier(),
             ],
             [
@@ -184,42 +200,6 @@ class UserClerkRegistrationService
                 'accountIdentifier' => ParameterType::INTEGER,
             ]
         );
-
-        if ($nextState['hasOpenInvitation']) {
-            $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
-        }
-
-        return $this->success('Account linked to Clerk successfully.', [
-            'accountIdentifier' => $account->getAccountIdentifier(),
-            'clerkUserId' => $registration['clerkUserId'],
-            'firstName' => $registration['firstName'],
-            'lastName' => $registration['lastName'],
-            'emailAddress' => $registration['emailAddress'],
-            'username' => $registration['username'],
-            'roleDesignation' => $nextState['role'],
-            'status' => $nextState['status'],
-            'isApproved' => $nextState['isApproved'],
-            'isActive' => $nextState['isActive'],
-        ]);
-    }
-
-    private function resolveExistingEmailAccountState(AccountEntity $account, array $registration): array
-    {
-        $existingStatus = strtolower($account->getStatus());
-        $existingRole = strtoupper(trim($account->getRoleDesignation()));
-        $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
-        $hasOpenInvitation = $this->isOpenInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
-        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
-
-        return [
-            'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
-            'isApproved' => $nextIsApproved,
-            'isActive' => $nextIsActive,
-            'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'hasOpenInvitation' => $hasOpenInvitation,
-        ];
     }
 
     private function createNewAccount(array $registration): array
@@ -275,17 +255,13 @@ class UserClerkRegistrationService
                 ]
             );
 
-            return $this->success('Account registered successfully.', [
-                'accountIdentifier' => (int)$this->connection->lastInsertId(),
-                'clerkUserId' => $registration['clerkUserId'],
-                'firstName' => $registration['firstName'],
-                'lastName' => $registration['lastName'],
-                'emailAddress' => $registration['emailAddress'],
-                'username' => $registration['username'],
-                'roleDesignation' => $registration['role'],
+            return $this->success('Account registered successfully.', $this->buildRegistrationAccountPayload($registration, [
+                'role' => $registration['role'],
                 'status' => $registration['status'],
                 'isApproved' => $registration['isApproved'],
-            ], 201);
+            ], [
+                'accountIdentifier' => (int)$this->connection->lastInsertId(),
+            ]), 201);
         } catch (\Throwable $exception) {
             return $this->error('RegistrationFailed', 'Failed to register account: ' . $exception->getMessage(), 500);
         }
@@ -368,6 +344,36 @@ class UserClerkRegistrationService
                 'acceptedAt' => ParameterType::STRING,
             ]
         );
+    }
+
+    private function buildExistingAccountPayload(AccountEntity $account, array $overrides = []): array
+    {
+        return array_merge([
+            'accountIdentifier' => $account->getAccountIdentifier(),
+            'clerkUserId' => $account->getClerkUserId(),
+            'firstName' => $account->getFirstName(),
+            'lastName' => $account->getLastName(),
+            'emailAddress' => $account->getEmailAddress(),
+            'username' => $account->getUsername(),
+            'roleDesignation' => $account->getRoleDesignation(),
+            'status' => $account->getStatus(),
+            'isApproved' => $account->getIsApproved(),
+        ], $overrides);
+    }
+
+    private function buildRegistrationAccountPayload(array $registration, array $state, array $overrides = []): array
+    {
+        return array_merge([
+            'clerkUserId' => $registration['clerkUserId'],
+            'firstName' => $registration['firstName'],
+            'lastName' => $registration['lastName'],
+            'emailAddress' => $registration['emailAddress'],
+            'username' => $registration['username'],
+            'roleDesignation' => $state['role'],
+            'status' => $state['status'],
+            'isApproved' => $state['isApproved'],
+            'isActive' => $state['isActive'] ?? true,
+        ], $overrides);
     }
 
     private function success(string $message, array $account, int $status = 200): array

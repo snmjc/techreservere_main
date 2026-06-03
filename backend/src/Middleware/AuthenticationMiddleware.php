@@ -71,7 +71,6 @@ class AuthenticationMiddleware
     public function onKernelRequest(RequestEvent $requestEvent): void
     {
         $request = $requestEvent->getRequest();
-        $currentPath = $request->getPathInfo();
         $httpMethod = $request->getMethod();
 
         // Always allow CORS preflight requests through (handled by CorsMiddleware).
@@ -79,50 +78,67 @@ class AuthenticationMiddleware
             return;
         }
 
-        // Normalize path so public route matching works across front-controller setups
-        // (e.g. when requests come through "/index.php/...") and with trailing slashes.
-        $normalizedPath = $currentPath;
-        if (str_starts_with($normalizedPath, '/index.php')) {
-            $normalizedPath = substr($normalizedPath, strlen('/index.php')) ?: '/';
-        }
-        if ($normalizedPath !== '/') {
-            $normalizedPath = rtrim($normalizedPath, '/');
-        }
+        $normalizedPath = $this->normalizeRequestPath($request->getPathInfo());
 
         if ($this->isPublicRoute($normalizedPath, $httpMethod)) {
             return;
         }
 
         $authorizationHeader = $request->headers->get('Authorization', '');
-
         if (empty($authorizationHeader) || !str_starts_with($authorizationHeader, 'Bearer ')) {
-            error_log(sprintf(
-                'AuthenticationRequired: Missing/invalid Authorization header for %s %s (Origin: %s)',
+            $requestEvent->setResponse($this->authenticationRequiredResponse(
                 $httpMethod,
                 $normalizedPath,
                 $request->headers->get('Origin', 'n/a')
             ));
-            $requestEvent->setResponse(new JsonResponse([
-                'errorCode' => 'AuthenticationRequired',
-                'errorMessage' => 'Missing or invalid Authorization header.',
-                'path' => $normalizedPath,
-                'method' => $httpMethod,
-            ], 401, ['Access-Control-Allow-Origin' => '*']));
             return;
         }
 
-        $bearerToken = substr($authorizationHeader, 7);
+        $authenticationError = $this->authenticateBearerToken(substr($authorizationHeader, 7), $request);
+        if ($authenticationError !== null) {
+            $requestEvent->setResponse($authenticationError);
+        }
+    }
 
+    private function normalizeRequestPath(string $path): string
+    {
+        if (str_starts_with($path, '/index.php')) {
+            $path = substr($path, strlen('/index.php')) ?: '/';
+        }
+
+        return $path === '/' ? $path : rtrim($path, '/');
+    }
+
+    private function authenticationRequiredResponse(string $httpMethod, string $path, string $origin): JsonResponse
+    {
+        error_log(sprintf(
+            'AuthenticationRequired: Missing/invalid Authorization header for %s %s (Origin: %s)',
+            $httpMethod,
+            $path,
+            $origin
+        ));
+
+        return new JsonResponse([
+            'errorCode' => 'AuthenticationRequired',
+            'errorMessage' => 'Missing or invalid Authorization header.',
+            'path' => $path,
+            'method' => $httpMethod,
+        ], 401, ['Access-Control-Allow-Origin' => '*']);
+    }
+
+    private function authenticateBearerToken(string $bearerToken, \Symfony\Component\HttpFoundation\Request $request): ?JsonResponse
+    {
         try {
             $normalizedIdentity = $this->clerkTokenVerifier->verifyTokenAndGetIdentity($bearerToken);
             $request->attributes->set('authenticatedIdentity', $normalizedIdentity);
             error_log('Authentication successful for account: ' . ($normalizedIdentity['accountIdentifier'] ?? 'unknown'));
+            return null;
         } catch (ClerkVerificationFailedException $exception) {
             error_log('Token verification failed: ' . $exception->getMessage());
-            $requestEvent->setResponse(new JsonResponse([
+            return new JsonResponse([
                 'errorCode' => 'AuthenticationFailed',
                 'errorMessage' => 'Token verification failed.',
-            ], 401, ['Access-Control-Allow-Origin' => '*']));
+            ], 401, ['Access-Control-Allow-Origin' => '*']);
         }
     }
 

@@ -82,31 +82,7 @@ class WishlistAccountApprovalService
 
         $now = new \DateTimeImmutable();
         $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
-        $this->connection->executeStatement(
-            'UPDATE accounts
-             SET status = :status,
-                 is_approved = :isApproved,
-                 is_active = :isActive,
-                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
-                 updated_timestamp = :updatedTimestamp
-             WHERE account_identifier = :accountIdentifier',
-            [
-                'status' => 'approved',
-                'isApproved' => true,
-                'isActive' => true,
-                'clerkUserId' => $clerkUserId,
-                'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
-                'accountIdentifier' => $accountIdentifier,
-            ],
-            [
-                'status' => ParameterType::STRING,
-                'isApproved' => ParameterType::BOOLEAN,
-                'isActive' => ParameterType::BOOLEAN,
-                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
-                'updatedTimestamp' => ParameterType::STRING,
-                'accountIdentifier' => ParameterType::INTEGER,
-            ]
-        );
+        $this->approveAccountRow($accountIdentifier, $now, $clerkUserId);
 
         return $this->success([
             'message' => 'Email verified and account approved.',
@@ -237,15 +213,11 @@ class WishlistAccountApprovalService
 
     private function sendAndRecordInvitation(array $account, int $accountIdentifier, string $invitedBy): array
     {
-        $now = new \DateTimeImmutable();
-        $expiresAt = $now->modify('+7 days');
-        $invitationToken = bin2hex(random_bytes(24));
-        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
-        $redirectUrl = $frontendUrl . '/clerk-login';
+        $invitationDraft = $this->buildInvitationDraft();
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
 
         try {
-            $clerkInvitation = $this->accountClerkProvisioningService->sendInvitation($account, $redirectUrl, !$useBrandedMailer);
+            $clerkInvitation = $this->accountClerkProvisioningService->sendInvitation($account, $invitationDraft['redirectUrl'], !$useBrandedMailer);
         } catch (\Throwable $exception) {
             return $this->error(
                 'ClerkInvitationFailed',
@@ -261,37 +233,12 @@ class WishlistAccountApprovalService
         }
 
         $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
-        $databaseError = $this->recordInvitation($account, $accountIdentifier, $invitedBy, $invitationToken, $now, $expiresAt, $clerkUserId);
+        $databaseError = $this->recordInvitation($account, $accountIdentifier, $invitedBy, $invitationDraft, $clerkUserId);
         if ($databaseError !== null) {
             return $databaseError;
         }
 
-        return $this->success([
-            'message' => 'Invitation sent successfully.',
-            'account' => [
-                'accountIdentifier' => (int)$account['account_identifier'],
-                'emailAddress' => (string)$account['email_address'],
-                'roleDesignation' => (string)$account['role_designation'],
-                'status' => 'approved',
-                'isApproved' => true,
-                'isActive' => true,
-            ],
-            'invitation' => [
-                'emailAddress' => (string)$account['email_address'],
-                'role' => (string)$account['role_designation'],
-                'status' => 'pending',
-                'token' => $invitationToken,
-                'clerkInvitationId' => $clerkInvitation['id'] ?? null,
-                'sentAt' => $now->format('Y-m-d\TH:i:sP'),
-                'expiresAt' => $expiresAt->format('Y-m-d\TH:i:sP'),
-                'acceptedAt' => null,
-                'redirectUrl' => $redirectUrl,
-                'invitationUrl' => $clerkInvitationUrl,
-                'sentBy' => $invitedBy,
-                'emailSent' => true,
-                'movesToManageAccounts' => true,
-            ],
-        ]);
+        return $this->success($this->buildInvitationSuccessPayload($account, $invitedBy, $invitationDraft, $clerkInvitation, $clerkInvitationUrl));
     }
 
     private function sendBrandedEmailIfNeeded(bool $useBrandedMailer, array $account, string $clerkInvitationUrl): ?array
@@ -324,39 +271,13 @@ class WishlistAccountApprovalService
         array $account,
         int $accountIdentifier,
         string $invitedBy,
-        string $invitationToken,
-        \DateTimeImmutable $now,
-        \DateTimeImmutable $expiresAt,
+        array $invitationDraft,
         ?string $clerkUserId
     ): ?array {
         $this->connection->beginTransaction();
 
         try {
-            $this->connection->executeStatement(
-                'UPDATE accounts
-                 SET status = :status,
-                     is_approved = :isApproved,
-                     is_active = :isActive,
-                     clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
-                     updated_timestamp = :updatedTimestamp
-                 WHERE account_identifier = :accountIdentifier',
-                [
-                    'status' => 'approved',
-                    'isApproved' => true,
-                    'isActive' => true,
-                    'clerkUserId' => $clerkUserId,
-                    'updatedTimestamp' => $now->format('Y-m-d H:i:s'),
-                    'accountIdentifier' => $accountIdentifier,
-                ],
-                [
-                    'status' => ParameterType::STRING,
-                    'isApproved' => ParameterType::BOOLEAN,
-                    'isActive' => ParameterType::BOOLEAN,
-                    'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
-                    'updatedTimestamp' => ParameterType::STRING,
-                    'accountIdentifier' => ParameterType::INTEGER,
-                ]
-            );
+            $this->approveAccountRow($accountIdentifier, $invitationDraft['createdAt'], $clerkUserId);
 
             $this->connection->executeStatement(
                 'INSERT INTO invitations
@@ -367,10 +288,10 @@ class WishlistAccountApprovalService
                     'email' => (string)$account['email_address'],
                     'invitedBy' => $invitedBy,
                     'organization' => 'TechReserve',
-                    'invitationToken' => $invitationToken,
+                    'invitationToken' => $invitationDraft['token'],
                     'status' => 'pending',
-                    'expiresAt' => $expiresAt->format('Y-m-d H:i:sP'),
-                    'createdAt' => $now->format('Y-m-d H:i:sP'),
+                    'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d H:i:sP'),
+                    'createdAt' => $invitationDraft['createdAt']->format('Y-m-d H:i:sP'),
                     'acceptedAt' => null,
                 ],
                 [
@@ -395,6 +316,88 @@ class WishlistAccountApprovalService
                 500
             );
         }
+    }
+
+    private function approveAccountRow(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE accounts
+             SET status = :status,
+                 is_approved = :isApproved,
+                 is_active = :isActive,
+                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
+                 updated_timestamp = :updatedTimestamp
+             WHERE account_identifier = :accountIdentifier',
+            [
+                'status' => 'approved',
+                'isApproved' => true,
+                'isActive' => true,
+                'clerkUserId' => $clerkUserId,
+                'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
+                'accountIdentifier' => $accountIdentifier,
+            ],
+            [
+                'status' => ParameterType::STRING,
+                'isApproved' => ParameterType::BOOLEAN,
+                'isActive' => ParameterType::BOOLEAN,
+                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+                'accountIdentifier' => ParameterType::INTEGER,
+            ]
+        );
+    }
+
+    private function buildInvitationDraft(): array
+    {
+        $createdAt = new \DateTimeImmutable();
+        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
+
+        return [
+            'createdAt' => $createdAt,
+            'expiresAt' => $createdAt->modify('+7 days'),
+            'token' => bin2hex(random_bytes(24)),
+            'redirectUrl' => $frontendUrl . '/clerk-login',
+        ];
+    }
+
+    private function buildInvitationSuccessPayload(
+        array $account,
+        string $invitedBy,
+        array $invitationDraft,
+        array $clerkInvitation,
+        string $clerkInvitationUrl
+    ): array {
+        return [
+            'message' => 'Invitation sent successfully.',
+            'account' => $this->buildApprovedAccountPayload($account),
+            'invitation' => [
+                'emailAddress' => (string)$account['email_address'],
+                'role' => (string)$account['role_designation'],
+                'status' => 'pending',
+                'token' => $invitationDraft['token'],
+                'clerkInvitationId' => $clerkInvitation['id'] ?? null,
+                'sentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
+                'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d\TH:i:sP'),
+                'acceptedAt' => null,
+                'redirectUrl' => $invitationDraft['redirectUrl'],
+                'invitationUrl' => $clerkInvitationUrl,
+                'sentBy' => $invitedBy,
+                'emailSent' => true,
+                'movesToManageAccounts' => true,
+            ],
+        ];
+    }
+
+    private function buildApprovedAccountPayload(array $account): array
+    {
+        return [
+            'accountIdentifier' => (int)$account['account_identifier'],
+            'emailAddress' => (string)$account['email_address'],
+            'roleDesignation' => (string)$account['role_designation'],
+            'status' => 'approved',
+            'isApproved' => true,
+            'isActive' => true,
+        ];
     }
 
     private function findExistingClerkUserId(string $emailAddress): ?string

@@ -856,7 +856,9 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import {
+  buildAdminAccountPayload,
   buildEmployeeAccountPayload,
+  buildUserAccountPayload,
   filterWishlistAccounts,
   formatCreateAccountError,
   formatDisplayDateTime,
@@ -868,12 +870,13 @@ import {
   getStatusClass,
   getStatusLabel,
   getUniqueRequestAccounts,
+  getAdminCreateError,
   getEmployeeCreateError,
+  getUserCreateError,
   normalizeEmailForConfirmation,
   normalizeWishlistAccount,
   sanitizeNameInput,
   sanitizePhoneInput,
-  validateAdminAccountForm as validateAdminFormValues,
   validateEmployeeAccountForm as validateEmployeeFormValues,
 } from './wishlist/adminWishlistHelpers.js';
 
@@ -1140,37 +1143,11 @@ async function createAdminAccount() {
 
   addAdminError.value = '';
 
-  const validationError = validateAdminFormValues(addAdminForm);
-  if (validationError) {
-    addAdminError.value = validationError;
-    return;
-  }
-
-  const emailExists = normalizedAccounts.value.some(
-    (account) => normalizeEmailForConfirmation(account.emailAddress) === normalizeEmailForConfirmation(addAdminForm.emailAddress)
-  );
-  if (emailExists) {
-    addAdminError.value = 'An account with this email already exists in Requests Hub.';
-    return;
-  }
-
-  const idNumberExists = normalizedAccounts.value.some(
-    (account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === addAdminForm.idNumber.trim().toLowerCase()
-  );
-  if (idNumberExists) {
-    addAdminError.value = 'An account with this ID number already exists in Requests Hub.';
-    return;
-  }
-
-  const accountPayload = {
-    lastName: addAdminForm.lastName,
-    firstName: addAdminForm.firstName,
-    emailAddress: addAdminForm.emailAddress,
-    idNumber: addAdminForm.idNumber,
-  };
+  const validationError = getAdminCreateError(addAdminForm, normalizedAccounts.value);
+  if (validationError) return setAdminCreateError(validationError);
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.createAdminAccount(accountPayload, authStore.authToken);
+  const result = await adminWishlistApi.createAdminAccount(buildAdminAccountPayload(addAdminForm), authStore.authToken);
   isProcessing.value = false;
 
   if (!result.success) {
@@ -1183,6 +1160,10 @@ async function createAdminAccount() {
   resetAddAdminForm();
   await loadWishlistAccounts();
   showToast('Account created!');
+}
+
+function setAdminCreateError(message) {
+  addAdminError.value = message;
 }
 
 function resetAddAdminForm() {
@@ -1200,30 +1181,11 @@ function sanitizeAdminNameField(fieldName) {
 async function createUserAccount() {
   addUserError.value = '';
 
-  if (addUserForm.password !== addUserForm.confirmPassword) {
-    addUserError.value = 'Password and confirm password must match.';
-    return;
-  }
-
-  const emailExists = normalizedAccounts.value.some(
-    (account) => account.emailAddress.toLowerCase() === addUserForm.emailAddress.toLowerCase()
-  );
-  if (emailExists) {
-    addUserError.value = 'An account with this email already exists in Requests Hub.';
-    return;
-  }
-
-  const accountPayload = {
-    lastName: addUserForm.lastName,
-    firstName: addUserForm.firstName,
-    emailAddress: addUserForm.emailAddress,
-    idNumber: addUserForm.idNumber,
-    role: addUserForm.role,
-    passwordText: addUserForm.password,
-  };
+  const validationError = getUserCreateError(addUserForm, normalizedAccounts.value);
+  if (validationError) return setUserCreateError(validationError);
 
   isProcessing.value = true;
-  const result = await adminWishlistApi.createUserAccount(accountPayload, authStore.authToken);
+  const result = await adminWishlistApi.createUserAccount(buildUserAccountPayload(addUserForm), authStore.authToken);
   isProcessing.value = false;
 
   if (!result.success) {
@@ -1236,6 +1198,10 @@ async function createUserAccount() {
   await loadWishlistAccounts();
   showToast('Account created!');
   resetAddUserForm();
+}
+
+function setUserCreateError(message) {
+  addUserError.value = message;
 }
 
 function resetAddUserForm() {
