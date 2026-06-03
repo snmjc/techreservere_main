@@ -19,43 +19,16 @@ class AuthenticationMiddleware
     // 3. Verify token via Infrastructure/Auth
     // 4. Attach normalized identity to request attributes
 
-    private const PUBLIC_ROUTES = [
-        '/',
-        '/favicon.ico',
-        '/health',
-        '/health/db',
-        '/api/v1/auth/login',
-        '/api/v1/auth/register',
-        '/api/v1/auth/clerk-login-preflight',
-        '/api/v1/auth/password-reset/request',
-        '/api/v1/auth/password-reset/confirm',
-        '/api/v1/clerk/webhook',
-        '/api/clerk/webhook',
-        '/api/v1/users/register',
-        '/api/v1/users/me',
-        '/api/v1/venues',
-        '/api/v1/equipment',
-    ];
-
-    /**
-     * Public routes limited to specific HTTP methods.
-     * Keep this small to avoid accidentally exposing protected reads/actions.
-     */
-    private const PUBLIC_ROUTE_METHODS = [
-        '/api/v1/pending-users' => ['POST'],
-        '/api/v1/users/register' => ['POST'],
-        '/api/v1/users/signup-requests' => ['POST'],
-    ];
-
-    private const PUBLIC_ROUTE_PREFIXES = [
-        '/api/v1/users/register',
-    ];
-
     private ClerkTokenVerifier $clerkTokenVerifier;
+    private AuthenticationPublicRouteMatcher $publicRouteMatcher;
 
-    public function __construct(ClerkTokenVerifier $clerkTokenVerifier)
+    public function __construct(
+        ClerkTokenVerifier $clerkTokenVerifier,
+        ?AuthenticationPublicRouteMatcher $publicRouteMatcher = null
+    )
     {
         $this->clerkTokenVerifier = $clerkTokenVerifier;
+        $this->publicRouteMatcher = $publicRouteMatcher ?? new AuthenticationPublicRouteMatcher();
     }
 
     // ===== AI GENERATED: onKernelRequest =====
@@ -78,9 +51,9 @@ class AuthenticationMiddleware
             return;
         }
 
-        $normalizedPath = $this->normalizeRequestPath($request->getPathInfo());
+        $normalizedPath = $this->publicRouteMatcher->normalizePath($request->getPathInfo());
 
-        if ($this->isPublicRoute($normalizedPath, $httpMethod)) {
+        if ($this->publicRouteMatcher->isPublicRoute($normalizedPath, $httpMethod)) {
             return;
         }
 
@@ -98,15 +71,6 @@ class AuthenticationMiddleware
         if ($authenticationError !== null) {
             $requestEvent->setResponse($authenticationError);
         }
-    }
-
-    private function normalizeRequestPath(string $path): string
-    {
-        if (str_starts_with($path, '/index.php')) {
-            $path = substr($path, strlen('/index.php')) ?: '/';
-        }
-
-        return $path === '/' ? $path : rtrim($path, '/');
     }
 
     private function authenticationRequiredResponse(string $httpMethod, string $path, string $origin): JsonResponse
@@ -140,59 +104,5 @@ class AuthenticationMiddleware
                 'errorMessage' => 'Token verification failed.',
             ], 401, ['Access-Control-Allow-Origin' => '*']);
         }
-    }
-
-    private function isPublicRoute(string $currentPath, string $httpMethod): bool
-    {
-        $currentPath = $this->normalizeRequestPath($currentPath);
-
-        return $this->matchesPublicExactRoute($currentPath)
-            || $this->matchesPublicMethodRoute($currentPath, $httpMethod)
-            || $this->matchesPublicPrefixRoute($currentPath)
-            || $this->matchesDevPublicRoute($currentPath)
-            || $this->matchesSymfonyDebugRoute($currentPath);
-    }
-
-    private function matchesPublicExactRoute(string $path): bool
-    {
-        return in_array($path, self::PUBLIC_ROUTES, true);
-    }
-
-    private function matchesPublicMethodRoute(string $path, string $httpMethod): bool
-    {
-        foreach (self::PUBLIC_ROUTE_METHODS as $publicRoute => $allowedMethods) {
-            if ($path === $this->normalizeRequestPath($publicRoute) && in_array($httpMethod, $allowedMethods, true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function matchesPublicPrefixRoute(string $path): bool
-    {
-        foreach (self::PUBLIC_ROUTE_PREFIXES as $publicPrefix) {
-            if (str_starts_with($path, $publicPrefix)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function matchesDevPublicRoute(string $path): bool
-    {
-        if (($_ENV['APP_ENV'] ?? 'prod') !== 'dev') {
-            return false;
-        }
-
-        return str_starts_with($path, '/api/v1/users/wishlist')
-            || preg_match('#^/api/v1/users/[^/]+/(approve|reject)$#', $path) === 1
-            || str_starts_with($path, '/api/v1/accounts');
-    }
-
-    private function matchesSymfonyDebugRoute(string $path): bool
-    {
-        return str_starts_with($path, '/_profiler') || str_starts_with($path, '/_wdt');
     }
 }

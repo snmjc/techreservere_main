@@ -33,7 +33,7 @@ class WishlistAccountApprovalService
             return $stateError;
         }
 
-        return $this->sendAndRecordInvitation($account, $accountIdentifier, $adminResult['emailAddress']);
+        return $this->sendAndRecordInvitation($account, $adminResult['emailAddress']);
     }
 
     public function verifyEmailAndApprove(int $accountIdentifier, array $requestBody, int $authenticatedAdminId): array
@@ -212,7 +212,7 @@ class WishlistAccountApprovalService
         );
     }
 
-    private function sendAndRecordInvitation(array $account, int $accountIdentifier, string $invitedBy): array
+    private function sendAndRecordInvitation(array $account, string $invitedBy): array
     {
         $invitationDraft = $this->buildInvitationDraft();
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
@@ -233,13 +233,13 @@ class WishlistAccountApprovalService
             return $mailerError;
         }
 
-        $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
-        $databaseError = $this->recordInvitation($account, $accountIdentifier, $invitedBy, $invitationDraft, $clerkUserId);
+        $invitationContext = $this->buildInvitationContext($account, $invitedBy, $invitationDraft);
+        $databaseError = $this->recordInvitation($invitationContext);
         if ($databaseError !== null) {
             return $databaseError;
         }
 
-        return $this->success($this->buildInvitationSuccessPayload($account, $invitedBy, $invitationDraft, $clerkInvitation, $clerkInvitationUrl));
+        return $this->success($this->buildInvitationSuccessPayload($invitationContext, $clerkInvitation, $clerkInvitationUrl));
     }
 
     private function sendBrandedEmailIfNeeded(bool $useBrandedMailer, array $account, string $clerkInvitationUrl): ?array
@@ -268,24 +268,19 @@ class WishlistAccountApprovalService
         return null;
     }
 
-    private function recordInvitation(
-        array $account,
-        int $accountIdentifier,
-        string $invitedBy,
-        array $invitationDraft,
-        ?string $clerkUserId
-    ): ?array {
+    private function recordInvitation(array $context): ?array
+    {
         $this->connection->beginTransaction();
 
         try {
-            $this->approveAccountRow($accountIdentifier, $invitationDraft['createdAt'], $clerkUserId);
+            $this->approveAccountRow($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
 
             $this->connection->executeStatement(
                 'INSERT INTO invitations
                     (email, invited_by, organization, invitation_token, status, expires_at, created_at, accepted_at)
                  VALUES
                     (:email, :invitedBy, :organization, :invitationToken, :status, :expiresAt, :createdAt, :acceptedAt)',
-                $this->buildInvitationInsertParameters($account, $invitedBy, $invitationDraft),
+                $this->buildInvitationInsertParameters($context),
                 [
                     'email' => ParameterType::STRING,
                     'invitedBy' => ParameterType::STRING,
@@ -310,11 +305,25 @@ class WishlistAccountApprovalService
         }
     }
 
-    private function buildInvitationInsertParameters(array $account, string $invitedBy, array $invitationDraft): array
+    private function buildInvitationContext(array $account, string $invitedBy, array $invitationDraft): array
     {
         return [
-            'email' => (string)$account['email_address'],
+            'account' => $account,
+            'accountIdentifier' => (int)$account['account_identifier'],
             'invitedBy' => $invitedBy,
+            'draft' => $invitationDraft,
+            'clerkUserId' => $this->findExistingClerkUserId((string)$account['email_address']),
+        ];
+    }
+
+    private function buildInvitationInsertParameters(array $context): array
+    {
+        $account = $context['account'];
+        $invitationDraft = $context['draft'];
+
+        return [
+            'email' => (string)$account['email_address'],
+            'invitedBy' => $context['invitedBy'],
             'organization' => 'TechReserve',
             'invitationToken' => $invitationDraft['token'],
             'status' => 'pending',
@@ -367,12 +376,13 @@ class WishlistAccountApprovalService
     }
 
     private function buildInvitationSuccessPayload(
-        array $account,
-        string $invitedBy,
-        array $invitationDraft,
+        array $context,
         array $clerkInvitation,
         string $clerkInvitationUrl
     ): array {
+        $account = $context['account'];
+        $invitationDraft = $context['draft'];
+
         return [
             'message' => 'Invitation sent successfully.',
             'account' => $this->buildApprovedAccountPayload($account),
@@ -387,7 +397,7 @@ class WishlistAccountApprovalService
                 'acceptedAt' => null,
                 'redirectUrl' => $invitationDraft['redirectUrl'],
                 'invitationUrl' => $clerkInvitationUrl,
-                'sentBy' => $invitedBy,
+                'sentBy' => $context['invitedBy'],
                 'emailSent' => true,
                 'movesToManageAccounts' => true,
             ],

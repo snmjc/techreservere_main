@@ -597,9 +597,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
+import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -616,7 +617,6 @@ import {
   getStatusClass,
   getStatusLabel,
   getUniqueRequestAccounts,
-  normalizeEmailForConfirmation,
   normalizeWishlistAccount,
 } from './wishlist/adminWishlistHelpers.js';
 
@@ -630,52 +630,15 @@ const userRoleFilter = ref('all');
 const createAccountModals = ref(null);
 const editListMode = ref(false);
 const isLoading = ref(false);
-const isProcessing = ref(false);
-const selectedAccount = ref(null);
-const approvalAccount = ref(null);
-const approvalMode = ref('send');
-const denialAccount = ref(null);
-const denialConfirmEmail = ref('');
-const denialConfirmPassword = ref('');
-const denialFormError = ref('');
-const deleteAccountRequest = ref(null);
-const deleteConfirmEmail = ref('');
-const deleteConfirmPassword = ref('');
-const deleteFormError = ref('');
 const toastMessage = ref('');
 const loadErrorMessage = ref('');
 const wishlistAccounts = ref([]);
-
-const approvalForm = reactive({
-  emailAddress: '',
-  role: 'ROLE_BORROWER',
-  idNumber: '',
-  lastName: '',
-  firstName: '',
-  confirmEmail: '',
-});
-const approvalFormError = ref('');
 
 const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim();
 });
-const isApprovalConfirmationReady = computed(() => (
-  Boolean(approvalAccount.value)
-  && Boolean(currentAdminEmail.value)
-  && normalizeEmailForConfirmation(approvalForm.confirmEmail) === normalizeEmailForConfirmation(currentAdminEmail.value)
-));
-const isDenialConfirmationReady = computed(() => (
-  Boolean(denialAccount.value)
-  && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
-  && denialConfirmPassword.value.trim() !== ''
-));
-const isDeleteConfirmationReady = computed(() => (
-  Boolean(deleteAccountRequest.value)
-  && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)
-  && deleteConfirmPassword.value.trim() !== ''
-));
 
 const wishlistTabs = computed(() => {
   const accounts = normalizedAccounts.value;
@@ -694,6 +657,49 @@ const filteredWishlistAccounts = computed(() => {
     statusFilter: statusFilter.value,
     userRoleFilter: userRoleFilter.value,
   });
+});
+
+const {
+  isProcessing,
+  selectedAccount,
+  approvalAccount,
+  approvalMode,
+  approvalForm,
+  approvalFormError,
+  denialAccount,
+  denialConfirmEmail,
+  denialConfirmPassword,
+  denialFormError,
+  deleteAccountRequest,
+  deleteConfirmEmail,
+  deleteConfirmPassword,
+  deleteFormError,
+  isApprovalConfirmationReady,
+  isDenialConfirmationReady,
+  isDeleteConfirmationReady,
+  openViewModal,
+  openApprovalModal,
+  closeModals,
+  closeApprovalModal,
+  openDenialModal,
+  closeDenialModal,
+  openDeleteModal,
+  closeDeleteModal,
+  verifyAccount,
+  denyAccount,
+  deleteWishlistAccount,
+  canSendInvite,
+  canResendInvite,
+  canVerifyEmail,
+  getInviteModalTitle,
+  getInviteModalDescription,
+  getInviteSubmitLabel,
+  getProcessingLabel,
+} = useAdminWishlistActions({
+  authStore,
+  currentAdminEmail,
+  loadWishlistAccounts,
+  showToast,
 });
 
 onMounted(() => {
@@ -721,79 +727,6 @@ async function loadWishlistAccounts() {
   isLoading.value = false;
 }
 
-function openViewModal(account) {
-  selectedAccount.value = account;
-}
-
-function openApprovalModal(account = selectedAccount.value, mode = 'send') {
-  if (!account) return;
-  if (mode === 'resend' && !canResendInvite(account)) {
-    showToast('Resend invite is only available after the previous invitation expires.');
-    return;
-  }
-  if (mode === 'verify' && !canVerifyEmail(account)) {
-    showToast('Verify email is only available after the user accepts the invitation.');
-    return;
-  }
-  if (mode === 'send' && !canSendInvite(account)) {
-    showToast('Send invite is only available for accounts that are not invited.');
-    return;
-  }
-  approvalAccount.value = account;
-  approvalMode.value = ['resend', 'verify'].includes(mode) ? mode : 'send';
-  approvalForm.emailAddress = account.emailAddress;
-  approvalForm.role = account.roleDesignation;
-  approvalForm.idNumber = account.rawIdNumber || account.idNumber;
-  approvalForm.lastName = account.lastName;
-  approvalForm.firstName = account.firstName;
-  approvalForm.confirmEmail = '';
-  approvalFormError.value = '';
-}
-
-function closeModals() {
-  selectedAccount.value = null;
-  closeApprovalModal();
-  closeDenialModal();
-  closeDeleteModal();
-}
-
-function closeApprovalModal() {
-  approvalAccount.value = null;
-  approvalMode.value = 'send';
-  approvalForm.confirmEmail = '';
-  approvalFormError.value = '';
-}
-
-function openDenialModal(account) {
-  if (!account) return;
-  denialAccount.value = account;
-  denialConfirmEmail.value = '';
-  denialConfirmPassword.value = '';
-  denialFormError.value = '';
-}
-
-function closeDenialModal() {
-  denialAccount.value = null;
-  denialConfirmEmail.value = '';
-  denialConfirmPassword.value = '';
-  denialFormError.value = '';
-}
-
-function openDeleteModal(account) {
-  if (!account) return;
-  deleteAccountRequest.value = account;
-  deleteConfirmEmail.value = '';
-  deleteConfirmPassword.value = '';
-  deleteFormError.value = '';
-}
-
-function closeDeleteModal() {
-  deleteAccountRequest.value = null;
-  deleteConfirmEmail.value = '';
-  deleteConfirmPassword.value = '';
-  deleteFormError.value = '';
-}
-
 function openAddAccountModal() {
   createAccountModals.value?.openForTab(activeTab.value);
 }
@@ -802,158 +735,6 @@ async function handleAccountCreated(accountType) {
   activeTab.value = accountType;
   await loadWishlistAccounts();
   showToast('Account created!');
-}
-
-async function verifyAccount() {
-  if (isProcessing.value) return;
-  if (!approvalAccount.value) return;
-  if (!currentAdminEmail.value) {
-    approvalFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
-    return;
-  }
-  if (normalizeEmailForConfirmation(approvalForm.confirmEmail) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
-    approvalFormError.value = approvalMode.value === 'verify'
-      ? 'Please type your exact admin email to approve access.'
-      : 'Please type your exact admin email to send the invite.';
-    return;
-  }
-
-  isProcessing.value = true;
-  const action = approvalMode.value === 'verify'
-    ? adminWishlistApi.verifyEmailAndApproveAccount
-    : adminWishlistApi.verifyAccount;
-  const result = await action(
-    approvalAccount.value.accountIdentifier,
-    authStore.authToken,
-    { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
-  );
-  if (result.success) {
-    const successMessage = getInviteSuccessMessage(approvalAccount.value);
-    closeModals();
-    showToast(successMessage);
-    await loadWishlistAccounts();
-  } else {
-    approvalFormError.value = result.error || 'Unable to send invite.';
-    showToast(approvalFormError.value);
-  }
-  isProcessing.value = false;
-}
-
-async function denyAccount() {
-  if (!denialAccount.value) return;
-  if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(denialAccount.value.emailAddress)) {
-    denialFormError.value = 'Please type the exact email address to deny this request.';
-    return;
-  }
-  if (denialConfirmPassword.value.trim() === '') {
-    denialFormError.value = 'Please type your admin password to deny this request.';
-    return;
-  }
-
-  isProcessing.value = true;
-  const result = await adminWishlistApi.denyAccount(
-    denialAccount.value.accountIdentifier,
-    authStore.authToken,
-    {
-      confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value),
-      confirmedAdminPassword: denialConfirmPassword.value,
-    },
-  );
-  if (result.success) {
-    approvalAccount.value = null;
-    selectedAccount.value = null;
-    closeDenialModal();
-    await loadWishlistAccounts();
-    showToast('Account request denied.');
-  } else {
-    denialFormError.value = result.error || 'Unable to deny account.';
-    showToast(denialFormError.value);
-  }
-  isProcessing.value = false;
-}
-
-async function deleteWishlistAccount() {
-  if (!deleteAccountRequest.value) return;
-  if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)) {
-    deleteFormError.value = 'Please type the exact email address to delete this request.';
-    return;
-  }
-  if (deleteConfirmPassword.value.trim() === '') {
-    deleteFormError.value = 'Please type your admin password to delete this request.';
-    return;
-  }
-
-  isProcessing.value = true;
-  const result = await adminWishlistApi.deleteAccountRequest(
-    deleteAccountRequest.value.accountIdentifier,
-    authStore.authToken,
-    {
-      confirmEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
-      confirmedAdminPassword: deleteConfirmPassword.value,
-    },
-  );
-  if (result.success) {
-    approvalAccount.value = null;
-    selectedAccount.value = null;
-    closeDeleteModal();
-    await loadWishlistAccounts();
-    showToast('Account request deleted.');
-  } else {
-    deleteFormError.value = result.error || 'Unable to delete account request.';
-    showToast(deleteFormError.value);
-  }
-  isProcessing.value = false;
-}
-
-function canSendInvite(account) {
-  return String(account?.accountStatus || '').toLowerCase() === 'not_invited' && !isProcessing.value;
-}
-
-function canResendInvite(account) {
-  return String(account?.accountStatus || '').toLowerCase() === 'expired'
-    && Boolean(account?.inviteSentAt)
-    && !isProcessing.value;
-}
-
-function canVerifyEmail(account) {
-  return String(account?.accountStatus || '').toLowerCase() === 'verified'
-    && Boolean(account?.inviteAcceptedAt)
-    && !isProcessing.value;
-}
-
-function getInviteModalTitle(account) {
-  if (approvalMode.value === 'resend') return 'Resend Invite';
-  if (approvalMode.value === 'verify') return 'Verify Email';
-  return account?.accountType === 'Employee' ? 'Approve Employee' : 'Approve Account';
-}
-
-function getInviteModalDescription(account) {
-  if (approvalMode.value === 'resend') {
-    return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
-  }
-  if (approvalMode.value === 'verify') {
-    return 'The invitation was accepted. Confirm the responsible admin before approving system access.';
-  }
-
-  return account?.accountType === 'Employee'
-    ? 'Review the worker information before approving access and sending the Clerk invitation email.'
-    : 'This will approve the account, move it to Manage Accounts as Active, and send the Clerk invitation email.';
-}
-
-function getInviteSubmitLabel(account) {
-  if (approvalMode.value === 'resend') return 'Resend Invite';
-  if (approvalMode.value === 'verify') return 'Approve Access';
-  return 'Approve & Email';
-}
-
-function getInviteSuccessMessage(account) {
-  if (approvalMode.value === 'resend') return 'Invitation Sent!';
-  if (approvalMode.value === 'verify') return 'Email verified and account approved!';
-  return 'Invitation Sent!';
-}
-
-function getProcessingLabel() {
-  return approvalMode.value === 'verify' || approvalMode.value === 'send' ? 'Approving...' : 'Sending...';
 }
 
 function showToast(message) {
