@@ -37,6 +37,7 @@ function matchesWishlistSearchQuery(account, query) {
     account.firstName,
     account.lastName,
     account.emailAddress,
+    account.username,
     account.roleLabel,
   ].some((value) => String(value).toLowerCase().includes(query));
 }

@@ -20,10 +20,50 @@ function resolveClerkPublishableKey() {
   return configuredKey
 }
 
+function decodeClerkDomain(publishableKey) {
+  const encodedDomain = publishableKey.split('_').slice(2).join('_')
+
+  if (!encodedDomain) {
+    return ''
+  }
+
+  try {
+    return atob(encodedDomain).replace(/\$$/, '')
+  } catch (error) {
+    console.error('Unable to decode the Clerk publishable key domain.', error)
+    return ''
+  }
+}
+
 const PUBLISHABLE_KEY = resolveClerkPublishableKey()
 
 if (!PUBLISHABLE_KEY) {
   throw new Error('Add VITE_CLERK_PUBLISHABLE_KEY to the frontend environment before building.')
+}
+
+const LIVE_FRONTEND_HOSTS = new Set([
+  'techreserve.farahkenawy.codes',
+])
+
+const currentFrontendHost = typeof window !== 'undefined' ? window.location.hostname : ''
+const isLiveFrontendHost = LIVE_FRONTEND_HOSTS.has(currentFrontendHost)
+const isDevelopmentClerkKey = PUBLISHABLE_KEY.startsWith('pk_test_')
+const clerkFrontendApiDomain = decodeClerkDomain(PUBLISHABLE_KEY)
+const expectedLiveClerkDomain = 'clerk.farahkenawy.codes'
+
+if (isLiveFrontendHost && isDevelopmentClerkKey) {
+  console.error(
+    `Clerk is disabled on ${currentFrontendHost}: expected a pk_live_ publishable key, received ${PUBLISHABLE_KEY.slice(0, 12)}...`,
+  )
+}
+
+const shouldDisableClerkOnLiveHost = isLiveFrontendHost
+  && (isDevelopmentClerkKey || clerkFrontendApiDomain !== expectedLiveClerkDomain)
+
+if (isLiveFrontendHost && !isDevelopmentClerkKey && clerkFrontendApiDomain !== expectedLiveClerkDomain) {
+  console.error(
+    `Clerk is disabled on ${currentFrontendHost}: expected the publishable key for ${expectedLiveClerkDomain}, received ${clerkFrontendApiDomain || 'an unreadable domain'}.`,
+  )
 }
 
 const techReservePinia = createPinia()
@@ -31,5 +71,9 @@ const techReservePinia = createPinia()
 const techReserveApplication = createApp(App)
 techReserveApplication.use(techReservePinia)
 techReserveApplication.use(applicationRouter)
-techReserveApplication.use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+
+if (!shouldDisableClerkOnLiveHost) {
+  techReserveApplication.use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+}
+
 techReserveApplication.mount('#app')

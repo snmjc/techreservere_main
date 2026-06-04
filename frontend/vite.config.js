@@ -9,9 +9,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname), '');
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:8000';
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || apiBase || 'http://localhost:8000';
-  const frontendTunnelHost = getUrlHost(env.VITE_DEV_FRONTEND_URL) || 'topic-recorded-listprice-verde.trycloudflare.com';
+  const frontendTunnelHost = getUrlHost(env.VITE_DEV_FRONTEND_URL) || 'employers-mall-switches-bookstore.trycloudflare.com';
   const frontendTunnelUrl = `https://${frontendTunnelHost}`;
   const clerkSources = [
+    'https://clerk.farahkenawy.codes',
     'https://*.clerk.accounts.dev',
     'https://*.clerk.dev',
     'https://*.clerk.com',
@@ -42,6 +43,7 @@ export default defineConfig(({ mode }) => {
       // Dev-only CSP: allows Vue/DevTools and some dependencies that use eval in development.
       // Remove/replace with a strict CSP for production builds.
       headers: {
+        'Cache-Control': 'no-store',
         'Content-Security-Policy': [
           "default-src 'self'",
           // Vite dev + some tooling may rely on eval/inline; keep this dev-only.

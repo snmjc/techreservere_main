@@ -26,8 +26,8 @@ function normalizeLoginResponse(data) {
 }
 
 function buildLoginError(response, data) {
-  const loginError = new Error(data.errorMessage || 'Login failed.');
-  loginError.errorType = data.errorType || null;
+  const loginError = new Error(data.errorMessage || data.message || 'Login failed.');
+  loginError.errorType = data.errorType || data.errorCode || null;
   loginError.statusCode = response.status;
   return loginError;
 }

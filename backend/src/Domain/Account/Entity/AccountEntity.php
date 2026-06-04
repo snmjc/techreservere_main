@@ -24,6 +24,9 @@ class AccountEntity
     #[ORM\Column(type: Types::STRING, length: 100, unique: true)]
     private string $emailAddress = '';
 
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $username = null;
+
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $roleDesignation = 'ROLE_BORROWER';
 
@@ -114,6 +117,17 @@ class AccountEntity
     public function setEmailAddress(string $emailAddress): self
     {
         $this->emailAddress = $emailAddress;
+        return $this;
+    }
+
+    public function getUsername(): ?string
+    {
+        return $this->username;
+    }
+
+    public function setUsername(?string $username): self
+    {
+        $this->username = $username;
         return $this;
     }
 

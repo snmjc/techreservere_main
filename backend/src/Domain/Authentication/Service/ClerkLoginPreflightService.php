@@ -15,9 +15,10 @@ class ClerkLoginPreflightService
     public function check(string $emailAddress): array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, status, is_approved, is_active
+            "SELECT account_identifier, email_address, username, status, is_approved, is_active
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
+                OR LOWER(username) = LOWER(:emailAddress)
              LIMIT 1",
             ['emailAddress' => $emailAddress],
             ['emailAddress' => ParameterType::STRING]

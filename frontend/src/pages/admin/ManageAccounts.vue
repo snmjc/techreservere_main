@@ -233,12 +233,14 @@
             </span>
 
             <div class="manage-accounts-detail-main">
-              <p><strong>Work ID Number:</strong> <span>{{ viewAccount.idNumber }}</span></p>
+              <p><strong>Work ID Number:</strong> <span>{{ viewAccount.rawIdNumber || viewAccount.idNumber }}</span></p>
               <p><strong>Last Name:</strong> <span>{{ viewAccount.lastName }}</span></p>
               <p><strong>First Name:</strong> <span>{{ viewAccount.firstName }}</span></p>
+              <p><strong>Username:</strong> <span>{{ viewAccount.username || 'N/A' }}</span></p>
               <p><strong>{{ getEmailLabel(viewAccount) }}</strong> <span>{{ viewAccount.emailAddress }}</span></p>
               <p v-if="viewAccount.accountType === 'Employee'"><strong>Phone:</strong> <span>{{ viewAccount.contactNumber || 'N/A' }}</span></p>
               <p><strong>Role:</strong> <span>{{ viewAccount.roleLabel }}</span></p>
+              <p v-if="viewAccount.accountType === 'User'"><strong>Proof File:</strong> <span>{{ viewAccount.supportingDocumentName || 'N/A' }}</span></p>
             </div>
 
             <div class="manage-accounts-detail-side">
@@ -254,6 +256,16 @@
               <p><strong>Expires:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteExpiresAt) }}</span></p>
               <p><strong>Accepted:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteAcceptedAt) }}</span></p>
             </div>
+          </div>
+
+          <div v-if="viewAccount.supportingDocumentData" class="manage-accounts-proof-actions">
+            <a
+              class="manage-accounts-proof-link"
+              :href="viewAccount.supportingDocumentData"
+              :download="viewAccount.supportingDocumentName || 'signup-proof'"
+            >
+              Download proof
+            </a>
           </div>
 
           <div class="manage-accounts-modal-actions">
@@ -345,7 +357,7 @@
             </span>
             <div>
               <strong>{{ accessAccount.fullName }}</strong>
-              <span>Work ID: {{ accessAccount.idNumber }}</span>
+              <span>Work ID: {{ accessAccount.rawIdNumber || accessAccount.idNumber }}</span>
               <span>Phone: {{ accessAccount.contactNumber || 'N/A' }}</span>
               <span>{{ accessAccount.emailAddress }}</span>
               <span>{{ accessAccount.roleLabel }}</span>
@@ -391,7 +403,7 @@
 
           <div class="manage-accounts-modal-heading">
             <h2>Work Logs</h2>
-            <p>{{ workLogsAccount.fullName }} - {{ workLogsAccount.idNumber }}</p>
+            <p>{{ workLogsAccount.fullName }} - {{ workLogsAccount.rawIdNumber || workLogsAccount.idNumber }}</p>
           </div>
 
           <p v-if="workLogsLoading" class="manage-accounts-work-logs-state">Loading work logs...</p>
@@ -407,22 +419,94 @@
               <button
                 class="manage-accounts-work-log-summary"
                 type="button"
+                :aria-expanded="expandedWorkLogIds.has(log.taskIdentifier)"
                 @click="toggleWorkLog(log.taskIdentifier)"
               >
-                <span>
-                  <strong>{{ log.taskName }}</strong>
+                <span class="manage-accounts-work-log-main">
+                  <strong>{{ log.taskName || 'Untitled task' }}</strong>
                   <small>{{ formatNullableDateTime(log.taskDateTime) }}</small>
+                  <span>{{ getReservationLabel(log.reservationDetails) }}</span>
                 </span>
-                <em>{{ log.status }}</em>
+                <span class="manage-accounts-work-log-meta">
+                  <em :class="getWorkLogStatusClass(log.status)">{{ log.status || 'No status' }}</em>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
               </button>
 
               <div v-if="expandedWorkLogIds.has(log.taskIdentifier)" class="manage-accounts-work-log-details">
-                <p><strong>Reservation Details:</strong> <span>{{ formatReservationDetails(log.reservationDetails) }}</span></p>
-                <p><strong>Assignments:</strong> <span>{{ formatAssignments(log.assignments) }}</span></p>
-                <p><strong>Task Type:</strong> <span>{{ log.taskType || 'N/A' }}</span></p>
-                <p><strong>Description:</strong> <span>{{ log.taskDescription || 'N/A' }}</span></p>
-                <p><strong>Created:</strong> <span>{{ formatNullableDateTime(log.createdTimestamp) }}</span></p>
-                <p><strong>Updated:</strong> <span>{{ formatNullableDateTime(log.updatedTimestamp) }}</span></p>
+                <section class="manage-accounts-work-log-section">
+                  <h3>Reservation Details</h3>
+                  <dl>
+                    <div>
+                      <dt>Reservation</dt>
+                      <dd>{{ getReservationLabel(log.reservationDetails) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Organization</dt>
+                      <dd>{{ log.reservationDetails?.organizationName || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Event Date and Time</dt>
+                      <dd>{{ formatNullableDateTime(log.reservationDetails?.eventDateTime) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Activity</dt>
+                      <dd>{{ log.reservationDetails?.activityType || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Purpose</dt>
+                      <dd>{{ log.reservationDetails?.purposeDescription || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Reservation Status</dt>
+                      <dd>{{ log.reservationDetails?.status || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Requested Items</dt>
+                      <dd>{{ formatEquipmentList(log.reservationDetails?.requestedEquipmentList) }}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section class="manage-accounts-work-log-section">
+                  <h3>Assignment Details</h3>
+                  <dl>
+                    <div>
+                      <dt>Assigned Employee</dt>
+                      <dd>{{ formatAssignedEmployee(log.assignments) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Task Name</dt>
+                      <dd>{{ log.assignments?.assignedTask || log.taskName || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Task Type</dt>
+                      <dd>{{ log.taskType || log.assignments?.assignmentType || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Task Date and Time</dt>
+                      <dd>{{ formatNullableDateTime(log.taskDateTime) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{{ log.status || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Description</dt>
+                      <dd>{{ log.taskDescription || log.fullTaskInformation?.description || 'N/A' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Created</dt>
+                      <dd>{{ formatNullableDateTime(log.createdTimestamp) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Updated</dt>
+                      <dd>{{ formatNullableDateTime(log.updatedTimestamp) }}</dd>
+                    </div>
+                  </dl>
+                </section>
               </div>
             </article>
           </div>
@@ -497,10 +581,12 @@ const {
   canActivateAccount,
   canDisableAccount,
   canUpdateAccount,
-  formatAssignments,
+  formatAssignedEmployee,
+  formatEquipmentList,
   formatDateTime,
   formatNullableDateTime,
-  formatReservationDetails,
+  getReservationLabel,
+  getWorkLogStatusClass,
   getAccountTypeClass,
   getEmailLabel,
   getStatusClass,

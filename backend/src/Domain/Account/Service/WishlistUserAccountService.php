@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -38,6 +39,7 @@ class WishlistUserAccountService
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
+            'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
             'idNumber' => trim($requestBody['idNumber'] ?? ''),
             'role' => $role,
             'passwordText' => (string)($requestBody['passwordText'] ?? $requestBody['password'] ?? ''),
@@ -87,11 +89,11 @@ class WishlistUserAccountService
         try {
             $this->connection->executeStatement(
                 'INSERT INTO accounts
-                    (last_name, first_name, email_address, role_designation, id_number, department,
+                    (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
-                    (:lastName, :firstName, :emailAddress, :roleDesignation, :idNumber, :department,
+                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 $this->buildInsertParameters($payload, $now),
@@ -104,6 +106,7 @@ class WishlistUserAccountService
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
+                'username' => $payload['username'],
                 'roleDesignation' => 'ROLE_BORROWER',
                 'roleLabel' => 'User: ' . $payload['roleLabel'],
                 'accountType' => 'User',
@@ -129,6 +132,7 @@ class WishlistUserAccountService
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
+            'username' => $payload['username'],
             'roleDesignation' => 'ROLE_BORROWER',
             'idNumber' => $payload['idNumber'],
             'department' => $payload['roleLabel'],
@@ -150,6 +154,7 @@ class WishlistUserAccountService
             'lastName' => ParameterType::STRING,
             'firstName' => ParameterType::STRING,
             'emailAddress' => ParameterType::STRING,
+            'username' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
             'idNumber' => ParameterType::STRING,
             'department' => ParameterType::STRING,

@@ -18,7 +18,7 @@ class AuthenticationLoginService
     public function login(string $emailAddress, string $passwordText): array
     {
         try {
-            $account = $this->accountRepository->findOneByEmailAddress($emailAddress);
+            $account = $this->accountRepository->findOneByEmailAddressOrUsername($emailAddress);
         } catch (\Throwable) {
             return $this->error('DatabaseUnavailable', 'The authentication database is currently unavailable. Please make sure the TechReserve database service is running.', 503);
         }
@@ -129,6 +129,7 @@ class AuthenticationLoginService
             'firstName' => $account->getFirstName(),
             'lastName' => $account->getLastName(),
             'emailAddress' => $account->getEmailAddress(),
+            'username' => $account->getUsername(),
             'roleDesignation' => $account->getRoleDesignation(),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),

@@ -21,6 +21,53 @@ export function validateAdminAccountForm(form) {
   return '';
 }
 
+export function getAdminCreateError(form, accounts) {
+  const validationError = validateAdminAccountForm(form);
+  if (validationError) return validationError;
+
+  if (wishlistEmailExists(accounts, form.emailAddress)) {
+    return 'An account with this email already exists in Requests Hub.';
+  }
+
+  if (wishlistIdNumberExists(accounts, form.idNumber)) {
+    return 'An account with this ID number already exists in Requests Hub.';
+  }
+
+  return '';
+}
+
+export function buildAdminAccountPayload(form) {
+  return {
+    lastName: form.lastName,
+    firstName: form.firstName,
+    emailAddress: form.emailAddress,
+    idNumber: form.idNumber,
+  };
+}
+
+export function getUserCreateError(form, accounts) {
+  if (form.password !== form.confirmPassword) {
+    return 'Password and confirm password must match.';
+  }
+
+  if (wishlistEmailExists(accounts, form.emailAddress)) {
+    return 'An account with this email already exists in Requests Hub.';
+  }
+
+  return '';
+}
+
+export function buildUserAccountPayload(form) {
+  return {
+    lastName: form.lastName,
+    firstName: form.firstName,
+    emailAddress: form.emailAddress,
+    idNumber: form.idNumber,
+    role: form.role,
+    passwordText: form.password,
+  };
+}
+
 export function validateEmployeeAccountForm(form) {
   const lastName = form.lastName.trim();
   const firstName = form.firstName.trim();
@@ -89,6 +136,12 @@ function wishlistIdNumberExists(accounts, idNumber) {
   const normalizedIdNumber = String(idNumber || '').trim().toLowerCase();
 
   return accounts.some((account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === normalizedIdNumber);
+}
+
+function wishlistEmailExists(accounts, emailAddress) {
+  const normalizedEmailAddress = String(emailAddress || '').trim().toLowerCase();
+
+  return accounts.some((account) => String(account.emailAddress || '').trim().toLowerCase() === normalizedEmailAddress);
 }
 
 function wishlistPhoneNumberExists(accounts, phone) {

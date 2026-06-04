@@ -6,16 +6,18 @@ import {
   canDisableAccount,
   canUpdateAccount,
   compareManageAccounts,
-  formatAssignments,
+  formatAssignedEmployee,
   formatDateTime,
+  formatEquipmentList,
   formatNullableDateTime,
-  formatReservationDetails,
   getAccountTypeClass,
   getDefaultAccountTab,
   getEmailLabel,
   getEmployeeRoleOptions,
+  getReservationLabel,
   getStatusClass,
   getUserRoleName,
+  getWorkLogStatusClass,
   normalizeAccount,
   normalizeEmailForConfirmation,
   normalizeUpdateRoleDesignation,
@@ -500,7 +502,7 @@ export function useManageAccountsPage() {
 
   function matchesSearchQuery(account, query) {
     if (!query) return true;
-    return [account.idNumber, account.fullName, account.emailAddress, account.roleLabel]
+    return [account.idNumber, account.fullName, account.emailAddress, account.username, account.roleLabel]
       .some((value) => String(value).toLowerCase().includes(query));
   }
 
@@ -563,10 +565,12 @@ export function useManageAccountsPage() {
     canActivateAccount,
     canDisableAccount,
     canUpdateAccount,
-    formatAssignments,
+    formatAssignedEmployee,
     formatDateTime,
+    formatEquipmentList,
     formatNullableDateTime,
-    formatReservationDetails,
+    getReservationLabel,
+    getWorkLogStatusClass,
     getAccountTypeClass,
     getEmailLabel,
     getStatusClass,
