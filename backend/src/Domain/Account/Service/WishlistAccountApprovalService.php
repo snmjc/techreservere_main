@@ -318,6 +318,38 @@ class WishlistAccountApprovalService
     }
 
     private function markAccountAsInvited(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+<<<<<<< HEAD
+=======
+    {
+        $this->connection->executeStatement(
+            'UPDATE accounts
+             SET status = :status,
+                 is_approved = :isApproved,
+                 is_active = :isActive,
+                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
+                 updated_timestamp = :updatedTimestamp
+             WHERE account_identifier = :accountIdentifier',
+            [
+                'status' => 'invited',
+                'isApproved' => false,
+                'isActive' => true,
+                'clerkUserId' => $clerkUserId,
+                'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
+                'accountIdentifier' => $accountIdentifier,
+            ],
+            [
+                'status' => ParameterType::STRING,
+                'isApproved' => ParameterType::BOOLEAN,
+                'isActive' => ParameterType::BOOLEAN,
+                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+                'accountIdentifier' => ParameterType::INTEGER,
+            ]
+        );
+    }
+
+    private function approveAccountRow(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+>>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
     {
         $this->connection->executeStatement(
             'UPDATE accounts

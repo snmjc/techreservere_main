@@ -114,7 +114,11 @@ export const adminWishlistApi = {
     return sendWishlistRequest('/api/v1/users/wishlist', { token });
   },
 
-  async verifyAccount(accountIdentifier, token, payload = {}) {
+  async sendInvite(accountIdentifier, token, payload = {}) {
+    return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/approve`, { method: 'POST', token, payload });
+  },
+
+  async resendInvite(accountIdentifier, token, payload = {}) {
     return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/approve`, { method: 'POST', token, payload });
   },
 

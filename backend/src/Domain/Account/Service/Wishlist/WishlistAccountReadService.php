@@ -101,11 +101,11 @@ class WishlistAccountReadService
     private function resolveWishlistStatus(array $row): string
     {
         $status = strtolower((string)($row['status'] ?? 'pending'));
-        if ($this->toDatabaseBoolean($row['is_approved'] ?? false) && $status === 'approved') {
-            return 'approved';
+        if (!empty($row['invite_accepted_at'])) {
+            return 'verified';
         }
 
-        if (!empty($row['invite_accepted_at'])) {
+        if ($this->toDatabaseBoolean($row['is_approved'] ?? false) && $status === 'approved') {
             return 'verified';
         }
 
