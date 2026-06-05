@@ -4,6 +4,7 @@ namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\Wishlist\WishlistAccountReadService;
+use App\Shared\Utils\AppClock;
 use Doctrine\DBAL\Connection;
 
 class UserRegistrationWorkflowService
@@ -106,9 +107,12 @@ class UserRegistrationWorkflowService
         ]);
     }
 
-    public function createWishlistAdminAccount(array $requestBody): array
+    public function createWishlistAdminAccount(array $requestBody, array $authenticatedIdentity, string $authorizationHeader): array
     {
-        return $this->wishlistAdminAccountService->create($requestBody);
+        return $this->wishlistAdminAccountService->create(
+            $requestBody,
+            $this->resolveAuthenticatedAccountIdentifier($authenticatedIdentity, $authorizationHeader)
+        );
     }
 
     public function createWishlistUserAccount(array $requestBody): array
@@ -116,9 +120,9 @@ class UserRegistrationWorkflowService
         return $this->wishlistUserAccountService->create($requestBody);
     }
 
-    public function createPublicSignupRequest(array $requestBody): array
+    public function createPublicSignupRequest(array $requestBody, ?\Symfony\Component\HttpFoundation\File\UploadedFile $supportingDocumentFile = null): array
     {
-        return $this->publicSignupRequestService->create($requestBody);
+        return $this->publicSignupRequestService->create($requestBody, $supportingDocumentFile);
     }
 
     public function createWishlistEmployeeAccount(array $requestBody): array
@@ -148,7 +152,7 @@ class UserRegistrationWorkflowService
     {
         return $this->wishlistRequestDecisionService->reject(
             $accountIdentifier,
-            (string)($requestBody['confirmEmail'] ?? ''),
+            (string)($requestBody['confirmedAdminEmail'] ?? $requestBody['confirmEmail'] ?? ''),
             $this->resolveAuthenticatedAccountIdentifier($authenticatedIdentity, $authorizationHeader),
             (string)($requestBody['confirmedAdminPassword'] ?? '')
         );
@@ -158,7 +162,7 @@ class UserRegistrationWorkflowService
     {
         return $this->wishlistRequestDecisionService->deleteRequest(
             $accountIdentifier,
-            (string)($requestBody['confirmEmail'] ?? ''),
+            (string)($requestBody['confirmedAdminEmail'] ?? $requestBody['confirmEmail'] ?? ''),
             $this->resolveAuthenticatedAccountIdentifier($authenticatedIdentity, $authorizationHeader),
             (string)($requestBody['confirmedAdminPassword'] ?? '')
         );
@@ -169,6 +173,7 @@ class UserRegistrationWorkflowService
         $emailAddress = trim($requestBody['emailAddress'] ?? '');
         $role = trim($requestBody['role'] ?? 'ROLE_BORROWER');
         $invitedBy = $requestBody['invitedBy'] ?? null;
+        $sentAt = AppClock::now();
 
         if (empty($emailAddress)) {
             return $this->error('ValidationError', 'emailAddress is required.', 400);
@@ -186,8 +191,8 @@ class UserRegistrationWorkflowService
                 'role' => $role,
                 'invitedBy' => $invitedBy,
                 'status' => 'invited',
-                'sentAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:sP'),
-                'expiresAt' => (new \DateTimeImmutable('+7 days'))->format('Y-m-d\TH:i:sP'),
+                'sentAt' => $sentAt->format('Y-m-d\TH:i:sP'),
+                'expiresAt' => $sentAt->modify('+7 days')->format('Y-m-d\TH:i:sP'),
             ],
         ]);
     }

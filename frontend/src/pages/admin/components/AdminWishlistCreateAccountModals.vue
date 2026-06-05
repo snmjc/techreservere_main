@@ -9,8 +9,8 @@
       </button>
 
       <div class="admin-wishlist-modal-heading">
-        <h2>Add Admin Account</h2>
-        <p>Create an administrator request record for verification.</p>
+        <h2>Create New Admin</h2>
+        <p>Create a new administrator request record using an approved admin email domain.</p>
       </div>
 
       <AccountSectionLabel />
@@ -25,16 +25,28 @@
           <input v-model.trim="addAdminForm.firstName" type="text" placeholder="First Name" minlength="2" required :disabled="isProcessing" @input="sanitizeAdminNameField('firstName')" />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>Email</span>
-          <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required :disabled="isProcessing" />
-        </label>
-        <label>
-          <span>ID Number</span>
-          <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required :disabled="isProcessing" />
+          <span>Admin Email</span>
+          <input
+            v-model.trim="addAdminForm.emailAddress"
+            type="email"
+            placeholder="admin@techreserve.edu.ph"
+            required
+            :disabled="isProcessing"
+          />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>Default Password</span>
-          <input type="text" value="admin123" readonly disabled />
+          <span>Role</span>
+          <input type="text" value="Admin" readonly disabled />
+        </label>
+        <label class="admin-wishlist-field-wide">
+          <span>Security Confirmation</span>
+          <input
+            v-model.trim="addAdminForm.confirmedAdminEmail"
+            type="email"
+            :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
+            required
+            :disabled="isProcessing"
+          />
         </label>
 
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
@@ -43,8 +55,8 @@
           <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddAdminModal">
             Cancel
           </button>
-          <button class="admin-wishlist-verify-button" type="submit" :disabled="isProcessing">
-            {{ isProcessing ? 'Creating...' : 'Create Account' }}
+          <button class="admin-wishlist-verify-button" type="submit" :disabled="isProcessing || !isAdminCreateFormReady">
+            {{ isProcessing ? 'Creating...' : 'Create Admin' }}
           </button>
         </div>
       </form>
@@ -187,6 +199,7 @@ import {
   getUserCreateError,
   sanitizeNameInput,
   sanitizePhoneInput,
+  validateAdminAccountForm,
   validateEmployeeAccountForm,
 } from '../wishlist/adminWishlistHelpers.js';
 
@@ -214,7 +227,8 @@ const addAdminForm = reactive({
   lastName: '',
   firstName: '',
   emailAddress: '',
-  idNumber: '',
+  roleDesignation: 'ROLE_ADMIN',
+  confirmedAdminEmail: '',
 });
 
 const addUserForm = reactive({
@@ -235,6 +249,14 @@ const addEmployeeForm = reactive({
   role: 'Maintenance Staff',
 });
 
+const currentAdminEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim().toLowerCase();
+});
+const isAdminCreateFormReady = computed(() => (
+  validateAdminAccountForm(addAdminForm) === ''
+  && addAdminForm.confirmedAdminEmail.trim().toLowerCase() === currentAdminEmail.value
+));
 const isEmployeeCreateFormReady = computed(() => validateEmployeeAccountForm(addEmployeeForm) === '');
 
 function openForTab(tabName) {
@@ -277,6 +299,14 @@ async function createAdminAccount() {
   if (isProcessing.value) return;
 
   addAdminError.value = getAdminCreateError(addAdminForm, props.accounts);
+  if (!currentAdminEmail.value) {
+    addAdminError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
+    return;
+  }
+  if (addAdminForm.confirmedAdminEmail.trim().toLowerCase() !== currentAdminEmail.value) {
+    addAdminError.value = 'Please type your exact admin email before creating a new admin.';
+    return;
+  }
   if (addAdminError.value) return;
 
   await createAccount({
@@ -336,7 +366,8 @@ function resetAddAdminForm() {
   addAdminForm.lastName = '';
   addAdminForm.firstName = '';
   addAdminForm.emailAddress = '';
-  addAdminForm.idNumber = '';
+  addAdminForm.roleDesignation = 'ROLE_ADMIN';
+  addAdminForm.confirmedAdminEmail = '';
   addAdminError.value = '';
 }
 

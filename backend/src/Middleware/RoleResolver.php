@@ -3,6 +3,7 @@
 namespace App\Middleware;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Shared\Utils\RoleDesignationNormalizer;
 use App\Shared\Utils\RoleConstants;
 
 class RoleResolver
@@ -36,7 +37,7 @@ class RoleResolver
     {
         // If roleDesignation is already in the identity (from ClerkTokenVerifier), use it
         if (isset($authenticatedIdentity['roleDesignation']) && !empty($authenticatedIdentity['roleDesignation'])) {
-            return $authenticatedIdentity['roleDesignation'];
+            return RoleDesignationNormalizer::normalize((string)$authenticatedIdentity['roleDesignation']);
         }
 
         // Fallback: look up by email address
@@ -52,6 +53,6 @@ class RoleResolver
             return RoleConstants::ROLE_BORROWER;
         }
 
-        return $accountEntity->getRoleDesignation();
+        return RoleDesignationNormalizer::normalize($accountEntity->getRoleDesignation());
     }
 }

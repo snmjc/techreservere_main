@@ -3,10 +3,13 @@
 namespace App\Domain\Account\Controller;
 
 use App\Domain\Account\Service\UserRegistrationWorkflowService;
+use App\Domain\Account\Service\AccountSupportingDocumentService;
 use App\Shared\Traits\RequestPayloadTrait;
 use App\Shared\Traits\ServiceResultResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -18,7 +21,10 @@ class WishlistAccountRequestController
     use RequestPayloadTrait;
     use ServiceResultResponseTrait;
 
-    public function __construct(private readonly UserRegistrationWorkflowService $workflowService)
+    public function __construct(
+        private readonly UserRegistrationWorkflowService $workflowService,
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
+    )
     {
     }
 
@@ -36,7 +42,11 @@ class WishlistAccountRequestController
     public function createWishlistAdminAccount(Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->workflowService->createWishlistAdminAccount($this->jsonBody($request)),
+            $this->workflowService->createWishlistAdminAccount(
+                $this->jsonBody($request),
+                $request->attributes->get('authenticatedIdentity', []),
+                $request->headers->get('Authorization', '')
+            ),
             'CreateAdminAccountFailed',
             'Failed to create admin account.'
         );
@@ -120,5 +130,34 @@ class WishlistAccountRequestController
             'DeleteAccountRequestFailed',
             'Unable to delete account request.'
         );
+    }
+
+    #[Route('/{accountIdentifier}/supporting-document', name: 'download_wishlist_supporting_document', methods: ['GET'])]
+    public function downloadSupportingDocument(int $accountIdentifier): BinaryFileResponse|JsonResponse
+    {
+        $document = $this->accountSupportingDocumentService->getSupportingDocumentByAccountIdentifier($accountIdentifier);
+        if (!$document) {
+            return new JsonResponse([
+                'errorCode' => 'SupportingDocumentNotFound',
+                'errorMessage' => 'Supporting document not found.',
+            ], 404);
+        }
+
+        $absolutePath = $this->accountSupportingDocumentService->resolveAbsoluteFilePath($document);
+        if ($absolutePath === null) {
+            return new JsonResponse([
+                'errorCode' => 'SupportingDocumentMissing',
+                'errorMessage' => 'Supporting document file is no longer available.',
+            ], 404);
+        }
+
+        $response = new BinaryFileResponse($absolutePath);
+        $response->headers->set('Content-Type', (string)($document['signup_supporting_document_mime_type'] ?? 'application/octet-stream'));
+        $response->setContentDisposition(
+            ResponseHeaderBag::DISPOSITION_INLINE,
+            (string)($document['signup_supporting_document_name'] ?? 'supporting-document')
+        );
+
+        return $response;
     }
 }

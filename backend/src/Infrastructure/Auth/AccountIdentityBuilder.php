@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Auth;
 
 use App\Domain\Account\Entity\AccountEntity;
+use App\Shared\Utils\RoleDesignationNormalizer;
 
 class AccountIdentityBuilder
 {
@@ -36,6 +37,8 @@ class AccountIdentityBuilder
         if ($clerkUserId !== null) {
             $identity['clerkUserId'] = $clerkUserId;
         }
+
+        $identity['roleDesignation'] = RoleDesignationNormalizer::normalize($identity['roleDesignation']);
 
         return $identity;
     }

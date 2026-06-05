@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service\Wishlist;
 
+use App\Shared\Utils\AppClock;
 use Doctrine\DBAL\Connection;
 
 class WishlistAccountReadService
@@ -18,7 +19,8 @@ class WishlistAccountReadService
                     accounts.email_address, accounts.username, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_data,
+                    accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
+                    accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -39,14 +41,8 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE (
-                COALESCE(accounts.is_approved, FALSE) = FALSE
-                AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
-             )
-             OR (
-                latest_invitation.accepted_at IS NOT NULL
-                AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
-             )
+             WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'disabled')
              ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 
@@ -88,7 +84,11 @@ class WishlistAccountReadService
             'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
             'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
             'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
-            'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
+            'supportingDocumentPath' => $row['signup_supporting_document_path'] ? (string)$row['signup_supporting_document_path'] : null,
+            'supportingDocumentSizeBytes' => isset($row['signup_supporting_document_size_bytes']) ? (int)$row['signup_supporting_document_size_bytes'] : null,
+            'supportingDocumentUploadedAt' => $row['signup_supporting_document_uploaded_at'] ? (string)$row['signup_supporting_document_uploaded_at'] : null,
+            'supportingDocumentVerificationStatus' => $row['signup_supporting_document_verification_status'] ? (string)$row['signup_supporting_document_verification_status'] : null,
+            'supportingDocumentData' => null,
             'registeredAt' => (string)$row['created_timestamp'],
             'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
             'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
@@ -115,8 +115,8 @@ class WishlistAccountReadService
 
         if (!empty($row['invite_expires_at'])) {
             try {
-                $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
-                return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'unverified';
+                $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at'], AppClock::timezone());
+                return $expiresAt < AppClock::now() ? 'expired' : 'unverified';
             } catch (\Throwable) {
                 return $status;
             }

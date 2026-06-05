@@ -81,6 +81,34 @@ async function sendWishlistRequest(path, { method = 'GET', token, payload } = {}
   }
 }
 
+async function fetchWishlistBlob(path, token) {
+  try {
+    const response = await fetch(apiUrl(path), {
+      method: 'GET',
+      headers: buildHeaders(token, false),
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        status: response.status,
+        error: result.errorMessage || result.message || 'Unable to load the supporting document.',
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        blob: await response.blob(),
+        mimeType: response.headers.get('Content-Type') || 'application/octet-stream',
+      },
+    };
+  } catch (error) {
+    return { success: false, error: error.message || 'Unable to load the supporting document.' };
+  }
+}
+
 export const adminWishlistApi = {
   async getWishlistAccounts(token) {
     return sendWishlistRequest('/api/v1/users/wishlist', { token });
@@ -104,6 +132,10 @@ export const adminWishlistApi = {
 
   async deleteAccountRequest(accountIdentifier, token, payload = {}) {
     return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/delete-request`, { method: 'DELETE', token, payload });
+  },
+
+  async getSupportingDocumentBlob(accountIdentifier, token) {
+    return fetchWishlistBlob(`/api/v1/users/${accountIdentifier}/supporting-document`, token);
   },
 
   async createAdminAccount(accountPayload, token) {

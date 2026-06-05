@@ -21,7 +21,8 @@ class AccountReadService
                        accounts.email_address, accounts.username, accounts.role_designation, accounts.department, accounts.contact_number,
                        accounts.profile_photo_data,
                        accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                       accounts.signup_supporting_document_data,
+                       accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
+                       accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
                        staff_info.employee_id_number AS staff_employee_id_number,
                        staff_info.first_name AS staff_first_name,
                        staff_info.last_name AS staff_last_name,
@@ -44,6 +45,13 @@ class AccountReadService
                 ) latest_invitation ON TRUE
                 WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
                   AND LOWER(COALESCE(accounts.status, 'pending')) IN ('approved', 'disabled')
+                  AND (
+                    UPPER(COALESCE(accounts.role_designation, '')) IN ('ROLE_ADMIN', 'ADMIN')
+                    OR (
+                      COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                      AND latest_invitation.accepted_at IS NOT NULL
+                    )
+                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
@@ -54,14 +62,9 @@ class AccountReadService
                 SELECT DISTINCT ON (COALESCE(NULLIF(id_number, ''), account_identifier::text)) *
                 FROM deduped_by_email
                 ORDER BY COALESCE(NULLIF(id_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
-             ),
-             deduped_by_phone AS (
-                SELECT DISTINCT ON (COALESCE(NULLIF(contact_number, ''), account_identifier::text)) *
-                FROM deduped_by_id
-                ORDER BY COALESCE(NULLIF(contact_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
              )
              SELECT *
-             FROM deduped_by_phone
+             FROM deduped_by_id
              ORDER BY created_timestamp DESC"
         );
 
@@ -75,7 +78,8 @@ class AccountReadService
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                     accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_data,
+                    accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
+                    accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -110,7 +114,8 @@ class AccountReadService
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                     accounts.last_login_timestamp, accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_data,
+                    accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
+                    accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,

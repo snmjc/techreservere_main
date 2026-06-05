@@ -4,6 +4,11 @@ namespace App\Domain\Account\Service;
 
 class AccountInputValidationService
 {
+    private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
+        'techreserve.edu.ph',
+        'techreserve.feu.edu.ph',
+    ];
+
     public function isValidPersonName(string $name): bool
     {
         $normalizedName = $this->normalizePersonName($name);
@@ -21,8 +26,30 @@ class AccountInputValidationService
     public function isInstitutionalAdminEmail(string $emailAddress): bool
     {
         $normalizedEmailAddress = strtolower(trim($emailAddress));
+        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
 
-        return str_ends_with($normalizedEmailAddress, '@fit.edu.ph')
-            || str_ends_with($normalizedEmailAddress, '@techreserve.edu.ph');
+        $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
+        if ($domain === '') {
+            return false;
+        }
+
+        return in_array($domain, $this->allowedAdminEmailDomains(), true);
+    }
+
+    public function allowedAdminEmailDomains(): array
+    {
+        $configuredDomains = trim((string)($_ENV['ADMIN_EMAIL_DOMAINS'] ?? ''));
+        if ($configuredDomains === '') {
+            return self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS;
+        }
+
+        $domains = array_values(array_filter(array_map(
+            static fn (string $domain): string => strtolower(trim($domain)),
+            explode(',', $configuredDomains)
+        )));
+
+        return $domains !== [] ? $domains : self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS;
     }
 }

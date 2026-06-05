@@ -18,6 +18,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 )]
 class CreateAdminCommand extends Command
 {
+    private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
+        'techreserve.edu.ph',
+        'techreserve.feu.edu.ph',
+    ];
+
     private Connection $connection;
     private HttpClientInterface $httpClient;
 
@@ -57,6 +62,11 @@ class CreateAdminCommand extends Command
 
         if (empty($email) || empty($firstName) || empty($lastName) || empty($password)) {
             $io->error('All fields (email, firstName, lastName, password) are required.');
+            return Command::FAILURE;
+        }
+
+        if (!$this->isAllowedAdminEmail($email)) {
+            $io->error('Admin account must use an approved admin email domain.');
             return Command::FAILURE;
         }
 
@@ -178,5 +188,20 @@ class CreateAdminCommand extends Command
         $io->note('You can now log in at /clerk-login with email: ' . $email);
 
         return Command::SUCCESS;
+    }
+
+    private function isAllowedAdminEmail(string $emailAddress): bool
+    {
+        $normalizedEmailAddress = strtolower(trim($emailAddress));
+        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
+        if ($domain === '') {
+            return false;
+        }
+
+        return in_array($domain, self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS, true);
     }
 }

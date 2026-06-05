@@ -66,9 +66,12 @@ class AccountWorkflowService
 
     public function getAccountById(int $accountIdentifier): array
     {
-        $profileDTO = $this->accountProfileService->getAccountProfileById($accountIdentifier);
+        $account = $this->accountReadService->getMappedAccountById($accountIdentifier);
+        if ($account === null) {
+            return $this->error('AccountNotFound', 'Account not found.', 404);
+        }
 
-        return $this->success($profileDTO->toResponseArray());
+        return $this->success(['account' => $account]);
     }
 
     public function updateAccount(int $accountIdentifier, array $requestBody): array

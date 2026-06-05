@@ -15,7 +15,7 @@ export function validateAdminAccountForm(form) {
   }
 
   if (!isInstitutionalAdminEmail(emailAddress)) {
-    return 'Admin account must use a valid institutional email address.';
+    return 'Admin account must use an approved admin email domain.';
   }
 
   return '';
@@ -41,7 +41,8 @@ export function buildAdminAccountPayload(form) {
     lastName: form.lastName,
     firstName: form.firstName,
     emailAddress: form.emailAddress,
-    idNumber: form.idNumber,
+    roleDesignation: form.roleDesignation,
+    confirmedAdminEmail: form.confirmedAdminEmail,
   };
 }
 
@@ -129,7 +130,7 @@ export function formatCreateAccountError(result, accountType) {
 
 function isInstitutionalAdminEmail(emailAddress) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
-    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@techreserve.edu.ph'));
+    && (emailAddress.endsWith('@techreserve.edu.ph') || emailAddress.endsWith('@techreserve.feu.edu.ph'));
 }
 
 function wishlistIdNumberExists(accounts, idNumber) {

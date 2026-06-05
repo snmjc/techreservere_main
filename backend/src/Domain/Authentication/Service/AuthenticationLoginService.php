@@ -4,6 +4,7 @@ namespace App\Domain\Authentication\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
+use App\Shared\Utils\RoleDesignationNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -130,7 +131,7 @@ class AuthenticationLoginService
             'lastName' => $account->getLastName(),
             'emailAddress' => $account->getEmailAddress(),
             'username' => $account->getUsername(),
-            'roleDesignation' => $account->getRoleDesignation(),
+            'roleDesignation' => RoleDesignationNormalizer::normalize($account->getRoleDesignation()),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
             'isActive' => $account->getIsActive(),
