@@ -183,7 +183,7 @@ export const routeDefinitions = [
   {
     path: '/admin/invitations',
     name: 'adminInvitationsPage',
-    component: () => import('@/pages/admin/AdminInvitations.vue'),
+    redirect: '/admin/wishlist',
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],

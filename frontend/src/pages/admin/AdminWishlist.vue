@@ -7,9 +7,9 @@
     <section class="admin-wishlist-page">
       <div class="admin-wishlist-header">
         <div>
-          <p class="admin-wishlist-kicker">Account verification</p>
-          <h1>Requests Hub</h1>
-          <p>Review registered accounts before approval and invitation.</p>
+          <p class="admin-wishlist-kicker">Requestor account lifecycle</p>
+          <h1>Request List</h1>
+          <p>Review requestor accounts, inspect Clerk invite details, and send or resend invitations safely.</p>
         </div>
 
         <div class="admin-wishlist-header-actions">
@@ -76,7 +76,6 @@
               <option value="all">All</option>
               <option value="not_invited">Not invited</option>
               <option value="verified">Verified</option>
-              <option value="approved">Approved</option>
               <option value="unverified">Unverified</option>
               <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
@@ -165,8 +164,8 @@
                     <button
                       class="admin-wishlist-icon-button admin-wishlist-icon-button--invite"
                       type="button"
-                      aria-label="Approve and email"
-                      title="Approve and email"
+                      aria-label="Send invite"
+                      title="Send invite"
                       :disabled="!canSendInvite(account)"
                       @click="openApprovalModal(account, 'send')"
                     >
@@ -188,18 +187,6 @@
                         <path d="M3 21v-5h5" />
                         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                         <path d="M16 8h5V3" />
-                      </svg>
-                    </button>
-                    <button
-                      class="admin-wishlist-icon-button admin-wishlist-icon-button--verify"
-                      type="button"
-                      aria-label="Verify email and approve"
-                      title="Verify email and approve"
-                      :disabled="!canVerifyEmail(account)"
-                      @click="openApprovalModal(account, 'verify')"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </button>
                     <button
@@ -254,8 +241,8 @@
           </button>
 
           <div class="admin-wishlist-modal-heading">
-            <h2>View Account</h2>
-            <p>Review account and invitation details from the database.</p>
+            <h2>View Request Details</h2>
+            <p>Review requestor information, invite status, and Clerk invitation details from the database.</p>
           </div>
 
           <div class="admin-wishlist-view-account-grid">
@@ -353,13 +340,9 @@
                   <span>Role</span>
                   <strong>{{ approvalAccount.role }}</strong>
                 </p>
-                <p v-if="approvalMode === 'resend' || approvalMode === 'verify'">
+                <p v-if="approvalMode === 'resend'">
                   <span>Last Invite Sent</span>
                   <strong>{{ formatNullableDateTime(approvalAccount.inviteSentAt) }}</strong>
-                </p>
-                <p v-if="approvalMode === 'verify'">
-                  <span>Email Verified</span>
-                  <strong>{{ formatNullableDateTime(approvalAccount.inviteAcceptedAt) }}</strong>
                 </p>
               </div>
             </div>
@@ -401,7 +384,7 @@
               class="admin-wishlist-send-invite-button"
               type="button"
               :disabled="isProcessing || !isApprovalConfirmationReady"
-              @click="verifyAccount"
+              @click="submitInviteAction"
             >
               {{ isProcessing ? getProcessingLabel() : getInviteSubmitLabel(approvalAccount) }}
             </button>
@@ -622,7 +605,7 @@ import {
 
 const authStore = useAuthenticationStore();
 
-const activeTab = ref('admin');
+const activeTab = ref('user');
 const searchText = ref('');
 const sortMode = ref('newest');
 const statusFilter = ref('all');
@@ -685,12 +668,11 @@ const {
   closeDenialModal,
   openDeleteModal,
   closeDeleteModal,
-  verifyAccount,
+  submitInviteAction,
   denyAccount,
   deleteWishlistAccount,
   canSendInvite,
   canResendInvite,
-  canVerifyEmail,
   getInviteModalTitle,
   getInviteModalDescription,
   getInviteSubmitLabel,
