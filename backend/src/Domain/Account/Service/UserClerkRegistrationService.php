@@ -140,11 +140,7 @@ class UserClerkRegistrationService
 
         $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
 
-<<<<<<< HEAD
-        if ($nextState['markInvitationAccepted']) {
-=======
         if ($nextState['shouldMarkInvitationAccepted']) {
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
             $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
             $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($account->getAccountIdentifier());
         }
@@ -161,30 +157,22 @@ class UserClerkRegistrationService
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
-<<<<<<< HEAD
-        $shouldActivateInvitedAccount = !$existingIsAdmin && !$account->getIsApproved() && $hasOpenInvitation;
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $shouldActivateInvitedAccount;
-        $nextIsActive = $nextIsApproved ? true : $account->getIsActive();
-        $nextStatus = $this->resolveNextExistingEmailAccountStatus($existingStatus, $nextIsApproved, $nextIsActive, $hasOpenInvitation);
-=======
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $acceptedViaClerkInvite = !$account->getIsApproved() && ($hasAcceptedInvitation || ($existingStatus === 'invited' && $hasOpenInvitation));
+        $acceptedViaClerkInvite = !$existingIsAdmin
+            && !$account->getIsApproved()
+            && ($hasAcceptedInvitation || ($existingStatus === 'invited' && $hasOpenInvitation));
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $acceptedViaClerkInvite;
-        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
+        $nextIsActive = $nextIsApproved
+            ? ($account->getIsActive() || $acceptedViaClerkInvite)
+            : $account->getIsActive();
+        $nextStatus = $this->resolveNextExistingEmailAccountStatus($existingStatus, $nextIsApproved, $nextIsActive, $hasOpenInvitation);
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-<<<<<<< HEAD
-            'markInvitationAccepted' => $shouldActivateInvitedAccount,
-=======
-            'hasOpenInvitation' => $hasOpenInvitation,
             'shouldMarkInvitationAccepted' => $acceptedViaClerkInvite && !$hasAcceptedInvitation,
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
         ];
     }
 

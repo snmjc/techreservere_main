@@ -173,13 +173,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       return 'The previous Clerk invitation has expired. Confirm the responsible admin before resending a new invitation link.';
     }
     return account?.accountType === 'Employee'
-<<<<<<< HEAD
       ? 'Review the worker information before approving access and sending the Clerk invitation email.'
       : 'This will send the Clerk invitation to the requestor email and keep the request in Request Hub until the invite is accepted.';
-=======
-      ? 'Review the worker information before sending the Clerk invitation email.'
-      : 'Review the requestor details before sending the Clerk invitation email.';
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
   }
 
   function getInviteSubmitLabel() {
@@ -188,12 +183,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function getProcessingLabel() {
-<<<<<<< HEAD
-    if (approvalMode.value === 'verify') return 'Approving...';
-    return 'Sending...';
-=======
     return approvalMode.value === 'resend' ? 'Resending...' : 'Sending...';
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
   }
 
   function canOpenApprovalMode(account, mode) {
@@ -297,12 +287,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function getInviteSuccessMessage() {
-<<<<<<< HEAD
-    if (approvalMode.value === 'verify') return 'Email verified and account approved!';
-    return 'Invitation sent. The request will stay in Request Hub until the user accepts it.';
-=======
     return approvalMode.value === 'resend' ? 'Invitation resent successfully!' : 'Invitation sent successfully!';
->>>>>>> fa0e6667d39405c05d8ec8e4d5b965a4a094bc8d
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {
