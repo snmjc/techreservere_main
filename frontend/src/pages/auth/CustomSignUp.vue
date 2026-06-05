@@ -185,7 +185,7 @@
                       id="studentSupportingFile"
                       ref="studentSupportingFileInput"
                       type="file"
-                      accept=".pdf,application/pdf"
+                      :accept="supportingFileAccept"
                       class="custom-signup-file-input"
                       @change="handleStudentSupportingFileChange"
                     />
@@ -207,7 +207,7 @@
                     </button>
                   </div>
                   <p class="custom-signup-role-boundary-note">
-                    Required for student requests: attach a valid student ID or enrollment proof as a PDF.
+                    Required for student requests: upload a PDF or JPG named <strong>{{ expectedSupportingFileName }}</strong>. Maximum file size: 5 MB.
                   </p>
                 </div>
 
@@ -311,6 +311,8 @@ const {
   studentSupportingFileInput,
   firstErrorMessage,
   isStudentRole,
+  expectedSupportingFileName,
+  supportingFileAccept,
   openStudentSupportingFile,
   handleStudentSupportingFileChange,
   removeStudentSupportingFile,

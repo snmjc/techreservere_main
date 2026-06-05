@@ -1,3 +1,8 @@
+import {
+  formatDisplayDateTime as formatSharedDateTime,
+  formatNullableDateTime as formatSharedNullableDateTime,
+} from '@/shared/utils/dateTimeDisplay.js';
+
 export function normalizeAccount(account) {
   const roleDesignation = account.roleDesignation || account.role_designation || 'ROLE_BORROWER';
   const firstName = account.firstName || account.first_name || '';
@@ -125,6 +130,19 @@ export function sanitizeAccountPhoneInput(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 10);
 }
 
+export function validateProfilePhotoFile(file) {
+  if (!file) return '';
+
+  const fileName = String(file.name || '').toLowerCase();
+  const mimeType = String(file.type || '').toLowerCase();
+
+  if (!fileName.endsWith('.jpg') || mimeType !== 'image/jpeg') {
+    return 'Profile photo must be a .jpg image only.';
+  }
+
+  return '';
+}
+
 export function validateManageAccountUpdateForm(updateForm) {
   const lastName = updateForm.lastName.trim();
   const firstName = updateForm.firstName.trim();
@@ -169,28 +187,34 @@ export function formatIdNumber(value) {
 }
 
 export function formatDateTime(value) {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
+  return formatSharedDateTime(value);
 }
 
 export function formatNullableDateTime(value) {
-  return value ? formatDateTime(value) : 'N/A';
+  return formatSharedNullableDateTime(value);
+}
+
+export function formatDisplayValue(value, fallback = 'N/A') {
+  const normalizedValue = typeof value === 'string' ? value.trim() : value;
+  if (normalizedValue === null || normalizedValue === undefined || normalizedValue === '') {
+    return fallback;
+  }
+
+  return String(normalizedValue);
+}
+
+export function getInviteSentStatusLabel(account) {
+  return account?.inviteSentAt ? 'Sent' : 'N/A';
+}
+
+export function getAcceptedStatusLabel(account) {
+  return account?.inviteAcceptedAt ? 'Accepted' : 'N/A';
 }
 
 export function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'disabled') return 'manage-accounts-status--disabled';
   return 'manage-accounts-status--active';
-}
-
-export function getEmailLabel(account) {
-  return account?.accountType === 'Employee' ? 'Email Address:' : 'FIT Email Address:';
 }
 
 export function getRoleOptions(account) {

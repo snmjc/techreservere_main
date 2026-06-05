@@ -233,39 +233,28 @@
             </span>
 
             <div class="manage-accounts-detail-main">
-              <p><strong>Work ID Number:</strong> <span>{{ viewAccount.rawIdNumber || viewAccount.idNumber }}</span></p>
-              <p><strong>Last Name:</strong> <span>{{ viewAccount.lastName }}</span></p>
-              <p><strong>First Name:</strong> <span>{{ viewAccount.firstName }}</span></p>
-              <p><strong>Username:</strong> <span>{{ viewAccount.username || 'N/A' }}</span></p>
-              <p><strong>{{ getEmailLabel(viewAccount) }}</strong> <span>{{ viewAccount.emailAddress }}</span></p>
-              <p v-if="viewAccount.accountType === 'Employee'"><strong>Phone:</strong> <span>{{ viewAccount.contactNumber || 'N/A' }}</span></p>
-              <p><strong>Role:</strong> <span>{{ viewAccount.roleLabel }}</span></p>
-              <p v-if="viewAccount.accountType === 'User'"><strong>Proof File:</strong> <span>{{ viewAccount.supportingDocumentName || 'N/A' }}</span></p>
+              <p><strong>ID Number:</strong> <span>{{ formatDisplayValue(viewAccount.rawIdNumber || viewAccount.idNumber) }}</span></p>
+              <p><strong>Last Name:</strong> <span>{{ formatDisplayValue(viewAccount.lastName) }}</span></p>
+              <p><strong>First Name:</strong> <span>{{ formatDisplayValue(viewAccount.firstName) }}</span></p>
+              <p><strong>Email:</strong> <span>{{ formatDisplayValue(viewAccount.emailAddress) }}</span></p>
+              <p><strong>Role:</strong> <span>{{ formatDisplayValue(viewAccount.roleLabel) }}</span></p>
             </div>
 
             <div class="manage-accounts-detail-side">
+              <p v-if="viewAccountLoading" class="manage-accounts-work-logs-state">Refreshing account details...</p>
+              <p v-if="viewAccountError" class="manage-accounts-modal-error">{{ viewAccountError }}</p>
               <p>
                 <strong>Account Status:</strong>
                 <span class="manage-accounts-status" :class="getStatusClass(viewAccount.accountStatus)">
-                  {{ viewAccount.accountStatus }}
+                  {{ formatDisplayValue(viewAccount.accountStatus) }}
                 </span>
               </p>
               <p><strong>Account Registered:</strong> <span>{{ formatDateTime(viewAccount.createdTimestamp) }}</span></p>
-              <p><strong>Account Type:</strong> <span class="manage-accounts-type-pill" :class="getAccountTypeClass(viewAccount.accountType)">{{ viewAccount.accountType }}</span></p>
-              <p><strong>Invite Sent:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteSentAt) }}</span></p>
-              <p><strong>Expires:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteExpiresAt) }}</span></p>
-              <p><strong>Accepted:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteAcceptedAt) }}</span></p>
+              <p><strong>Account Type:</strong> <span class="manage-accounts-type-pill" :class="getAccountTypeClass(viewAccount.accountType)">{{ formatDisplayValue(viewAccount.accountType) }}</span></p>
+              <p><strong>Invite Sent Status:</strong> <span>{{ getInviteSentStatusLabel(viewAccount) }}</span></p>
+              <p><strong>Expiration Date:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteExpiresAt) }}</span></p>
+              <p><strong>Accepted Status:</strong> <span>{{ getAcceptedStatusLabel(viewAccount) }}</span></p>
             </div>
-          </div>
-
-          <div v-if="viewAccount.supportingDocumentData" class="manage-accounts-proof-actions">
-            <a
-              class="manage-accounts-proof-link"
-              :href="viewAccount.supportingDocumentData"
-              :download="viewAccount.supportingDocumentName || 'signup-proof'"
-            >
-              Download proof
-            </a>
           </div>
 
           <div class="manage-accounts-modal-actions">
@@ -274,9 +263,9 @@
         </section>
       </div>
 
-      <div v-if="updateAccount" class="manage-accounts-modal-overlay" @click.self="!isProcessing && closeModals()">
+      <div v-if="updateAccount" class="manage-accounts-modal-overlay" @click.self="!isProcessing && !updateAccountLoading && closeModals()">
         <section class="manage-accounts-view-modal">
-          <button class="manage-accounts-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeModals">
+          <button class="manage-accounts-modal-close" type="button" aria-label="Close" :disabled="isProcessing || updateAccountLoading" @click="closeModals">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -298,9 +287,9 @@
 
             <div class="manage-accounts-edit-fields">
               <label><strong>Work ID Number:</strong><input v-model.trim="updateForm.idNumber" readonly /></label>
-              <label><strong>Last Name:</strong><input v-model.trim="updateForm.lastName" required @input="sanitizeUpdateNameField('lastName')" /></label>
-              <label><strong>First Name:</strong><input v-model.trim="updateForm.firstName" required @input="sanitizeUpdateNameField('firstName')" /></label>
-              <label><strong>Phone Number:</strong><input v-model.trim="updateForm.contactNumber" type="tel" inputmode="numeric" maxlength="10" placeholder="9123456789" required @input="sanitizeUpdatePhone" /></label>
+              <label><strong>Last Name:</strong><input v-model.trim="updateForm.lastName" required :disabled="isProcessing || updateAccountLoading" @input="sanitizeUpdateNameField('lastName')" /></label>
+              <label><strong>First Name:</strong><input v-model.trim="updateForm.firstName" required :disabled="isProcessing || updateAccountLoading" @input="sanitizeUpdateNameField('firstName')" /></label>
+              <label><strong>Phone Number:</strong><input v-model.trim="updateForm.contactNumber" type="tel" inputmode="numeric" maxlength="10" placeholder="9123456789" required :disabled="isProcessing || updateAccountLoading" @input="sanitizeUpdatePhone" /></label>
               <label><strong>{{ getUpdateEmailLabel() }}</strong><input v-model.trim="updateForm.emailAddress" type="email" readonly /></label>
               <label>
                 <strong>Role:</strong>
@@ -308,7 +297,7 @@
               </label>
               <label class="manage-accounts-field-wide">
                 <strong>Profile Photo:</strong>
-                <input type="file" accept=".jpg,image/jpeg" :disabled="isProcessing" @change="handleUpdateProfilePhotoChange" />
+                <input type="file" accept=".jpg,image/jpeg" :disabled="isProcessing || updateAccountLoading" @change="handleUpdateProfilePhotoChange" />
               </label>
             </div>
 
@@ -322,11 +311,12 @@
               <p><strong>Accepted:</strong> <span>{{ formatNullableDateTime(updateAccount.inviteAcceptedAt) }}</span></p>
             </div>
 
+            <p v-if="updateAccountLoading" class="manage-accounts-work-logs-state">Refreshing account details...</p>
             <p v-if="modalErrorMessage" class="manage-accounts-modal-error">{{ modalErrorMessage }}</p>
 
             <div class="manage-accounts-modal-actions manage-accounts-modal-actions--wide">
-              <button class="manage-accounts-cancel-button" type="button" :disabled="isProcessing" @click="closeModals">Cancel</button>
-              <button class="manage-accounts-save-button" type="submit" :disabled="isProcessing || !isUpdateFormReady">
+              <button class="manage-accounts-cancel-button" type="button" :disabled="isProcessing || updateAccountLoading" @click="closeModals">Cancel</button>
+              <button class="manage-accounts-save-button" type="submit" :disabled="isProcessing || updateAccountLoading || !isUpdateFormReady">
                 {{ isProcessing ? 'Saving...' : 'Save Changes' }}
               </button>
             </div>
@@ -356,12 +346,12 @@
               </svg>
             </span>
             <div>
-              <strong>{{ accessAccount.fullName }}</strong>
-              <span>Work ID: {{ accessAccount.rawIdNumber || accessAccount.idNumber }}</span>
-              <span>Phone: {{ accessAccount.contactNumber || 'N/A' }}</span>
-              <span>{{ accessAccount.emailAddress }}</span>
-              <span>{{ accessAccount.roleLabel }}</span>
-              <em :class="getAccountTypeClass(accessAccount.accountType)">{{ accessAccount.accountType }}</em>
+              <strong>{{ formatDisplayValue(accessAccount.fullName) }}</strong>
+              <span><strong>Work ID Number:</strong> {{ formatDisplayValue(accessAccount.rawIdNumber || accessAccount.idNumber) }}</span>
+              <span><strong>Name:</strong> {{ formatDisplayValue(accessAccount.fullName) }}</span>
+              <span v-if="accessMode === 'delete'"><strong>Phone Number:</strong> {{ formatDisplayValue(accessAccount.contactNumber) }}</span>
+              <span v-else><strong>Email:</strong> {{ formatDisplayValue(accessAccount.emailAddress) }}</span>
+              <span><strong>Role:</strong> {{ formatDisplayValue(accessAccount.roleLabel) }}</span>
             </div>
           </div>
 
@@ -539,7 +529,10 @@ const {
   loadErrorMessage,
   modalErrorMessage,
   viewAccount,
+  viewAccountLoading,
+  viewAccountError,
   updateAccount,
+  updateAccountLoading,
   accessAccount,
   workLogsAccount,
   employeeWorkLogs,
@@ -582,13 +575,15 @@ const {
   canDisableAccount,
   canUpdateAccount,
   formatAssignedEmployee,
+  formatDisplayValue,
   formatEquipmentList,
   formatDateTime,
   formatNullableDateTime,
+  getAcceptedStatusLabel,
+  getInviteSentStatusLabel,
   getReservationLabel,
   getWorkLogStatusClass,
   getAccountTypeClass,
-  getEmailLabel,
   getStatusClass,
 } = useManageAccountsPage();
 </script>

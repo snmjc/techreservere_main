@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AppClock;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -10,7 +11,9 @@ class WishlistAccountApprovalService
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountAcceptanceEmailService $accountAcceptanceEmailService,
-        private readonly AccountClerkProvisioningService $accountClerkProvisioningService
+        private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
     ) {
     }
 
@@ -50,9 +53,10 @@ class WishlistAccountApprovalService
             );
         }
 
-        $now = new \DateTimeImmutable();
+        $now = AppClock::now();
         $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
         $this->approveAccountRow($accountIdentifier, $now, $clerkUserId);
+        $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($accountIdentifier);
 
         return $this->success([
             'message' => 'Email verified and account approved.',
@@ -63,43 +67,23 @@ class WishlistAccountApprovalService
     private function resolveConfirmedAdminEmail(array $requestBody, int $authenticatedAdminId, string $actionLabel): array
     {
         $confirmedAdminEmail = $this->normalizeEmailForConfirmation((string)($requestBody['confirmedAdminEmail'] ?? ''));
-        if ($confirmedAdminEmail === '') {
+        $emailError = $this->adminSecurityConfirmationService->validateAdminEmail(
+            $authenticatedAdminId,
+            $confirmedAdminEmail,
+            $actionLabel
+        );
+        if ($emailError !== null) {
             return $this->error(
                 'SecurityConfirmationFailed',
-                'Please type the responsible admin email before sending the invite.',
-                422
-            );
-        }
-
-        $confirmedAdmin = $this->findConfirmedAdmin($authenticatedAdminId);
-        $adminEmailAddress = $this->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
-
-        if (!$confirmedAdmin || $confirmedAdminEmail !== $adminEmailAddress) {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                sprintf('Please type your exact admin email before %s.', $actionLabel),
+                $emailError,
                 422
             );
         }
 
         return [
             'success' => true,
-            'emailAddress' => $adminEmailAddress,
+            'emailAddress' => $confirmedAdminEmail,
         ];
-    }
-
-    private function findConfirmedAdmin(int $authenticatedAdminId): array|false
-    {
-        return $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address
-             FROM accounts
-             WHERE account_identifier = :accountIdentifier
-               AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
-               AND COALESCE(is_active, TRUE) = TRUE
-             LIMIT 1",
-            ['accountIdentifier' => $authenticatedAdminId],
-            ['accountIdentifier' => ParameterType::INTEGER]
-        );
     }
 
     private function findInvitationEligibleAccount(int $accountIdentifier): array|false
@@ -174,7 +158,7 @@ class WishlistAccountApprovalService
             return $this->invalidInviteStatusError();
         }
 
-        if ($existingInviteExpiresAt >= new \DateTimeImmutable()) {
+        if ($existingInviteExpiresAt >= AppClock::now()) {
             return $this->activeInviteError();
         }
 
@@ -273,7 +257,7 @@ class WishlistAccountApprovalService
         $this->connection->beginTransaction();
 
         try {
-            $this->approveAccountRow($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
+            $this->markAccountAsInvited($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
 
             $this->connection->executeStatement(
                 'INSERT INTO invitations
@@ -333,7 +317,7 @@ class WishlistAccountApprovalService
         ];
     }
 
-    private function approveAccountRow(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+    private function markAccountAsInvited(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
     {
         $this->connection->executeStatement(
             'UPDATE accounts
@@ -344,8 +328,8 @@ class WishlistAccountApprovalService
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
-                'status' => 'approved',
-                'isApproved' => true,
+                'status' => 'invited',
+                'isApproved' => false,
                 'isActive' => true,
                 'clerkUserId' => $clerkUserId,
                 'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
@@ -364,7 +348,7 @@ class WishlistAccountApprovalService
 
     private function buildInvitationDraft(): array
     {
-        $createdAt = new \DateTimeImmutable();
+        $createdAt = AppClock::now();
         $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
 
         return [
@@ -385,7 +369,7 @@ class WishlistAccountApprovalService
 
         return [
             'message' => 'Invitation sent successfully.',
-            'account' => $this->buildApprovedAccountPayload($account),
+            'account' => $this->buildInvitedAccountPayload($account),
             'invitation' => [
                 'emailAddress' => (string)$account['email_address'],
                 'role' => (string)$account['role_designation'],
@@ -399,8 +383,20 @@ class WishlistAccountApprovalService
                 'invitationUrl' => $clerkInvitationUrl,
                 'sentBy' => $context['invitedBy'],
                 'emailSent' => true,
-                'movesToManageAccounts' => true,
+                'movesToManageAccounts' => false,
             ],
+        ];
+    }
+
+    private function buildInvitedAccountPayload(array $account): array
+    {
+        return [
+            'accountIdentifier' => (int)$account['account_identifier'],
+            'emailAddress' => (string)$account['email_address'],
+            'roleDesignation' => (string)$account['role_designation'],
+            'status' => 'invited',
+            'isApproved' => false,
+            'isActive' => true,
         ];
     }
 

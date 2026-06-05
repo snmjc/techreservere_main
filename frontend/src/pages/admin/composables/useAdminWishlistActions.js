@@ -38,7 +38,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   ));
   const isDeleteConfirmationReady = computed(() => (
     Boolean(deleteAccountRequest.value)
-    && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)
+    && deleteConfirmEmail.value.trim() !== ''
     && deleteConfirmPassword.value.trim() !== ''
   ));
 
@@ -145,7 +145,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
         deleteAccountRequest.value.accountIdentifier,
         authStore.authToken,
         {
-          confirmEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
+          confirmedAdminEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
           confirmedAdminPassword: deleteConfirmPassword.value,
         },
       );
@@ -186,7 +186,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
     return account?.accountType === 'Employee'
       ? 'Review the worker information before approving access and sending the Clerk invitation email.'
-      : 'This will approve the account, move it to Manage Accounts as Active, and send the Clerk invitation email.';
+      : 'This will send the Clerk invitation to the requestor email and keep the request in Request Hub until the invite is accepted.';
   }
 
   function getInviteSubmitLabel() {
@@ -196,7 +196,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function getProcessingLabel() {
-    return approvalMode.value === 'verify' || approvalMode.value === 'send' ? 'Approving...' : 'Sending...';
+    if (approvalMode.value === 'verify') return 'Approving...';
+    return 'Sending...';
   }
 
   function canOpenApprovalMode(account, mode) {
@@ -243,7 +244,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSubmitDenial() {
-    if (!denialAccount.value) return false;
+    if (isProcessing.value || !denialAccount.value) return false;
     if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(denialAccount.value.emailAddress)) {
       denialFormError.value = 'Please type the exact email address to deny this request.';
       return false;
@@ -256,9 +257,17 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSubmitDeletion() {
-    if (!deleteAccountRequest.value) return false;
-    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)) {
-      deleteFormError.value = 'Please type the exact email address to delete this request.';
+    if (isProcessing.value || !deleteAccountRequest.value) return false;
+    if (!currentAdminEmail.value) {
+      deleteFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
+      return false;
+    }
+    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) === '') {
+      deleteFormError.value = 'Please type your admin email to delete this request.';
+      return false;
+    }
+    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
+      deleteFormError.value = 'Please type your exact admin email to delete this request.';
       return false;
     }
     if (deleteConfirmPassword.value.trim() === '') {
@@ -270,8 +279,11 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   async function runAction(action) {
     isProcessing.value = true;
-    await action();
-    isProcessing.value = false;
+    try {
+      await action();
+    } finally {
+      isProcessing.value = false;
+    }
   }
 
   function getApprovalAction() {
@@ -282,7 +294,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteSuccessMessage() {
     if (approvalMode.value === 'verify') return 'Email verified and account approved!';
-    return 'Invitation Sent!';
+    return 'Invitation sent. The request will stay in Request Hub until the user accepts it.';
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {

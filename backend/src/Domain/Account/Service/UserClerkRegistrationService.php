@@ -4,19 +4,17 @@ namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 class UserClerkRegistrationService
 {
-    private const ADMIN_EMAIL_ALLOWLIST = [
-        'smmojica@fit.edu.ph',
-    ];
-
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
     ) {
     }
 
@@ -142,8 +140,9 @@ class UserClerkRegistrationService
 
         $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
 
-        if ($nextState['hasOpenInvitation']) {
+        if ($nextState['markInvitationAccepted']) {
             $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
+            $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($account->getAccountIdentifier());
         }
 
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
@@ -156,18 +155,37 @@ class UserClerkRegistrationService
         $existingStatus = strtolower($account->getStatus());
         $existingRole = strtoupper(trim($account->getRoleDesignation()));
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
-        $hasOpenInvitation = $this->isOpenInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
-        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
+        $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
+        $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
+        $shouldActivateInvitedAccount = !$existingIsAdmin && !$account->getIsApproved() && $hasOpenInvitation;
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $shouldActivateInvitedAccount;
+        $nextIsActive = $nextIsApproved ? true : $account->getIsActive();
+        $nextStatus = $this->resolveNextExistingEmailAccountStatus($existingStatus, $nextIsApproved, $nextIsActive, $hasOpenInvitation);
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'hasOpenInvitation' => $hasOpenInvitation,
+            'markInvitationAccepted' => $shouldActivateInvitedAccount,
         ];
+    }
+
+    private function resolveNextExistingEmailAccountStatus(
+        string $existingStatus,
+        bool $nextIsApproved,
+        bool $nextIsActive,
+        bool $hasOpenInvitation
+    ): string {
+        if ($nextIsApproved) {
+            return $nextIsActive ? 'approved' : 'disabled';
+        }
+
+        if ($hasOpenInvitation) {
+            return 'invited';
+        }
+
+        return $existingStatus;
     }
 
     private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
@@ -307,7 +325,7 @@ class UserClerkRegistrationService
 
     private function isAdminEmail(string $emailAddress): bool
     {
-        return in_array(strtolower(trim($emailAddress)), self::ADMIN_EMAIL_ALLOWLIST, true);
+        return false;
     }
 
     private function resolveRole(string $requestedRole, string $emailAddress): string
@@ -348,7 +366,7 @@ class UserClerkRegistrationService
         }
 
         try {
-            return new \DateTimeImmutable((string)$invitation['expires_at']) >= new \DateTimeImmutable();
+            return new \DateTimeImmutable((string)$invitation['expires_at'], AppClock::timezone()) >= AppClock::now();
         } catch (\Throwable) {
             return false;
         }

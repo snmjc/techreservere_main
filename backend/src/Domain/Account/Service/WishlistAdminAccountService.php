@@ -8,22 +8,30 @@ use Doctrine\DBAL\ParameterType;
 
 class WishlistAdminAccountService
 {
-    private const DEFAULT_ADMIN_PASSWORD = 'admin123';
-
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
-        private readonly AccountInputValidationService $accountInputValidationService
+        private readonly AccountInputValidationService $accountInputValidationService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
     ) {
     }
 
-    public function create(array $requestBody): array
+    public function create(array $requestBody, int $authenticatedAdminId): array
     {
         $payload = $this->normalizeRequestBody($requestBody);
         $validationError = $this->validatePayload($payload);
 
         if ($validationError !== null) {
             return $this->error('ValidationError', $validationError, 422);
+        }
+
+        $securityError = $this->adminSecurityConfirmationService->validateAdminEmail(
+            $authenticatedAdminId,
+            $payload['confirmedAdminEmail'],
+            'creating the admin'
+        );
+        if ($securityError !== null) {
+            return $this->error('SecurityConfirmationFailed', $securityError, 422);
         }
 
         $payload['lastName'] = $this->accountInputValidationService->normalizePersonName($payload['lastName']);
@@ -44,14 +52,15 @@ class WishlistAdminAccountService
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
             'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
-            'idNumber' => trim($requestBody['idNumber'] ?? ''),
+            'roleDesignation' => strtoupper(trim((string)($requestBody['roleDesignation'] ?? 'ROLE_ADMIN'))),
+            'confirmedAdminEmail' => strtolower(trim((string)($requestBody['confirmedAdminEmail'] ?? ''))),
         ];
     }
 
     private function validatePayload(array $payload): ?string
     {
-        if ($payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '' || $payload['idNumber'] === '') {
-            return 'Last name, first name, email, and ID number are required.';
+        if ($payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '') {
+            return 'Last name, first name, and email are required.';
         }
 
         if (!$this->accountInputValidationService->isValidPersonName($payload['lastName'])) {
@@ -67,7 +76,11 @@ class WishlistAdminAccountService
         }
 
         if (!$this->accountInputValidationService->isInstitutionalAdminEmail($payload['emailAddress'])) {
-            return 'Admin account must use a valid institutional email address.';
+            return 'Admin account must use an approved admin email domain.';
+        }
+
+        if ($payload['roleDesignation'] !== 'ROLE_ADMIN') {
+            return 'Only ROLE_ADMIN can be created from this modal.';
         }
 
         return null;
@@ -80,18 +93,12 @@ class WishlistAdminAccountService
             return $this->duplicateError('DuplicateAccount', 'email', $existingEmailAccount, 'email');
         }
 
-        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($payload['idNumber']);
-        if ($existingIdNumberAccount) {
-            return $this->duplicateError('DuplicateIdNumber', 'ID number', $existingIdNumberAccount, 'idNumber');
-        }
-
         return null;
     }
 
     private function insertAdminAccount(array $payload): array
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $defaultAdminPassword = (string)($_ENV['DEFAULT_ADMIN_PASSWORD'] ?? self::DEFAULT_ADMIN_PASSWORD);
 
         try {
             $this->connection->executeStatement(
@@ -103,13 +110,13 @@ class WishlistAdminAccountService
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildInsertParameters($payload, $defaultAdminPassword, $now),
+                $this->buildInsertParameters($payload, $now),
                 $this->buildInsertTypes()
             );
 
             return $this->success([
                 'accountIdentifier' => (int)$this->connection->lastInsertId(),
-                'idNumber' => $payload['idNumber'],
+                'idNumber' => null,
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
@@ -117,9 +124,7 @@ class WishlistAdminAccountService
                 'roleDesignation' => 'ROLE_ADMIN',
                 'roleLabel' => 'Admin',
                 'accountType' => 'Admin',
-                'accountStatus' => 'pending',
-                'hasDefaultPassword' => true,
-                'defaultPasswordLabel' => $defaultAdminPassword,
+                'accountStatus' => 'not_invited',
                 'isApproved' => false,
                 'registeredAt' => $now,
                 'inviteSentAt' => null,
@@ -135,7 +140,7 @@ class WishlistAdminAccountService
         }
     }
 
-    private function buildInsertParameters(array $payload, string $defaultAdminPassword, string $now): array
+    private function buildInsertParameters(array $payload, string $now): array
     {
         return [
             'lastName' => $payload['lastName'],
@@ -143,11 +148,11 @@ class WishlistAdminAccountService
             'emailAddress' => $payload['emailAddress'],
             'username' => $payload['username'],
             'roleDesignation' => 'ROLE_ADMIN',
-            'idNumber' => $payload['idNumber'],
+            'idNumber' => null,
             'department' => 'Administration',
             'contactNumber' => null,
             'clerkUserId' => null,
-            'passwordHash' => password_hash($defaultAdminPassword, PASSWORD_BCRYPT),
+            'passwordHash' => null,
             'status' => 'pending',
             'isApproved' => false,
             'isActive' => true,
@@ -165,11 +170,11 @@ class WishlistAdminAccountService
             'emailAddress' => ParameterType::STRING,
             'username' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
-            'idNumber' => ParameterType::STRING,
+            'idNumber' => ParameterType::NULL,
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::NULL,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::STRING,
+            'passwordHash' => ParameterType::NULL,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,

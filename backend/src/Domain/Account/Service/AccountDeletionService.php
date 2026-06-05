@@ -10,12 +10,17 @@ class AccountDeletionService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AuthenticationClerkService $authenticationClerkService
+        private readonly AuthenticationClerkService $authenticationClerkService,
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
     ) {
     }
 
     public function deleteAccount(array $account, int $accountIdentifier): int
     {
+        $document = $this->accountSupportingDocumentService->getSupportingDocumentByAccountIdentifier($accountIdentifier);
+        $relativePath = !empty($document['signup_supporting_document_path'])
+            ? (string)$document['signup_supporting_document_path']
+            : null;
         $this->connection->beginTransaction();
 
         try {
@@ -40,6 +45,10 @@ class AccountDeletionService
             );
 
             $this->connection->commit();
+
+            if ($relativePath !== null) {
+                $this->accountSupportingDocumentService->deleteStoredDocumentByPath($relativePath);
+            }
 
             if ($clerkUserId !== '') {
                 $this->authenticationClerkService->deleteUser($clerkUserId);

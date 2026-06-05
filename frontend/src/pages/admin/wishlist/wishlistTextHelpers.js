@@ -1,37 +1,15 @@
+export {
+  formatDisplayDate,
+  formatDisplayDateTime,
+  formatNullableDateTime,
+} from '@/shared/utils/dateTimeDisplay.js';
+
 export function normalizeEmailForConfirmation(value) {
   return String(value || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\s+/g, '')
     .trim()
     .toLowerCase();
-}
-
-export function formatDisplayDate(value) {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
-export function formatDisplayDateTime(value) {
-  if (!value) return 'N/A';
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) return 'N/A';
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(parsedDate);
-}
-
-export function formatNullableDateTime(value) {
-  if (!value) return 'N/A';
-  return formatDisplayDateTime(value);
 }
 
 export function toTitleCase(value) {
