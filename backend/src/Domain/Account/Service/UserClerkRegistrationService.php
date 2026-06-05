@@ -142,7 +142,7 @@ class UserClerkRegistrationService
 
         $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
 
-        if ($nextState['hasOpenInvitation']) {
+        if ($nextState['shouldMarkInvitationAccepted']) {
             $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
         }
 
@@ -156,8 +156,11 @@ class UserClerkRegistrationService
         $existingStatus = strtolower($account->getStatus());
         $existingRole = strtoupper(trim($account->getRoleDesignation()));
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
-        $hasOpenInvitation = $this->isOpenInvitation($this->findLatestInvitationForEmail($registration['emailAddress']));
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
+        $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
+        $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
+        $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
+        $acceptedViaClerkInvite = !$account->getIsApproved() && ($hasAcceptedInvitation || ($existingStatus === 'invited' && $hasOpenInvitation));
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $acceptedViaClerkInvite;
         $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
         $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
 
@@ -167,6 +170,7 @@ class UserClerkRegistrationService
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
             'hasOpenInvitation' => $hasOpenInvitation,
+            'shouldMarkInvitationAccepted' => $acceptedViaClerkInvite && !$hasAcceptedInvitation,
         ];
     }
 
@@ -362,6 +366,20 @@ class UserClerkRegistrationService
 
         $status = strtolower((string)($invitation['status'] ?? 'pending'));
         return !in_array($status, ['accepted', 'expired', 'rejected', 'denied'], true);
+    }
+
+    private function isAcceptedInvitation(?array $invitation): bool
+    {
+        if ($invitation === null) {
+            return false;
+        }
+
+        if (!empty($invitation['accepted_at'])) {
+            return true;
+        }
+
+        $status = strtolower((string)($invitation['status'] ?? 'pending'));
+        return in_array($status, ['accepted', 'completed'], true);
     }
 
     private function markLatestInvitationAccepted(string $emailAddress, string $acceptedAt): void

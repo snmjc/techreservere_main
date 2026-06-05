@@ -273,7 +273,7 @@ class WishlistAccountApprovalService
         $this->connection->beginTransaction();
 
         try {
-            $this->approveAccountRow($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
+            $this->markAccountAsInvited($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
 
             $this->connection->executeStatement(
                 'INSERT INTO invitations
@@ -333,6 +333,35 @@ class WishlistAccountApprovalService
         ];
     }
 
+    private function markAccountAsInvited(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE accounts
+             SET status = :status,
+                 is_approved = :isApproved,
+                 is_active = :isActive,
+                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
+                 updated_timestamp = :updatedTimestamp
+             WHERE account_identifier = :accountIdentifier',
+            [
+                'status' => 'invited',
+                'isApproved' => false,
+                'isActive' => true,
+                'clerkUserId' => $clerkUserId,
+                'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
+                'accountIdentifier' => $accountIdentifier,
+            ],
+            [
+                'status' => ParameterType::STRING,
+                'isApproved' => ParameterType::BOOLEAN,
+                'isActive' => ParameterType::BOOLEAN,
+                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+                'accountIdentifier' => ParameterType::INTEGER,
+            ]
+        );
+    }
+
     private function approveAccountRow(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
     {
         $this->connection->executeStatement(
@@ -385,7 +414,7 @@ class WishlistAccountApprovalService
 
         return [
             'message' => 'Invitation sent successfully.',
-            'account' => $this->buildApprovedAccountPayload($account),
+            'account' => $this->buildInvitedAccountPayload($account),
             'invitation' => [
                 'emailAddress' => (string)$account['email_address'],
                 'role' => (string)$account['role_designation'],
@@ -399,8 +428,20 @@ class WishlistAccountApprovalService
                 'invitationUrl' => $clerkInvitationUrl,
                 'sentBy' => $context['invitedBy'],
                 'emailSent' => true,
-                'movesToManageAccounts' => true,
+                'movesToManageAccounts' => false,
             ],
+        ];
+    }
+
+    private function buildInvitedAccountPayload(array $account): array
+    {
+        return [
+            'accountIdentifier' => (int)$account['account_identifier'],
+            'emailAddress' => (string)$account['email_address'],
+            'roleDesignation' => (string)$account['role_designation'],
+            'status' => 'invited',
+            'isApproved' => false,
+            'isActive' => true,
         ];
     }
 

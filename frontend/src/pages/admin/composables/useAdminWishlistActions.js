@@ -49,7 +49,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   function openApprovalModal(account = selectedAccount.value, mode = 'send') {
     if (!account || !canOpenApprovalMode(account, mode)) return;
     approvalAccount.value = account;
-    approvalMode.value = ['resend', 'verify'].includes(mode) ? mode : 'send';
+    approvalMode.value = mode === 'resend' ? 'resend' : 'send';
     setApprovalFormFromAccount(account);
   }
 
@@ -63,8 +63,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   function closeApprovalModal() {
     approvalAccount.value = null;
     approvalMode.value = 'send';
-    approvalForm.confirmEmail = '';
-    approvalFormError.value = '';
+    resetApprovalForm();
   }
 
   function openDenialModal(account) {
@@ -97,7 +96,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     deleteFormError.value = '';
   }
 
-  async function verifyAccount() {
+  async function submitInviteAction() {
     if (!canSubmitApproval()) return;
 
     await runAction(async () => {
@@ -164,53 +163,39 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       && !isProcessing.value;
   }
 
-  function canVerifyEmail(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'verified'
-      && Boolean(account?.inviteAcceptedAt)
-      && !isProcessing.value;
-  }
-
   function getInviteModalTitle(account) {
     if (approvalMode.value === 'resend') return 'Resend Invite';
-    if (approvalMode.value === 'verify') return 'Verify Email';
-    return account?.accountType === 'Employee' ? 'Approve Employee' : 'Approve Account';
+    return account?.accountType === 'Employee' ? 'Send Employee Invite' : 'Send Invite';
   }
 
   function getInviteModalDescription(account) {
     if (approvalMode.value === 'resend') {
-      return 'The previous invitation expired. Confirm the responsible admin before resending a new invitation link.';
+      return 'The previous Clerk invitation has expired. Confirm the responsible admin before resending a new invitation link.';
     }
-    if (approvalMode.value === 'verify') {
-      return 'The invitation was accepted. Confirm the responsible admin before approving system access.';
-    }
-
     return account?.accountType === 'Employee'
-      ? 'Review the worker information before approving access and sending the Clerk invitation email.'
-      : 'This will approve the account, move it to Manage Accounts as Active, and send the Clerk invitation email.';
+      ? 'Review the worker information before sending the Clerk invitation email.'
+      : 'Review the requestor details before sending the Clerk invitation email.';
   }
 
   function getInviteSubmitLabel() {
     if (approvalMode.value === 'resend') return 'Resend Invite';
-    if (approvalMode.value === 'verify') return 'Approve Access';
-    return 'Approve & Email';
+    return 'Send Invite';
   }
 
   function getProcessingLabel() {
-    return approvalMode.value === 'verify' || approvalMode.value === 'send' ? 'Approving...' : 'Sending...';
+    return approvalMode.value === 'resend' ? 'Resending...' : 'Sending...';
   }
 
   function canOpenApprovalMode(account, mode) {
     const validators = {
       resend: canResendInvite,
-      verify: canVerifyEmail,
       send: canSendInvite,
     };
     const messages = {
       resend: 'Resend invite is only available after the previous invitation expires.',
-      verify: 'Verify email is only available after the user accepts the invitation.',
       send: 'Send invite is only available for accounts that are not invited.',
     };
-    const normalizedMode = validators[mode] ? mode : 'send';
+    const normalizedMode = mode === 'resend' ? 'resend' : 'send';
     if (validators[normalizedMode](account)) return true;
 
     showToast(messages[normalizedMode]);
@@ -227,6 +212,16 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     approvalFormError.value = '';
   }
 
+  function resetApprovalForm() {
+    approvalForm.emailAddress = '';
+    approvalForm.role = 'ROLE_BORROWER';
+    approvalForm.idNumber = '';
+    approvalForm.lastName = '';
+    approvalForm.firstName = '';
+    approvalForm.confirmEmail = '';
+    approvalFormError.value = '';
+  }
+
   function canSubmitApproval() {
     if (isProcessing.value || !approvalAccount.value) return false;
     if (!currentAdminEmail.value) {
@@ -234,8 +229,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       return false;
     }
     if (!isApprovalConfirmationReady.value) {
-      approvalFormError.value = approvalMode.value === 'verify'
-        ? 'Please type your exact admin email to approve access.'
+      approvalFormError.value = approvalMode.value === 'resend'
+        ? 'Please type your exact admin email to resend the invite.'
         : 'Please type your exact admin email to send the invite.';
       return false;
     }
@@ -275,14 +270,13 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function getApprovalAction() {
-    return approvalMode.value === 'verify'
-      ? adminWishlistApi.verifyEmailAndApproveAccount
-      : adminWishlistApi.verifyAccount;
+    return approvalMode.value === 'resend'
+      ? adminWishlistApi.resendInvite
+      : adminWishlistApi.sendInvite;
   }
 
   function getInviteSuccessMessage() {
-    if (approvalMode.value === 'verify') return 'Email verified and account approved!';
-    return 'Invitation Sent!';
+    return approvalMode.value === 'resend' ? 'Invitation resent successfully!' : 'Invitation sent successfully!';
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {
@@ -325,12 +319,11 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     closeDenialModal,
     openDeleteModal,
     closeDeleteModal,
-    verifyAccount,
+    submitInviteAction,
     denyAccount,
     deleteWishlistAccount,
     canSendInvite,
     canResendInvite,
-    canVerifyEmail,
     getInviteModalTitle,
     getInviteModalDescription,
     getInviteSubmitLabel,
