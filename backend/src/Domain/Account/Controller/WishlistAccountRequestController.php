@@ -75,16 +75,24 @@ class WishlistAccountRequestController
     #[Route('/{accountIdentifier}/approve', name: 'approve_user', methods: ['POST'])]
     public function approveUser(Request $request, int $accountIdentifier): JsonResponse
     {
-        return $this->serviceResultResponse(
-            $this->workflowService->approveUser(
-                $accountIdentifier,
-                $this->jsonBody($request),
-                $request->attributes->get('authenticatedIdentity', []),
-                $request->headers->get('Authorization', '')
-            ),
-            'ApproveAccountFailed',
-            'Unable to send the invitation.'
-        );
+        try {
+            return $this->serviceResultResponse(
+                $this->workflowService->approveUser(
+                    $accountIdentifier,
+                    $this->jsonBody($request),
+                    $request->attributes->get('authenticatedIdentity', []),
+                    $request->headers->get('Authorization', '')
+                ),
+                'ApproveAccountFailed',
+                'Unable to send the invitation.'
+            );
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse(
+                'ApproveAccountCrashed',
+                'Unable to send the invitation: ' . $exception->getMessage(),
+                500
+            );
+        }
     }
 
     #[Route('/{accountIdentifier}/verify-email', name: 'verify_email_and_approve_user', methods: ['POST'])]
