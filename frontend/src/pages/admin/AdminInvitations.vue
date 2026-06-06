@@ -32,7 +32,7 @@
                 <p class="invitation-date">Sent: {{ formatDate(invitation.sentAt) }}</p>
                 <p class="invitation-status">
                   Status: <span :class="['status-badge', invitation.status]">
-                    {{  invitation.status }}
+                    {{ invitation.status }}
                   </span>
                 </p>
               </div>
