@@ -24,7 +24,10 @@ class EquipmentRepository extends ServiceEntityRepository
     /** @return EquipmentEntity[] */
     public function findAllEquipment(): array
     {
-        return $this->findAll();
+        return $this->createQueryBuilder('equip')
+            ->orderBy('equip.equipmentName', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     // ===== AI GENERATED: findAvailableEquipment =====
@@ -39,25 +42,32 @@ class EquipmentRepository extends ServiceEntityRepository
     public function findAvailableEquipment(): array
     {
         return $this->createQueryBuilder('equip')
-            ->where('equip.operationalStatus = :activeStatus')
+            ->andWhere('equip.equipmentState = :equipmentState')
             ->andWhere('equip.availableQuantity > 0')
-            ->setParameter('activeStatus', 'Active')
+            ->setParameter('equipmentState', 'Available')
+            ->orderBy('equip.equipmentName', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-    // ===== AI GENERATED: findByCategoryName =====
-    // Purpose: Retrieve equipment filtered by category
-    // Inputs: categoryName (string)
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query equipment by category_name
-    // 2. Return filtered array
-
-    /** @return EquipmentEntity[] */
-    public function findByCategoryName(string $categoryName): array
+    public function findOneByBarcode(string $barcode): ?EquipmentEntity
     {
-        return $this->findBy(['categoryName' => $categoryName]);
+        return $this->createQueryBuilder('equip')
+            ->where('LOWER(equip.barcode) = LOWER(:barcode)')
+            ->setParameter('barcode', trim($barcode))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findOneByAssetId(string $assetId): ?EquipmentEntity
+    {
+        return $this->createQueryBuilder('equip')
+            ->where('LOWER(equip.assetId) = LOWER(:assetId)')
+            ->setParameter('assetId', trim($assetId))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     // ===== AI GENERATED: persistEquipment =====

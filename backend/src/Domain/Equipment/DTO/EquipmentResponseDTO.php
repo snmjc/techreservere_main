@@ -14,34 +14,46 @@ class EquipmentResponseDTO
 
     public int $equipmentIdentifier;
     public string $equipmentName;
-    public string $categoryName;
-    public int $totalQuantity;
+    public string $equipmentCategory;
+    public string $equipmentBrand;
     public int $availableQuantity;
     public string $operationalStatus;
     public string $equipmentState;
-    public ?string $scheduleDescription;
+    public ?string $description;
+    public ?string $imageUrl;
+    public string $barcode;
+    public string $assetId;
     public string $createdTimestamp;
+    public string $updatedTimestamp;
 
     public function __construct(
         int $equipmentIdentifier,
         string $equipmentName,
-        string $categoryName,
-        int $totalQuantity,
+        string $equipmentCategory,
+        string $equipmentBrand,
         int $availableQuantity,
         string $operationalStatus,
         string $equipmentState,
-        ?string $scheduleDescription,
-        string $createdTimestamp
+        ?string $description,
+        ?string $imageUrl,
+        string $barcode,
+        string $assetId,
+        string $createdTimestamp,
+        string $updatedTimestamp
     ) {
         $this->equipmentIdentifier = $equipmentIdentifier;
         $this->equipmentName = $equipmentName;
-        $this->categoryName = $categoryName;
-        $this->totalQuantity = $totalQuantity;
+        $this->equipmentCategory = $equipmentCategory;
+        $this->equipmentBrand = $equipmentBrand;
         $this->availableQuantity = $availableQuantity;
         $this->operationalStatus = $operationalStatus;
         $this->equipmentState = $equipmentState;
-        $this->scheduleDescription = $scheduleDescription;
+        $this->description = $description;
+        $this->imageUrl = $imageUrl;
+        $this->barcode = $barcode;
+        $this->assetId = $assetId;
         $this->createdTimestamp = $createdTimestamp;
+        $this->updatedTimestamp = $updatedTimestamp;
     }
 
     public function toResponseArray(): array
@@ -49,13 +61,20 @@ class EquipmentResponseDTO
         return [
             'equipmentIdentifier' => $this->equipmentIdentifier,
             'equipmentName' => $this->equipmentName,
-            'categoryName' => $this->categoryName,
-            'totalQuantity' => $this->totalQuantity,
+            'equipmentCategory' => $this->equipmentCategory,
+            'equipmentBrand' => $this->equipmentBrand,
             'availableQuantity' => $this->availableQuantity,
             'operationalStatus' => $this->operationalStatus,
             'equipmentState' => $this->equipmentState,
-            'scheduleDescription' => $this->scheduleDescription,
+            'description' => $this->description,
+            'imageUrl' => $this->imageUrl,
+            'barcode' => $this->barcode,
+            'assetId' => $this->assetId,
             'createdTimestamp' => $this->createdTimestamp,
+            'updatedTimestamp' => $this->updatedTimestamp,
+            'categoryName' => $this->equipmentCategory,
+            'totalQuantity' => $this->availableQuantity,
+            'scheduleDescription' => $this->description,
         ];
     }
 }

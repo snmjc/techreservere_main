@@ -80,7 +80,7 @@
           v-model="searchQuery"
           type="text"
           class="manage-facilities-search-input"
-          placeholder="Search by venue name or floor..."
+          :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name or floor...' : 'Search by equipment name or category...'"
         />
       </div>
       <div class="manage-facilities-sort-group">
@@ -117,7 +117,7 @@
     </div>
 
     <!-- Venue Tab Content -->
-    <div v-if="loading" class="manage-facilities-loading">Loading venues...</div>
+    <div v-if="activeFacilityTab === 'venue' && loading" class="manage-facilities-loading">Loading venues...</div>
     <FacilityVenueListComponent
       v-else-if="activeFacilityTab === 'venue'"
       :venue-floor-groups="venueFloorGroups"
@@ -128,9 +128,15 @@
     />
 
     <!-- Equipment Tab Content -->
+    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">
+      Loading equipment...
+    </div>
+    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">
+      {{ equipmentError }}
+    </p>
     <FacilityEquipmentGridComponent
-      v-if="activeFacilityTab === 'equipment'"
-      :equipment-categories="equipmentCategoriesList"
+      v-else-if="activeFacilityTab === 'equipment'"
+      :equipment-records="filteredEquipmentRecords"
       :availability-filter="availabilityFilter"
     />
 
@@ -241,6 +247,7 @@ import FacilityEquipmentGridComponent from '@/modules/facility/components/Facili
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
+import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const authStore = useAuthenticationStore();
@@ -256,7 +263,10 @@ const selectedVenue = ref(null);
 const selectedEquipment = ref(null);
 
 const venuesList = ref([]);
+const equipmentList = ref([]);
 const loading = ref(false);
+const equipmentLoading = ref(false);
+const equipmentError = ref('');
 const deleteVenueRecord = ref(null);
 const deleteConfirmEmail = ref('');
 const deleteConfirmPassword = ref('');
@@ -311,6 +321,35 @@ const filteredVenues = computed(() => {
   return venues;
 });
 
+const filteredEquipmentRecords = computed(() => {
+  let equipment = [...equipmentList.value];
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    equipment = equipment.filter((record) =>
+      record.equipmentName?.toLowerCase().includes(query)
+      || record.equipmentCategory?.toLowerCase().includes(query)
+      || record.equipmentBrand?.toLowerCase().includes(query)
+      || record.categoryName?.toLowerCase().includes(query)
+    );
+  }
+
+  if (availabilityFilter.value === 'available') {
+    equipment = equipment.filter((record) => record.equipmentState === 'Available');
+  } else if (availabilityFilter.value === 'unavailable') {
+    equipment = equipment.filter((record) => record.equipmentState !== 'Available');
+  }
+
+  return equipment.sort((left, right) => {
+    const leftName = String(left.equipmentName || '').toLowerCase();
+    const rightName = String(right.equipmentName || '').toLowerCase();
+
+    return sortValue.value === 'asc'
+      ? leftName.localeCompare(rightName)
+      : rightName.localeCompare(leftName);
+  });
+});
+
 const venueFloorGroups = computed(() => {
   const groups = {};
   const filtered = filteredVenues.value;
@@ -362,6 +401,7 @@ const venueFloorGroups = computed(() => {
 function handleFacilityTabChange(tabName) {
   activeFacilityTab.value = tabName;
   availabilityFilter.value = 'all';
+  searchQuery.value = '';
 }
 
 /**
@@ -374,7 +414,7 @@ function handleEditFacility() {
     selectedVenue.value = { venueIdentifier: 0, venueName: '', venueLocation: '', capacityLimit: null };
     showVenueModal.value = true;
   } else {
-    selectedEquipment.value = { equipmentIdentifier: 0, equipmentName: '', categoryName: '', totalQuantity: 0, operationalStatus: 'Active', scheduleDescription: '' };
+    selectedEquipment.value = null;
     showEquipmentModal.value = true;
   }
 }
@@ -438,6 +478,7 @@ function handleEquipmentModalClose() {
 function handleEquipmentModalSaved() {
   showEquipmentModal.value = false;
   selectedEquipment.value = null;
+  fetchEquipment();
 }
 
 async function fetchVenues() {
@@ -450,6 +491,21 @@ async function fetchVenues() {
     venuesList.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function fetchEquipment() {
+  try {
+    equipmentLoading.value = true;
+    equipmentError.value = '';
+    const response = await equipmentApi.listEquipment();
+    equipmentList.value = response?.data?.equipment || [];
+  } catch (error) {
+    console.error('Error fetching equipment:', error);
+    equipmentList.value = [];
+    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment.';
+  } finally {
+    equipmentLoading.value = false;
   }
 }
 
@@ -519,30 +575,11 @@ async function handleToggleAvailability(venue) {
 
 onMounted(() => {
   fetchVenues();
+  fetchEquipment();
 });
 
 function normalizeEmailForConfirmation(emailAddress) {
   return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
 }
 
-/**
- * @constant {Array<Object>} equipmentCategoriesList
- * @description Static equipment category data for display.
- */
-const equipmentCategoriesList = ref([
-  { categoryName: 'Chairs', categoryAvailable: true },
-  { categoryName: 'Tables', categoryAvailable: true },
-  { categoryName: 'Podium', categoryAvailable: true },
-  { categoryName: 'Microphone', categoryAvailable: true },
-  { categoryName: 'Wifi Card', categoryAvailable: true },
-  { categoryName: 'Board Eraser System', categoryAvailable: true },
-  { categoryName: 'Extension Cord', categoryAvailable: true },
-  { categoryName: 'Flood Board', categoryAvailable: true },
-  { categoryName: 'Stage', categoryAvailable: true },
-  { categoryName: 'White Screen', categoryAvailable: true },
-  { categoryName: 'Philippine Flag', categoryAvailable: true },
-  { categoryName: 'FEU Tech Logo', categoryAvailable: true },
-  { categoryName: 'LED Video Wall', categoryAvailable: true },
-  { categoryName: 'Others', categoryAvailable: true },
-]);
 </script>
