@@ -59,6 +59,21 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.view-facilities-search-input {
+  min-width: 220px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+}
+
+.view-facilities-search-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .view-facilities-filter-label {
@@ -302,6 +317,46 @@
 .view-facilities-empty-state p {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.view-facilities-feedback {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+.view-facilities-feedback--error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.view-facilities-equipment-chip--card {
+  display: grid;
+  justify-content: stretch;
+  gap: 0.65rem;
+  width: min(320px, 100%);
+  padding: 1rem;
+  border-radius: 1rem;
+}
+
+.view-facilities-equipment-chip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.view-facilities-equipment-detail {
+  margin: 0;
+  color: inherit;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.view-facilities-equipment-detail strong {
+  font-weight: 700;
 }
 
 /* ===== Footer ===== */

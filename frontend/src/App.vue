@@ -21,7 +21,8 @@ watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
       authStore.performLogout()
     }
 
-    if (route.meta?.requiresAuth) {
+    // Preserve restored local sessions on refresh instead of forcing a Clerk login redirect.
+    if (route.meta?.requiresAuth && !authStore.isAuthenticated) {
       router.replace({ name: ROUTE_NAMES.clerkLogin })
     }
     return

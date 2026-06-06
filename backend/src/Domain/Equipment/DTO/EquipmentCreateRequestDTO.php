@@ -4,31 +4,35 @@ namespace App\Domain\Equipment\DTO;
 
 class EquipmentCreateRequestDTO
 {
-    // ===== AI GENERATED: EquipmentCreateRequestDTO =====
-    // Purpose: Request DTO for creating equipment record
-    // Inputs: equipmentName, categoryName, totalQuantity, operationalStatus, scheduleDescription
-    // Returns: none (transport object)
-    // Flow:
-    // 1. Validated at controller level
-    // 2. Passed to EquipmentCreateService
-
     public string $equipmentName;
-    public string $categoryName;
-    public int $totalQuantity;
+    public string $equipmentCategory;
+    public string $equipmentBrand;
+    public int $availableQuantity;
     public string $operationalStatus;
-    public ?string $scheduleDescription;
+    public ?string $description;
+    public ?string $imageUrl;
+    public string $barcode;
+    public string $assetId;
 
     public function __construct(
         string $equipmentName,
-        string $categoryName,
-        int $totalQuantity,
-        string $operationalStatus = 'Active',
-        ?string $scheduleDescription = null
+        string $equipmentCategory,
+        string $equipmentBrand,
+        int $availableQuantity,
+        string $operationalStatus,
+        ?string $description,
+        ?string $imageUrl,
+        string $barcode,
+        string $assetId
     ) {
         $this->equipmentName = $equipmentName;
-        $this->categoryName = $categoryName;
-        $this->totalQuantity = $totalQuantity;
+        $this->equipmentCategory = $equipmentCategory;
+        $this->equipmentBrand = $equipmentBrand;
+        $this->availableQuantity = $availableQuantity;
         $this->operationalStatus = $operationalStatus;
-        $this->scheduleDescription = $scheduleDescription;
+        $this->description = $description;
+        $this->imageUrl = $imageUrl;
+        $this->barcode = $barcode;
+        $this->assetId = $assetId;
     }
 }
