@@ -9,7 +9,14 @@ async function parseJsonResponse(response, invalidResponseMessage) {
   try {
     return await response.json();
   } catch (jsonError) {
-    throw new Error(invalidResponseMessage);
+    const responseText = await response.text().catch(() => '');
+    const responseSummary = responseText.trim().slice(0, 240);
+    const statusLabel = `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`;
+    const message = responseSummary
+      ? `${invalidResponseMessage} ${statusLabel}. Server returned: ${responseSummary}`
+      : `${invalidResponseMessage} ${statusLabel}.`;
+
+    throw new Error(message);
   }
 }
 
