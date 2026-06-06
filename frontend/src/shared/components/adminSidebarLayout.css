@@ -193,19 +193,12 @@
   z-index: 50;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   min-height: 68px;
   padding: 0.75rem 1.5rem;
   background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--tr-border);
   backdrop-filter: blur(14px);
-}
-
-.admin-topbar-page {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 0.85rem;
 }
 
 .admin-topbar-menu-button {
@@ -222,23 +215,6 @@
 .admin-topbar-menu-button svg {
   width: 18px;
   height: 18px;
-}
-
-.admin-topbar-eyebrow {
-  margin: 0;
-  color: var(--tr-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.admin-topbar-title {
-  margin: 0.05rem 0 0;
-  color: var(--tr-ink);
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0;
 }
 
 .admin-topbar-actions {
@@ -371,15 +347,4 @@
 }
 
 @media (max-width: 560px) {
-  .admin-topbar-title {
-    max-width: 140px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 1rem;
-  }
-
-  .admin-topbar-eyebrow {
-    display: none;
-  }
 }
