@@ -119,12 +119,6 @@ class AuthenticationLoginService
 
     private function buildAccountResponse(AccountEntity $account): array
     {
-        $profilePhotoData = $this->connection->fetchOne(
-            'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
-            ['accountIdentifier' => $account->getAccountIdentifier()],
-            ['accountIdentifier' => ParameterType::INTEGER]
-        );
-
         return [
             'accountIdentifier' => $account->getAccountIdentifier(),
             'firstName' => $account->getFirstName(),
@@ -135,8 +129,23 @@ class AuthenticationLoginService
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
             'isActive' => $account->getIsActive(),
-            'profilePhotoData' => $profilePhotoData ? (string)$profilePhotoData : null,
+            'profilePhotoData' => $this->resolveProfilePhotoData($account),
         ];
+    }
+
+    private function resolveProfilePhotoData(AccountEntity $account): ?string
+    {
+        try {
+            $profilePhotoData = $this->connection->fetchOne(
+                'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
+                ['accountIdentifier' => $account->getAccountIdentifier()],
+                ['accountIdentifier' => ParameterType::INTEGER]
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $profilePhotoData ? (string) $profilePhotoData : null;
     }
 
     private function error(string $code, string $message, int $status): array
