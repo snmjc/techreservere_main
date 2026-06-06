@@ -1,6 +1,11 @@
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
-const AUTH_PAGE_NAMES = [ROUTE_NAMES.login, ROUTE_NAMES.signUp];
+const AUTH_PAGE_NAMES = [
+  ROUTE_NAMES.login,
+  ROUTE_NAMES.signUp,
+  ROUTE_NAMES.clerkLogin,
+  ROUTE_NAMES.customSignUp,
+];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
