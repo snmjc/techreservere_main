@@ -50,7 +50,7 @@ onMounted(async () => {
     // Redirect based on account status and role
     if (accountStatus === 'pending') {
       router.push('/request-pending');
-    } else if (accountStatus === 'approved') {
+    } else if (accountStatus === 'approved' || accountStatus === 'accepted') {
       if (userRole === 'ROLE_ADMIN') {
         router.push('/admin/dashboard');
       } else if (userRole === 'ROLE_FACULTY') {

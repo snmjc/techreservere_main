@@ -13,7 +13,8 @@ class WishlistAdminAccountService
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
         private readonly AccountInputValidationService $accountInputValidationService,
-        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly WishlistAccountApprovalService $wishlistAccountApprovalService
     ) {
     }
 
@@ -44,7 +45,7 @@ class WishlistAdminAccountService
             return $duplicateError;
         }
 
-        return $this->insertAdminAccount($payload);
+        return $this->createAndInviteAdminAccount($payload, $authenticatedAdminId, $requestBody);
     }
 
     private function normalizeRequestBody(array $requestBody): array
@@ -108,9 +109,10 @@ class WishlistAdminAccountService
         return null;
     }
 
-    private function insertAdminAccount(array $payload): array
+    private function createAndInviteAdminAccount(array $payload, int $authenticatedAdminId, array $requestBody): array
     {
         $now = AppClock::now()->format('Y-m-d H:i:s');
+        $createdAccountIdentifier = 0;
 
         try {
             $this->connection->executeStatement(
@@ -126,24 +128,47 @@ class WishlistAdminAccountService
                 $this->buildInsertTypes()
             );
 
-            return $this->success([
-                'accountIdentifier' => (int)$this->connection->lastInsertId(),
-                'idNumber' => $payload['idNumber'],
-                'lastName' => $payload['lastName'],
-                'firstName' => $payload['firstName'],
-                'emailAddress' => $payload['emailAddress'],
-                'username' => $payload['username'],
-                'roleDesignation' => 'ROLE_ADMIN',
-                'roleLabel' => 'Admin',
-                'accountType' => 'Admin',
-                'accountStatus' => 'not_invited',
-                'isApproved' => false,
-                'registeredAt' => $now,
-                'createdTimestamp' => $now,
-                'inviteSentAt' => null,
-                'inviteExpiresAt' => null,
-                'inviteAcceptedAt' => null,
-            ], 201);
+            $createdAccountIdentifier = (int)$this->connection->lastInsertId();
+            $approvalResult = $this->wishlistAccountApprovalService->approve(
+                $createdAccountIdentifier,
+                [
+                    'confirmedAdminEmail' => $payload['confirmedAdminEmail'],
+                    'redirectUrl' => trim((string)($requestBody['redirectUrl'] ?? '')),
+                ],
+                $authenticatedAdminId
+            );
+
+            if (($approvalResult['success'] ?? false) !== true) {
+                return $this->error(
+                    (string)($approvalResult['errorCode'] ?? 'AdminInviteFailed'),
+                    'Admin account was created, but the invitation could not be sent: ' . (string)($approvalResult['message'] ?? 'Unknown error.'),
+                    (int)($approvalResult['status'] ?? 502),
+                    [
+                        'createdAccountIdentifier' => $createdAccountIdentifier,
+                        'account' => [
+                            'accountIdentifier' => $createdAccountIdentifier,
+                            'idNumber' => $payload['idNumber'],
+                            'lastName' => $payload['lastName'],
+                            'firstName' => $payload['firstName'],
+                            'emailAddress' => $payload['emailAddress'],
+                            'username' => $payload['username'],
+                            'roleDesignation' => 'ROLE_ADMIN',
+                            'roleLabel' => 'Admin',
+                            'accountType' => 'Admin',
+                            'accountStatus' => 'pending',
+                            'isApproved' => false,
+                            'registeredAt' => $now,
+                            'createdTimestamp' => $now,
+                        ],
+                    ]
+                );
+            }
+
+            $resultData = $approvalResult['data'] ?? [];
+            $resultData['message'] = $resultData['message'] ?? 'Admin account created and invitation sent successfully.';
+            $resultData['createdAccountIdentifier'] = $createdAccountIdentifier;
+
+            return $this->success($resultData, 201);
         } catch (\Throwable $exception) {
             return $this->error(
                 'CreateAdminAccountFailed',

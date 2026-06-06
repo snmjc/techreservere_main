@@ -42,6 +42,7 @@ export function normalizeAccount(account) {
 export function normalizeManageAccountStatus(status, isActive) {
   const normalizedStatus = String(status || '').trim().toLowerCase();
   if (isActive === false || normalizedStatus === 'disabled') return 'Disabled';
+  if (normalizedStatus === 'pending' || normalizedStatus === 'invited') return 'Pending';
   return 'Active';
 }
 
@@ -214,6 +215,7 @@ export function getAcceptedStatusLabel(account) {
 export function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'disabled') return 'manage-accounts-status--disabled';
+  if (normalized === 'pending') return 'manage-accounts-status--pending';
   return 'manage-accounts-status--active';
 }
 

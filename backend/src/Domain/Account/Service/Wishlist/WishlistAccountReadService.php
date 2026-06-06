@@ -47,8 +47,11 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'disabled')
+             WHERE LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('disabled', 'rejected', 'denied')
+               AND (
+                    LOWER(COALESCE(accounts.status, 'pending')) IN ('pending', 'invited')
+                    OR COALESCE(NULLIF(accounts.clerk_user_id, ''), '') = ''
+               )
              ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 

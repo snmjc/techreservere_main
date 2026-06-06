@@ -57,6 +57,6 @@ class ClerkTokenIdentityResolver
         return $account->getClerkUserId() !== $clerkUserId
             && $account->getIsApproved()
             && $account->getIsActive()
-            && strtolower($account->getStatus()) === 'approved';
+            && in_array(strtolower($account->getStatus()), ['approved', 'accepted'], true);
     }
 }

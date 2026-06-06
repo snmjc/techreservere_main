@@ -52,7 +52,10 @@ class AuthenticationLoginService
         }
 
         $accountStatus = strtolower(trim((string)$account->getStatus()));
-        if (!$account->getIsApproved() || $accountStatus !== 'approved') {
+        if (
+            !$account->getIsApproved()
+            || !in_array($accountStatus, ['approved', 'accepted'], true)
+        ) {
             return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
         }
 

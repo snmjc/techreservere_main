@@ -93,7 +93,7 @@ function handleApprovalStatusResult(account, router, statusMessage, statusMessag
 }
 
 function isApprovedAccount(account, status) {
-  return status === 'approved' || account.isApproved === true;
+  return status === 'approved' || status === 'accepted' || account.isApproved === true;
 }
 
 function isRejectedAccount(status) {

@@ -37,7 +37,7 @@ class ClerkLoginPreflightService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (DatabaseBoolean::toBool($account['is_approved'] ?? false) && $status === 'approved') {
+        if (DatabaseBoolean::toBool($account['is_approved'] ?? false) && in_array($status, ['approved', 'accepted'], true)) {
             return $this->success($status);
         }
 
@@ -62,7 +62,7 @@ class ClerkLoginPreflightService
         $refreshedStatus = strtolower(trim((string)($refreshedAccount['status'] ?? $status)));
         if (DatabaseBoolean::toBool($refreshedAccount['is_active'] ?? true)
             && DatabaseBoolean::toBool($refreshedAccount['is_approved'] ?? false)
-            && $refreshedStatus === 'approved'
+            && in_array($refreshedStatus, ['approved', 'accepted'], true)
         ) {
             return $this->success($refreshedStatus);
         }

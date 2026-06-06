@@ -60,6 +60,7 @@
         </label>
 
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
+        <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>
 
         <div class="admin-wishlist-modal-actions">
           <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddAdminModal">
@@ -263,7 +264,6 @@ import {
   getUserCreateError,
   sanitizeNameInput,
   sanitizePhoneInput,
-  validateAdminAccountForm,
   validateEmployeeAccountForm,
 } from '../wishlist/adminWishlistHelpers.js';
 
@@ -318,10 +318,35 @@ const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim().toLowerCase();
 });
-const isAdminCreateFormReady = computed(() => (
-  validateAdminAccountForm(addAdminForm) === ''
-  && addAdminForm.confirmedAdminEmail.trim().toLowerCase() === currentAdminEmail.value
+const hasStartedAdminForm = computed(() => (
+  addAdminForm.idNumber.trim() !== ''
+  || addAdminForm.lastName.trim() !== ''
+  || addAdminForm.firstName.trim() !== ''
+  || addAdminForm.emailAddress.trim() !== ''
+  || addAdminForm.confirmedAdminEmail.trim() !== ''
 ));
+const adminCreateHelperText = computed(() => {
+  const validationError = getAdminCreateError(addAdminForm, props.accounts);
+  if (validationError) {
+    return validationError;
+  }
+
+  if (!currentAdminEmail.value) {
+    return 'Unable to confirm the responsible admin email. Please sign in again.';
+  }
+
+  if (addAdminForm.confirmedAdminEmail.trim() === '') {
+    return 'Type your exact admin email in Security Confirmation to continue.';
+  }
+
+  if (addAdminForm.confirmedAdminEmail.trim().toLowerCase() !== currentAdminEmail.value) {
+    return 'Please type your exact admin email before creating a new admin.';
+  }
+
+  return '';
+});
+const showAdminCreateHelper = computed(() => hasStartedAdminForm.value && adminCreateHelperText.value !== '');
+const isAdminCreateFormReady = computed(() => adminCreateHelperText.value === '');
 const isUserCreateFormReady = computed(() => getUserCreateError(addUserForm, props.accounts) === '');
 const isEmployeeCreateFormReady = computed(() => validateEmployeeAccountForm(addEmployeeForm) === '');
 
@@ -377,7 +402,13 @@ async function createAdminAccount() {
 
   await createAccount({
     type: 'admin',
-    request: () => adminWishlistApi.createAdminAccount(buildAdminAccountPayload(addAdminForm), authStore.authToken),
+    request: () => adminWishlistApi.createAdminAccount(
+      {
+        ...buildAdminAccountPayload(addAdminForm),
+        redirectUrl: buildInviteRedirectUrl(),
+      },
+      authStore.authToken,
+    ),
     close: closeAddAdminModal,
   });
 }
@@ -477,6 +508,14 @@ function sanitizeEmployeeNameField(fieldName) {
 
 function sanitizeEmployeePhone() {
   addEmployeeForm.phone = sanitizePhoneInput(addEmployeeForm.phone);
+}
+
+function buildInviteRedirectUrl() {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return '';
+  }
+
+  return `${window.location.origin.replace(/\/$/, '')}/clerk-login`;
 }
 
 defineExpose({ openForTab });

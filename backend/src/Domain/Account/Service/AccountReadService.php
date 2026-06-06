@@ -46,8 +46,17 @@ class AccountReadService
                    ORDER BY created_at DESC
                    LIMIT 1
                 ) latest_invitation ON TRUE
-                WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
-                  AND LOWER(COALESCE(accounts.status, 'pending')) IN ('approved', 'disabled')
+                WHERE COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                  AND (
+                    (
+                        COALESCE(accounts.is_approved, FALSE) = TRUE
+                        AND COALESCE(accounts.is_active, TRUE) = TRUE
+                        AND LOWER(COALESCE(accounts.status, 'pending')) IN ('accepted', 'approved')
+                    ) OR (
+                        COALESCE(accounts.is_approved, FALSE) = TRUE
+                        AND LOWER(COALESCE(accounts.status, 'pending')) = 'disabled'
+                    )
+                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
