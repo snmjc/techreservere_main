@@ -1,13 +1,11 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import { AUTH_STORAGE_KEYS, readStoredJson } from '@/modules/authentication/utils/authStorage.js';
 
 function createLocalBackendToken() {
   try {
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
-    if (!accountString && !isLocalDev) return null;
-
-    const account = accountString ? JSON.parse(accountString) : {};
+    const account = readStoredJson(AUTH_STORAGE_KEYS.account) || {};
+    if (!account.accountIdentifier && !isLocalDev) return null;
     const role = String(account?.roleDesignation ?? account?.role ?? '').toUpperCase();
     const accountIdentifier = account?.accountIdentifier || 1;
 

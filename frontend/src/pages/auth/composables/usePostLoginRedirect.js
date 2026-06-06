@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 import { useAuth, useUser } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { getClerkToken, signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { consumePendingRememberSession } from '@/modules/authentication/utils/authStorage.js';
 import { resolveRole } from '@/modules/authentication/utils/roleUtils.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
@@ -12,6 +13,7 @@ export function usePostLoginRedirect() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { getToken, signOut } = useAuth();
   const authStore = useAuthenticationStore();
+  const rememberSession = consumePendingRememberSession();
 
   async function routeAfterLogin() {
     if (!isLoaded.value || !isSignedIn.value || !user.value) return;
@@ -35,6 +37,7 @@ export function usePostLoginRedirect() {
       authStore,
       router,
       token,
+      rememberSession,
       backendAccount: backendRegistration.account,
       clerkUser: user.value,
       emailAddress,
@@ -105,9 +108,13 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
   }
 }
 
-function routeWithBackendAccount({ authStore, router, token, backendAccount, clerkUser, emailAddress, roleDesignation }) {
+function routeWithBackendAccount({ authStore, router, token, backendAccount, clerkUser, emailAddress, roleDesignation, rememberSession }) {
   const backendStatus = resolveBackendAccountStatus(backendAccount);
-  authStore.setClerkAuth(token, buildClerkAuthAccount(backendAccount, clerkUser, emailAddress, roleDesignation, backendStatus));
+  authStore.setClerkAuth(
+    token,
+    buildClerkAuthAccount(backendAccount, clerkUser, emailAddress, roleDesignation, backendStatus),
+    { rememberSession }
+  );
 
   if (backendStatus === 'disabled') {
     router.replace({ name: ROUTE_NAMES.accountDeactivated });

@@ -1,6 +1,7 @@
 import { apiUrl as buildApiUrl } from '@/shared/utils/apiBase.js';
 import {
   AUTH_STORAGE_KEYS,
+  isPersistentAuthStorage,
   readStoredJson,
   writeStoredJson,
   writeStoredToken,
@@ -58,7 +59,7 @@ export function resolveInitialClerkAccount(account) {
 
   if (account?.authProvider !== 'clerk') return null;
 
-  writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account);
+  writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account, isPersistentAuthStorage());
   return account;
 }
 
@@ -72,21 +73,30 @@ export async function resolveClerkAccount(getTokenFn) {
 }
 
 export function persistAuthSession(token, account) {
-  writeStoredToken(token);
-  writeStoredJson(AUTH_STORAGE_KEYS.account, account);
+  persistAuthSessionWithPreference(token, account, true);
 }
 
 export function persistClerkSession(token, account) {
-  persistAuthSession(token || null, account);
-  writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account);
+  persistClerkSessionWithPreference(token, account, true);
+}
+
+export function persistAuthSessionWithPreference(token, account, persistent) {
+  writeStoredToken(token, persistent);
+  writeStoredJson(AUTH_STORAGE_KEYS.account, account, persistent);
+}
+
+export function persistClerkSessionWithPreference(token, account, persistent) {
+  persistAuthSessionWithPreference(token || null, account, persistent);
+  writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account, persistent);
 }
 
 export function clearStoredClerkAccount() {
   localStorage.removeItem(AUTH_STORAGE_KEYS.clerkAccount);
+  sessionStorage.removeItem(AUTH_STORAGE_KEYS.clerkAccount);
 }
 
 async function fetchCurrentAccount(token) {
-  const response = await fetch(buildApiUrl('/api/v1/users/me'), {
+  const response = await fetch(buildApiUrl('/api/v1/accounts/me'), {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -100,7 +110,7 @@ async function fetchCurrentAccount(token) {
 
   const account = extractAccount(await response.json());
   if (!account) clearStoredClerkAccount();
-  if (account) writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account);
+  if (account) writeStoredJson(AUTH_STORAGE_KEYS.clerkAccount, account, isPersistentAuthStorage());
 
   return account;
 }

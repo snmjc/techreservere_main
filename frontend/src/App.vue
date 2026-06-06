@@ -17,11 +17,14 @@ watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
   if (!loaded) return
 
   if (!signedIn) {
-    if (authStore.accountData?.authProvider === 'clerk') {
+    const isClerkSession = authStore.accountData?.authProvider === 'clerk'
+      || authStore.clerkAccountData?.authProvider === 'clerk'
+
+    if (isClerkSession) {
       authStore.performLogout()
     }
 
-    if (route.meta?.requiresAuth) {
+    if (route.meta?.requiresAuth && !authStore.isAuthenticated) {
       router.replace({ name: ROUTE_NAMES.clerkLogin })
     }
     return

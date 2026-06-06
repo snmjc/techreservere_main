@@ -2,7 +2,12 @@ import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { verifyClerkLoginAccess } from '@/modules/authentication/services/clerkLoginAccessService.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import {
+  clearRememberedLoginEmail,
+  persistPendingRememberSession,
+  readRememberedLoginEmail,
+  writeRememberedLoginEmail,
+} from '@/modules/authentication/utils/authStorage.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
@@ -28,7 +33,7 @@ export function useClerkLoginPage() {
   const resetSignIn = ref(null);
 
   onMounted(() => {
-    const rememberedEmail = localStorage.getItem(AUTH_STORAGE_KEYS.rememberedLoginEmail);
+    const rememberedEmail = readRememberedLoginEmail();
     if (rememberedEmail) {
       emailAddress.value = rememberedEmail;
       rememberMeChecked.value = true;
@@ -46,7 +51,9 @@ export function useClerkLoginPage() {
     isSubmitting.value = true;
 
     try {
-      const account = await authStore.performLogin(emailAddress.value, passwordText.value);
+      const account = await authStore.performLogin(emailAddress.value, passwordText.value, {
+        rememberSession: rememberMeChecked.value,
+      });
       routeAfterBackendLogin(account);
     } catch (error) {
       if (error?.errorType === 'LocalPasswordUnavailable' || error?.errorType === 'AuthenticationFailed') {
@@ -93,6 +100,7 @@ export function useClerkLoginPage() {
       }
 
       rememberLoginEmailPreference();
+      persistPendingRememberSession(rememberMeChecked.value);
       await clerk.setActive({ session: clerkSignIn.createdSessionId });
       router.replace({ name: ROUTE_NAMES.postLogin });
     } catch (error) {
@@ -108,9 +116,9 @@ export function useClerkLoginPage() {
 
   function rememberLoginEmailPreference() {
     if (rememberMeChecked.value) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.rememberedLoginEmail, emailAddress.value);
+      writeRememberedLoginEmail(emailAddress.value);
     } else {
-      localStorage.removeItem(AUTH_STORAGE_KEYS.rememberedLoginEmail);
+      clearRememberedLoginEmail();
     }
   }
 
