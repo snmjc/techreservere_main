@@ -1,4 +1,44 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
+const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+
+const EQUIPMENT_FORM_VALIDATORS = [
+  {
+    isInvalid: (form) => form.equipmentName.length < 2,
+    message: 'Equipment name must be at least 2 characters.',
+  },
+  {
+    isInvalid: (form) => form.equipmentCategory === '',
+    message: 'Equipment type/category is required.',
+  },
+  {
+    isInvalid: (form) => form.equipmentBrand.length < 2,
+    message: 'Equipment brand must be at least 2 characters.',
+  },
+  {
+    isInvalid: (form) => !Number.isInteger(form.availableQuantity) || form.availableQuantity <= 0,
+    message: 'Available quantity must be a whole number greater than zero.',
+  },
+  {
+    isInvalid: (form) => form.operationalStatus === '',
+    message: 'Operational status is required.',
+  },
+  {
+    isInvalid: (form) => form.description === '',
+    message: 'Description is required.',
+  },
+  {
+    isInvalid: (form) => form.barcode === '',
+    message: 'Barcode is required.',
+  },
+  {
+    isInvalid: (form) => form.assetId === '',
+    message: 'Asset ID is required.',
+  },
+  {
+    isInvalid: (form) => Boolean(form.photoData) && JPG_DATA_URL_PATTERN.test(form.photoData) !== true,
+    message: 'Equipment photo must be a valid JPG image.',
+  },
+];
 
 export function normalizeEquipmentForm(form) {
   const assetId = String(form?.assetId ?? form?.serialNumber ?? '').trim();
@@ -19,44 +59,8 @@ export function normalizeEquipmentForm(form) {
 
 export function validateEquipmentForm(form) {
   const normalizedForm = normalizeEquipmentForm(form);
-
-  if (normalizedForm.equipmentName.length < 2) {
-    return 'Equipment name must be at least 2 characters.';
-  }
-
-  if (normalizedForm.equipmentCategory === '') {
-    return 'Equipment type/category is required.';
-  }
-
-  if (normalizedForm.equipmentBrand.length < 2) {
-    return 'Equipment brand must be at least 2 characters.';
-  }
-
-  if (!Number.isInteger(normalizedForm.availableQuantity) || normalizedForm.availableQuantity <= 0) {
-    return 'Available quantity must be a whole number greater than zero.';
-  }
-
-  if (normalizedForm.operationalStatus === '') {
-    return 'Operational status is required.';
-  }
-
-  if (normalizedForm.description === '') {
-    return 'Description is required.';
-  }
-
-  if (normalizedForm.barcode === '') {
-    return 'Barcode is required.';
-  }
-
-  if (normalizedForm.assetId === '') {
-    return 'Asset ID is required.';
-  }
-
-  if (normalizedForm.photoData && JPG_DATA_URL_PATTERN.test(normalizedForm.photoData) !== true) {
-    return 'Equipment photo must be a valid JPG image.';
-  }
-
-  return '';
+  const failedRule = EQUIPMENT_FORM_VALIDATORS.find(({ isInvalid }) => isInvalid(normalizedForm));
+  return failedRule?.message || '';
 }
 
 export function validateEquipmentPhotoFile(file) {
@@ -64,12 +68,7 @@ export function validateEquipmentPhotoFile(file) {
     return '';
   }
 
-  const lowerName = String(file.name || '').toLowerCase();
-  if (!lowerName.endsWith('.jpg') && !lowerName.endsWith('.jpeg')) {
-    return 'Equipment photo must be a .jpg image only.';
-  }
-
-  if (file.type !== 'image/jpeg') {
+  if (!isJpgPhotoFile(file)) {
     return 'Equipment photo must be a .jpg image only.';
   }
 
@@ -88,4 +87,9 @@ export function readPhotoFileAsDataUrl(file) {
 function normalizeOptionalPhotoData(photoData) {
   const normalizedValue = String(photoData || '').trim();
   return normalizedValue === '' ? null : normalizedValue;
+}
+
+function isJpgPhotoFile(file) {
+  const fileName = String(file?.name || '');
+  return PHOTO_FILE_EXTENSION_PATTERN.test(fileName) && file?.type === 'image/jpeg';
 }

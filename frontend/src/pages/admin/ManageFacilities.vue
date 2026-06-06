@@ -443,111 +443,21 @@ const floorOrder = [
   '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor'
 ];
 
-const filteredVenues = computed(() => {
-  let venues = [...venuesList.value];
+const filteredVenues = computed(() => filterAndSortVenues(
+  venuesList.value,
+  searchQuery.value,
+  availabilityFilter.value,
+  sortValue.value,
+));
 
-  // Apply search
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    venues = venues.filter(venue =>
-      venue.venueName?.toLowerCase().includes(query) ||
-      venue.floorLevel?.toLowerCase().includes(query)
-    );
-  }
+const filteredEquipmentRecords = computed(() => filterAndSortEquipment(
+  equipmentList.value,
+  searchQuery.value,
+  availabilityFilter.value,
+  sortValue.value,
+));
 
-  // Apply availability filter
-  if (availabilityFilter.value === 'available') {
-    venues = venues.filter(venue => venue.availabilityStatus === 'Available');
-  } else if (availabilityFilter.value === 'unavailable') {
-    venues = venues.filter(venue => venue.availabilityStatus !== 'Available');
-  }
-
-  // Apply sort
-  venues.sort((a, b) => {
-    const nameA = a.venueName?.toLowerCase() || '';
-    const nameB = b.venueName?.toLowerCase() || '';
-    if (sortValue.value === 'asc') {
-      return nameA.localeCompare(nameB);
-    } else {
-      return nameB.localeCompare(nameA);
-    }
-  });
-
-  return venues;
-});
-
-const filteredEquipmentRecords = computed(() => {
-  let equipmentRecords = [...equipmentList.value];
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    equipmentRecords = equipmentRecords.filter((equipmentRecord) =>
-      String(equipmentRecord.equipmentName || '').toLowerCase().includes(query)
-      || String(equipmentRecord.equipmentCategory || equipmentRecord.categoryName || '').toLowerCase().includes(query)
-      || String(equipmentRecord.equipmentBrand || '').toLowerCase().includes(query)
-      || String(equipmentRecord.barcode || '').toLowerCase().includes(query)
-      || String(equipmentRecord.assetId || equipmentRecord.serialNumber || '').toLowerCase().includes(query)
-    );
-  }
-
-  if (availabilityFilter.value === 'available') {
-    equipmentRecords = equipmentRecords.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) === 'Available');
-  } else if (availabilityFilter.value === 'unavailable') {
-    equipmentRecords = equipmentRecords.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) !== 'Available');
-  }
-
-  equipmentRecords.sort((left, right) => {
-    const nameA = String(left.equipmentName || '').toLowerCase();
-    const nameB = String(right.equipmentName || '').toLowerCase();
-    return sortValue.value === 'asc'
-      ? nameA.localeCompare(nameB)
-      : nameB.localeCompare(nameA);
-  });
-
-  return equipmentRecords;
-});
-
-const venueFloorGroups = computed(() => {
-  const groups = {};
-  const filtered = filteredVenues.value;
-
-  filtered.forEach(venue => {
-    const floor = venue.floorLevel || 'Other';
-    if (!groups[floor]) {
-      groups[floor] = [];
-    }
-    groups[floor].push(venue);
-  });
-
-  // Sort groups by floor order
-  const sortedGroups = {};
-  floorOrder.forEach(floor => {
-    if (groups[floor]) {
-      sortedGroups[floor] = groups[floor];
-    }
-  });
-
-  // Add any floors not in the predefined order
-  Object.keys(groups).forEach(floor => {
-    if (!sortedGroups[floor]) {
-      sortedGroups[floor] = groups[floor];
-    }
-  });
-
-  return Object.entries(sortedGroups).map(([floorLabel, venueRecords]) => ({
-    floorLabel,
-    venueRecords: venueRecords.map(venue => ({
-      venueIdentifier: venue.venueIdentifier,
-      venueName: venue.venueName,
-      venueAvailable: venue.availabilityStatus === 'Available',
-      venueLocation: venue.venueLocation,
-      floorLevel: venue.floorLevel,
-      capacityLimit: venue.capacityLimit,
-      description: venue.description,
-      imageUrl: venue.imageUrl
-    }))
-  }));
-});
+const venueFloorGroups = computed(() => buildVenueFloorGroups(filteredVenues.value, floorOrder));
 
 /**
  * @function handleFacilityTabChange
@@ -714,15 +624,7 @@ async function confirmDeleteEquipment() {
     const deletedIdentifier = deleteEquipmentRecord.value.equipmentIdentifier;
     isDeletingEquipment.value = false;
     closeDeleteEquipmentModal();
-
-    if (selectedEquipmentCard.value?.equipmentIdentifier === deletedIdentifier) {
-      selectedEquipmentCard.value = null;
-    }
-
-    if (viewEquipmentRecord.value?.equipmentIdentifier === deletedIdentifier) {
-      closeEquipmentDetails();
-    }
-
+    clearDeletedEquipmentSelection(deletedIdentifier);
     await fetchEquipment();
   } catch (error) {
     console.error('Error deleting equipment:', error);
@@ -834,6 +736,153 @@ function openEditFromDetails() {
 
 function normalizeEmailForConfirmation(emailAddress) {
   return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
+}
+
+function filterAndSortVenues(venues, rawQuery, availability, sortDirection) {
+  const query = normalizeFilterQuery(rawQuery);
+
+  return [...venues]
+    .filter((venue) => matchesVenueSearch(venue, query))
+    .filter((venue) => matchesVenueAvailability(venue, availability))
+    .sort((left, right) => compareByName(left?.venueName, right?.venueName, sortDirection));
+}
+
+function filterAndSortEquipment(equipmentRecords, rawQuery, availability, sortDirection) {
+  const query = normalizeFilterQuery(rawQuery);
+
+  return [...equipmentRecords]
+    .filter((equipmentRecord) => matchesEquipmentSearch(equipmentRecord, query))
+    .filter((equipmentRecord) => matchesEquipmentAvailability(equipmentRecord, availability))
+    .sort((left, right) => compareByName(left?.equipmentName, right?.equipmentName, sortDirection));
+}
+
+function buildVenueFloorGroups(venues, orderedFloors) {
+  const groupedVenues = groupVenuesByFloor(venues);
+  const sortedGroups = sortVenueGroupsByFloor(groupedVenues, orderedFloors);
+
+  return Object.entries(sortedGroups).map(([floorLabel, venueRecords]) => ({
+    floorLabel,
+    venueRecords: venueRecords.map(mapVenueRecordForList),
+  }));
+}
+
+function normalizeFilterQuery(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function matchesVenueSearch(venue, query) {
+  if (query === '') {
+    return true;
+  }
+
+  return [venue?.venueName, venue?.floorLevel]
+    .some((value) => normalizeFilterQuery(value).includes(query));
+}
+
+function matchesVenueAvailability(venue, availability) {
+  if (availability === 'available') {
+    return venue?.availabilityStatus === 'Available';
+  }
+
+  if (availability === 'unavailable') {
+    return venue?.availabilityStatus !== 'Available';
+  }
+
+  return true;
+}
+
+function matchesEquipmentSearch(equipmentRecord, query) {
+  if (query === '') {
+    return true;
+  }
+
+  return getEquipmentSearchableValues(equipmentRecord)
+    .some((value) => normalizeFilterQuery(value).includes(query));
+}
+
+function getEquipmentSearchableValues(equipmentRecord) {
+  return [
+    equipmentRecord?.equipmentName,
+    equipmentRecord?.equipmentCategory || equipmentRecord?.categoryName,
+    equipmentRecord?.equipmentBrand,
+    equipmentRecord?.barcode,
+    equipmentRecord?.assetId || equipmentRecord?.serialNumber,
+  ];
+}
+
+function matchesEquipmentAvailability(equipmentRecord, availability) {
+  if (availability === 'available') {
+    return formatEquipmentStatus(equipmentRecord) === 'Available';
+  }
+
+  if (availability === 'unavailable') {
+    return formatEquipmentStatus(equipmentRecord) !== 'Available';
+  }
+
+  return true;
+}
+
+function compareByName(leftName, rightName, sortDirection) {
+  const normalizedLeft = normalizeFilterQuery(leftName);
+  const normalizedRight = normalizeFilterQuery(rightName);
+
+  return sortDirection === 'asc'
+    ? normalizedLeft.localeCompare(normalizedRight)
+    : normalizedRight.localeCompare(normalizedLeft);
+}
+
+function groupVenuesByFloor(venues) {
+  return venues.reduce((groups, venue) => {
+    const floor = venue?.floorLevel || 'Other';
+
+    if (!groups[floor]) {
+      groups[floor] = [];
+    }
+
+    groups[floor].push(venue);
+    return groups;
+  }, {});
+}
+
+function sortVenueGroupsByFloor(groupedVenues, orderedFloors) {
+  const sortedGroups = {};
+
+  orderedFloors.forEach((floor) => {
+    if (groupedVenues[floor]) {
+      sortedGroups[floor] = groupedVenues[floor];
+    }
+  });
+
+  Object.keys(groupedVenues).forEach((floor) => {
+    if (!sortedGroups[floor]) {
+      sortedGroups[floor] = groupedVenues[floor];
+    }
+  });
+
+  return sortedGroups;
+}
+
+function mapVenueRecordForList(venue) {
+  return {
+    venueIdentifier: venue.venueIdentifier,
+    venueName: venue.venueName,
+    venueAvailable: venue.availabilityStatus === 'Available',
+    venueLocation: venue.venueLocation,
+    floorLevel: venue.floorLevel,
+    capacityLimit: venue.capacityLimit,
+    description: venue.description,
+    imageUrl: venue.imageUrl,
+  };
+}
+
+function clearDeletedEquipmentSelection(deletedIdentifier) {
+  if (selectedEquipmentCard.value?.equipmentIdentifier === deletedIdentifier) {
+    selectedEquipmentCard.value = null;
+  }
+
+  if (viewEquipmentRecord.value?.equipmentIdentifier === deletedIdentifier) {
+    closeEquipmentDetails();
+  }
 }
 
 function formatEquipmentText(value) {
