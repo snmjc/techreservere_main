@@ -22,7 +22,7 @@
             </svg>
             Refresh
           </button>
-          <button class="admin-wishlist-add-button" type="button" @click="openAddAccountModal">
+          <button v-if="activeTab !== 'employee'" class="admin-wishlist-add-button" type="button" @click="openAddAccountModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 5v14" />
               <path d="M5 12h14" />

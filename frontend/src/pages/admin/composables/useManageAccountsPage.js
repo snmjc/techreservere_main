@@ -576,6 +576,7 @@ export function useManageAccountsPage() {
     showingFilterValue,
     sortMode,
     userRoleFilter,
+    normalizedAccounts,
     isLoading,
     isProcessing,
     toastMessage,
