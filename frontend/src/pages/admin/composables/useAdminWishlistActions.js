@@ -103,7 +103,10 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       const result = await getApprovalAction()(
         approvalAccount.value.accountIdentifier,
         authStore.authToken,
-        { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
+        {
+          confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail),
+          redirectUrl: buildInviteRedirectUrl(),
+        },
       );
 
       if (!result.success) {
@@ -288,6 +291,14 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteSuccessMessage() {
     return approvalMode.value === 'resend' ? 'Invitation resent successfully!' : 'Invitation sent successfully!';
+  }
+
+  function buildInviteRedirectUrl() {
+    if (typeof window === 'undefined' || !window.location?.origin) {
+      return '';
+    }
+
+    return `${window.location.origin.replace(/\/$/, '')}/clerk-login`;
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {

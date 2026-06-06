@@ -49,13 +49,27 @@ function buildHeaders(token, includeJson = false) {
 }
 
 async function parseResponse(response) {
-  const result = await response.json().catch(() => ({}));
+  const rawText = await response.text().catch(() => '');
+  let result = {};
+
+  if (rawText !== '') {
+    try {
+      result = JSON.parse(rawText);
+    } catch {
+      result = {};
+    }
+  }
+
   if (!response.ok) {
+    const fallbackError = rawText
+      ? `Request failed with HTTP ${response.status}: ${rawText.slice(0, 180)}`
+      : `Request failed with HTTP ${response.status}.`;
+
     return {
       success: false,
       status: response.status,
       errorType: result.errorType || result.type || '',
-      error: result.errorMessage || result.message || 'Request failed.',
+      error: result.errorMessage || result.message || fallbackError,
       data: result.data ?? null,
     };
   }
