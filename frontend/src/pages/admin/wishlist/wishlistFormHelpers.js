@@ -1,10 +1,15 @@
-import { validatePersonName } from './wishlistTextHelpers.js';
+import { isAllowedAdminEmail, normalizeIdNumber, validatePersonName, validateRequiredIdNumber } from './wishlistTextHelpers.js';
 import { getStatusLabel } from './wishlistStatusHelpers.js';
 
 export function validateAdminAccountForm(form) {
+  const idNumber = normalizeIdNumber(form.idNumber);
   const lastName = form.lastName.trim();
   const firstName = form.firstName.trim();
   const emailAddress = form.emailAddress.trim().toLowerCase();
+
+  if (!validateRequiredIdNumber(idNumber)) {
+    return 'ID number is required.';
+  }
 
   if (!validatePersonName(lastName)) {
     return 'Last name must have at least 2 letters and cannot contain numbers or symbols.';
@@ -14,8 +19,8 @@ export function validateAdminAccountForm(form) {
     return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
   }
 
-  if (!isInstitutionalAdminEmail(emailAddress)) {
-    return 'Admin account must use an approved admin email domain.';
+  if (!isAllowedAdminEmail(emailAddress)) {
+    return 'Admin email must use @feutech.edu.ph or the temporary @fit.edu.ph domain only.';
   }
 
   return '';
@@ -38,6 +43,7 @@ export function getAdminCreateError(form, accounts) {
 
 export function buildAdminAccountPayload(form) {
   return {
+    idNumber: normalizeIdNumber(form.idNumber),
     lastName: form.lastName,
     firstName: form.firstName,
     emailAddress: form.emailAddress,
@@ -128,13 +134,8 @@ export function formatCreateAccountError(result, accountType) {
   return `This ${formatMatchedField(conflict.matchedField)} is already used by ${formatConflictAccount(conflict)}. Check ${formatConflictLocation(conflict)}.`;
 }
 
-function isInstitutionalAdminEmail(emailAddress) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
-    && (emailAddress.endsWith('@techreserve.edu.ph') || emailAddress.endsWith('@techreserve.feu.edu.ph'));
-}
-
 function wishlistIdNumberExists(accounts, idNumber) {
-  const normalizedIdNumber = String(idNumber || '').trim().toLowerCase();
+  const normalizedIdNumber = normalizeIdNumber(idNumber).toLowerCase();
 
   return accounts.some((account) => String(account.rawIdNumber || account.idNumber || '').trim().toLowerCase() === normalizedIdNumber);
 }

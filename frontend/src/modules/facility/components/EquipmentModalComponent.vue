@@ -6,15 +6,10 @@
           <p class="equipment-modal-eyebrow">Equipment Record</p>
           <h3>{{ isEditMode ? 'Edit Equipment' : 'Add Equipment' }}</h3>
         </div>
-        <button
-          class="equipment-modal-close-button"
-          type="button"
-          :disabled="isSaving"
-          @click="handleCancel"
-        >
+        <button class="equipment-modal-close-button" type="button" :disabled="isSaving" @click="handleCancel">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       </div>
@@ -23,51 +18,26 @@
         <div class="equipment-modal-grid">
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Equipment Name</span>
-            <input
-              v-model.trim="formData.equipmentName"
-              type="text"
-              class="equipment-modal-input"
-              placeholder="Equipment Name"
-              maxlength="150"
-            />
+            <input v-model.trim="formData.equipmentName" type="text" class="equipment-modal-input" placeholder="Equipment name" maxlength="150" />
           </label>
 
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Equipment Type/Category</span>
-            <input
-              v-model.trim="formData.equipmentCategory"
-              type="text"
-              class="equipment-modal-input"
-              placeholder="Equipment Type/Category"
-              maxlength="100"
-            />
+            <input v-model.trim="formData.equipmentCategory" type="text" class="equipment-modal-input" placeholder="Equipment type/category" maxlength="100" />
           </label>
 
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Equipment Brand</span>
-            <input
-              v-model.trim="formData.equipmentBrand"
-              type="text"
-              class="equipment-modal-input"
-              placeholder="Equipment Brand"
-              maxlength="100"
-            />
+            <input v-model.trim="formData.equipmentBrand" type="text" class="equipment-modal-input" placeholder="Equipment brand" maxlength="100" />
           </label>
 
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Available Quantity</span>
-            <input
-              v-model.number="formData.availableQuantity"
-              type="number"
-              min="1"
-              step="1"
-              class="equipment-modal-input"
-              placeholder="Available Quantity"
-            />
+            <input v-model.number="formData.availableQuantity" type="number" min="1" step="1" class="equipment-modal-input" placeholder="Available quantity" />
           </label>
 
           <label class="equipment-modal-form-group">
-            <span class="equipment-modal-label">Operational Status / Status</span>
+            <span class="equipment-modal-label">Operational Status</span>
             <select v-model="formData.operationalStatus" class="equipment-modal-input">
               <option value="">Select status</option>
               <option v-for="status in equipmentStatuses" :key="status" :value="status">{{ status }}</option>
@@ -76,57 +46,39 @@
 
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Barcode</span>
-            <input
-              v-model.trim="formData.barcode"
-              type="text"
-              class="equipment-modal-input"
-              placeholder="Barcode"
-              maxlength="120"
-            />
+            <input v-model.trim="formData.barcode" type="text" class="equipment-modal-input" placeholder="Barcode" maxlength="120" />
           </label>
 
           <label class="equipment-modal-form-group">
             <span class="equipment-modal-label">Asset ID</span>
-            <input
-              v-model.trim="formData.assetId"
-              type="text"
-              class="equipment-modal-input"
-              placeholder="F123-456-789"
-              maxlength="13"
-            />
-            <small class="equipment-modal-hint">Required format: Fxxx-xxx-xxx</small>
+            <input v-model.trim="formData.assetId" type="text" class="equipment-modal-input" placeholder="Asset ID" maxlength="120" />
           </label>
 
           <label class="equipment-modal-form-group equipment-modal-form-group--full">
             <span class="equipment-modal-label">Description</span>
-            <textarea
-              v-model.trim="formData.description"
-              class="equipment-modal-input equipment-modal-textarea"
-              rows="4"
-              placeholder="Description"
-            />
+            <textarea v-model.trim="formData.description" class="equipment-modal-input equipment-modal-textarea" rows="4" placeholder="Description"></textarea>
           </label>
+
+          <label class="equipment-modal-form-group equipment-modal-form-group--full">
+            <span class="equipment-modal-label">Photo of Equipment</span>
+            <input ref="photoInputRef" type="file" class="equipment-modal-input equipment-modal-file-input" accept=".jpg,image/jpeg" @change="handlePhotoChange" />
+            <small class="equipment-modal-hint">Optional. JPG only.</small>
+          </label>
+
+          <div v-if="photoPreviewSrc" class="equipment-modal-photo-preview">
+            <img :src="photoPreviewSrc" alt="Equipment preview" />
+          </div>
         </div>
 
         <p v-if="errorMessage" class="equipment-modal-feedback equipment-modal-feedback--error">{{ errorMessage }}</p>
       </div>
 
       <div class="equipment-modal-footer">
-        <button
-          class="equipment-modal-button equipment-modal-button--cancel"
-          type="button"
-          :disabled="isSaving"
-          @click="handleCancel"
-        >
+        <button class="equipment-modal-button equipment-modal-button--cancel" type="button" :disabled="isSaving" @click="handleCancel">
           Cancel
         </button>
-        <button
-          class="equipment-modal-button equipment-modal-button--save"
-          type="button"
-          :disabled="isSaving || !isFormReady"
-          @click="handleSave"
-        >
-          {{ isSaving ? (isEditMode ? 'Saving...' : 'Saving...') : (isEditMode ? 'Save Changes' : 'Save Equipment') }}
+        <button class="equipment-modal-button equipment-modal-button--save" type="button" :disabled="isSaving || !isFormReady" @click="handleSave">
+          {{ isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Save Equipment') }}
         </button>
       </div>
     </div>
@@ -138,10 +90,12 @@ import { computed, ref, watch } from 'vue';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import {
   normalizeEquipmentForm,
+  readPhotoFileAsDataUrl,
   validateEquipmentForm,
+  validateEquipmentPhotoFile,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
 
-const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
+const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance'];
 
 const props = defineProps({
   show: {
@@ -158,22 +112,32 @@ const emit = defineEmits(['close', 'saved']);
 
 const isSaving = ref(false);
 const errorMessage = ref('');
+const photoInputRef = ref(null);
 const formData = ref(createEmptyForm());
 
 const isEditMode = computed(() => Boolean(props.equipment?.equipmentIdentifier));
 const isFormReady = computed(() => validateEquipmentForm(formData.value) === '');
+const photoPreviewSrc = computed(() => formData.value.photoData || '');
 
 watch(
-  () => [props.show, props.equipment],
-  ([isVisible]) => {
-    if (!isVisible) {
+  () => props.show,
+  (isVisible) => {
+    if (isVisible) {
+      hydrateFromEquipment(props.equipment);
       return;
     }
 
-    errorMessage.value = '';
-    formData.value = createFormFromEquipment(props.equipment);
-  },
-  { immediate: true }
+    resetFormState();
+  }
+);
+
+watch(
+  () => props.equipment,
+  (equipmentRecord) => {
+    if (props.show) {
+      hydrateFromEquipment(equipmentRecord);
+    }
+  }
 );
 
 function handleOverlayClick() {
@@ -206,7 +170,7 @@ async function handleSave() {
 
     const payload = normalizeEquipmentForm(formData.value);
 
-    if (isEditMode.value) {
+    if (isEditMode.value && props.equipment?.equipmentIdentifier) {
       await equipmentApi.updateEquipment(props.equipment.equipmentIdentifier, payload);
     } else {
       await equipmentApi.createEquipment(payload);
@@ -222,21 +186,45 @@ async function handleSave() {
   }
 }
 
-function createFormFromEquipment(equipment) {
-  if (!equipment) {
-    return createEmptyForm();
+async function handlePhotoChange(event) {
+  const [selectedFile] = Array.from(event.target?.files || []);
+  if (!selectedFile) {
+    return;
   }
 
-  return {
-    equipmentName: equipment.equipmentName || '',
-    equipmentCategory: equipment.equipmentCategory || equipment.categoryName || '',
-    equipmentBrand: equipment.equipmentBrand || '',
-    availableQuantity: Number(equipment.availableQuantity ?? equipment.totalQuantity ?? 0),
-    operationalStatus: equipment.operationalStatus || equipment.equipmentState || '',
-    description: equipment.description || equipment.scheduleDescription || '',
-    barcode: equipment.barcode || '',
-    assetId: equipment.assetId || '',
-  };
+  const fileValidationMessage = validateEquipmentPhotoFile(selectedFile);
+  if (fileValidationMessage) {
+    errorMessage.value = fileValidationMessage;
+    clearPhotoInput();
+    return;
+  }
+
+  try {
+    formData.value.photoData = await readPhotoFileAsDataUrl(selectedFile);
+    errorMessage.value = '';
+  } catch (error) {
+    errorMessage.value = error.message || 'Unable to read the selected equipment photo.';
+    clearPhotoInput();
+  }
+}
+
+function hydrateFromEquipment(equipmentRecord) {
+  errorMessage.value = '';
+  formData.value = equipmentRecord
+    ? {
+        equipmentName: equipmentRecord.equipmentName || '',
+        equipmentCategory: equipmentRecord.equipmentCategory || equipmentRecord.categoryName || '',
+        equipmentBrand: equipmentRecord.equipmentBrand || '',
+        availableQuantity: Number(equipmentRecord.availableQuantity ?? equipmentRecord.totalQuantity ?? 0),
+        operationalStatus: normalizeStatusValue(equipmentRecord.operationalStatus),
+        description: equipmentRecord.description || equipmentRecord.scheduleDescription || '',
+        barcode: equipmentRecord.barcode || '',
+        assetId: equipmentRecord.assetId || equipmentRecord.serialNumber || '',
+        photoData: equipmentRecord.photoData || null,
+      }
+    : createEmptyForm();
+
+  clearPhotoInput();
 }
 
 function createEmptyForm() {
@@ -249,12 +237,30 @@ function createEmptyForm() {
     description: '',
     barcode: '',
     assetId: '',
+    photoData: null,
   };
 }
 
 function resetFormState() {
   formData.value = createEmptyForm();
   errorMessage.value = '';
+  clearPhotoInput();
+}
+
+function clearPhotoInput() {
+  if (photoInputRef.value) {
+    photoInputRef.value.value = '';
+  }
+}
+
+function normalizeStatusValue(statusValue) {
+  return statusValue === 'Active'
+    ? 'Available'
+    : statusValue === 'Maintenance'
+      ? 'Under Maintenance'
+      : statusValue === 'Inactive'
+        ? 'Unavailable'
+        : (statusValue || 'Available');
 }
 </script>
 
@@ -271,11 +277,11 @@ function resetFormState() {
 }
 
 .equipment-modal-content {
-  background: #ffffff;
-  border-radius: 20px;
   width: min(760px, 100%);
   max-height: 92vh;
   overflow-y: auto;
+  background: #ffffff;
+  border-radius: 20px;
   border: 1px solid #d9e3dd;
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
 }
@@ -309,8 +315,8 @@ function resetFormState() {
 
 .equipment-modal-header h3 {
   margin: 0;
-  font-size: 1.35rem;
   color: #16361f;
+  font-size: 1.35rem;
 }
 
 .equipment-modal-close-button {
@@ -372,9 +378,29 @@ function resetFormState() {
   resize: vertical;
 }
 
+.equipment-modal-file-input {
+  padding: 0.6rem 0.9rem;
+}
+
 .equipment-modal-hint {
   color: #607165;
   font-size: 0.78rem;
+}
+
+.equipment-modal-photo-preview {
+  grid-column: 1 / -1;
+  padding: 0.75rem;
+  background: #f7faf8;
+  border: 1px solid #e4ede8;
+  border-radius: 14px;
+}
+
+.equipment-modal-photo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .equipment-modal-feedback {

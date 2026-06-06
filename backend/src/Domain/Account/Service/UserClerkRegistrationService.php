@@ -14,7 +14,8 @@ class UserClerkRegistrationService
     public function __construct(
         private readonly AccountRepository $accountRepository,
         private readonly Connection $connection,
-        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
     ) {
     }
 
@@ -116,7 +117,7 @@ class UserClerkRegistrationService
             'status' => 'approved',
             'isApproved' => true,
             'isActive' => true,
-            'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
             'accountIdentifier' => $account->getAccountIdentifier(),
         ];
     }
@@ -135,18 +136,21 @@ class UserClerkRegistrationService
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
     {
-        $nextState = $this->resolveExistingEmailAccountState($account, $registration);
-        $now = (new \DateTime())->format('Y-m-d H:i:s');
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail($registration['emailAddress'], $registration['clerkUserId']);
+        $freshAccount = $this->accountRepository->findOneByEmailAddress($registration['emailAddress']) ?? $account;
+        $nextState = $this->resolveExistingEmailAccountState($freshAccount, $registration);
+        $updatedAt = AppClock::now()->format('Y-m-d H:i:s');
+        $acceptedAt = AppClock::now()->format('Y-m-d H:i:sP');
 
-        $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
+        $this->updateExistingEmailAccount($freshAccount, $registration, $nextState, $updatedAt);
 
         if ($nextState['shouldMarkInvitationAccepted']) {
-            $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
-            $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($account->getAccountIdentifier());
+            $this->markLatestInvitationAccepted($registration['emailAddress'], $acceptedAt);
+            $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($freshAccount->getAccountIdentifier());
         }
 
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
-            'accountIdentifier' => $account->getAccountIdentifier(),
+            'accountIdentifier' => $freshAccount->getAccountIdentifier(),
         ]));
     }
 
@@ -160,7 +164,7 @@ class UserClerkRegistrationService
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
         $acceptedViaClerkInvite = !$existingIsAdmin
             && !$account->getIsApproved()
-            && ($hasAcceptedInvitation || ($existingStatus === 'invited' && $hasOpenInvitation));
+            && $hasAcceptedInvitation;
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $acceptedViaClerkInvite;
         $nextIsActive = $nextIsApproved
             ? ($account->getIsActive() || $acceptedViaClerkInvite)
@@ -218,13 +222,13 @@ class UserClerkRegistrationService
     private function buildExistingEmailUpdateParameters(AccountEntity $account, array $registration, array $nextState, string $updatedAt): array
     {
         return [
-            'lastName' => $registration['lastName'],
-            'firstName' => $registration['firstName'],
-            'username' => $registration['username'],
-            'roleDesignation' => $nextState['role'],
-            'idNumber' => $registration['idNumber'] ?: null,
-            'department' => $registration['department'] ?: null,
-            'contactNumber' => $registration['contactNumber'] ?: null,
+            'lastName' => $registration['lastName'] !== '' ? $registration['lastName'] : $account->getLastName(),
+            'firstName' => $registration['firstName'] !== '' ? $registration['firstName'] : $account->getFirstName(),
+            'username' => $registration['username'] !== '' ? $registration['username'] : $account->getUsername(),
+            'roleDesignation' => $account->getRoleDesignation() ?: $nextState['role'],
+            'idNumber' => $registration['idNumber'] !== '' ? $registration['idNumber'] : ($account->getIdNumber() ?: null),
+            'department' => $registration['department'] !== '' ? $registration['department'] : ($account->getDepartment() ?: null),
+            'contactNumber' => $registration['contactNumber'] !== '' ? $registration['contactNumber'] : ($account->getContactNumber() ?: null),
             'clerkUserId' => $registration['clerkUserId'],
             'status' => $nextState['status'],
             'isApproved' => $nextState['isApproved'],
@@ -260,7 +264,7 @@ class UserClerkRegistrationService
         }
 
         try {
-            $now = (new \DateTime())->format('Y-m-d H:i:s');
+            $now = AppClock::now()->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, username, role_designation, id_number, department,

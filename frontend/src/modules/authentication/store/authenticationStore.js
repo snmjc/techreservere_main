@@ -13,8 +13,8 @@ import {
   getAccountFullName,
   getAccountRole,
   isActiveSession,
-  persistAuthSession,
-  persistClerkSession,
+  persistAuthSessionWithPreference,
+  persistClerkSessionWithPreference,
   resolveClerkAccount,
   resolveInitialClerkAccount,
 } from '../utils/authenticationSession.js';
@@ -43,13 +43,15 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     clearStoredClerkAccount();
   }
 
-  async function performLogin(emailAddress, passwordText) {
+  async function performLogin(emailAddress, passwordText, options = {}) {
+    const persistent = options.rememberSession === true;
+
     try {
       const response = await loginRequest({ emailAddress, passwordText });
 
       authToken.value = response.token;
       accountData.value = buildSessionAccount(response.account);
-      persistAuthSession(response.token, accountData.value);
+      persistAuthSessionWithPreference(response.token, accountData.value, persistent);
 
       return response.account;
     } catch (error) {
@@ -58,13 +60,14 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     }
   }
 
-  function setClerkAuth(token, account) {
+  function setClerkAuth(token, account, options = {}) {
+    const persistent = options.rememberSession === true;
     const normalizedAccount = buildSessionAccount(account, 'clerk');
 
     authToken.value = token || null;
     accountData.value = normalizedAccount;
     clerkAccountData.value = normalizedAccount;
-    persistClerkSession(token, normalizedAccount);
+    persistClerkSessionWithPreference(token, normalizedAccount, persistent);
   }
 
   function performLogout() {

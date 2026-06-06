@@ -2,20 +2,24 @@
 
 namespace App\Domain\Authentication\Service;
 
+use App\Domain\Account\Service\ClerkInvitationSyncService;
 use App\Shared\Utils\DatabaseBoolean;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 class ClerkLoginPreflightService
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
+    )
     {
     }
 
     public function check(string $emailAddress): array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, username, status, is_approved, is_active
+            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_active
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR LOWER(username) = LOWER(:emailAddress)
@@ -41,24 +45,50 @@ class ClerkLoginPreflightService
             return $this->error('AccountRejected', 'This account request was denied. Please contact the administrator.', 403);
         }
 
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            (string)($account['email_address'] ?? $emailAddress),
+            (string)($account['clerk_user_id'] ?? '')
+        );
+
+        $refreshedAccount = $this->connection->fetchAssociative(
+            "SELECT account_identifier, email_address, status, is_approved, is_active
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+             LIMIT 1",
+            ['accountIdentifier' => (int)$account['account_identifier']],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        ) ?: $account;
+
+        $refreshedStatus = strtolower(trim((string)($refreshedAccount['status'] ?? $status)));
+        if (DatabaseBoolean::toBool($refreshedAccount['is_active'] ?? true)
+            && DatabaseBoolean::toBool($refreshedAccount['is_approved'] ?? false)
+            && $refreshedStatus === 'approved'
+        ) {
+            return $this->success($refreshedStatus);
+        }
+
         $invitation = $this->connection->fetchAssociative(
             "SELECT status, expires_at, accepted_at
              FROM invitations
              WHERE LOWER(email) = LOWER(:emailAddress)
              ORDER BY created_at DESC
              LIMIT 1",
-            ['emailAddress' => $emailAddress],
+            ['emailAddress' => (string)($refreshedAccount['email_address'] ?? $emailAddress)],
             ['emailAddress' => ParameterType::STRING]
         );
 
-        if ($status === 'invited' && $this->isActiveOrAcceptedInvitation($invitation ?: null)) {
-            return $this->success($status);
+        if ($this->isAcceptedInvitation($invitation ?: null)) {
+            return $this->error('AccountSyncPending', 'Your invitation was accepted, but your account is still syncing. Please try again in a moment.', 409);
+        }
+
+        if ($this->clerkInvitationSyncService->isExpiredInvitation($invitation ?: null)) {
+            return $this->error('InvitationExpired', 'Your invitation has expired. Please contact an administrator for a new invite.', 403);
         }
 
         return $this->error('AccountPendingInvitation', 'Your account request is still pending. Please wait for an administrator invitation before signing in.', 403);
     }
 
-    private function isActiveOrAcceptedInvitation(?array $invitation): bool
+    private function isAcceptedInvitation(?array $invitation): bool
     {
         if ($invitation === null) {
             return false;
@@ -73,15 +103,7 @@ class ClerkLoginPreflightService
             return true;
         }
 
-        if (in_array($status, ['expired', 'rejected', 'denied'], true)) {
-            return false;
-        }
-
-        try {
-            return new \DateTimeImmutable((string)$invitation['expires_at']) >= new \DateTimeImmutable();
-        } catch (\Throwable) {
-            return false;
-        }
+        return false;
     }
 
     private function success(string $status): array

@@ -19,8 +19,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class CreateAdminCommand extends Command
 {
     private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
-        'techreserve.edu.ph',
-        'techreserve.feu.edu.ph',
+        'feutech.edu.ph',
+        'fit.edu.ph',
     ];
 
     private Connection $connection;
@@ -66,7 +66,7 @@ class CreateAdminCommand extends Command
         }
 
         if (!$this->isAllowedAdminEmail($email)) {
-            $io->error('Admin account must use an approved admin email domain.');
+            $io->error('Admin account must use @feutech.edu.ph or the temporary @fit.edu.ph domain only.');
             return Command::FAILURE;
         }
 

@@ -54,6 +54,9 @@ class EquipmentEntity
     #[ORM\Column(name: 'asset_id', type: Types::STRING, length: 13)]
     private string $assetId = '';
 
+    #[ORM\Column(name: 'photo_data', type: Types::TEXT, nullable: true)]
+    private ?string $photoData = null;
+
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdTimestamp;
 
@@ -77,6 +80,8 @@ class EquipmentEntity
     public function setEquipmentName(string $equipmentName): self { $this->equipmentName = $equipmentName; return $this; }
     public function getEquipmentCategory(): string { return $this->equipmentCategory; }
     public function setEquipmentCategory(string $equipmentCategory): self { $this->equipmentCategory = $equipmentCategory; return $this; }
+    public function getCategoryName(): string { return $this->equipmentCategory; }
+    public function setCategoryName(string $categoryName): self { $this->equipmentCategory = $categoryName; return $this; }
     public function getEquipmentBrand(): string { return $this->equipmentBrand; }
     public function setEquipmentBrand(string $equipmentBrand): self { $this->equipmentBrand = $equipmentBrand; return $this; }
     public function getTotalQuantity(): int { return $this->totalQuantity; }
@@ -89,12 +94,18 @@ class EquipmentEntity
     public function setEquipmentState(string $equipmentState): self { $this->equipmentState = $equipmentState; return $this; }
     public function getDescription(): ?string { return $this->description; }
     public function setDescription(?string $description): self { $this->description = $description; return $this; }
+    public function getScheduleDescription(): ?string { return $this->description; }
+    public function setScheduleDescription(?string $scheduleDescription): self { $this->description = $scheduleDescription; return $this; }
     public function getImageUrl(): ?string { return $this->imageUrl; }
     public function setImageUrl(?string $imageUrl): self { $this->imageUrl = $imageUrl; return $this; }
     public function getBarcode(): string { return $this->barcode; }
     public function setBarcode(string $barcode): self { $this->barcode = $barcode; return $this; }
     public function getAssetId(): string { return $this->assetId; }
     public function setAssetId(string $assetId): self { $this->assetId = $assetId; return $this; }
+    public function getSerialNumber(): string { return $this->assetId; }
+    public function setSerialNumber(string $serialNumber): self { $this->assetId = $serialNumber; return $this; }
+    public function getPhotoData(): ?string { return $this->photoData; }
+    public function setPhotoData(?string $photoData): self { $this->photoData = $photoData; return $this; }
     public function getCreatedTimestamp(): \DateTimeInterface { return $this->createdTimestamp; }
     public function getUpdatedTimestamp(): \DateTimeInterface { return $this->updatedTimestamp; }
 }

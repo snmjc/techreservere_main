@@ -23,8 +23,13 @@ class SignupSupportingDocumentValidationService
             return null;
         }
 
-        if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
+        if (!$uploadedFile->isValid() || $uploadedFile->getError() !== UPLOAD_ERR_OK) {
             return 'The supporting document upload could not be completed. Please try again.';
+        }
+
+        $temporaryPath = $uploadedFile->getPathname();
+        if ($temporaryPath === '' || !is_file($temporaryPath)) {
+            return 'The supporting document upload is missing. Please upload the file again.';
         }
 
         $originalName = (string)$uploadedFile->getClientOriginalName();

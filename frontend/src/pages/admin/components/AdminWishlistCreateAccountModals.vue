@@ -17,6 +17,10 @@
 
       <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
         <label>
+          <span>ID Number</span>
+          <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="2023*****" required :disabled="isProcessing" />
+        </label>
+        <label>
           <span>Last Name</span>
           <input v-model.trim="addAdminForm.lastName" type="text" placeholder="Last Name" minlength="2" required :disabled="isProcessing" @input="sanitizeAdminNameField('lastName')" />
         </label>
@@ -29,7 +33,7 @@
           <input
             v-model.trim="addAdminForm.emailAddress"
             type="email"
-            placeholder="admin@techreserve.edu.ph"
+            placeholder="admin@feutech.edu.ph"
             required
             :disabled="isProcessing"
           />
@@ -43,7 +47,7 @@
           <input
             v-model.trim="addAdminForm.confirmedAdminEmail"
             type="email"
-            :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
+            :placeholder="currentAdminEmail || 'admin@feutech.edu.ph'"
             required
             :disabled="isProcessing"
           />
@@ -224,6 +228,7 @@ const addUserError = ref('');
 const addEmployeeError = ref('');
 
 const addAdminForm = reactive({
+  idNumber: '',
   lastName: '',
   firstName: '',
   emailAddress: '',
@@ -343,17 +348,24 @@ async function createEmployeeAccount() {
 }
 
 async function createAccount({ type, request, close }) {
+  setCreateError(type, '');
   isProcessing.value = true;
-  const result = await request();
-  isProcessing.value = false;
 
-  if (!result.success) {
-    setCreateError(type, formatCreateAccountError(result, type));
-    return;
+  try {
+    const result = await request();
+
+    if (!result.success) {
+      setCreateError(type, formatCreateAccountError(result, type));
+      return;
+    }
+
+    close();
+    emit('created', type);
+  } catch (error) {
+    setCreateError(type, error?.message || `Unable to create ${type} account.`);
+  } finally {
+    isProcessing.value = false;
   }
-
-  close();
-  emit('created', type);
 }
 
 function setCreateError(type, message) {
@@ -363,6 +375,7 @@ function setCreateError(type, message) {
 }
 
 function resetAddAdminForm() {
+  addAdminForm.idNumber = '';
   addAdminForm.lastName = '';
   addAdminForm.firstName = '';
   addAdminForm.emailAddress = '';

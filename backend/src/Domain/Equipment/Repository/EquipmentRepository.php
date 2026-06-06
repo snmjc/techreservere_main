@@ -13,14 +13,6 @@ class EquipmentRepository extends ServiceEntityRepository
         parent::__construct($registry, EquipmentEntity::class);
     }
 
-    // ===== AI GENERATED: findAllEquipment =====
-    // Purpose: Retrieve all equipment records
-    // Inputs: none
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query all records from equipment table
-    // 2. Return array of entities
-
     /** @return EquipmentEntity[] */
     public function findAllEquipment(): array
     {
@@ -30,26 +22,27 @@ class EquipmentRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    // ===== AI GENERATED: findAvailableEquipment =====
-    // Purpose: Retrieve equipment with Active status and available quantity > 0
-    // Inputs: none
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query equipment where operational_status = Active and available_quantity > 0
-    // 2. Return filtered array
-
     /** @return EquipmentEntity[] */
     public function findAvailableEquipment(): array
     {
         return $this->createQueryBuilder('equip')
+<<<<<<< HEAD
+            ->where('equip.availableQuantity > 0')
+            ->andWhere('equip.equipmentState = :equipmentState OR equip.operationalStatus = :legacyStatus')
+            ->setParameter('equipmentState', 'Available')
+            ->setParameter('legacyStatus', 'Active')
+=======
             ->andWhere('equip.equipmentState = :equipmentState')
             ->andWhere('equip.availableQuantity > 0')
             ->setParameter('equipmentState', 'Available')
+>>>>>>> origin/main
             ->orderBy('equip.equipmentName', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
+<<<<<<< HEAD
+=======
     public function findOneByBarcode(string $barcode): ?EquipmentEntity
     {
         return $this->createQueryBuilder('equip')
@@ -78,20 +71,13 @@ class EquipmentRepository extends ServiceEntityRepository
     // 1. Persist entity via EntityManager
     // 2. Flush changes
 
+>>>>>>> origin/main
     public function persistEquipment(EquipmentEntity $equipmentEntity): void
     {
         $entityManager = $this->getEntityManager();
         $entityManager->persist($equipmentEntity);
         $entityManager->flush();
     }
-
-    // ===== AI GENERATED: removeEquipment =====
-    // Purpose: Remove an equipment entity from the database
-    // Inputs: equipmentEntity (EquipmentEntity)
-    // Returns: void
-    // Flow:
-    // 1. Remove entity via EntityManager
-    // 2. Flush changes
 
     public function removeEquipment(EquipmentEntity $equipmentEntity): void
     {

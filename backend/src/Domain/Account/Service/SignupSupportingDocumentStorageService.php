@@ -9,8 +9,20 @@ class SignupSupportingDocumentStorageService
 {
     public function store(UploadedFile $uploadedFile, string $expectedBaseName): array
     {
+        if (!$uploadedFile->isValid()) {
+            throw new \RuntimeException('The supporting document upload is invalid.');
+        }
+
+        $temporaryPath = $uploadedFile->getPathname();
+        if ($temporaryPath === '' || !is_file($temporaryPath)) {
+            throw new \RuntimeException('The uploaded supporting document is no longer available.');
+        }
+
         $uploadDate = AppClock::now();
         $extension = strtolower($uploadedFile->getClientOriginalExtension());
+        $originalFileName = (string) $uploadedFile->getClientOriginalName();
+        $fileType = (string) ($uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType() ?: '');
+        $fileSize = (int) $uploadedFile->getSize();
         $storageDirectory = $this->ensureStorageDirectory($uploadDate);
         $storageFileName = sprintf(
             '%s_%s.%s',
@@ -22,10 +34,10 @@ class SignupSupportingDocumentStorageService
         $uploadedFile->move($storageDirectory, $storageFileName);
 
         return [
-            'fileName' => (string)$uploadedFile->getClientOriginalName(),
+            'fileName' => $originalFileName,
             'filePath' => $this->buildRelativePath($uploadDate, $storageFileName),
-            'fileType' => (string)($uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType() ?: ''),
-            'fileSize' => (int)$uploadedFile->getSize(),
+            'fileType' => $fileType,
+            'fileSize' => $fileSize,
             'uploadDate' => $uploadDate->format('Y-m-d H:i:s'),
             'verificationStatus' => 'pending',
         ];

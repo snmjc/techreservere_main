@@ -11,6 +11,7 @@ final class RoleDesignationNormalizer
         return match ($normalized) {
             'ADMIN', RoleConstants::ROLE_ADMIN => RoleConstants::ROLE_ADMIN,
             'STAFF', 'EMPLOYEE', RoleConstants::ROLE_STAFF => RoleConstants::ROLE_STAFF,
+            'FACULTY', 'ROLE_FACULTY', 'STUDENT', 'ROLE_STUDENT' => RoleConstants::ROLE_BORROWER,
             'BORROWER', 'USER', RoleConstants::ROLE_BORROWER => RoleConstants::ROLE_BORROWER,
             default => str_starts_with($normalized, 'ROLE_') ? $normalized : RoleConstants::ROLE_BORROWER,
         };

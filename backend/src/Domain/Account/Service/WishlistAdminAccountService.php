@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -36,6 +37,7 @@ class WishlistAdminAccountService
 
         $payload['lastName'] = $this->accountInputValidationService->normalizePersonName($payload['lastName']);
         $payload['firstName'] = $this->accountInputValidationService->normalizePersonName($payload['firstName']);
+        $payload['idNumber'] = $this->accountInputValidationService->normalizeIdNumber($payload['idNumber']);
 
         $duplicateError = $this->findDuplicateError($payload);
         if ($duplicateError !== null) {
@@ -48,6 +50,7 @@ class WishlistAdminAccountService
     private function normalizeRequestBody(array $requestBody): array
     {
         return [
+            'idNumber' => trim((string)($requestBody['idNumber'] ?? '')),
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
@@ -59,8 +62,8 @@ class WishlistAdminAccountService
 
     private function validatePayload(array $payload): ?string
     {
-        if ($payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '') {
-            return 'Last name, first name, and email are required.';
+        if ($payload['idNumber'] === '' || $payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '') {
+            return 'ID number, last name, first name, and email are required.';
         }
 
         if (!$this->accountInputValidationService->isValidPersonName($payload['lastName'])) {
@@ -76,7 +79,11 @@ class WishlistAdminAccountService
         }
 
         if (!$this->accountInputValidationService->isInstitutionalAdminEmail($payload['emailAddress'])) {
-            return 'Admin account must use an approved admin email domain.';
+            return 'Admin email must use @feutech.edu.ph or the temporary @fit.edu.ph domain only.';
+        }
+
+        if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
+            return 'ID number is required.';
         }
 
         if ($payload['roleDesignation'] !== 'ROLE_ADMIN') {
@@ -93,12 +100,17 @@ class WishlistAdminAccountService
             return $this->duplicateError('DuplicateAccount', 'email', $existingEmailAccount, 'email');
         }
 
+        $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($payload['idNumber']);
+        if ($existingIdNumberAccount) {
+            return $this->duplicateError('DuplicateIdNumber', 'ID number', $existingIdNumberAccount, 'idNumber');
+        }
+
         return null;
     }
 
     private function insertAdminAccount(array $payload): array
     {
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $now = AppClock::now()->format('Y-m-d H:i:s');
 
         try {
             $this->connection->executeStatement(
@@ -116,7 +128,7 @@ class WishlistAdminAccountService
 
             return $this->success([
                 'accountIdentifier' => (int)$this->connection->lastInsertId(),
-                'idNumber' => null,
+                'idNumber' => $payload['idNumber'],
                 'lastName' => $payload['lastName'],
                 'firstName' => $payload['firstName'],
                 'emailAddress' => $payload['emailAddress'],
@@ -127,6 +139,7 @@ class WishlistAdminAccountService
                 'accountStatus' => 'not_invited',
                 'isApproved' => false,
                 'registeredAt' => $now,
+                'createdTimestamp' => $now,
                 'inviteSentAt' => null,
                 'inviteExpiresAt' => null,
                 'inviteAcceptedAt' => null,
@@ -148,7 +161,7 @@ class WishlistAdminAccountService
             'emailAddress' => $payload['emailAddress'],
             'username' => $payload['username'],
             'roleDesignation' => 'ROLE_ADMIN',
-            'idNumber' => null,
+            'idNumber' => $payload['idNumber'],
             'department' => 'Administration',
             'contactNumber' => null,
             'clerkUserId' => null,
@@ -170,7 +183,7 @@ class WishlistAdminAccountService
             'emailAddress' => ParameterType::STRING,
             'username' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
-            'idNumber' => ParameterType::NULL,
+            'idNumber' => ParameterType::STRING,
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::NULL,
             'clerkUserId' => ParameterType::NULL,

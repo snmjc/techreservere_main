@@ -207,7 +207,7 @@ import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import { AUTH_STORAGE_KEYS, readStoredJson } from '@/modules/authentication/utils/authStorage.js';
 
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
@@ -441,9 +441,8 @@ function buildHeaders(includeJson = false) {
 function createLocalBackendToken() {
   try {
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
-    if (!accountString && !isLocalDev) return null;
-    const account = accountString ? JSON.parse(accountString) : {};
+    const account = readStoredJson(AUTH_STORAGE_KEYS.account) || {};
+    if (!account.accountIdentifier && !isLocalDev) return null;
     return btoa(JSON.stringify({
       accountId: account?.accountIdentifier || 1,
       email: account?.emailAddress,

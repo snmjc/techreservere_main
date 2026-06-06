@@ -49,7 +49,7 @@ export function resolveAccountType(account, roleDesignation) {
   const role = String(roleDesignation).toUpperCase();
   if (role.includes('ADMIN')) return 'Admin';
   const department = String(account.department || '').toLowerCase();
-  if (role.includes('STAFF') || role.includes('EMPLOYEE') || department.includes('staff') || department.includes('employee') || department.includes('technical') || department.includes('maintenance') || department.includes('support')) return 'Employee';
+  if (role.includes('STAFF') || role.includes('EMPLOYEE') || department.includes('staff') || department.includes('technical') || department.includes('maintenance') || department.includes('support')) return 'Employee';
   return 'User';
 }
 
@@ -243,7 +243,7 @@ export function getUpdateRoleLabelForPayload(accountType, updateForm) {
 export function normalizeUpdateRoleDesignation(accountType, roleLabel) {
   if (accountType === 'Admin' || roleLabel === 'Admin') return 'ROLE_ADMIN';
   if (accountType === 'Employee') return 'ROLE_STAFF';
-  return roleLabel === 'Faculty' ? 'ROLE_FACULTY' : 'ROLE_BORROWER';
+  return 'ROLE_BORROWER';
 }
 
 export function getSortRoleName(account) {

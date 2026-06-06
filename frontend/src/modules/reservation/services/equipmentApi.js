@@ -59,11 +59,12 @@ const equipmentApi = {
     }
   },
 
-  async deleteEquipment(equipmentIdentifier) {
+  async deleteEquipment(equipmentIdentifier, confirmationData) {
     const authToken = getStoredAuthToken();
     try {
       const response = await axios.delete(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
-        headers: buildJsonAuthorizationHeaders(authToken)
+        headers: buildJsonAuthorizationHeaders(authToken),
+        data: confirmationData,
       });
       return response.data;
     } catch (error) {

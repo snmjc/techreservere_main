@@ -267,7 +267,7 @@
               <p><strong>Account Status:</strong> <span>{{ getStatusLabel(selectedAccount.accountStatus) }}</span></p>
               <p><strong>Account Registered:</strong> <span>{{ formatDisplayDateTime(selectedAccount.registeredAt) }}</span></p>
               <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
-              <p><strong>Proof File:</strong> <span>{{ selectedAccount.supportingDocumentName || 'N/A' }}</span></p>
+              <p v-if="shouldShowProofDetails(selectedAccount)"><strong>Proof File:</strong> <span>{{ selectedAccount.supportingDocumentName || 'N/A' }}</span></p>
             </div>
             <div class="admin-wishlist-view-account-side">
               <p><strong>Invite Sent:</strong> <span>{{ getInviteSentStatus(selectedAccount) }}</span></p>
@@ -279,7 +279,7 @@
             </div>
           </div>
 
-          <div v-if="hasSupportingDocument(selectedAccount)" class="admin-wishlist-proof-actions">
+          <div v-if="shouldShowProofDetails(selectedAccount) && hasSupportingDocument(selectedAccount)" class="admin-wishlist-proof-actions">
             <button
               v-if="isPdfProof(selectedAccount)"
               class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
@@ -870,6 +870,10 @@ async function downloadProof(account) {
 
 function hasSupportingDocument(account) {
   return Boolean(account?.supportingDocumentName && account?.supportingDocumentPath);
+}
+
+function shouldShowProofDetails(account) {
+  return account?.accountType !== 'Admin';
 }
 
 function revokePreviewDocumentUrl() {

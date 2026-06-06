@@ -29,7 +29,7 @@ export function normalizeWishlistAccount(account) {
     roleLabel: account.roleLabel || resolveRoleLabel(account, source.roleDesignation),
     accountType,
     accountStatus: source.accountStatus,
-    registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || new Date().toISOString(),
+    registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || null,
     inviteStatus: source.inviteStatus,
     inviteInvitedBy: source.inviteInvitedBy,
     inviteSentAt: source.inviteSentAt,
