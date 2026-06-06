@@ -21,16 +21,11 @@ class EquipmentController extends AbstractController
 {
     use JsonResponseTrait;
 
-<<<<<<< HEAD
     public function __construct(
         private readonly EquipmentManagementService $equipmentManagementService,
         private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
         private readonly AuthenticatedAccountResolver $authenticatedAccountResolver
     ) {
-=======
-    public function __construct(private readonly EquipmentManagementService $equipmentManagementService)
-    {
->>>>>>> origin/main
     }
 
     #[Route('', name: 'equipment_list_all', methods: ['GET'])]
@@ -42,21 +37,12 @@ class EquipmentController extends AbstractController
             ? $this->equipmentManagementService->getAvailableEquipment()
             : $this->equipmentManagementService->getAllEquipment();
 
-<<<<<<< HEAD
         return $this->createSuccessResponse([
             'equipment' => array_map(
                 static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
                 $equipmentDTOs
             ),
         ]);
-=======
-        $responseList = array_map(
-            static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
-            $equipmentDTOs
-        );
-
-        return $this->createSuccessResponse(['equipment' => $responseList]);
->>>>>>> origin/main
     }
 
     #[Route('/{equipmentIdentifier}', name: 'equipment_get_by_id', methods: ['GET'])]
@@ -77,7 +63,6 @@ class EquipmentController extends AbstractController
     public function createEquipment(Request $request): JsonResponse
     {
         try {
-<<<<<<< HEAD
             $equipmentDTO = $this->equipmentManagementService->createEquipment($this->buildCreateRequestDTO($request));
 
             return $this->createSuccessResponse($equipmentDTO->toResponseArray(), 201);
@@ -91,7 +76,10 @@ class EquipmentController extends AbstractController
     public function updateEquipment(int $equipmentIdentifier, Request $request): JsonResponse
     {
         try {
-            $equipmentDTO = $this->equipmentManagementService->updateEquipment($equipmentIdentifier, $this->buildCreateRequestDTO($request));
+            $equipmentDTO = $this->equipmentManagementService->updateEquipment(
+                $equipmentIdentifier,
+                $this->buildCreateRequestDTO($request)
+            );
 
             return $this->createSuccessResponse($equipmentDTO->toResponseArray());
         } catch (DomainNotFoundException $exception) {
@@ -135,66 +123,12 @@ class EquipmentController extends AbstractController
             equipmentCategory: (string) ($requestBody['equipmentCategory'] ?? $requestBody['categoryName'] ?? ''),
             equipmentBrand: (string) ($requestBody['equipmentBrand'] ?? ''),
             availableQuantity: (int) ($requestBody['availableQuantity'] ?? $requestBody['totalQuantity'] ?? 0),
-            operationalStatus: (string) ($requestBody['operationalStatus'] ?? ''),
-            description: $requestBody['description'] ?? $requestBody['scheduleDescription'] ?? null,
-            barcode: (string) ($requestBody['barcode'] ?? ''),
-            serialNumber: (string) ($requestBody['assetId'] ?? $requestBody['serialNumber'] ?? ''),
-            photoData: $requestBody['photoData'] ?? null
-        );
-=======
-            $createDTO = $this->buildCreateRequestDTO($request);
-            $createdEquipment = $this->equipmentManagementService->createEquipment($createDTO);
-
-            return $this->createSuccessResponse($createdEquipment->toResponseArray(), 201);
-        } catch (DomainValidationException $exception) {
-            return $this->createErrorResponse('EquipmentValidationFailed', $exception->getMessage(), 422);
-        }
-    }
-
-    #[Route('/{equipmentIdentifier}', name: 'equipment_update', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
-    public function updateEquipment(int $equipmentIdentifier, Request $request): JsonResponse
-    {
-        try {
-            $updateDTO = $this->buildCreateRequestDTO($request);
-            $updatedEquipment = $this->equipmentManagementService->updateEquipment($equipmentIdentifier, $updateDTO);
-
-            return $this->createSuccessResponse($updatedEquipment->toResponseArray());
-        } catch (DomainNotFoundException $exception) {
-            return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
-        } catch (DomainValidationException $exception) {
-            return $this->createErrorResponse('EquipmentValidationFailed', $exception->getMessage(), 422);
-        }
-    }
-
-    #[Route('/{equipmentIdentifier}', name: 'equipment_delete', methods: ['DELETE'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
-    public function deleteEquipment(int $equipmentIdentifier): JsonResponse
-    {
-        try {
-            $this->equipmentManagementService->deleteEquipment($equipmentIdentifier);
-
-            return $this->createSuccessResponse(['message' => 'Equipment deleted successfully.']);
-        } catch (DomainNotFoundException $exception) {
-            return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
-        }
-    }
-
-    private function buildCreateRequestDTO(Request $request): EquipmentCreateRequestDTO
-    {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-
-        return new EquipmentCreateRequestDTO(
-            equipmentName: (string)($requestBody['equipmentName'] ?? ''),
-            equipmentCategory: (string)($requestBody['equipmentCategory'] ?? $requestBody['categoryName'] ?? ''),
-            equipmentBrand: (string)($requestBody['equipmentBrand'] ?? ''),
-            availableQuantity: (int)($requestBody['availableQuantity'] ?? $requestBody['totalQuantity'] ?? 0),
-            operationalStatus: (string)($requestBody['operationalStatus'] ?? $requestBody['equipmentState'] ?? ''),
+            operationalStatus: (string) ($requestBody['operationalStatus'] ?? $requestBody['equipmentState'] ?? ''),
             description: $requestBody['description'] ?? $requestBody['scheduleDescription'] ?? null,
             imageUrl: $requestBody['imageUrl'] ?? null,
-            barcode: (string)($requestBody['barcode'] ?? ''),
-            assetId: (string)($requestBody['assetId'] ?? '')
+            barcode: (string) ($requestBody['barcode'] ?? ''),
+            assetId: (string) ($requestBody['assetId'] ?? $requestBody['serialNumber'] ?? ''),
+            photoData: $requestBody['photoData'] ?? null
         );
->>>>>>> origin/main
     }
 }
