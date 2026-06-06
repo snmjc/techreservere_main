@@ -26,23 +26,15 @@ class EquipmentRepository extends ServiceEntityRepository
     public function findAvailableEquipment(): array
     {
         return $this->createQueryBuilder('equip')
-<<<<<<< HEAD
             ->where('equip.availableQuantity > 0')
             ->andWhere('equip.equipmentState = :equipmentState OR equip.operationalStatus = :legacyStatus')
             ->setParameter('equipmentState', 'Available')
             ->setParameter('legacyStatus', 'Active')
-=======
-            ->andWhere('equip.equipmentState = :equipmentState')
-            ->andWhere('equip.availableQuantity > 0')
-            ->setParameter('equipmentState', 'Available')
->>>>>>> origin/main
             ->orderBy('equip.equipmentName', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-<<<<<<< HEAD
-=======
     public function findOneByBarcode(string $barcode): ?EquipmentEntity
     {
         return $this->createQueryBuilder('equip')
@@ -63,15 +55,6 @@ class EquipmentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    // ===== AI GENERATED: persistEquipment =====
-    // Purpose: Persist a new or updated equipment entity
-    // Inputs: equipmentEntity (EquipmentEntity)
-    // Returns: void
-    // Flow:
-    // 1. Persist entity via EntityManager
-    // 2. Flush changes
-
->>>>>>> origin/main
     public function persistEquipment(EquipmentEntity $equipmentEntity): void
     {
         $entityManager = $this->getEntityManager();
