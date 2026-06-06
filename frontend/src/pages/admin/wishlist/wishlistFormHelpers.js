@@ -53,12 +53,34 @@ export function buildAdminAccountPayload(form) {
 }
 
 export function getUserCreateError(form, accounts) {
+  const validationError = validateUserAccountForm(form);
+  if (validationError) return validationError;
+
   if (form.password !== form.confirmPassword) {
     return 'Password and confirm password must match.';
   }
 
   if (wishlistEmailExists(accounts, form.emailAddress)) {
     return 'An account with this email already exists in Requests Hub.';
+  }
+
+  return '';
+}
+
+export function validateUserAccountForm(form) {
+  const lastName = String(form.lastName || '').trim();
+  const firstName = String(form.firstName || '').trim();
+  const emailAddress = String(form.emailAddress || '').trim().toLowerCase();
+  const idNumber = normalizeIdNumber(form.idNumber);
+  const role = String(form.role || '').trim();
+  const password = String(form.password || '');
+
+  if (lastName === '' || firstName === '' || emailAddress === '' || idNumber === '' || role === '' || password === '') {
+    return 'Last name, first name, email, ID number, role, and password are required.';
+  }
+
+  if (!filterEmailAddress(emailAddress)) {
+    return 'Please provide a valid email address.';
   }
 
   return '';
@@ -148,6 +170,10 @@ function wishlistEmailExists(accounts, emailAddress) {
 
 function wishlistPhoneNumberExists(accounts, phone) {
   return accounts.some((account) => String(account.contactNumber || '').replace(/\D/g, '') === phone);
+}
+
+function filterEmailAddress(emailAddress) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
 }
 
 function formatMatchedField(matchedField) {

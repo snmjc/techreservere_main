@@ -13,7 +13,13 @@
         <p>Create a new administrator request record using an approved admin email domain.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
         <label>
@@ -81,7 +87,13 @@
         <p>Create a user request record for verification.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createUserAccount">
         <label>
@@ -107,20 +119,62 @@
             <option value="Faculty">Faculty</option>
           </select>
         </label>
-        <PasswordField
-          v-model="addUserForm.password"
-          label="Password"
-          placeholder="Password"
-          :visible="showAddUserPassword"
-          @toggle="showAddUserPassword = !showAddUserPassword"
-        />
-        <PasswordField
-          v-model="addUserForm.confirmPassword"
-          label="Confirm Password"
-          placeholder="Confirm Password"
-          :visible="showAddUserConfirmPassword"
-          @toggle="showAddUserConfirmPassword = !showAddUserConfirmPassword"
-        />
+        <label>
+          <span>Password</span>
+          <span class="admin-wishlist-password-field">
+            <input
+              v-model="addUserForm.password"
+              :type="showAddUserPassword ? 'text' : 'password'"
+              placeholder="Password"
+              required
+            />
+            <button
+              type="button"
+              class="admin-wishlist-password-toggle"
+              :aria-label="showAddUserPassword ? 'Hide password' : 'Show password'"
+              @click="showAddUserPassword = !showAddUserPassword"
+            >
+              <svg v-if="showAddUserPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3l18 18" />
+                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
+                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </span>
+        </label>
+        <label>
+          <span>Confirm Password</span>
+          <span class="admin-wishlist-password-field">
+            <input
+              v-model="addUserForm.confirmPassword"
+              :type="showAddUserConfirmPassword ? 'text' : 'password'"
+              placeholder="Confirm Password"
+              required
+            />
+            <button
+              type="button"
+              class="admin-wishlist-password-toggle"
+              :aria-label="showAddUserConfirmPassword ? 'Hide password' : 'Show password'"
+              @click="showAddUserConfirmPassword = !showAddUserConfirmPassword"
+            >
+              <svg v-if="showAddUserConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3l18 18" />
+                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
+                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </span>
+        </label>
 
         <p v-if="addUserError" class="admin-wishlist-add-error">{{ addUserError }}</p>
 
@@ -128,7 +182,7 @@
           <button class="admin-wishlist-cancel-button" type="button" @click="closeAddUserModal">
             Cancel
           </button>
-          <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing">
+          <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing || !isUserCreateFormReady">
             {{ isProcessing ? 'Creating...' : 'Create Account' }}
           </button>
         </div>
@@ -150,7 +204,13 @@
         <p>Create a staff request record for verification.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createEmployeeAccount">
         <label>
@@ -262,6 +322,7 @@ const isAdminCreateFormReady = computed(() => (
   validateAdminAccountForm(addAdminForm) === ''
   && addAdminForm.confirmedAdminEmail.trim().toLowerCase() === currentAdminEmail.value
 ));
+const isUserCreateFormReady = computed(() => getUserCreateError(addUserForm, props.accounts) === '');
 const isEmployeeCreateFormReady = computed(() => validateEmployeeAccountForm(addEmployeeForm) === '');
 
 function openForTab(tabName) {
@@ -419,62 +480,4 @@ function sanitizeEmployeePhone() {
 }
 
 defineExpose({ openForTab });
-</script>
-
-<script>
-export default {
-  components: {
-    AccountSectionLabel: {
-      template: `
-        <div class="admin-wishlist-add-section-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21a8 8 0 0 1 16 0" />
-          </svg>
-          Account Information
-        </div>
-      `,
-    },
-    PasswordField: {
-      props: {
-        modelValue: { type: String, default: '' },
-        label: { type: String, required: true },
-        placeholder: { type: String, default: '' },
-        visible: { type: Boolean, default: false },
-      },
-      emits: ['update:modelValue', 'toggle'],
-      template: `
-        <label>
-          <span>{{ label }}</span>
-          <span class="admin-wishlist-password-field">
-            <input
-              :value="modelValue"
-              :type="visible ? 'text' : 'password'"
-              :placeholder="placeholder"
-              required
-              @input="$emit('update:modelValue', $event.target.value)"
-            />
-            <button
-              type="button"
-              class="admin-wishlist-password-toggle"
-              :aria-label="visible ? 'Hide password' : 'Show password'"
-              @click="$emit('toggle')"
-            >
-              <svg v-if="visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3l18 18" />
-                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
-          </span>
-        </label>
-      `,
-    },
-  },
-};
 </script>

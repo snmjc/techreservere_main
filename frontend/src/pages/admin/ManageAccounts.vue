@@ -13,20 +13,34 @@
           <h1>{{ pageTitle }}</h1>
           <p>{{ pageDescription }}</p>
         </div>
-        <button
-          class="manage-accounts-refresh-button"
-          type="button"
-          :disabled="isLoading"
-          @click="handleRefreshAccounts"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-            <path d="M3 21v-5h5" />
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-            <path d="M16 8h5V3" />
-          </svg>
-          {{ isLoading ? 'Refreshing...' : 'Refresh' }}
-        </button>
+        <div class="manage-accounts-header-actions">
+          <button
+            v-if="activeAccountTab === 'employee'"
+            class="manage-accounts-refresh-button"
+            type="button"
+            @click="openAddEmployeeRequestModal"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            Add Account
+          </button>
+          <button
+            class="manage-accounts-refresh-button"
+            type="button"
+            :disabled="isLoading"
+            @click="handleRefreshAccounts"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M3 21v-5h5" />
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M16 8h5V3" />
+            </svg>
+            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
       </header>
 
       <div v-if="loadErrorMessage" class="manage-accounts-error">
@@ -506,16 +520,26 @@
           </div>
         </section>
       </div>
+
+      <AdminWishlistCreateAccountModals
+        ref="createAccountModals"
+        :accounts="normalizedAccounts"
+        @created="handleEmployeeRequestCreated"
+      />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ManageAccounts.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useManageAccountsPage } from './composables/useManageAccountsPage.js';
+
+const createAccountModals = ref(null);
 
 const {
   activeAccountTab,
@@ -523,6 +547,7 @@ const {
   showingFilterValue,
   sortMode,
   userRoleFilter,
+  normalizedAccounts,
   isLoading,
   isProcessing,
   toastMessage,
@@ -586,4 +611,22 @@ const {
   getAccountTypeClass,
   getStatusClass,
 } = useManageAccountsPage();
+
+function openAddEmployeeRequestModal() {
+  createAccountModals.value?.openForTab('employee');
+}
+
+async function handleEmployeeRequestCreated(accountType) {
+  if (accountType !== 'employee') {
+    return;
+  }
+
+  await handleRefreshAccounts();
+  toastMessage.value = 'Staff account request created.';
+  window.setTimeout(() => {
+    if (toastMessage.value === 'Staff account request created.') {
+      toastMessage.value = '';
+    }
+  }, 2800);
+}
 </script>
