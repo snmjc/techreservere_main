@@ -400,6 +400,46 @@
   font-size: 1.1rem;
 }
 
+.facilities-feedback {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+.facilities-feedback--error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.facilities-equipment-chip--card {
+  display: grid;
+  justify-content: stretch;
+  gap: 0.65rem;
+  width: min(320px, 100%);
+  padding: 1rem;
+  border-radius: 1rem;
+}
+
+.facilities-equipment-chip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.facilities-equipment-detail {
+  margin: 0;
+  color: inherit;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.facilities-equipment-detail strong {
+  font-weight: 700;
+}
+
 /* ===== Responsive Design ===== */
 
 @media (max-width: 1024px) {

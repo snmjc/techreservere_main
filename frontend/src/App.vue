@@ -17,6 +17,10 @@ watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
   if (!loaded) return
 
   if (!signedIn) {
+    if (authStore.isAuthenticated) {
+      return
+    }
+
     const isClerkSession = authStore.accountData?.authProvider === 'clerk'
       || authStore.clerkAccountData?.authProvider === 'clerk'
 

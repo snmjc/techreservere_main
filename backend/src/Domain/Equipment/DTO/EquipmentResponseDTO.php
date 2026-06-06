@@ -14,8 +14,9 @@ class EquipmentResponseDTO
         public string $operationalStatus,
         public string $equipmentState,
         public ?string $description,
+        public ?string $imageUrl,
         public string $barcode,
-        public string $serialNumber,
+        public string $assetId,
         public ?string $photoData,
         public string $createdTimestamp,
         public string $updatedTimestamp
@@ -34,13 +35,13 @@ class EquipmentResponseDTO
             'operationalStatus' => $this->operationalStatus,
             'equipmentState' => $this->equipmentState,
             'description' => $this->description,
+            'imageUrl' => $this->imageUrl,
             'barcode' => $this->barcode,
-            'serialNumber' => $this->serialNumber,
-            'assetId' => $this->serialNumber,
+            'assetId' => $this->assetId,
+            'serialNumber' => $this->assetId,
             'photoData' => $this->photoData,
             'createdTimestamp' => $this->createdTimestamp,
             'updatedTimestamp' => $this->updatedTimestamp,
-            // Legacy aliases kept for older screens.
             'categoryName' => $this->equipmentCategory,
             'scheduleDescription' => $this->description,
         ];

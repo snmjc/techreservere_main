@@ -11,8 +11,9 @@ class EquipmentCreateRequestDTO
         public int $availableQuantity,
         public string $operationalStatus,
         public ?string $description = null,
+        public ?string $imageUrl = null,
         public string $barcode = '',
-        public string $serialNumber = '',
+        public string $assetId = '',
         public ?string $photoData = null
     ) {
     }

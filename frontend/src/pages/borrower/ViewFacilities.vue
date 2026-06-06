@@ -99,14 +99,19 @@
 
     <!-- Equipment Tab Content -->
     <div v-if="activeFacilityTab === 'equipment'" class="view-facilities-content">
-      <!-- Toolbar -->
       <div class="view-facilities-toolbar">
         <div class="view-facilities-filter-group">
+          <input
+            v-model.trim="equipmentSearchQuery"
+            type="text"
+            class="view-facilities-search-input"
+            placeholder="Search equipment"
+          />
           <label for="equipmentFilter" class="view-facilities-filter-label">Filter:</label>
           <select v-model="equipmentFilterValue" id="equipmentFilter" class="view-facilities-filter-select">
             <option value="all">All</option>
             <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
+            <option value="maintenance">Under Maintenance</option>
           </select>
           <button class="view-facilities-sort-button" @click="equipmentSortOrder = equipmentSortOrder === 'asc' ? 'desc' : 'asc'" :title="equipmentSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
             <svg v-if="equipmentSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -126,27 +131,38 @@
           </span>
           <span class="view-facilities-legend-item">
             <span class="view-facilities-legend-dot view-facilities-legend-dot--unavailable"></span>
-            Unavailable
+            Restricted from requestors
           </span>
         </div>
       </div>
 
-      <!-- Equipment Grid -->
-      <div class="view-facilities-equipment-grid">
+      <p v-if="equipmentError" class="view-facilities-feedback view-facilities-feedback--error">{{ equipmentError }}</p>
+      <div v-if="equipmentLoading" class="view-facilities-empty-state">
+        <p>Loading equipment records...</p>
+      </div>
+      <div v-else class="view-facilities-equipment-grid">
         <div
           v-for="equipment in filteredEquipment"
-          :key="equipment.categoryName"
-          class="view-facilities-equipment-chip"
+          :key="equipment.equipmentIdentifier"
+          class="view-facilities-equipment-chip view-facilities-equipment-chip--card"
           :class="{
-            'view-facilities-equipment-chip--available': equipment.categoryAvailable,
-            'view-facilities-equipment-chip--unavailable': !equipment.categoryAvailable,
+            'view-facilities-equipment-chip--available': equipment.equipmentState === 'Available',
+            'view-facilities-equipment-chip--unavailable': equipment.equipmentState !== 'Available',
           }"
         >
-          <span class="view-facilities-equipment-chip-name">{{ equipment.categoryName }}</span>
+          <div class="view-facilities-equipment-chip-header">
+            <span class="view-facilities-equipment-chip-name">{{ equipment.equipmentName }}</span>
+            <span class="view-facilities-status-badge" :class="equipment.equipmentState === 'Available' ? 'available' : 'unavailable'">
+              {{ equipment.equipmentState }}
+            </span>
+          </div>
+          <p class="view-facilities-equipment-detail"><strong>Category:</strong> {{ equipment.categoryName }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Available:</strong> {{ equipment.availableQuantity }} / {{ equipment.totalQuantity }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Description:</strong> {{ equipment.scheduleDescription || 'N/A' }}</p>
         </div>
       </div>
 
-      <div v-if="filteredEquipment.length === 0" class="view-facilities-empty-state">
+      <div v-if="!equipmentLoading && filteredEquipment.length === 0" class="view-facilities-empty-state">
         <p>No equipment found matching your filter.</p>
       </div>
     </div>
@@ -159,17 +175,22 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewFacilities.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 
 const activeFacilityTab = ref('venue');
 const venueFilterValue = ref('all');
 const venueSortOrder = ref('asc');
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
+const equipmentSearchQuery = ref('');
+const equipmentList = ref([]);
+const equipmentLoading = ref(false);
+const equipmentError = ref('');
 
 /**
  * @constant {Array<Object>} venueFloorGroupsList
@@ -240,27 +261,6 @@ const venueFloorGroupsList = ref([
 ]);
 
 /**
- * @constant {Array<Object>} equipmentCategoriesList
- * @description Static equipment category data for borrower view.
- */
-const equipmentCategoriesList = ref([
-  { categoryName: 'Chairs', categoryAvailable: true },
-  { categoryName: 'Tables', categoryAvailable: true },
-  { categoryName: 'Podium', categoryAvailable: true },
-  { categoryName: 'Microphone', categoryAvailable: true },
-  { categoryName: 'Wifi Card', categoryAvailable: true },
-  { categoryName: 'Board Eraser System', categoryAvailable: true },
-  { categoryName: 'Extension Cord', categoryAvailable: true },
-  { categoryName: 'Flood Board', categoryAvailable: true },
-  { categoryName: 'Stage', categoryAvailable: true },
-  { categoryName: 'White Screen', categoryAvailable: true },
-  { categoryName: 'Philippine Flag', categoryAvailable: true },
-  { categoryName: 'FEU Tech Logo', categoryAvailable: true },
-  { categoryName: 'LED Video Wall', categoryAvailable: true },
-  { categoryName: 'Others', categoryAvailable: true },
-]);
-
-/**
  * @function filteredVenueFloorGroups
  * @description Filters venue floor groups based on availability filter and applies sorting.
  * @returns {Array<Object>}
@@ -302,20 +302,23 @@ const filteredVenueFloorGroups = computed(() => {
  * @returns {Array<Object>}
  */
 const filteredEquipment = computed(() => {
-  let filtered = equipmentCategoriesList.value;
-  
-  // Apply availability filter
-  if (equipmentFilterValue.value !== 'all') {
-    const isAvailableFilter = equipmentFilterValue.value === 'available';
-    filtered = filtered.filter(
-      (category) => category.categoryAvailable === isAvailableFilter
-    );
+  const normalizedQuery = equipmentSearchQuery.value.toLowerCase();
+
+  let filtered = equipmentList.value.filter((equipment) => {
+    return normalizedQuery === ''
+      || equipment.equipmentName.toLowerCase().includes(normalizedQuery)
+      || equipment.categoryName.toLowerCase().includes(normalizedQuery);
+  });
+
+  if (equipmentFilterValue.value === 'available') {
+    filtered = filtered.filter((equipment) => equipment.equipmentState === 'Available');
+  } else if (equipmentFilterValue.value === 'maintenance') {
+    filtered = filtered.filter((equipment) => equipment.equipmentState === 'Under Maintenance');
   }
-  
-  // Apply sorting to equipment names
+
   return [...filtered].sort((a, b) => {
-    const nameA = a.categoryName.toLowerCase();
-    const nameB = b.categoryName.toLowerCase();
+    const nameA = a.equipmentName.toLowerCase();
+    const nameB = b.equipmentName.toLowerCase();
     if (equipmentSortOrder.value === 'asc') {
       return nameA.localeCompare(nameB);
     } else {
@@ -323,4 +326,22 @@ const filteredEquipment = computed(() => {
     }
   });
 });
+
+onMounted(() => {
+  fetchEquipment();
+});
+
+async function fetchEquipment() {
+  try {
+    equipmentLoading.value = true;
+    equipmentError.value = '';
+    const response = await equipmentApi.listEquipment();
+    equipmentList.value = response?.data?.equipment || [];
+  } catch (error) {
+    equipmentList.value = [];
+    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment list.';
+  } finally {
+    equipmentLoading.value = false;
+  }
+}
 </script>

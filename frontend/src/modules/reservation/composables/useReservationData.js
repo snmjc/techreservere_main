@@ -13,8 +13,8 @@ export function useReservationData() {
       isLoading.value = true;
       error.value = null;
       const response = await equipmentApi.listEquipment();
-      if (response && response.equipment) {
-        equipmentList.value = response.equipment.map(eq => ({
+      const equipment = response?.data?.equipment || [];
+      equipmentList.value = equipment.map(eq => ({
           equipmentIdentifier: eq.equipmentIdentifier,
           equipmentName: eq.equipmentName,
           categoryName: eq.categoryName,
@@ -23,7 +23,6 @@ export function useReservationData() {
           operationalStatus: eq.operationalStatus,
           equipmentState: eq.equipmentState,
         }));
-      }
     } catch (err) {
       error.value = err.message || 'Failed to fetch equipment';
       console.error('Equipment fetch error:', err);
