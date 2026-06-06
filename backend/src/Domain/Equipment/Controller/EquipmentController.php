@@ -2,8 +2,12 @@
 
 namespace App\Domain\Equipment\Controller;
 
+use App\Domain\Account\Service\AdminSecurityConfirmationService;
+use App\Domain\Account\Service\AuthenticatedAccountResolver;
 use App\Domain\Equipment\DTO\EquipmentCreateRequestDTO;
 use App\Domain\Equipment\Service\EquipmentManagementService;
+use App\Shared\Exceptions\DomainNotFoundException;
+use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
@@ -17,82 +21,110 @@ class EquipmentController extends AbstractController
 {
     use JsonResponseTrait;
 
-    private EquipmentManagementService $equipmentManagementService;
-
-    public function __construct(EquipmentManagementService $equipmentManagementService)
-    {
-        $this->equipmentManagementService = $equipmentManagementService;
+    public function __construct(
+        private readonly EquipmentManagementService $equipmentManagementService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly AuthenticatedAccountResolver $authenticatedAccountResolver
+    ) {
     }
-
-    // ===== AI GENERATED: listAllEquipment =====
-    // Purpose: Return all equipment (Admin: full list, Borrower: available only)
-    // Inputs: Request
-    // Returns: JsonResponse
-    // Flow:
-    // 1. Check role from request attributes
-    // 2. Return all or available based on role
 
     #[Route('', name: 'equipment_list_all', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function listAllEquipment(Request $request): JsonResponse
     {
         $resolvedRole = $request->attributes->get('resolvedRole', '');
+        $equipmentDTOs = $resolvedRole === RoleConstants::ROLE_BORROWER
+            ? $this->equipmentManagementService->getAvailableEquipment()
+            : $this->equipmentManagementService->getAllEquipment();
 
-        if ($resolvedRole === RoleConstants::ROLE_BORROWER) {
-            $equipmentDTOs = $this->equipmentManagementService->getAvailableEquipment();
-        } else {
-            $equipmentDTOs = $this->equipmentManagementService->getAllEquipment();
-        }
-
-        $responseList = [];
-        foreach ($equipmentDTOs as $equipmentDTO) { // DTO → array loop
-            $responseList[] = $equipmentDTO->toResponseArray();
-        }
-
-        return $this->createSuccessResponse(['equipment' => $responseList]);
+        return $this->createSuccessResponse([
+            'equipment' => array_map(
+                static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
+                $equipmentDTOs
+            ),
+        ]);
     }
-
-    // ===== AI GENERATED: getEquipmentById =====
-    // Purpose: Return single equipment by ID
-    // Inputs: equipmentIdentifier (int)
-    // Returns: JsonResponse
-    // Flow:
-    // 1. Call service by ID
-    // 2. Return DTO
 
     #[Route('/{equipmentIdentifier}', name: 'equipment_get_by_id', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function getEquipmentById(int $equipmentIdentifier): JsonResponse
     {
-        $equipmentDTO = $this->equipmentManagementService->getEquipmentById($equipmentIdentifier);
-        return $this->createSuccessResponse($equipmentDTO->toResponseArray());
-    }
+        try {
+            $equipmentDTO = $this->equipmentManagementService->getEquipmentById($equipmentIdentifier);
 
-    // ===== AI GENERATED: createEquipment =====
-    // Purpose: Create new equipment record (Admin only)
-    // Inputs: Request body
-    // Returns: JsonResponse
-    // Flow:
-    // 1. Parse request body to DTO
-    // 2. Call service
-    // 3. Return created DTO
+            return $this->createSuccessResponse($equipmentDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
+        }
+    }
 
     #[Route('', name: 'equipment_create', methods: ['POST'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function createEquipment(Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
+        try {
+            $equipmentDTO = $this->equipmentManagementService->createEquipment($this->buildCreateRequestDTO($request));
 
-        $createDTO = new EquipmentCreateRequestDTO(
-            equipmentName: $requestBody['equipmentName'] ?? '',
-            categoryName: $requestBody['categoryName'] ?? '',
-            totalQuantity: (int)($requestBody['totalQuantity'] ?? 0),
-            operationalStatus: $requestBody['operationalStatus'] ?? 'Active',
-            scheduleDescription: $requestBody['scheduleDescription'] ?? null
+            return $this->createSuccessResponse($equipmentDTO->toResponseArray(), 201);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('EquipmentValidationFailed', $exception->getMessage(), 422);
+        }
+    }
+
+    #[Route('/{equipmentIdentifier}', name: 'equipment_update', methods: ['PUT'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function updateEquipment(int $equipmentIdentifier, Request $request): JsonResponse
+    {
+        try {
+            $equipmentDTO = $this->equipmentManagementService->updateEquipment($equipmentIdentifier, $this->buildCreateRequestDTO($request));
+
+            return $this->createSuccessResponse($equipmentDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('EquipmentValidationFailed', $exception->getMessage(), 422);
+        }
+    }
+
+    #[Route('/{equipmentIdentifier}', name: 'equipment_delete', methods: ['DELETE'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function deleteEquipment(int $equipmentIdentifier, Request $request): JsonResponse
+    {
+        $requestBody = json_decode($request->getContent(), true) ?? [];
+        $securityError = $this->adminSecurityConfirmationService->validateAdminCredentials(
+            $this->authenticatedAccountResolver->resolveAccountIdentifier($request),
+            (string) ($requestBody['confirmedAdminEmail'] ?? ''),
+            (string) ($requestBody['confirmedAdminPassword'] ?? ''),
+            'deleting'
         );
 
-        $createdEquipment = $this->equipmentManagementService->createEquipment($createDTO);
+        if ($securityError !== null) {
+            return $this->createErrorResponse('SecurityConfirmationFailed', $securityError, 422);
+        }
 
-        return $this->createSuccessResponse($createdEquipment->toResponseArray(), 201);
+        try {
+            $this->equipmentManagementService->deleteEquipment($equipmentIdentifier);
+
+            return $this->createSuccessResponse(['message' => 'Equipment deleted successfully.']);
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
+        }
+    }
+
+    private function buildCreateRequestDTO(Request $request): EquipmentCreateRequestDTO
+    {
+        $requestBody = json_decode($request->getContent(), true) ?? [];
+
+        return new EquipmentCreateRequestDTO(
+            equipmentName: (string) ($requestBody['equipmentName'] ?? ''),
+            equipmentCategory: (string) ($requestBody['equipmentCategory'] ?? $requestBody['categoryName'] ?? ''),
+            equipmentBrand: (string) ($requestBody['equipmentBrand'] ?? ''),
+            availableQuantity: (int) ($requestBody['availableQuantity'] ?? $requestBody['totalQuantity'] ?? 0),
+            operationalStatus: (string) ($requestBody['operationalStatus'] ?? ''),
+            description: $requestBody['description'] ?? $requestBody['scheduleDescription'] ?? null,
+            barcode: (string) ($requestBody['barcode'] ?? ''),
+            serialNumber: (string) ($requestBody['assetId'] ?? $requestBody['serialNumber'] ?? ''),
+            photoData: $requestBody['photoData'] ?? null
+        );
     }
 }

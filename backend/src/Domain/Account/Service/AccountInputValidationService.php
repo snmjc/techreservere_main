@@ -5,8 +5,8 @@ namespace App\Domain\Account\Service;
 class AccountInputValidationService
 {
     private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
-        'techreserve.edu.ph',
-        'techreserve.feu.edu.ph',
+        'feutech.edu.ph',
+        'fit.edu.ph',
     ];
 
     public function isValidPersonName(string $name): bool
@@ -35,7 +35,21 @@ class AccountInputValidationService
             return false;
         }
 
+        if (in_array($domain, $this->blockedAdminEmailDomains(), true)) {
+            return false;
+        }
+
         return in_array($domain, $this->allowedAdminEmailDomains(), true);
+    }
+
+    public function normalizeIdNumber(string $idNumber): string
+    {
+        return trim(preg_replace('/\s+/', '', $idNumber) ?? $idNumber);
+    }
+
+    public function isValidIdNumber(string $idNumber): bool
+    {
+        return $this->normalizeIdNumber($idNumber) !== '';
     }
 
     public function allowedAdminEmailDomains(): array
@@ -51,5 +65,10 @@ class AccountInputValidationService
         )));
 
         return $domains !== [] ? $domains : self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS;
+    }
+
+    public function blockedAdminEmailDomains(): array
+    {
+        return ['techreserve.edu.ph', 'techreserve.feu.edu.ph'];
     }
 }

@@ -80,7 +80,7 @@
           v-model="searchQuery"
           type="text"
           class="manage-facilities-search-input"
-          placeholder="Search by venue name or floor..."
+          :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name or floor...' : 'Search by equipment name, type, brand, barcode, or asset ID...'"
         />
       </div>
       <div class="manage-facilities-sort-group">
@@ -117,7 +117,7 @@
     </div>
 
     <!-- Venue Tab Content -->
-    <div v-if="loading" class="manage-facilities-loading">Loading venues...</div>
+    <div v-if="activeFacilityTab === 'venue' && loading" class="manage-facilities-loading">Loading venues...</div>
     <FacilityVenueListComponent
       v-else-if="activeFacilityTab === 'venue'"
       :venue-floor-groups="venueFloorGroups"
@@ -128,10 +128,17 @@
     />
 
     <!-- Equipment Tab Content -->
+    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
+    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <FacilityEquipmentGridComponent
-      v-if="activeFacilityTab === 'equipment'"
-      :equipment-categories="equipmentCategoriesList"
+      v-else-if="activeFacilityTab === 'equipment'"
+      :equipment-records="filteredEquipmentRecords"
       :availability-filter="availabilityFilter"
+      :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
+      @edit-equipment="handleEditEquipment"
+      @delete-equipment="openDeleteEquipmentModal"
+      @view-equipment="handleViewEquipment"
+      @select-equipment="handleSelectEquipment"
     />
 
     <!-- Footer -->
@@ -154,6 +161,148 @@
       @close="handleEquipmentModalClose"
       @saved="handleEquipmentModalSaved"
     />
+
+    <div
+      v-if="viewEquipmentRecord"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeEquipmentDetails"
+    >
+      <section class="manage-facilities-equipment-details-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeEquipmentDetails">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading">
+          <h2>{{ formatEquipmentText(viewEquipmentRecord.equipmentName) }}</h2>
+          <p>Equipment details for admin review and editing.</p>
+        </div>
+
+        <div class="manage-facilities-equipment-details-layout">
+          <div class="manage-facilities-equipment-photo-card">
+            <img
+              :src="resolveEquipmentPhoto(viewEquipmentRecord)"
+              :alt="`${formatEquipmentText(viewEquipmentRecord.equipmentName)} photo`"
+              class="manage-facilities-equipment-photo"
+            />
+          </div>
+
+          <dl class="manage-facilities-equipment-details-grid">
+            <div><dt>Equipment Name</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentName) }}</dd></div>
+            <div><dt>Equipment Type/Category</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentCategory || viewEquipmentRecord.categoryName) }}</dd></div>
+            <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentBrand) }}</dd></div>
+            <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(viewEquipmentRecord.availableQuantity) }}</dd></div>
+            <div><dt>Operational Status</dt><dd>{{ formatEquipmentStatus(viewEquipmentRecord) }}</dd></div>
+            <div><dt>Barcode</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.barcode) }}</dd></div>
+            <div><dt>Asset ID</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.assetId || viewEquipmentRecord.serialNumber) }}</dd></div>
+            <div class="manage-facilities-equipment-details-grid__full">
+              <dt>Description</dt>
+              <dd>{{ formatEquipmentText(viewEquipmentRecord.description || viewEquipmentRecord.scheduleDescription) }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="manage-facilities-modal-actions">
+          <button class="manage-facilities-cancel-button" type="button" @click="closeEquipmentDetails">Close</button>
+          <button class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral" type="button" @click="openEditFromDetails">
+            Edit Equipment
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="deleteEquipmentRecord"
+      class="manage-facilities-modal-overlay"
+      @click.self="!isDeletingEquipment && closeDeleteEquipmentModal()"
+    >
+      <section class="manage-facilities-delete-modal manage-facilities-equipment-details-modal">
+        <button
+          class="manage-facilities-modal-close"
+          type="button"
+          aria-label="Close"
+          :disabled="isDeletingEquipment"
+          @click="closeDeleteEquipmentModal"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading">
+          <h2>Delete Equipment</h2>
+          <p>This action permanently removes the selected equipment record from TechReserve.</p>
+        </div>
+
+        <div class="manage-facilities-equipment-details-layout">
+          <div class="manage-facilities-equipment-photo-card">
+            <img
+              :src="resolveEquipmentPhoto(deleteEquipmentRecord)"
+              :alt="`${formatEquipmentText(deleteEquipmentRecord.equipmentName)} photo`"
+              class="manage-facilities-equipment-photo"
+            />
+          </div>
+
+          <dl class="manage-facilities-equipment-details-grid">
+            <div><dt>Equipment Name</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentName) }}</dd></div>
+            <div><dt>Equipment Type/Category</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentCategory || deleteEquipmentRecord.categoryName) }}</dd></div>
+            <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentBrand) }}</dd></div>
+            <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(deleteEquipmentRecord.availableQuantity) }}</dd></div>
+            <div><dt>Operational Status</dt><dd>{{ formatEquipmentStatus(deleteEquipmentRecord) }}</dd></div>
+            <div><dt>Barcode</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.barcode) }}</dd></div>
+            <div><dt>Asset ID</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.assetId || deleteEquipmentRecord.serialNumber) }}</dd></div>
+            <div class="manage-facilities-equipment-details-grid__full">
+              <dt>Description</dt>
+              <dd>{{ formatEquipmentText(deleteEquipmentRecord.description || deleteEquipmentRecord.scheduleDescription) }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <label class="manage-facilities-confirm-field">
+          <span>Type your admin email to confirm deletion:</span>
+          <input
+            v-model.trim="deleteEquipmentConfirmEmail"
+            type="email"
+            :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="manage-facilities-confirm-field">
+          <span>Type your admin password to confirm deletion:</span>
+          <input
+            v-model="deleteEquipmentConfirmPassword"
+            type="password"
+            placeholder="Admin password"
+            autocomplete="current-password"
+          />
+        </label>
+
+        <p v-if="deleteEquipmentError" class="manage-facilities-modal-error">{{ deleteEquipmentError }}</p>
+
+        <div class="manage-facilities-modal-actions">
+          <button
+            class="manage-facilities-cancel-button"
+            type="button"
+            :disabled="isDeletingEquipment"
+            @click="closeDeleteEquipmentModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="manage-facilities-delete-confirm-button"
+            type="button"
+            :disabled="isDeletingEquipment || !isDeleteEquipmentReady"
+            @click="confirmDeleteEquipment"
+          >
+            {{ isDeletingEquipment ? 'Deleting...' : 'Delete Equipment' }}
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div
       v-if="deleteVenueRecord"
@@ -241,6 +390,7 @@ import FacilityEquipmentGridComponent from '@/modules/facility/components/Facili
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
+import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const authStore = useAuthenticationStore();
@@ -254,9 +404,19 @@ const showVenueModal = ref(false);
 const showEquipmentModal = ref(false);
 const selectedVenue = ref(null);
 const selectedEquipment = ref(null);
+const selectedEquipmentCard = ref(null);
+const viewEquipmentRecord = ref(null);
 
 const venuesList = ref([]);
+const equipmentList = ref([]);
 const loading = ref(false);
+const equipmentLoading = ref(false);
+const equipmentError = ref('');
+const deleteEquipmentRecord = ref(null);
+const deleteEquipmentConfirmEmail = ref('');
+const deleteEquipmentConfirmPassword = ref('');
+const deleteEquipmentError = ref('');
+const isDeletingEquipment = ref(false);
 const deleteVenueRecord = ref(null);
 const deleteConfirmEmail = ref('');
 const deleteConfirmPassword = ref('');
@@ -270,6 +430,11 @@ const isDeleteVenueReady = computed(() =>
   Boolean(deleteVenueRecord.value)
   && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
   && deleteConfirmPassword.value.trim() !== ''
+);
+const isDeleteEquipmentReady = computed(() =>
+  Boolean(deleteEquipmentRecord.value)
+  && deleteEquipmentConfirmEmail.value.trim() !== ''
+  && deleteEquipmentConfirmPassword.value.trim() !== ''
 );
 
 const floorOrder = [
@@ -309,6 +474,37 @@ const filteredVenues = computed(() => {
   });
 
   return venues;
+});
+
+const filteredEquipmentRecords = computed(() => {
+  let equipmentRecords = [...equipmentList.value];
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    equipmentRecords = equipmentRecords.filter((equipmentRecord) =>
+      String(equipmentRecord.equipmentName || '').toLowerCase().includes(query)
+      || String(equipmentRecord.equipmentCategory || equipmentRecord.categoryName || '').toLowerCase().includes(query)
+      || String(equipmentRecord.equipmentBrand || '').toLowerCase().includes(query)
+      || String(equipmentRecord.barcode || '').toLowerCase().includes(query)
+      || String(equipmentRecord.assetId || equipmentRecord.serialNumber || '').toLowerCase().includes(query)
+    );
+  }
+
+  if (availabilityFilter.value === 'available') {
+    equipmentRecords = equipmentRecords.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) === 'Available');
+  } else if (availabilityFilter.value === 'unavailable') {
+    equipmentRecords = equipmentRecords.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) !== 'Available');
+  }
+
+  equipmentRecords.sort((left, right) => {
+    const nameA = String(left.equipmentName || '').toLowerCase();
+    const nameB = String(right.equipmentName || '').toLowerCase();
+    return sortValue.value === 'asc'
+      ? nameA.localeCompare(nameB)
+      : nameB.localeCompare(nameA);
+  });
+
+  return equipmentRecords;
 });
 
 const venueFloorGroups = computed(() => {
@@ -360,8 +556,15 @@ const venueFloorGroups = computed(() => {
  * @returns {void}
  */
 function handleFacilityTabChange(tabName) {
+  if (activeFacilityTab.value === 'equipment' && tabName !== 'equipment') {
+    handleEquipmentModalClose();
+    closeEquipmentDetails();
+    closeDeleteEquipmentModal();
+  }
+
   activeFacilityTab.value = tabName;
   availabilityFilter.value = 'all';
+  searchQuery.value = '';
 }
 
 /**
@@ -374,8 +577,12 @@ function handleEditFacility() {
     selectedVenue.value = { venueIdentifier: 0, venueName: '', venueLocation: '', capacityLimit: null };
     showVenueModal.value = true;
   } else {
-    selectedEquipment.value = { equipmentIdentifier: 0, equipmentName: '', categoryName: '', totalQuantity: 0, operationalStatus: 'Active', scheduleDescription: '' };
-    showEquipmentModal.value = true;
+    if (!selectedEquipmentCard.value) {
+      equipmentError.value = 'Select an equipment record first before editing.';
+      return;
+    }
+
+    handleEditEquipment(selectedEquipmentCard.value);
   }
 }
 
@@ -395,6 +602,7 @@ function handleAddFacility() {
     showVenueModal.value = true;
   } else {
     selectedEquipment.value = null;
+    equipmentError.value = '';
     showEquipmentModal.value = true;
   }
 }
@@ -438,6 +646,7 @@ function handleEquipmentModalClose() {
 function handleEquipmentModalSaved() {
   showEquipmentModal.value = false;
   selectedEquipment.value = null;
+  fetchEquipment();
 }
 
 async function fetchVenues() {
@@ -450,6 +659,76 @@ async function fetchVenues() {
     venuesList.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function fetchEquipment() {
+  try {
+    equipmentLoading.value = true;
+    equipmentError.value = '';
+    const response = await equipmentApi.listEquipment();
+    equipmentList.value = response?.data?.equipment || [];
+  } catch (error) {
+    console.error('Error fetching equipment:', error);
+    equipmentList.value = [];
+    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment.';
+  } finally {
+    equipmentLoading.value = false;
+  }
+}
+
+function openDeleteEquipmentModal(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  deleteEquipmentRecord.value = equipmentRecord;
+  deleteEquipmentConfirmEmail.value = '';
+  deleteEquipmentConfirmPassword.value = '';
+  deleteEquipmentError.value = '';
+  equipmentError.value = '';
+}
+
+function closeDeleteEquipmentModal() {
+  if (isDeletingEquipment.value) return;
+  deleteEquipmentRecord.value = null;
+  deleteEquipmentConfirmEmail.value = '';
+  deleteEquipmentConfirmPassword.value = '';
+  deleteEquipmentError.value = '';
+}
+
+async function confirmDeleteEquipment() {
+  if (!deleteEquipmentRecord.value || isDeletingEquipment.value) return;
+
+  if (!isDeleteEquipmentReady.value) {
+    deleteEquipmentError.value = 'Please type your admin email and password to delete this equipment.';
+    return;
+  }
+
+  try {
+    isDeletingEquipment.value = true;
+    deleteEquipmentError.value = '';
+
+    await equipmentApi.deleteEquipment(deleteEquipmentRecord.value.equipmentIdentifier, {
+      confirmedAdminEmail: deleteEquipmentConfirmEmail.value.trim(),
+      confirmedAdminPassword: deleteEquipmentConfirmPassword.value,
+    });
+
+    const deletedIdentifier = deleteEquipmentRecord.value.equipmentIdentifier;
+    isDeletingEquipment.value = false;
+    closeDeleteEquipmentModal();
+
+    if (selectedEquipmentCard.value?.equipmentIdentifier === deletedIdentifier) {
+      selectedEquipmentCard.value = null;
+    }
+
+    if (viewEquipmentRecord.value?.equipmentIdentifier === deletedIdentifier) {
+      closeEquipmentDetails();
+    }
+
+    await fetchEquipment();
+  } catch (error) {
+    console.error('Error deleting equipment:', error);
+    deleteEquipmentError.value = error?.response?.data?.errorMessage || 'Failed to delete equipment. Please try again.';
+  } finally {
+    isDeletingEquipment.value = false;
   }
 }
 
@@ -519,30 +798,81 @@ async function handleToggleAvailability(venue) {
 
 onMounted(() => {
   fetchVenues();
+  fetchEquipment();
 });
+
+function handleEditEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  selectedEquipment.value = equipmentRecord;
+  equipmentError.value = '';
+  showEquipmentModal.value = true;
+}
+
+function handleViewEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  viewEquipmentRecord.value = equipmentRecord;
+  equipmentError.value = '';
+}
+
+function handleSelectEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  equipmentError.value = '';
+}
+
+function closeEquipmentDetails() {
+  viewEquipmentRecord.value = null;
+}
+
+function openEditFromDetails() {
+  if (!viewEquipmentRecord.value) {
+    return;
+  }
+
+  handleEditEquipment(viewEquipmentRecord.value);
+  closeEquipmentDetails();
+}
 
 function normalizeEmailForConfirmation(emailAddress) {
   return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
 }
 
-/**
- * @constant {Array<Object>} equipmentCategoriesList
- * @description Static equipment category data for display.
- */
-const equipmentCategoriesList = ref([
-  { categoryName: 'Chairs', categoryAvailable: true },
-  { categoryName: 'Tables', categoryAvailable: true },
-  { categoryName: 'Podium', categoryAvailable: true },
-  { categoryName: 'Microphone', categoryAvailable: true },
-  { categoryName: 'Wifi Card', categoryAvailable: true },
-  { categoryName: 'Board Eraser System', categoryAvailable: true },
-  { categoryName: 'Extension Cord', categoryAvailable: true },
-  { categoryName: 'Flood Board', categoryAvailable: true },
-  { categoryName: 'Stage', categoryAvailable: true },
-  { categoryName: 'White Screen', categoryAvailable: true },
-  { categoryName: 'Philippine Flag', categoryAvailable: true },
-  { categoryName: 'FEU Tech Logo', categoryAvailable: true },
-  { categoryName: 'LED Video Wall', categoryAvailable: true },
-  { categoryName: 'Others', categoryAvailable: true },
-]);
+function formatEquipmentText(value) {
+  const normalizedValue = String(value || '').trim();
+  return normalizedValue === '' ? 'N/A' : normalizedValue;
+}
+
+function formatEquipmentQuantity(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : 'N/A';
+}
+
+function formatEquipmentStatus(equipmentRecord) {
+  const operationalStatus = String(equipmentRecord?.operationalStatus || '').trim();
+  if (operationalStatus === 'Active') return 'Available';
+  if (operationalStatus === 'Inactive') return 'Unavailable';
+  if (operationalStatus === 'Maintenance') return 'Under Maintenance';
+  return operationalStatus || formatEquipmentText(equipmentRecord?.equipmentState);
+}
+
+function resolveEquipmentPhoto(equipmentRecord) {
+  const photoData = String(equipmentRecord?.photoData || '').trim();
+  if (photoData !== '') {
+    return photoData;
+  }
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#eff6f0"/>
+          <stop offset="100%" stop-color="#dcefe1"/>
+        </linearGradient>
+      </defs>
+      <rect width="480" height="320" fill="url(#g)"/>
+      <rect x="66" y="56" width="348" height="208" rx="24" fill="#ffffff" stroke="#b7d4c0" stroke-width="6"/>
+      <circle cx="168" cy="138" r="28" fill="#d3ead8"/>
+      <path d="M114 228l68-62 46 44 58-70 80 88H114z" fill="#bfe1c8"/>
+      <text x="240" y="286" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#386641">No Photo</text>
+    </svg>
+  `)}`;
+}
 </script>

@@ -9,12 +9,15 @@ class AccountReadService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountResponseMapperService $accountResponseMapperService
+        private readonly AccountResponseMapperService $accountResponseMapperService,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
     ) {
     }
 
     public function getAcceptedAccounts(): array
     {
+        $this->clerkInvitationSyncService->reconcileAcceptedAccountsFromLocalInvitations();
+
         $rows = $this->connection->fetchAllAssociative(
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
@@ -45,13 +48,6 @@ class AccountReadService
                 ) latest_invitation ON TRUE
                 WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
                   AND LOWER(COALESCE(accounts.status, 'pending')) IN ('approved', 'disabled')
-                  AND (
-                    UPPER(COALESCE(accounts.role_designation, '')) IN ('ROLE_ADMIN', 'ADMIN')
-                    OR (
-                      COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
-                      AND latest_invitation.accepted_at IS NOT NULL
-                    )
-                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
@@ -73,6 +69,8 @@ class AccountReadService
 
     public function getMappedAccountById(int $accountIdentifier): ?array
     {
+        $this->clerkInvitationSyncService->reconcileAcceptedAccountsFromLocalInvitations();
+
         $row = $this->connection->fetchAssociative(
             "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,

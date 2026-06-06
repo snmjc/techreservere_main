@@ -1,5 +1,3 @@
-const DISPLAY_TIME_ZONE = 'Asia/Manila';
-
 export function formatDisplayDate(value) {
   if (!value) return 'N/A';
 
@@ -10,7 +8,6 @@ export function formatDisplayDate(value) {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-    timeZone: DISPLAY_TIME_ZONE,
   }).format(date);
 }
 
@@ -26,7 +23,6 @@ export function formatDisplayDateTime(value) {
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    timeZone: DISPLAY_TIME_ZONE,
     timeZoneName: 'short',
   }).format(date);
 }

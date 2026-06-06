@@ -31,3 +31,20 @@ export function validatePersonName(value) {
   const letterCount = (normalized.match(/[A-Za-z]/g) || []).length;
   return letterCount >= 2 && /^[A-Za-z ]+$/.test(normalized);
 }
+
+export function normalizeIdNumber(value) {
+  return String(value || '').replace(/\s+/g, '').trim();
+}
+
+export function validateRequiredIdNumber(value) {
+  return normalizeIdNumber(value) !== '';
+}
+
+export function isAllowedAdminEmail(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return false;
+  }
+
+  return normalized.endsWith('@feutech.edu.ph') || normalized.endsWith('@fit.edu.ph');
+}

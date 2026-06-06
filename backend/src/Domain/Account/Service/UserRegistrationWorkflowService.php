@@ -19,7 +19,8 @@ class UserRegistrationWorkflowService
         private readonly WishlistAdminAccountService $wishlistAdminAccountService,
         private readonly WishlistEmployeeAccountService $wishlistEmployeeAccountService,
         private readonly WishlistRequestDecisionService $wishlistRequestDecisionService,
-        private readonly WishlistUserAccountService $wishlistUserAccountService
+        private readonly WishlistUserAccountService $wishlistUserAccountService,
+        private readonly InvitationExpiryPolicyService $invitationExpiryPolicyService
     ) {
     }
 
@@ -192,7 +193,7 @@ class UserRegistrationWorkflowService
                 'invitedBy' => $invitedBy,
                 'status' => 'invited',
                 'sentAt' => $sentAt->format('Y-m-d\TH:i:sP'),
-                'expiresAt' => $sentAt->modify('+7 days')->format('Y-m-d\TH:i:sP'),
+                'expiresAt' => $this->invitationExpiryPolicyService->buildExpiresAt($sentAt)->format('Y-m-d\TH:i:sP'),
             ],
         ]);
     }

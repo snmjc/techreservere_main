@@ -7,7 +7,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AccountClerkProvisioningService
 {
-    public function __construct(private readonly HttpClientInterface $httpClient)
+    public function __construct(
+        private readonly HttpClientInterface $httpClient,
+        private readonly InvitationExpiryPolicyService $invitationExpiryPolicyService
+    )
     {
     }
 
@@ -24,7 +27,7 @@ class AccountClerkProvisioningService
                 'redirect_url' => $redirectUrl,
                 'notify' => $notify,
                 'ignore_existing' => true,
-                'expires_in_days' => 7,
+                'expires_in_days' => $this->invitationExpiryPolicyService->clerkExpiresInDays(),
                 'public_metadata' => [
                     'techreserve_account_identifier' => (int)($account['account_identifier'] ?? 0),
                     'techreserve_username' => AccountUsername::fromEmail((string)($account['email_address'] ?? '')),
@@ -41,6 +44,60 @@ class AccountClerkProvisioningService
         }
 
         return $payload;
+    }
+
+    public function revokeInvitation(string $invitationId): void
+    {
+        if (trim($invitationId) === '') {
+            return;
+        }
+
+        $response = $this->httpClient->request('POST', $this->clerkApiBaseUrl() . '/v1/invitations/' . rawurlencode($invitationId) . '/revoke', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->clerkSecretKey(),
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ],
+        ]);
+
+        if ($response->getStatusCode() >= 400) {
+            $payload = $response->toArray(false);
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation revoke failed.'));
+        }
+    }
+
+    public function findLatestInvitationByEmail(string $emailAddress): ?array
+    {
+        $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl() . '/v1/invitations', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->clerkSecretKey(),
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'query' => $emailAddress,
+                'limit' => 1,
+                'order_by' => '-created_at',
+            ],
+        ]);
+
+        $payload = $response->toArray(false);
+        if ($response->getStatusCode() >= 400) {
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation lookup failed.'));
+        }
+
+        if (isset($payload['data'][0]) && is_array($payload['data'][0])) {
+            return $payload['data'][0];
+        }
+
+        if (isset($payload[0]) && is_array($payload[0])) {
+            return $payload[0];
+        }
+
+        if (isset($payload['id'])) {
+            return $payload;
+        }
+
+        return null;
     }
 
     public function ensureSignupUser(

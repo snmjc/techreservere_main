@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\RoleDesignationNormalizer;
 use App\Shared\Utils\RoleConstants;
 
 class AccountResponseMapperService
@@ -139,16 +140,7 @@ class AccountResponseMapperService
 
     private function normalizeRoleDesignation(string $roleDesignation): string
     {
-        $normalized = strtoupper(trim($roleDesignation));
-        if ($normalized === 'ADMIN') {
-            return RoleConstants::ROLE_ADMIN;
-        }
-
-        if ($normalized === 'USER') {
-            return RoleConstants::ROLE_BORROWER;
-        }
-
-        return $normalized ?: RoleConstants::ROLE_BORROWER;
+        return RoleDesignationNormalizer::normalize($roleDesignation);
     }
 
     private function resolveRoleLabelForAccountRow(array $row, string $accountType): string

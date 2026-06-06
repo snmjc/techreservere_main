@@ -2,17 +2,23 @@
 
 namespace App\Domain\Account\Service\Wishlist;
 
+use App\Domain\Account\Service\ClerkInvitationSyncService;
 use App\Shared\Utils\AppClock;
 use Doctrine\DBAL\Connection;
 
 class WishlistAccountReadService
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
+    )
     {
     }
 
     public function getWishlistAccounts(): array
     {
+        $this->clerkInvitationSyncService->reconcileAcceptedAccountsFromLocalInvitations();
+
         $rows = $this->connection->fetchAllAssociative(
             "SELECT DISTINCT ON (LOWER(accounts.email_address))
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
@@ -64,10 +70,13 @@ class WishlistAccountReadService
             str_contains($department, 'maintenance')
         );
         $accountType = $isAdmin ? 'Admin' : ($isEmployee ? 'Employee' : 'User');
-        $employeeRoleLabel = str_contains($department, 'faculty') || str_contains($normalizedRole, 'FACULTY')
+        $isFacultyUser = str_contains($department, 'faculty') || str_contains($normalizedRole, 'FACULTY');
+        $employeeRoleLabel = $isFacultyUser
             ? 'Faculty'
             : ($department !== '' ? ucwords($department) : 'Technical Staff');
-        $roleLabel = $isAdmin ? 'Admin' : ($isEmployee ? $employeeRoleLabel : 'User: Student');
+        $roleLabel = $isAdmin
+            ? 'Admin'
+            : ($isEmployee ? $employeeRoleLabel : ($isFacultyUser ? 'User: Faculty' : 'User: Student'));
 
         return [
             'accountIdentifier' => (int)$row['account_identifier'],

@@ -57,6 +57,20 @@ const equipmentApi = {
       console.error('Error updating equipment:', error);
       throw error;
     }
+  },
+
+  async deleteEquipment(equipmentIdentifier, confirmationData) {
+    const authToken = getStoredAuthToken();
+    try {
+      const response = await axios.delete(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
+        headers: buildJsonAuthorizationHeaders(authToken),
+        data: confirmationData,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting equipment:', error);
+      throw error;
+    }
   }
 };
 

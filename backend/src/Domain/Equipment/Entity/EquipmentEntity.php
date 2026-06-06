@@ -21,6 +21,9 @@ class EquipmentEntity
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $categoryName = '';
 
+    #[ORM\Column(type: Types::STRING, length: 100)]
+    private string $equipmentBrand = '';
+
     #[ORM\Column(type: Types::INTEGER)]
     private int $totalQuantity = 0;
 
@@ -35,6 +38,15 @@ class EquipmentEntity
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $scheduleDescription = null;
+
+    #[ORM\Column(type: Types::STRING, length: 120)]
+    private string $barcode = '';
+
+    #[ORM\Column(type: Types::STRING, length: 120)]
+    private string $serialNumber = '';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $photoData = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdTimestamp;
@@ -69,6 +81,14 @@ class EquipmentEntity
     public function setEquipmentState(string $equipmentState): self { $this->equipmentState = $equipmentState; return $this; }
     public function getScheduleDescription(): ?string { return $this->scheduleDescription; }
     public function setScheduleDescription(?string $scheduleDescription): self { $this->scheduleDescription = $scheduleDescription; return $this; }
+    public function getEquipmentBrand(): string { return $this->equipmentBrand; }
+    public function setEquipmentBrand(string $equipmentBrand): self { $this->equipmentBrand = $equipmentBrand; return $this; }
+    public function getBarcode(): string { return $this->barcode; }
+    public function setBarcode(string $barcode): self { $this->barcode = $barcode; return $this; }
+    public function getSerialNumber(): string { return $this->serialNumber; }
+    public function setSerialNumber(string $serialNumber): self { $this->serialNumber = $serialNumber; return $this; }
+    public function getPhotoData(): ?string { return $this->photoData; }
+    public function setPhotoData(?string $photoData): self { $this->photoData = $photoData; return $this; }
     public function getCreatedTimestamp(): \DateTimeInterface { return $this->createdTimestamp; }
     public function getUpdatedTimestamp(): \DateTimeInterface { return $this->updatedTimestamp; }
 }

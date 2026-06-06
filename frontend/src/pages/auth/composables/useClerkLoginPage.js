@@ -1,12 +1,14 @@
 import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
 import { verifyClerkLoginAccess } from '@/modules/authentication/services/clerkLoginAccessService.js';
+import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import { apiUrl } from '@/shared/utils/apiBase.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 export function useClerkLoginPage() {
   const router = useRouter();
+  const route = useRoute();
   const authStore = useAuthenticationStore();
 
   const emailAddress = ref('');
@@ -30,6 +32,12 @@ export function useClerkLoginPage() {
     if (rememberedEmail) {
       emailAddress.value = rememberedEmail;
       rememberMeChecked.value = true;
+    }
+
+    const redirectError = String(route.query.error || '').trim();
+    if (redirectError !== '') {
+      loginError.value = redirectError;
+      router.replace({ name: ROUTE_NAMES.clerkLogin });
     }
   });
 
@@ -59,6 +67,12 @@ export function useClerkLoginPage() {
   }
 
   async function handleClerkPasswordLogin() {
+    const preflight = await verifyClerkLoginAccess(emailAddress.value);
+    if (!preflight.success) {
+      loginError.value = preflight.error || 'Please wait for an administrator invitation before signing in.';
+      return;
+    }
+
     const clerk = await waitForClerk();
 
     if (!clerk?.client?.signIn || !clerk?.setActive) {
@@ -67,12 +81,6 @@ export function useClerkLoginPage() {
     }
 
     try {
-      const preflightResult = await verifyClerkLoginAccess(emailAddress.value);
-      if (!preflightResult.success) {
-        loginError.value = preflightResult.error || 'Please wait for an administrator invitation before signing in.';
-        return;
-      }
-
       const clerkSignIn = await clerk.client.signIn.create({
         identifier: emailAddress.value,
         password: passwordText.value,
@@ -240,7 +248,7 @@ export function useClerkLoginPage() {
     return verified;
   }
 
-  async function syncPostgresPasswordFromClerk(newPassword) {
+async function syncPostgresPasswordFromClerk(newPassword) {
     const clerk = await waitForClerk();
     const token = await clerk?.session?.getToken?.();
 

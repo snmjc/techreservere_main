@@ -2,7 +2,9 @@
 
 namespace App\Domain\Account\Controller;
 
+use App\Domain\Account\Service\ClerkInvitationSyncService;
 use App\Shared\Traits\JsonResponseTrait;
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -14,11 +16,11 @@ class ClerkWebhookController
 {
     use JsonResponseTrait;
 
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
+    public function __construct(
+        private Connection $connection,
+        private ClerkInvitationSyncService $clerkInvitationSyncService
+    )
     {
-        $this->connection = $connection;
     }
 
     #[Route('/api/v1/clerk/webhook', name: 'clerk_webhook', methods: ['POST'])]
@@ -118,7 +120,7 @@ class ClerkWebhookController
             [
                 'clerkUserId' => $clerkUserId,
                 'username' => AccountUsername::fromEmail($emailAddress),
-                'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
                 'emailAddress' => $emailAddress,
             ],
             [
@@ -128,6 +130,8 @@ class ClerkWebhookController
                 'emailAddress' => ParameterType::STRING,
             ]
         );
+
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail($emailAddress, $clerkUserId);
     }
 
     private function resolvePrimaryEmailAddress(array $userData): string
