@@ -92,7 +92,7 @@ class UserClerkRegistrationService
     {
         $status = strtolower($account->getStatus());
 
-        return $account->getIsApproved() && $status === 'approved';
+        return $account->getIsApproved() && in_array($status, ['approved', 'accepted'], true);
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -169,7 +169,13 @@ class UserClerkRegistrationService
         $nextIsActive = $nextIsApproved
             ? ($account->getIsActive() || $acceptedViaClerkInvite)
             : $account->getIsActive();
-        $nextStatus = $this->resolveNextExistingEmailAccountStatus($existingStatus, $nextIsApproved, $nextIsActive, $hasOpenInvitation);
+        $nextStatus = $this->resolveNextExistingEmailAccountStatus(
+            $existingStatus,
+            $nextIsApproved,
+            $nextIsActive,
+            $hasOpenInvitation,
+            $hasAcceptedInvitation
+        );
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
@@ -184,9 +190,14 @@ class UserClerkRegistrationService
         string $existingStatus,
         bool $nextIsApproved,
         bool $nextIsActive,
-        bool $hasOpenInvitation
+        bool $hasOpenInvitation,
+        bool $hasAcceptedInvitation
     ): string {
         if ($nextIsApproved) {
+            if ($nextIsActive && $hasAcceptedInvitation) {
+                return 'accepted';
+            }
+
             return $nextIsActive ? 'approved' : 'disabled';
         }
 

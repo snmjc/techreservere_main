@@ -164,11 +164,17 @@ function buildHeaders(token) {
 }
 
 function resolveBackendAccountStatus(account) {
-  if (account?.isActive === false || String(account?.status || '').toLowerCase() === 'disabled') {
+  const normalizedStatus = String(account?.status || '').toLowerCase();
+
+  if (account?.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
   }
 
-  if (account?.isApproved === true || ['approved', 'active', 'verified'].includes(String(account?.status || '').toLowerCase())) {
+  if (normalizedStatus === 'accepted') {
+    return 'accepted';
+  }
+
+  if (account?.isApproved === true || ['approved', 'active', 'verified'].includes(normalizedStatus)) {
     return 'approved';
   }
 

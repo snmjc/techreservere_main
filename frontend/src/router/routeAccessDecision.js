@@ -6,6 +6,7 @@ const AUTH_PAGE_NAMES = [
   ROUTE_NAMES.clerkLogin,
   ROUTE_NAMES.customSignUp,
 ];
+const APPROVED_ACCOUNT_STATUSES = ['approved', 'accepted'];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
@@ -16,7 +17,7 @@ export function resolveAccountStatus(authStore) {
     return 'disabled';
   }
 
-  if (account.isApproved === false && normalizedStatus !== 'approved') {
+  if (account.isApproved === false && !APPROVED_ACCOUNT_STATUSES.includes(normalizedStatus)) {
     return 'pending';
   }
 
@@ -34,7 +35,7 @@ export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, 
     return { name: ROUTE_NAMES.accountDeactivated };
   }
 
-  if (AUTH_PAGE_NAMES.includes(toRoute.name) && isSignedIn && accountStatus === 'approved') {
+  if (AUTH_PAGE_NAMES.includes(toRoute.name) && isSignedIn && APPROVED_ACCOUNT_STATUSES.includes(accountStatus)) {
     return getDashboardRouteForRole(userRole);
   }
 

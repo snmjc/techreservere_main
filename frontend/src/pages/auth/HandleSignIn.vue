@@ -82,7 +82,7 @@ async function processSignIn() {
     if (accountStatus === 'pending') {
       console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.requestPending);
       router.push({ name: ROUTE_NAMES.requestPending });
-    } else if (accountStatus === 'approved') {
+    } else if (accountStatus === 'approved' || accountStatus === 'accepted') {
       if (userRole === 'ROLE_ADMIN') {
         console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.adminDashboard);
         router.push({ name: ROUTE_NAMES.adminDashboard });

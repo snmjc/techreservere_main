@@ -45,6 +45,16 @@ class ClerkWebhookController
             $this->syncClerkUserToAccount($data);
         }
 
+        if ($this->isAcceptedInvitationEvent($eventType, $data)) {
+            $emailAddress = $this->resolveInvitationEmailAddress($data);
+            if ($emailAddress !== '') {
+                $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+                    $emailAddress,
+                    trim((string)($data['user_id'] ?? $data['clerk_user_id'] ?? ''))
+                );
+            }
+        }
+
         return $this->createSuccessResponse([
             'received' => true,
             'eventType' => $eventType,
@@ -146,5 +156,29 @@ class ClerkWebhookController
         }
 
         return trim((string)($emailAddresses[0]['email_address'] ?? ''));
+    }
+
+    private function isAcceptedInvitationEvent(string $eventType, array $data): bool
+    {
+        if ($eventType === 'invitation.accepted') {
+            return true;
+        }
+
+        if (!str_contains($eventType, 'invitation')) {
+            return false;
+        }
+
+        return strtolower(trim((string)($data['status'] ?? ''))) === 'accepted';
+    }
+
+    private function resolveInvitationEmailAddress(array $data): string
+    {
+        return trim((string)(
+            $data['email_address']
+            ?? $data['emailAddress']
+            ?? $data['unsafe_metadata']['emailAddress']
+            ?? $data['public_metadata']['emailAddress']
+            ?? ''
+        ));
     }
 }

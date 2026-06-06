@@ -64,7 +64,7 @@ class ClerkInvitationSyncService
 
             $this->connection->executeStatement(
                 "UPDATE accounts
-                 SET status = 'approved',
+                 SET status = 'accepted',
                      is_approved = TRUE,
                      is_active = TRUE,
                      clerk_user_id = COALESCE(NULLIF(clerk_user_id, ''), :clerkUserId),
@@ -108,12 +108,13 @@ class ClerkInvitationSyncService
     {
         $this->connection->executeStatement(
             "UPDATE accounts
-             SET status = 'approved',
+             SET status = 'accepted',
                  is_approved = TRUE,
                  is_active = TRUE,
                  updated_timestamp = :updatedTimestamp
              WHERE COALESCE(is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'disabled', 'rejected', 'denied')
+               AND COALESCE(NULLIF(clerk_user_id, ''), '') <> ''
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('accepted', 'approved', 'disabled', 'rejected', 'denied')
                AND EXISTS (
                     SELECT 1
                     FROM invitations

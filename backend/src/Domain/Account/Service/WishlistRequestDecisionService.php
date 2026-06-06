@@ -73,7 +73,10 @@ class WishlistRequestDecisionService
             return $this->error('SecurityConfirmationFailed', $credentialError, 422);
         }
 
-        if ($this->toDatabaseBoolean($account['is_approved'] ?? false) || strtolower((string)$account['status']) === 'approved') {
+        if (
+            $this->toDatabaseBoolean($account['is_approved'] ?? false)
+            || in_array(strtolower((string)$account['status']), ['approved', 'accepted'], true)
+        ) {
             return $this->error(
                 'DeleteRequestNotAllowed',
                 'Approved accounts must be deleted from Manage Accounts.',
