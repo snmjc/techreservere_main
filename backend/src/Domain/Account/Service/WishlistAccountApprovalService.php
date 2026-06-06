@@ -39,7 +39,7 @@ class WishlistAccountApprovalService
             return $stateError;
         }
 
-        return $this->sendAndRecordInvitation($account, $adminResult['emailAddress'], $authenticatedAdminId);
+        return $this->sendAndRecordInvitation($account, $adminResult['emailAddress'], $authenticatedAdminId, $requestBody);
     }
 
     public function verifyEmailAndApprove(int $accountIdentifier, array $requestBody, int $authenticatedAdminId): array
@@ -202,9 +202,9 @@ class WishlistAccountApprovalService
         );
     }
 
-    private function sendAndRecordInvitation(array $account, string $invitedBy, int $performedByAccountId): array
+    private function sendAndRecordInvitation(array $account, string $invitedBy, int $performedByAccountId, array $requestBody = []): array
     {
-        $invitationDraft = $this->buildInvitationDraft();
+        $invitationDraft = $this->buildInvitationDraft($requestBody);
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
         $isResend = !empty($account['invite_sent_at']);
 
@@ -429,17 +429,43 @@ class WishlistAccountApprovalService
         );
     }
 
-    private function buildInvitationDraft(): array
+    private function buildInvitationDraft(array $requestBody = []): array
     {
         $createdAt = AppClock::now();
-        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
+        $redirectUrl = $this->resolveInvitationRedirectUrl($requestBody);
 
         return [
             'createdAt' => $createdAt,
             'expiresAt' => $this->invitationExpiryPolicyService->buildExpiresAt($createdAt),
             'token' => bin2hex(random_bytes(24)),
-            'redirectUrl' => $frontendUrl . '/clerk-login',
+            'redirectUrl' => $redirectUrl,
         ];
+    }
+
+    private function resolveInvitationRedirectUrl(array $requestBody): string
+    {
+        $requestedRedirectUrl = trim((string)($requestBody['redirectUrl'] ?? ''));
+        if ($this->isValidAbsoluteHttpUrl($requestedRedirectUrl)) {
+            return $requestedRedirectUrl;
+        }
+
+        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
+        $fallbackRedirectUrl = $frontendUrl . '/clerk-login';
+
+        return $this->isValidAbsoluteHttpUrl($fallbackRedirectUrl)
+            ? $fallbackRedirectUrl
+            : 'https://techreserve.farahkenawy.codes/clerk-login';
+    }
+
+    private function isValidAbsoluteHttpUrl(string $url): bool
+    {
+        if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+
+        return $scheme === 'https' || $scheme === 'http';
     }
 
     private function buildInvitationRecord(array $clerkInvitation, array $invitationDraft): array
