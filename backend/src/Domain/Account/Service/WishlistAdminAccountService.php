@@ -9,12 +9,13 @@ use Doctrine\DBAL\ParameterType;
 
 class WishlistAdminAccountService
 {
+    private const DEFAULT_ADMIN_PASSWORD = 'admin123';
+
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
         private readonly AccountInputValidationService $accountInputValidationService,
-        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
-        private readonly WishlistAccountApprovalService $wishlistAccountApprovalService
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
     ) {
     }
 
@@ -45,7 +46,7 @@ class WishlistAdminAccountService
             return $duplicateError;
         }
 
-        return $this->createAndInviteAdminAccount($payload, $authenticatedAdminId, $requestBody);
+        return $this->createAdminAccount($payload);
     }
 
     private function normalizeRequestBody(array $requestBody): array
@@ -109,10 +110,9 @@ class WishlistAdminAccountService
         return null;
     }
 
-    private function createAndInviteAdminAccount(array $payload, int $authenticatedAdminId, array $requestBody): array
+    private function createAdminAccount(array $payload): array
     {
         $now = AppClock::now()->format('Y-m-d H:i:s');
-        $createdAccountIdentifier = 0;
 
         try {
             $this->connection->executeStatement(
@@ -129,46 +129,27 @@ class WishlistAdminAccountService
             );
 
             $createdAccountIdentifier = (int)$this->connection->lastInsertId();
-            $approvalResult = $this->wishlistAccountApprovalService->approve(
-                $createdAccountIdentifier,
-                [
-                    'confirmedAdminEmail' => $payload['confirmedAdminEmail'],
-                    'redirectUrl' => trim((string)($requestBody['redirectUrl'] ?? '')),
+
+            return $this->success([
+                'message' => 'Admin account created successfully.',
+                'createdAccountIdentifier' => $createdAccountIdentifier,
+                'defaultPassword' => self::DEFAULT_ADMIN_PASSWORD,
+                'account' => [
+                    'accountIdentifier' => $createdAccountIdentifier,
+                    'idNumber' => $payload['idNumber'],
+                    'lastName' => $payload['lastName'],
+                    'firstName' => $payload['firstName'],
+                    'emailAddress' => $payload['emailAddress'],
+                    'username' => $payload['username'],
+                    'roleDesignation' => 'ROLE_ADMIN',
+                    'roleLabel' => 'Admin',
+                    'accountType' => 'Admin',
+                    'accountStatus' => 'approved',
+                    'isApproved' => true,
+                    'registeredAt' => $now,
+                    'createdTimestamp' => $now,
                 ],
-                $authenticatedAdminId
-            );
-
-            if (($approvalResult['success'] ?? false) !== true) {
-                return $this->error(
-                    (string)($approvalResult['errorCode'] ?? 'AdminInviteFailed'),
-                    'Admin account was created, but the invitation could not be sent: ' . (string)($approvalResult['message'] ?? 'Unknown error.'),
-                    (int)($approvalResult['status'] ?? 502),
-                    [
-                        'createdAccountIdentifier' => $createdAccountIdentifier,
-                        'account' => [
-                            'accountIdentifier' => $createdAccountIdentifier,
-                            'idNumber' => $payload['idNumber'],
-                            'lastName' => $payload['lastName'],
-                            'firstName' => $payload['firstName'],
-                            'emailAddress' => $payload['emailAddress'],
-                            'username' => $payload['username'],
-                            'roleDesignation' => 'ROLE_ADMIN',
-                            'roleLabel' => 'Admin',
-                            'accountType' => 'Admin',
-                            'accountStatus' => 'pending',
-                            'isApproved' => false,
-                            'registeredAt' => $now,
-                            'createdTimestamp' => $now,
-                        ],
-                    ]
-                );
-            }
-
-            $resultData = $approvalResult['data'] ?? [];
-            $resultData['message'] = $resultData['message'] ?? 'Admin account created and invitation sent successfully.';
-            $resultData['createdAccountIdentifier'] = $createdAccountIdentifier;
-
-            return $this->success($resultData, 201);
+            ], 201);
         } catch (\Throwable $exception) {
             return $this->error(
                 'CreateAdminAccountFailed',
@@ -190,9 +171,9 @@ class WishlistAdminAccountService
             'department' => 'Administration',
             'contactNumber' => null,
             'clerkUserId' => null,
-            'passwordHash' => null,
-            'status' => 'pending',
-            'isApproved' => false,
+            'passwordHash' => password_hash(self::DEFAULT_ADMIN_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
+            'status' => 'approved',
+            'isApproved' => true,
             'isActive' => true,
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $now,
@@ -212,7 +193,7 @@ class WishlistAdminAccountService
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::NULL,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::NULL,
+            'passwordHash' => ParameterType::STRING,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,

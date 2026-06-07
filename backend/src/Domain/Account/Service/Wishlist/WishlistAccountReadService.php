@@ -48,6 +48,7 @@ class WishlistAccountReadService
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND UPPER(COALESCE(accounts.role_designation, '')) NOT IN ('ROLE_STAFF', 'STAFF', 'EMPLOYEE', 'ROLE_EMPLOYEE')
                AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')
                AND (
                     LOWER(COALESCE(accounts.status, 'pending')) IN ('pending', 'invited')
