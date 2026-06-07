@@ -52,6 +52,11 @@ class AccountReadService
                         AND COALESCE(accounts.is_active, TRUE) = TRUE
                         AND LOWER(COALESCE(accounts.status, 'pending')) IN ('accepted', 'approved')
                     ) OR (
+                        COALESCE(accounts.is_approved, FALSE) = FALSE
+                        AND COALESCE(accounts.is_active, TRUE) = TRUE
+                        AND latest_invitation.accepted_at IS NOT NULL
+                        AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('rejected', 'denied', 'disabled')
+                    ) OR (
                         COALESCE(accounts.is_approved, FALSE) = TRUE
                         AND LOWER(COALESCE(accounts.status, 'pending')) = 'disabled'
                     ) OR (

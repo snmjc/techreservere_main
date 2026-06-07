@@ -146,7 +146,6 @@ class UserClerkRegistrationService
 
         if ($nextState['shouldMarkInvitationAccepted']) {
             $this->markLatestInvitationAccepted($registration['emailAddress'], $acceptedAt);
-            $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($freshAccount->getAccountIdentifier());
         }
 
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
@@ -162,12 +161,9 @@ class UserClerkRegistrationService
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $acceptedViaClerkInvite = !$existingIsAdmin
-            && !$account->getIsApproved()
-            && $hasAcceptedInvitation;
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $acceptedViaClerkInvite;
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
         $nextIsActive = $nextIsApproved
-            ? ($account->getIsActive() || $acceptedViaClerkInvite)
+            ? $account->getIsActive()
             : $account->getIsActive();
         $nextStatus = $this->resolveNextExistingEmailAccountStatus(
             $existingStatus,
@@ -182,7 +178,7 @@ class UserClerkRegistrationService
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'shouldMarkInvitationAccepted' => $acceptedViaClerkInvite && !$hasAcceptedInvitation,
+            'shouldMarkInvitationAccepted' => !$existingIsAdmin && !$nextIsApproved && !$hasAcceptedInvitation,
         ];
     }
 
@@ -199,6 +195,10 @@ class UserClerkRegistrationService
             }
 
             return $nextIsActive ? 'approved' : 'disabled';
+        }
+
+        if ($hasAcceptedInvitation) {
+            return 'invited';
         }
 
         if ($hasOpenInvitation) {
