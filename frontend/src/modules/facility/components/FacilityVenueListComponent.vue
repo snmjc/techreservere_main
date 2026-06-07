@@ -8,7 +8,7 @@
     >
       <p class="facility-venue-floor-label">{{ floorGroup.floorLabel }}</p>
       <div class="facility-venue-chips-row">
-        <div
+        <article
           v-for="venueRecord in floorGroup.venueRecords"
           :key="venueRecord.venueIdentifier || venueRecord.venueName"
           class="facility-venue-card"
@@ -17,23 +17,34 @@
             'facility-venue-card--unavailable': !venueRecord.venueAvailable,
           }"
         >
+          <img
+            :src="resolveVenuePhoto(venueRecord)"
+            :alt="`${venueRecord.venueName} photo`"
+            class="facility-venue-card-photo"
+          />
+
           <div class="facility-venue-card-header">
-            <span class="facility-venue-card-name">{{ venueRecord.venueName }}</span>
+            <div>
+              <span class="facility-venue-card-name">{{ venueRecord.venueName }}</span>
+              <span class="facility-venue-card-status">{{ venueRecord.operationalStatus || 'N/A' }}</span>
+            </div>
             <div class="facility-venue-card-actions">
               <button
                 class="facility-venue-card-action"
-                @click="handleToggleAvailability(venueRecord)"
-                title="Toggle availability"
+                type="button"
+                title="View venue details"
+                @click="emit('view-venue', venueRecord)"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-                  <line x1="12" y1="2" x2="12" y2="12"/>
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                  <circle cx="12" cy="12" r="3"/>
                 </svg>
               </button>
               <button
                 class="facility-venue-card-action"
-                @click="handleEditVenue(venueRecord)"
+                type="button"
                 title="Edit venue"
+                @click="emit('edit-venue', venueRecord)"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -42,8 +53,9 @@
               </button>
               <button
                 class="facility-venue-card-action facility-venue-card-action--delete"
-                @click="handleDeleteVenue(venueRecord)"
+                type="button"
                 title="Delete venue"
+                @click="emit('delete-venue', venueRecord)"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"/>
@@ -52,11 +64,14 @@
               </button>
             </div>
           </div>
+
           <div class="facility-venue-card-body">
-            <span class="facility-venue-card-detail">{{ venueRecord.floorLevel || 'No floor' }}</span>
-            <span class="facility-venue-card-detail">{{ venueRecord.venueLocation || 'No location' }}</span>
+            <span class="facility-venue-card-detail">{{ venueRecord.venueLocation || 'N/A' }}</span>
+            <span class="facility-venue-card-detail">Capacity: {{ venueRecord.capacityLimit || 'N/A' }}</span>
+            <span class="facility-venue-card-detail">Available: {{ venueRecord.availabilityDate || 'N/A' }}</span>
+            <span class="facility-venue-card-detail">Status: {{ venueRecord.venueAvailable ? 'Available' : 'Unavailable' }}</span>
           </div>
-        </div>
+        </article>
       </div>
     </div>
     <div v-if="filteredVenueFloorGroups.length === 0" class="facility-venue-empty-state">
@@ -67,14 +82,10 @@
 
 <script setup>
 import { computed } from 'vue';
+import { resolveVenuePhoto } from '@/modules/facility/utils/venueFormValidation.js';
 
-const emit = defineEmits(['edit-venue', 'delete-venue', 'toggle-availability']);
+const emit = defineEmits(['view-venue', 'edit-venue', 'delete-venue']);
 
-/**
- * @typedef {Object} FacilityVenueListProps
- * @property {Array<Object>} venueFloorGroups - Array of floor groups with venues
- * @property {string} availabilityFilter - 'all', 'available', or 'unavailable'
- */
 const props = defineProps({
   venueFloorGroups: {
     type: Array,
@@ -87,28 +98,12 @@ const props = defineProps({
   },
 });
 
-function handleEditVenue(venue) {
-  emit('edit-venue', venue);
-}
-
-function handleDeleteVenue(venue) {
-  emit('delete-venue', venue.venueIdentifier);
-}
-
-function handleToggleAvailability(venue) {
-  emit('toggle-availability', venue);
-}
-
-/**
- * @function filteredVenueFloorGroups
- * @description Filters venue floor groups based on the availability filter.
- * @returns {Array<Object>}
- */
 const filteredVenueFloorGroups = computed(() => {
   const floorGroups = props.venueFloorGroups || [];
   if (props.availabilityFilter === 'all') {
     return floorGroups;
   }
+
   const isAvailableFilter = props.availabilityFilter === 'available';
   return floorGroups
     .map((floorGroup) => ({

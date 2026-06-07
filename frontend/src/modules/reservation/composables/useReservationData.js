@@ -36,14 +36,16 @@ export function useReservationData() {
       isLoading.value = true;
       error.value = null;
       const response = await venueApi.listVenues();
-      if (response && response.venues) {
-        venueList.value = response.venues.map(venue => ({
+      const venues = response?.data?.venues || response?.venues || [];
+      if (Array.isArray(venues)) {
+        venueList.value = venues.map(venue => ({
           venueIdentifier: venue.venueIdentifier,
           venueName: venue.venueName,
           venueLocation: venue.venueLocation,
           capacityLimit: venue.capacityLimit,
+          availabilityDate: venue.availabilityDate,
           availabilityStatus: venue.availabilityStatus,
-          operationalStatus: 'Active',
+          operationalStatus: venue.operationalStatus || 'Active',
           venueState: venue.availabilityStatus === 'Available' ? 'Available' : 'Unavailable',
         }));
       }

@@ -100,12 +100,14 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     if (!canSubmitApproval()) return;
 
     await runAction(async () => {
+      const isResend = approvalMode.value === 'resend';
       const result = await getApprovalAction()(
         approvalAccount.value.accountIdentifier,
         authStore.authToken,
         {
           confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail),
           redirectUrl: buildInviteRedirectUrl(),
+          ...(isResend ? { forceResend: true } : {}),
         },
       );
 
@@ -161,8 +163,9 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canResendInvite(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'expired'
+    return ['expired', 'unverified'].includes(String(account?.accountStatus || '').toLowerCase())
       && Boolean(account?.inviteSentAt)
+      && !account?.inviteAcceptedAt
       && !isProcessing.value;
   }
 
@@ -173,7 +176,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteModalDescription(account) {
     if (approvalMode.value === 'resend') {
-      return 'The previous Clerk invitation has expired. Confirm the responsible admin before resending a new invitation link.';
+      return 'This will revoke the previous Clerk invitation and send a fresh one. Confirm the responsible admin before continuing.';
     }
     return account?.accountType === 'Employee'
       ? 'Review the worker information before approving access and sending the Clerk invitation email.'
@@ -195,7 +198,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       send: canSendInvite,
     };
     const messages = {
-      resend: 'Resend invite is only available after the previous invitation expires.',
+      resend: 'Resend invite is only available for accounts with a previously sent invite that has not been accepted.',
       send: 'Send invite is only available for accounts that are not invited.',
     };
     const normalizedMode = mode === 'resend' ? 'resend' : 'send';

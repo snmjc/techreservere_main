@@ -201,11 +201,18 @@
 .view-facilities-venue-card {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  padding: 0;
+  text-align: left;
   border-radius: 0.75rem;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   border-left: 5px solid;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
 }
 
 .view-facilities-venue-card:hover {
@@ -231,6 +238,12 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.view-facilities-venue-card-body {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+
 .view-facilities-venue-name {
   font-size: 1.1rem;
   font-weight: 700;
@@ -241,6 +254,20 @@
 
 .view-facilities-venue-status {
   margin-left: 0.5rem;
+}
+
+.view-facilities-venue-detail {
+  margin: 0;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.view-facilities-venue-link {
+  padding: 0 1rem 1rem;
+  color: #047857;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .view-facilities-status-badge {
@@ -339,6 +366,8 @@
   width: min(320px, 100%);
   padding: 1rem;
   border-radius: 1rem;
+  border: none;
+  text-align: left;
 }
 
 .view-facilities-equipment-chip-header {
@@ -357,6 +386,15 @@
 
 .view-facilities-equipment-detail strong {
   font-weight: 700;
+}
+
+.view-facilities-equipment-link {
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 /* ===== Footer ===== */
