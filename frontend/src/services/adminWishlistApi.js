@@ -1,48 +1,9 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS, readStoredJson } from '@/modules/authentication/utils/authStorage.js';
-
-function createLocalBackendToken() {
-  try {
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const account = readStoredJson(AUTH_STORAGE_KEYS.account) || {};
-    if (!account.accountIdentifier && !isLocalDev) return null;
-    const role = String(account?.roleDesignation ?? account?.role ?? '').toUpperCase();
-    const accountIdentifier = account?.accountIdentifier || 1;
-
-    if (!isLocalDev && (!accountIdentifier || (role !== 'ROLE_ADMIN' && role !== 'ADMIN'))) {
-      return null;
-    }
-
-    return btoa(JSON.stringify({
-      accountId: accountIdentifier,
-      email: account.emailAddress,
-      role: 'ROLE_ADMIN',
-      exp: Math.floor(Date.now() / 1000) + 86400,
-    }));
-  } catch (error) {
-    console.warn('Unable to create local backend auth token:', error);
-    return null;
-  }
-}
-
-function resolveBearerToken(token) {
-  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const localBackendToken = createLocalBackendToken();
-
-  if (isLocalDev && localBackendToken) {
-    return localBackendToken;
-  }
-
-  if (token && !String(token).startsWith('mock_token_')) {
-    return token;
-  }
-
-  return localBackendToken;
-}
+import { getStoredAuthToken } from '@/shared/utils/authToken.js';
 
 function buildHeaders(token, includeJson = false) {
   const headers = {};
-  const bearerToken = resolveBearerToken(token);
+  const bearerToken = token || getStoredAuthToken();
   if (includeJson) headers['Content-Type'] = 'application/json';
   if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
   return headers;
