@@ -48,7 +48,7 @@ const reservationApi = {
 
   async getReservationById(reservationIdentifier) {
     try {
-      const authToken = getStoredAuthToken({ includeClerkToken: false });
+      const authToken = getStoredAuthToken();
       const response = await axios.get(apiUrl(`/api/v1/reservations/${reservationIdentifier}`), {
         headers: buildAuthorizationHeaders(authToken)
       });
@@ -61,7 +61,7 @@ const reservationApi = {
 
   async updateReservationStatus(reservationIdentifier, status, rejectionReason = null) {
     try {
-      const authToken = getStoredAuthToken({ includeClerkToken: false });
+      const authToken = getStoredAuthToken();
       const response = await axios.put(
         apiUrl(`/api/v1/reservations/${reservationIdentifier}/status`),
         {

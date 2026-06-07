@@ -207,7 +207,7 @@ import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS, readStoredJson } from '@/modules/authentication/utils/authStorage.js';
+import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
 
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
@@ -431,27 +431,10 @@ async function requestJson(path, options = {}) {
 }
 
 function buildHeaders(includeJson = false) {
-  const headers = {};
-  const localBackendToken = createLocalBackendToken();
-  if (includeJson) headers['Content-Type'] = 'application/json';
-  if (localBackendToken || authStore.authToken) headers.Authorization = `Bearer ${localBackendToken || authStore.authToken}`;
-  return headers;
-}
-
-function createLocalBackendToken() {
-  try {
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const account = readStoredJson(AUTH_STORAGE_KEYS.account) || {};
-    if (!account.accountIdentifier && !isLocalDev) return null;
-    return btoa(JSON.stringify({
-      accountId: account?.accountIdentifier || 1,
-      email: account?.emailAddress,
-      role: 'ROLE_ADMIN',
-      exp: Math.floor(Date.now() / 1000) + 86400,
-    }));
-  } catch (error) {
-    return null;
-  }
+  return {
+    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+    ...buildAuthorizationHeaders(authStore.authToken),
+  };
 }
 
 function normalizeReservations(reservations) {

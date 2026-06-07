@@ -681,6 +681,7 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 import {
   filterWishlistAccounts,
   formatDisplayDateTime,
@@ -795,8 +796,8 @@ function handleTabChange(tabName) {
 async function loadWishlistAccounts() {
   isLoading.value = true;
   loadErrorMessage.value = '';
-  await ensureWishlistToken();
-  const result = await adminWishlistApi.getWishlistAccounts(authStore.authToken);
+  const authToken = await ensureWishlistToken();
+  const result = await adminWishlistApi.getWishlistAccounts(authToken);
   if (result.success) {
     wishlistAccounts.value = result.data.users || result.data || [];
   } else {
@@ -808,21 +809,23 @@ async function loadWishlistAccounts() {
 }
 
 async function ensureWishlistToken() {
-  if (authStore.authToken) {
-    return authStore.authToken;
+  const currentToken = normalizeAuthToken(authStore.authToken) || getStoredAuthToken();
+  if (currentToken) {
+    return currentToken;
   }
 
   const clerkToken = await getClerkToken(getToken).catch(() => null);
-  if (!clerkToken) {
+  const normalizedClerkToken = normalizeAuthToken(clerkToken);
+  if (!normalizedClerkToken) {
     return null;
   }
 
   const existingAccount = authStore.clerkAccountData || authStore.accountData;
   if (existingAccount) {
-    authStore.setClerkAuth(clerkToken, existingAccount, { rememberSession: true });
+    authStore.setClerkAuth(normalizedClerkToken, existingAccount, { rememberSession: true });
   }
 
-  return clerkToken;
+  return normalizedClerkToken;
 }
 
 function openAddAccountModal() {
