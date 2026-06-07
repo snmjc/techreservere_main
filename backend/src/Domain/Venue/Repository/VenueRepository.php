@@ -19,6 +19,16 @@ class VenueRepository extends ServiceEntityRepository
     /** @return VenueEntity[] */
     public function findAvailableVenues(): array { return $this->findBy(['availabilityStatus' => 'Available']); }
 
+    public function findOneByVenueName(string $venueName): ?VenueEntity
+    {
+        return $this->createQueryBuilder('venue')
+            ->andWhere('LOWER(venue.venueName) = LOWER(:venueName)')
+            ->setParameter('venueName', $venueName)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function persistVenue(VenueEntity $entity): void
     {
         $em = $this->getEntityManager();

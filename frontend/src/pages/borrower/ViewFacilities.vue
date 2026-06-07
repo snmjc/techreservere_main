@@ -4,12 +4,10 @@
     :role-label="'DELA CRUZ, JUAN'"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Header -->
     <div class="view-facilities-page-header">
       <h2 class="view-facilities-page-heading">Facilities</h2>
     </div>
 
-    <!-- Tabs Section -->
     <div class="view-facilities-tabs">
       <button
         class="view-facilities-tab"
@@ -27,9 +25,7 @@
       </button>
     </div>
 
-    <!-- Venue Tab Content -->
     <div v-if="activeFacilityTab === 'venue'" class="view-facilities-content">
-      <!-- Filter & Legend Section -->
       <div class="view-facilities-toolbar">
         <div class="view-facilities-filter-group">
           <label for="venueFilter" class="view-facilities-filter-label">Filter:</label>
@@ -61,8 +57,12 @@
         </div>
       </div>
 
-      <!-- Venues Grid by Floor -->
-      <div class="view-facilities-venues-grid">
+      <p v-if="venueError" class="view-facilities-feedback view-facilities-feedback--error">{{ venueError }}</p>
+      <div v-if="venueLoading" class="view-facilities-empty-state">
+        <p>Loading venue records...</p>
+      </div>
+
+      <div v-else class="view-facilities-venues-grid">
         <div
           v-for="floorGroup in filteredVenueFloorGroups"
           :key="floorGroup.floorLabel"
@@ -70,14 +70,16 @@
         >
           <h3 class="view-facilities-floor-heading">{{ floorGroup.floorLabel }}</h3>
           <div class="view-facilities-venue-grid">
-            <div
+            <button
               v-for="venue in floorGroup.venueRecords"
-              :key="venue.venueName"
+              :key="venue.venueIdentifier || venue.venueName"
+              type="button"
               class="view-facilities-venue-card"
               :class="{
                 'view-facilities-venue-card--available': venue.venueAvailable,
                 'view-facilities-venue-card--unavailable': !venue.venueAvailable,
               }"
+              @click="handleViewVenueDetails(venue)"
             >
               <div class="view-facilities-venue-card-header">
                 <h4 class="view-facilities-venue-name">{{ venue.venueName }}</h4>
@@ -87,7 +89,13 @@
                   </span>
                 </div>
               </div>
-            </div>
+              <div class="view-facilities-venue-card-body">
+                <p class="view-facilities-venue-detail"><strong>Location:</strong> {{ venue.venueLocation || 'N/A' }}</p>
+                <p class="view-facilities-venue-detail"><strong>Capacity:</strong> {{ venue.capacityLimit || 'N/A' }}</p>
+                <p class="view-facilities-venue-detail"><strong>Availability Date:</strong> {{ formatDisplayDate(venue.availabilityDate) }}</p>
+              </div>
+              <span class="view-facilities-venue-link">View Details</span>
+            </button>
           </div>
         </div>
 
@@ -97,7 +105,6 @@
       </div>
     </div>
 
-    <!-- Equipment Tab Content -->
     <div v-if="activeFacilityTab === 'equipment'" class="view-facilities-content">
       <div class="view-facilities-toolbar">
         <div class="view-facilities-filter-group">
@@ -167,20 +174,29 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <div class="view-facilities-page-footer">
       &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
     </div>
+
+    <VenueDetailsModalComponent
+      :show="Boolean(viewVenueRecord || viewVenueLoading || viewVenueError)"
+      :venue="viewVenueRecord"
+      :error-message="viewVenueLoading ? 'Loading venue details...' : viewVenueError"
+      @close="closeVenueDetails"
+    />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewFacilities.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
+import venueApi from '@/modules/reservation/services/venueApi.js';
+import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
+import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 
 const activeFacilityTab = ref('venue');
 const venueFilterValue = ref('all');
@@ -188,119 +204,27 @@ const venueSortOrder = ref('asc');
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentSearchQuery = ref('');
+const venueList = ref([]);
+const venueLoading = ref(false);
+const venueError = ref('');
+const viewVenueRecord = ref(null);
+const viewVenueLoading = ref(false);
+const viewVenueError = ref('');
 const equipmentList = ref([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
 
-/**
- * @constant {Array<Object>} venueFloorGroupsList
- * @description Static venue data grouped by floor for borrower view.
- */
-const venueFloorGroupsList = ref([
-  {
-    floorLabel: '18th Floor',
-    venueRecords: [
-      { venueName: '18F Roofdeck', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '17th Floor',
-    venueRecords: [
-      { venueName: '17F MPR', venueAvailable: true },
-      { venueName: 'Basketball without Aircon', venueAvailable: true },
-      { venueName: 'Basketball gym with Aircon', venueAvailable: true },
-      { venueName: 'Basketball gym with Aircon and Green Matting', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '16th Floor',
-    venueRecords: [
-      { venueName: 'F1603 Audio Visual Room', venueAvailable: false },
-      { venueName: 'F1604 Case Room', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '15th Floor',
-    venueRecords: [
-      { venueName: 'F1502 Multipurpose Room', venueAvailable: false },
-      { venueName: 'F1503 Multipurpose Room', venueAvailable: false },
-      { venueName: 'F1504 Multipurpose Room', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '8th Floor',
-    venueRecords: [
-      { venueName: '8F Exec. Lounge 1', venueAvailable: false },
-      { venueName: '8F Exec. Lounge 2', venueAvailable: true },
-      { venueName: '8F Exec. Lounge 1 and 2 Combined', venueAvailable: true },
-      { venueName: '8F Student Lounge', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '4th - 7th Floor',
-    venueRecords: [
-      { venueName: 'F407', venueAvailable: true },
-      { venueName: 'F503', venueAvailable: true },
-      { venueName: 'F608', venueAvailable: true },
-      { venueName: 'F704', venueAvailable: true },
-      { venueName: 'F711', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '3rd Floor',
-    venueRecords: [
-      { venueName: 'FEU Tech Swimming Pool', venueAvailable: true },
-    ],
-  },
-  {
-    floorLabel: '2nd Floor',
-    venueRecords: [
-      { venueName: '2F FIT Student Plaza', venueAvailable: false },
-    ],
-  },
-]);
-
-/**
- * @function filteredVenueFloorGroups
- * @description Filters venue floor groups based on availability filter and applies sorting.
- * @returns {Array<Object>}
- */
 const filteredVenueFloorGroups = computed(() => {
-  let filtered = venueFloorGroupsList.value;
-  
-  // Apply availability filter
-  if (venueFilterValue.value !== 'all') {
-    const isAvailableFilter = venueFilterValue.value === 'available';
-    filtered = filtered
-      .map((floorGroup) => ({
-        ...floorGroup,
-        venueRecords: floorGroup.venueRecords.filter(
-          (venue) => venue.venueAvailable === isAvailableFilter
-        ),
-      }))
-      .filter((floorGroup) => floorGroup.venueRecords.length > 0);
-  }
-  
-  // Apply sorting to venue names within each floor group
-  return filtered.map((floorGroup) => ({
-    ...floorGroup,
-    venueRecords: [...floorGroup.venueRecords].sort((a, b) => {
-      const nameA = a.venueName.toLowerCase();
-      const nameB = b.venueName.toLowerCase();
-      if (venueSortOrder.value === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
-      }
-    }),
+  const filteredVenues = venueList.value
+    .filter((venueRecord) => matchesVenueAvailability(venueRecord, venueFilterValue.value))
+    .sort((left, right) => compareByName(left?.venueName, right?.venueName, venueSortOrder.value));
+
+  return Object.entries(groupVenuesByFloor(filteredVenues)).map(([floorLabel, venueRecords]) => ({
+    floorLabel,
+    venueRecords,
   }));
 });
 
-/**
- * @function filteredEquipment
- * @description Filters equipment categories based on availability filter and applies sorting.
- * @returns {Array<Object>}
- */
 const filteredEquipment = computed(() => {
   const normalizedQuery = equipmentSearchQuery.value.toLowerCase();
 
@@ -319,17 +243,33 @@ const filteredEquipment = computed(() => {
   return [...filtered].sort((a, b) => {
     const nameA = a.equipmentName.toLowerCase();
     const nameB = b.equipmentName.toLowerCase();
-    if (equipmentSortOrder.value === 'asc') {
-      return nameA.localeCompare(nameB);
-    } else {
-      return nameB.localeCompare(nameA);
-    }
+    return equipmentSortOrder.value === 'asc'
+      ? nameA.localeCompare(nameB)
+      : nameB.localeCompare(nameA);
   });
 });
 
 onMounted(() => {
+  fetchVenues();
   fetchEquipment();
 });
+
+async function fetchVenues() {
+  try {
+    venueLoading.value = true;
+    venueError.value = '';
+    const response = await venueApi.listVenues();
+    const venuePayload = response?.data?.venues || response?.venues || [];
+    venueList.value = Array.isArray(venuePayload)
+      ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
+      : [];
+  } catch (error) {
+    venueList.value = [];
+    venueError.value = error?.response?.data?.errorMessage || 'Failed to load venue records.';
+  } finally {
+    venueLoading.value = false;
+  }
+}
 
 async function fetchEquipment() {
   try {
@@ -339,9 +279,87 @@ async function fetchEquipment() {
     equipmentList.value = response?.data?.equipment || [];
   } catch (error) {
     equipmentList.value = [];
-    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment list.';
+    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment records.';
   } finally {
     equipmentLoading.value = false;
   }
+}
+
+async function handleViewVenueDetails(venueRecord) {
+  if (!venueRecord?.venueIdentifier) {
+    return;
+  }
+
+  viewVenueLoading.value = true;
+  viewVenueError.value = '';
+  viewVenueRecord.value = null;
+
+  try {
+    const response = await venueApi.getVenueById(venueRecord.venueIdentifier);
+    viewVenueRecord.value = normalizeVenueRecord(response?.data || response);
+  } catch (error) {
+    viewVenueError.value = error?.response?.data?.errorMessage || 'Failed to load venue details.';
+  } finally {
+    viewVenueLoading.value = false;
+  }
+}
+
+function closeVenueDetails() {
+  viewVenueRecord.value = null;
+  viewVenueError.value = '';
+  viewVenueLoading.value = false;
+}
+
+function normalizeVenueRecord(venue) {
+  if (!venue) {
+    return null;
+  }
+
+  return {
+    venueIdentifier: venue.venueIdentifier,
+    venueName: venue.venueName || '',
+    venueLocation: venue.venueLocation || '',
+    floorLevel: venue.floorLevel || 'Other',
+    capacityLimit: venue.capacityLimit ?? null,
+    availabilityDate: venue.availabilityDate || '',
+    operationalStatus: venue.operationalStatus || '',
+    availabilityStatus: venue.availabilityStatus || 'Unavailable',
+    description: venue.description || '',
+    imageUrl: venue.imageUrl || '',
+    venueAvailable: venue.availabilityStatus === 'Available',
+  };
+}
+
+function matchesVenueAvailability(venueRecord, filterValue) {
+  if (filterValue === 'available') {
+    return venueRecord.venueAvailable;
+  }
+
+  if (filterValue === 'unavailable') {
+    return !venueRecord.venueAvailable;
+  }
+
+  return true;
+}
+
+function groupVenuesByFloor(venues) {
+  return venues.reduce((groups, venueRecord) => {
+    const floorLabel = venueRecord.floorLevel || 'Other';
+    if (!groups[floorLabel]) {
+      groups[floorLabel] = [];
+    }
+
+    groups[floorLabel].push(venueRecord);
+    return groups;
+  }, {});
+}
+
+function compareByName(leftName, rightName, sortDirection) {
+  const normalizedLeft = String(leftName || '').trim().toLowerCase();
+  const normalizedRight = String(rightName || '').trim().toLowerCase();
+
+  return sortDirection === 'asc'
+    ? normalizedLeft.localeCompare(normalizedRight)
+    : normalizedRight.localeCompare(normalizedLeft);
 }
 </script>
