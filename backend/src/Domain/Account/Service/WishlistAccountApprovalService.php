@@ -34,7 +34,7 @@ class WishlistAccountApprovalService
             );
         }
 
-        $stateError = $this->validateInvitationState($account);
+        $stateError = $this->validateInvitationState($account, $requestBody);
         if ($stateError !== null) {
             return $stateError;
         }
@@ -139,15 +139,16 @@ class WishlistAccountApprovalService
         );
     }
 
-    private function validateInvitationState(array $account): ?array
+    private function validateInvitationState(array $account, array $requestBody = []): ?array
     {
         $accountStatus = strtolower((string)($account['status'] ?? 'pending'));
+        $forceResend = (bool)($requestBody['forceResend'] ?? false);
 
         if (!empty($account['invite_accepted_at'])) {
             return $this->error('InviteAlreadyAccepted', 'This account invitation has already been accepted.', 409);
         }
 
-        if ($accountStatus === 'invited' && empty($account['invite_expires_at'])) {
+        if (!$forceResend && $accountStatus === 'invited' && empty($account['invite_expires_at'])) {
             return $this->error(
                 'InviteAlreadySent',
                 'This account is already marked as invited. Resend is only available after the invitation expires.',
@@ -164,7 +165,7 @@ class WishlistAccountApprovalService
             return $this->invalidInviteStatusError();
         }
 
-        if ($existingInviteExpiresAt >= AppClock::now()) {
+        if (!$forceResend && $existingInviteExpiresAt >= AppClock::now()) {
             return $this->activeInviteError();
         }
 
