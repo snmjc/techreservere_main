@@ -19,9 +19,10 @@ import {
   resolveInitialClerkAccount,
 } from '../utils/authenticationSession.js';
 import { getClerkToken } from '../utils/clerkAuthUtils.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 
 export const useAuthenticationStore = defineStore('authentication', () => {
-  const authToken = ref(readStoredToken());
+  const authToken = ref(getStoredAuthToken());
   const accountDataValue = readStoredJson(AUTH_STORAGE_KEYS.account);
   const accountData = ref(accountDataValue);
   const clerkAccountData = ref(resolveInitialClerkAccount(accountDataValue));
@@ -42,7 +43,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     clerkAccountData.value = normalizedAccount;
 
     if (normalizedAccount) {
-      authToken.value = token || authToken.value || null;
+      authToken.value = normalizeAuthToken(token) || getStoredAuthToken() || authToken.value || null;
       accountData.value = normalizedAccount;
       persistClerkSessionWithPreference(authToken.value, normalizedAccount, true);
     }
@@ -78,11 +79,12 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   function setClerkAuth(token, account, options = {}) {
     const persistent = options.rememberSession === true;
     const normalizedAccount = buildSessionAccount(account, 'clerk');
+    const resolvedToken = normalizeAuthToken(token);
 
-    authToken.value = token || null;
+    authToken.value = resolvedToken;
     accountData.value = normalizedAccount;
     clerkAccountData.value = normalizedAccount;
-    persistClerkSessionWithPreference(token, normalizedAccount, persistent);
+    persistClerkSessionWithPreference(resolvedToken, normalizedAccount, persistent);
   }
 
   function performLogout() {

@@ -65,6 +65,10 @@ export function writeStoredToken(token, persistent = true) {
   removeItemFromAllStorages(AUTH_STORAGE_KEYS.token);
 }
 
+export function removeStoredToken() {
+  removeItemFromAllStorages(AUTH_STORAGE_KEYS.token);
+}
+
 export function clearAuthStorage() {
   removeItemFromAllStorages(AUTH_STORAGE_KEYS.token);
   removeItemFromAllStorages(AUTH_STORAGE_KEYS.account);

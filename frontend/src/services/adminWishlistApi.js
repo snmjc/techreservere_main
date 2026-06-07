@@ -1,9 +1,9 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { getStoredAuthToken } from '@/shared/utils/authToken.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 
 function buildHeaders(token, includeJson = false) {
   const headers = {};
-  const bearerToken = token || getStoredAuthToken();
+  const bearerToken = normalizeAuthToken(token) || getStoredAuthToken();
   if (includeJson) headers['Content-Type'] = 'application/json';
   if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
   return headers;
