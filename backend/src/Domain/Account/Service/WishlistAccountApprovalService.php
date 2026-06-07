@@ -92,8 +92,8 @@ class WishlistAccountApprovalService
     private function findInvitationEligibleAccount(int $accountIdentifier): array|false
     {
         return $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, role_designation, first_name, last_name,
-                    department, id_number, status, is_approved,
+            "SELECT accounts.account_identifier, accounts.email_address, accounts.role_designation, accounts.first_name, accounts.last_name,
+                    accounts.department, accounts.id_number, accounts.status, accounts.is_approved,
                     latest_invitation.id AS invite_row_id,
                     latest_invitation.status AS invite_status,
                     latest_invitation.invitation_token AS invite_token,
@@ -108,9 +108,9 @@ class WishlistAccountApprovalService
                 ORDER BY created_at DESC
                 LIMIT 1
              ) latest_invitation ON TRUE
-             WHERE account_identifier = :accountIdentifier
-               AND COALESCE(is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'rejected', 'disabled')",
+             WHERE accounts.account_identifier = :accountIdentifier
+               AND COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'rejected', 'disabled')",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
