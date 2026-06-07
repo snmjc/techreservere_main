@@ -255,18 +255,19 @@ class WishlistAccountApprovalService
         try {
             $this->accountClerkProvisioningService->revokeInvitation($token);
 
-            if ((int)($account['invite_row_id'] ?? 0) > 0) {
+            $invitationRowId = trim((string)($account['invite_row_id'] ?? ''));
+            if ($invitationRowId !== '') {
                 $this->connection->executeStatement(
                     "UPDATE invitations
                      SET status = :status
                      WHERE id = :invitationId",
                     [
                         'status' => 'revoked',
-                        'invitationId' => (int)$account['invite_row_id'],
+                        'invitationId' => $invitationRowId,
                     ],
                     [
                         'status' => ParameterType::STRING,
-                        'invitationId' => ParameterType::INTEGER,
+                        'invitationId' => ParameterType::STRING,
                     ]
                 );
             }
