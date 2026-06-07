@@ -81,7 +81,7 @@ class WishlistAdminAccountService
         }
 
         if (!$this->accountInputValidationService->isInstitutionalAdminEmail($payload['emailAddress'])) {
-            return 'Admin email must use @feutech.edu.ph or the temporary @fit.edu.ph domain only.';
+            return 'Admin email must use @feutech.edu.ph only.';
         }
 
         if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {

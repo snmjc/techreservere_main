@@ -6,7 +6,11 @@ class AccountInputValidationService
 {
     private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
         'feutech.edu.ph',
+    ];
+
+    private const DEFAULT_ALLOWED_REQUEST_HUB_USER_EMAIL_DOMAINS = [
         'fit.edu.ph',
+        'feutech.edu.ph',
     ];
 
     public function isValidPersonName(string $name): bool
@@ -45,6 +49,21 @@ class AccountInputValidationService
     public function normalizeIdNumber(string $idNumber): string
     {
         return trim(preg_replace('/\s+/', '', $idNumber) ?? $idNumber);
+    }
+
+    public function isAllowedRequestHubUserEmail(string $emailAddress): bool
+    {
+        $normalizedEmailAddress = strtolower(trim($emailAddress));
+        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
+        if ($domain === '') {
+            return false;
+        }
+
+        return in_array($domain, self::DEFAULT_ALLOWED_REQUEST_HUB_USER_EMAIL_DOMAINS, true);
     }
 
     public function isValidIdNumber(string $idNumber): bool
