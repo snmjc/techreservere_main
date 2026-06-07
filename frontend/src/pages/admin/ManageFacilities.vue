@@ -178,56 +178,15 @@
       @saved="handleEquipmentModalSaved"
     />
 
-    <div
-      v-if="viewEquipmentRecord"
-      class="manage-facilities-modal-overlay"
-      @click.self="closeEquipmentDetails"
-    >
-      <section class="manage-facilities-equipment-details-modal">
-        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeEquipmentDetails">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-
-        <div class="manage-facilities-modal-heading">
-          <h2>{{ formatEquipmentText(viewEquipmentRecord.equipmentName) }}</h2>
-          <p>Equipment details for admin review and editing.</p>
-        </div>
-
-        <div class="manage-facilities-equipment-details-layout">
-          <div class="manage-facilities-equipment-photo-card">
-            <img
-              :src="resolveEquipmentPhoto(viewEquipmentRecord)"
-              :alt="`${formatEquipmentText(viewEquipmentRecord.equipmentName)} photo`"
-              class="manage-facilities-equipment-photo"
-            />
-          </div>
-
-          <dl class="manage-facilities-equipment-details-grid">
-            <div><dt>Equipment Name</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentName) }}</dd></div>
-            <div><dt>Equipment Type/Category</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentCategory || viewEquipmentRecord.categoryName) }}</dd></div>
-            <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.equipmentBrand) }}</dd></div>
-            <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(viewEquipmentRecord.availableQuantity) }}</dd></div>
-            <div><dt>Operational Status</dt><dd>{{ formatEquipmentStatus(viewEquipmentRecord) }}</dd></div>
-            <div><dt>Barcode</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.barcode) }}</dd></div>
-            <div><dt>Asset ID</dt><dd>{{ formatEquipmentText(viewEquipmentRecord.assetId || viewEquipmentRecord.serialNumber) }}</dd></div>
-            <div class="manage-facilities-equipment-details-grid__full">
-              <dt>Description</dt>
-              <dd>{{ formatEquipmentText(viewEquipmentRecord.description || viewEquipmentRecord.scheduleDescription) }}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div class="manage-facilities-modal-actions">
-          <button class="manage-facilities-cancel-button" type="button" @click="closeEquipmentDetails">Close</button>
-          <button class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral" type="button" @click="openEditFromDetails">
-            Edit Equipment
-          </button>
-        </div>
-      </section>
-    </div>
+    <EquipmentDetailsModalComponent
+      :show="Boolean(viewEquipmentRecord)"
+      :equipment="viewEquipmentRecord"
+      title="View Equipment Details"
+      subtitle="Equipment details for admin review and editing."
+      secondary-action-label="Edit Equipment"
+      @close="closeEquipmentDetails"
+      @secondary-action="openEditFromDetails"
+    />
 
     <div
       v-if="deleteEquipmentRecord"
@@ -334,6 +293,7 @@ import VenueAvailabilityCalendarComponent from '@/modules/facility/components/Ve
 import VenueDeleteModalComponent from '@/modules/facility/components/VenueDeleteModalComponent.vue';
 import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
+import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
@@ -341,6 +301,12 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import {
   deriveVenueAvailabilityForDate,
 } from '@/modules/facility/utils/venueFormValidation.js';
+import {
+  formatEquipmentQuantity,
+  formatEquipmentStatus,
+  formatEquipmentText,
+  resolveEquipmentPhoto,
+} from '@/modules/facility/utils/equipmentPresentation.js';
 
 const authStore = useAuthenticationStore();
 const activeFacilityTab = ref('venue');
@@ -868,46 +834,6 @@ function clearDeletedEquipmentSelection(deletedIdentifier) {
   if (viewEquipmentRecord.value?.equipmentIdentifier === deletedIdentifier) {
     closeEquipmentDetails();
   }
-}
-
-function formatEquipmentText(value) {
-  const normalizedValue = String(value || '').trim();
-  return normalizedValue === '' ? 'N/A' : normalizedValue;
-}
-
-function formatEquipmentQuantity(value) {
-  return Number.isFinite(Number(value)) ? Number(value) : 'N/A';
-}
-
-function formatEquipmentStatus(equipmentRecord) {
-  const operationalStatus = String(equipmentRecord?.operationalStatus || '').trim();
-  if (operationalStatus === 'Active') return 'Available';
-  if (operationalStatus === 'Inactive') return 'Unavailable';
-  if (operationalStatus === 'Maintenance') return 'Under Maintenance';
-  return operationalStatus || formatEquipmentText(equipmentRecord?.equipmentState);
-}
-
-function resolveEquipmentPhoto(equipmentRecord) {
-  const photoData = String(equipmentRecord?.photoData || '').trim();
-  if (photoData !== '') {
-    return photoData;
-  }
-
-  return `data:image/svg+xml;utf8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
-      <defs>
-        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#eff6f0"/>
-          <stop offset="100%" stop-color="#dcefe1"/>
-        </linearGradient>
-      </defs>
-      <rect width="480" height="320" fill="url(#g)"/>
-      <rect x="66" y="56" width="348" height="208" rx="24" fill="#ffffff" stroke="#b7d4c0" stroke-width="6"/>
-      <circle cx="168" cy="138" r="28" fill="#d3ead8"/>
-      <path d="M114 228l68-62 46 44 58-70 80 88H114z" fill="#bfe1c8"/>
-      <text x="240" y="286" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#386641">No Photo</text>
-    </svg>
-  `)}`;
 }
 
 function getTodayDateInputValue() {

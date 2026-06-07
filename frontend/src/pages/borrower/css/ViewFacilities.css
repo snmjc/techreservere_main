@@ -366,6 +366,8 @@
   width: min(320px, 100%);
   padding: 1rem;
   border-radius: 1rem;
+  border: none;
+  text-align: left;
 }
 
 .view-facilities-equipment-chip-header {
@@ -384,6 +386,15 @@
 
 .view-facilities-equipment-detail strong {
   font-weight: 700;
+}
+
+.view-facilities-equipment-link {
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 /* ===== Footer ===== */

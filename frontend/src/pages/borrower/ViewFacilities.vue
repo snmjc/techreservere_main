@@ -148,14 +148,16 @@
         <p>Loading equipment records...</p>
       </div>
       <div v-else class="view-facilities-equipment-grid">
-        <div
+        <button
           v-for="equipment in filteredEquipment"
           :key="equipment.equipmentIdentifier"
+          type="button"
           class="view-facilities-equipment-chip view-facilities-equipment-chip--card"
           :class="{
             'view-facilities-equipment-chip--available': equipment.equipmentState === 'Available',
             'view-facilities-equipment-chip--unavailable': equipment.equipmentState !== 'Available',
           }"
+          @click="handleViewEquipmentDetails(equipment)"
         >
           <div class="view-facilities-equipment-chip-header">
             <span class="view-facilities-equipment-chip-name">{{ equipment.equipmentName }}</span>
@@ -166,7 +168,8 @@
           <p class="view-facilities-equipment-detail"><strong>Category:</strong> {{ equipment.categoryName }}</p>
           <p class="view-facilities-equipment-detail"><strong>Available:</strong> {{ equipment.availableQuantity }} / {{ equipment.totalQuantity }}</p>
           <p class="view-facilities-equipment-detail"><strong>Description:</strong> {{ equipment.scheduleDescription || 'N/A' }}</p>
-        </div>
+          <span class="view-facilities-equipment-link">View Details</span>
+        </button>
       </div>
 
       <div v-if="!equipmentLoading && filteredEquipment.length === 0" class="view-facilities-empty-state">
@@ -184,6 +187,15 @@
       :error-message="viewVenueLoading ? 'Loading venue details...' : viewVenueError"
       @close="closeVenueDetails"
     />
+
+    <EquipmentDetailsModalComponent
+      :show="Boolean(viewEquipmentRecord || viewEquipmentLoading || viewEquipmentError)"
+      :equipment="viewEquipmentRecord"
+      :error-message="viewEquipmentLoading ? 'Loading equipment details...' : viewEquipmentError"
+      title="View Equipment Details"
+      subtitle="Equipment information from the TechReserve equipment database."
+      @close="closeEquipmentDetails"
+    />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -196,6 +208,7 @@ import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationIt
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
+import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
 import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 
 const activeFacilityTab = ref('venue');
@@ -210,6 +223,9 @@ const venueError = ref('');
 const viewVenueRecord = ref(null);
 const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
+const viewEquipmentRecord = ref(null);
+const viewEquipmentLoading = ref(false);
+const viewEquipmentError = ref('');
 const equipmentList = ref([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
@@ -304,10 +320,35 @@ async function handleViewVenueDetails(venueRecord) {
   }
 }
 
+async function handleViewEquipmentDetails(equipmentRecord) {
+  if (!equipmentRecord?.equipmentIdentifier) {
+    return;
+  }
+
+  viewEquipmentLoading.value = true;
+  viewEquipmentError.value = '';
+  viewEquipmentRecord.value = null;
+
+  try {
+    const response = await equipmentApi.getEquipmentById(equipmentRecord.equipmentIdentifier);
+    viewEquipmentRecord.value = response?.data || response;
+  } catch (error) {
+    viewEquipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment details.';
+  } finally {
+    viewEquipmentLoading.value = false;
+  }
+}
+
 function closeVenueDetails() {
   viewVenueRecord.value = null;
   viewVenueError.value = '';
   viewVenueLoading.value = false;
+}
+
+function closeEquipmentDetails() {
+  viewEquipmentRecord.value = null;
+  viewEquipmentError.value = '';
+  viewEquipmentLoading.value = false;
 }
 
 function normalizeVenueRecord(venue) {
