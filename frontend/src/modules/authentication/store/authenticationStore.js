@@ -18,6 +18,7 @@ import {
   resolveClerkAccount,
   resolveInitialClerkAccount,
 } from '../utils/authenticationSession.js';
+import { getClerkToken } from '../utils/clerkAuthUtils.js';
 
 export const useAuthenticationStore = defineStore('authentication', () => {
   const authToken = ref(readStoredToken());
@@ -34,7 +35,21 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   const clerkUserFullName = computed(() => getAccountFullName(clerkAccountData.value));
 
   async function loadClerkAccount(getTokenFn) {
-    clerkAccountData.value = await resolveClerkAccount(getTokenFn);
+    const token = await getClerkToken(getTokenFn).catch(() => null);
+    const resolvedAccount = await resolveClerkAccount(() => Promise.resolve(token));
+    const normalizedAccount = resolvedAccount ? buildSessionAccount(resolvedAccount, 'clerk') : null;
+
+    clerkAccountData.value = normalizedAccount;
+
+    if (normalizedAccount) {
+      authToken.value = token || authToken.value || null;
+      accountData.value = normalizedAccount;
+      persistClerkSessionWithPreference(authToken.value, normalizedAccount, true);
+    }
+
+    if (!normalizedAccount && token === null) {
+      authToken.value = null;
+    }
     return clerkAccountData.value;
   }
 

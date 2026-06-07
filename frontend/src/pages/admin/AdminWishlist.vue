@@ -671,6 +671,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useAuth } from '@clerk/vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
 import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
@@ -679,6 +680,7 @@ import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
+import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import {
   filterWishlistAccounts,
   formatDisplayDateTime,
@@ -695,6 +697,7 @@ import {
 } from './wishlist/adminWishlistHelpers.js';
 
 const authStore = useAuthenticationStore();
+const { getToken } = useAuth();
 
 const activeTab = ref('user');
 const searchText = ref('');
@@ -792,6 +795,7 @@ function handleTabChange(tabName) {
 async function loadWishlistAccounts() {
   isLoading.value = true;
   loadErrorMessage.value = '';
+  await ensureWishlistToken();
   const result = await adminWishlistApi.getWishlistAccounts(authStore.authToken);
   if (result.success) {
     wishlistAccounts.value = result.data.users || result.data || [];
@@ -801,6 +805,24 @@ async function loadWishlistAccounts() {
     showToast(loadErrorMessage.value);
   }
   isLoading.value = false;
+}
+
+async function ensureWishlistToken() {
+  if (authStore.authToken) {
+    return authStore.authToken;
+  }
+
+  const clerkToken = await getClerkToken(getToken).catch(() => null);
+  if (!clerkToken) {
+    return null;
+  }
+
+  const existingAccount = authStore.clerkAccountData || authStore.accountData;
+  if (existingAccount) {
+    authStore.setClerkAuth(clerkToken, existingAccount, { rememberSession: true });
+  }
+
+  return clerkToken;
 }
 
 function openAddAccountModal() {
