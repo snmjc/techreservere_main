@@ -42,9 +42,13 @@ export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, 
   return true;
 }
 
-export function evaluateProtectedRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {
+export function evaluateProtectedRouteAccess({ toRoute, isSignedIn, hasAuthToken, hasClerkSession, accountStatus, userRole }) {
   if (!isSignedIn && toRoute.name !== ROUTE_NAMES.handleSignIn) {
     return { name: ROUTE_NAMES.clerkLogin };
+  }
+
+  if (isSignedIn && hasClerkSession && !hasAuthToken && toRoute.name !== ROUTE_NAMES.postLogin) {
+    return { name: ROUTE_NAMES.postLogin };
   }
 
   if (accountStatus === 'pending') {
