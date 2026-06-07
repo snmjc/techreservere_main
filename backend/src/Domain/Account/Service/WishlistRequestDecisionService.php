@@ -63,6 +63,14 @@ class WishlistRequestDecisionService
             return $this->error('UserNotFound', 'User not found.', 404);
         }
 
+        if ($authenticatedAdminId === $accountIdentifier) {
+            return $this->error(
+                'AccountActionNotAllowed',
+                'You cannot delete your own signed-in account from Requests Hub.',
+                403
+            );
+        }
+
         $credentialError = $this->adminSecurityConfirmationService->validateAdminCredentials(
             $authenticatedAdminId,
             $confirmedAdminEmail,
@@ -84,13 +92,21 @@ class WishlistRequestDecisionService
             );
         }
 
+        if (!$this->isRequestHubAccount($account)) {
+            return $this->error(
+                'DeleteRequestNotAllowed',
+                'Only pending Requests Hub accounts can be deleted from this flow.',
+                403
+            );
+        }
+
         return $this->deleteRequestRows($accountIdentifier, (string)$account['email_address']);
     }
 
     private function findAccountRequest(int $accountIdentifier): array|false
     {
         return $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, status, is_approved
+            "SELECT account_identifier, email_address, status, is_approved, role_designation, clerk_user_id
              FROM accounts
              WHERE account_identifier = :accountIdentifier
              LIMIT 1",
@@ -158,6 +174,25 @@ class WishlistRequestDecisionService
 
         $normalized = strtolower(trim((string)$value));
         return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+
+    private function isRequestHubAccount(array $account): bool
+    {
+        if ($this->toDatabaseBoolean($account['is_approved'] ?? false)) {
+            return false;
+        }
+
+        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
+        if (!in_array($status, ['pending', 'invited'], true)) {
+            return false;
+        }
+
+        $role = strtoupper(trim((string)($account['role_designation'] ?? '')));
+        if ($role === 'ROLE_DEVELOPER' || $role === 'DEVELOPER') {
+            return false;
+        }
+
+        return true;
     }
 
     private function success(array $data, int $status = 200): array

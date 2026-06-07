@@ -723,7 +723,6 @@ const wishlistTabs = computed(() => {
   return [
     { label: 'Admin', value: 'admin', count: accounts.filter((account) => account.accountType === 'Admin').length },
     { label: 'User', value: 'user', count: accounts.filter((account) => account.accountType === 'User').length },
-    { label: 'Employee', value: 'employee', count: accounts.filter((account) => account.accountType === 'Employee').length },
   ];
 });
 
@@ -883,9 +882,17 @@ function revokePreviewDocumentUrl() {
   }
 }
 
-async function handleAccountCreated(accountType) {
-  activeTab.value = accountType;
+async function handleAccountCreated(payload) {
+  const accountType = typeof payload === 'string' ? payload : payload?.type;
+  const defaultPassword = typeof payload === 'object' ? payload?.data?.defaultPassword : '';
+
+  activeTab.value = accountType || 'admin';
   await loadWishlistAccounts();
+  if (accountType === 'admin' && defaultPassword) {
+    showToast(`Admin account created. Default password: ${defaultPassword}`);
+    return;
+  }
+
   showToast('Account created!');
 }
 

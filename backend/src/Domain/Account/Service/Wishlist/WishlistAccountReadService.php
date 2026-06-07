@@ -47,7 +47,9 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('disabled', 'rejected', 'denied')
+             WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND UPPER(COALESCE(accounts.role_designation, '')) NOT IN ('ROLE_STAFF', 'STAFF', 'EMPLOYEE', 'ROLE_EMPLOYEE')
+               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')
                AND (
                     LOWER(COALESCE(accounts.status, 'pending')) IN ('pending', 'invited')
                     OR COALESCE(NULLIF(accounts.clerk_user_id, ''), '') = ''
@@ -138,7 +140,7 @@ class WishlistAccountReadService
             return 'unverified';
         }
 
-        if ($status === 'approved' || $status === 'verified') {
+        if (in_array($status, ['approved', 'verified', 'accepted'], true)) {
             return 'verified';
         }
 

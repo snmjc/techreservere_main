@@ -28,6 +28,18 @@ final class Version20260508153000 extends AbstractMigration
     public function down(Schema $schema): void
     {
         // Remove seed data
-        $this->addSql("DELETE FROM accounts WHERE email_address IN ('admin@techreserve.com', 'john.doe@example.com')");
+        $this->addSql("
+            DELETE FROM accounts
+            WHERE (email_address = 'admin@techreserve.com'
+                AND first_name = 'System'
+                AND last_name = 'Admin'
+                AND role_designation = 'Admin'
+                AND password_hash = '\$2y\$13\$YourHashedPasswordHere')
+               OR (email_address = 'john.doe@example.com'
+                AND first_name = 'John'
+                AND last_name = 'Doe'
+                AND role_designation = 'Borrower'
+                AND password_hash = '\$2y\$13\$YourHashedPasswordHere')
+        ");
     }
 }

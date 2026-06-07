@@ -10,7 +10,7 @@
 
       <div class="admin-wishlist-modal-heading">
         <h2>Create New Admin</h2>
-        <p>Create a new administrator request record using an approved admin email domain.</p>
+        <p>Create a ready-to-use administrator account using an approved admin email domain.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -59,6 +59,7 @@
           />
         </label>
 
+        <p class="admin-wishlist-add-helper">Default password: <strong>admin123</strong></p>
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
         <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>
 
@@ -202,7 +203,7 @@
 
       <div class="admin-wishlist-modal-heading admin-wishlist-modal-heading--employee">
         <h2>Add Staff Account</h2>
-        <p>Create a staff request record for verification.</p>
+        <p>Create a staff account directly in Manage Accounts.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -235,6 +236,7 @@
           <input v-model="addEmployeeForm.role" type="text" readonly />
         </label>
 
+        <p class="admin-wishlist-add-helper">Default password: <strong>staff123</strong></p>
         <p v-if="addEmployeeError" class="admin-wishlist-add-error">{{ addEmployeeError }}</p>
 
         <div class="admin-wishlist-modal-actions">
@@ -403,10 +405,7 @@ async function createAdminAccount() {
   await createAccount({
     type: 'admin',
     request: () => adminWishlistApi.createAdminAccount(
-      {
-        ...buildAdminAccountPayload(addAdminForm),
-        redirectUrl: buildInviteRedirectUrl(),
-      },
+      buildAdminAccountPayload(addAdminForm),
       authStore.authToken,
     ),
     close: closeAddAdminModal,
@@ -452,7 +451,7 @@ async function createAccount({ type, request, close }) {
     }
 
     close();
-    emit('created', type);
+    emit('created', { type, data: result.data || null });
   } catch (error) {
     setCreateError(type, error?.message || `Unable to create ${type} account.`);
   } finally {
@@ -508,14 +507,6 @@ function sanitizeEmployeeNameField(fieldName) {
 
 function sanitizeEmployeePhone() {
   addEmployeeForm.phone = sanitizePhoneInput(addEmployeeForm.phone);
-}
-
-function buildInviteRedirectUrl() {
-  if (typeof window === 'undefined' || !window.location?.origin) {
-    return '';
-  }
-
-  return `${window.location.origin.replace(/\/$/, '')}/clerk-login`;
 }
 
 defineExpose({ openForTab });

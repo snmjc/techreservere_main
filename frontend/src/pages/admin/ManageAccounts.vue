@@ -617,15 +617,22 @@ function openAddEmployeeRequestModal() {
   createAccountModals.value?.openForTab('employee');
 }
 
-async function handleEmployeeRequestCreated(accountType) {
+async function handleEmployeeRequestCreated(payload) {
+  const accountType = typeof payload === 'string' ? payload : payload?.type;
+  const defaultPassword = typeof payload === 'object' ? payload?.data?.defaultPassword : '';
   if (accountType !== 'employee') {
     return;
   }
 
   await handleRefreshAccounts();
-  toastMessage.value = 'Staff account request created.';
+  toastMessage.value = defaultPassword
+    ? `Staff account created. Default password: ${defaultPassword}`
+    : 'Staff account created.';
   window.setTimeout(() => {
-    if (toastMessage.value === 'Staff account request created.') {
+    if (
+      toastMessage.value === 'Staff account created.'
+      || toastMessage.value === `Staff account created. Default password: ${defaultPassword}`
+    ) {
       toastMessage.value = '';
     }
   }, 2800);
