@@ -46,5 +46,14 @@ export function isAllowedAdminEmail(value) {
     return false;
   }
 
-  return normalized.endsWith('@feutech.edu.ph') || normalized.endsWith('@fit.edu.ph');
+  return normalized.endsWith('@feutech.edu.ph');
+}
+
+export function isAllowedRequestHubUserEmail(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return false;
+  }
+
+  return normalized.endsWith('@fit.edu.ph') || normalized.endsWith('@feutech.edu.ph');
 }

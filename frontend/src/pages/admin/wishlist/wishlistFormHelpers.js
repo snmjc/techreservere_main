@@ -1,4 +1,4 @@
-import { isAllowedAdminEmail, normalizeIdNumber, validatePersonName, validateRequiredIdNumber } from './wishlistTextHelpers.js';
+import { isAllowedAdminEmail, isAllowedRequestHubUserEmail, normalizeIdNumber, validatePersonName, validateRequiredIdNumber } from './wishlistTextHelpers.js';
 import { getStatusLabel } from './wishlistStatusHelpers.js';
 
 export function validateAdminAccountForm(form) {
@@ -20,7 +20,7 @@ export function validateAdminAccountForm(form) {
   }
 
   if (!isAllowedAdminEmail(emailAddress)) {
-    return 'Admin email must use @feutech.edu.ph or the temporary @fit.edu.ph domain only.';
+    return 'Admin email must use @feutech.edu.ph only.';
   }
 
   return '';
@@ -81,6 +81,10 @@ export function validateUserAccountForm(form) {
 
   if (!filterEmailAddress(emailAddress)) {
     return 'Please provide a valid email address.';
+  }
+
+  if (!isAllowedRequestHubUserEmail(emailAddress)) {
+    return 'User email must use @fit.edu.ph or @feutech.edu.ph only.';
   }
 
   return '';

@@ -10,7 +10,7 @@
 
       <div class="admin-wishlist-modal-heading">
         <h2>Create New Admin</h2>
-        <p>Create a ready-to-use administrator account using an approved admin email domain.</p>
+        <p>Create a ready-to-use administrator account using a valid @feutech.edu.ph email address.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -108,7 +108,7 @@
         </label>
         <label class="admin-wishlist-field-wide">
           <span>FIT Email Address</span>
-          <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph" required />
+          <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph or jtvito@feutech.edu.ph" required />
         </label>
         <label>
           <span>ID Number</span>
