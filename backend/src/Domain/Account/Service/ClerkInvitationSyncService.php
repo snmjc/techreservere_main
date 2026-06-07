@@ -51,7 +51,8 @@ class ClerkInvitationSyncService
         $this->connection->beginTransaction();
 
         try {
-            if ($localInvitation !== null) {
+            $localInvitationId = trim((string)($localInvitation['id'] ?? ''));
+            if ($localInvitationId !== '') {
                 $this->connection->executeStatement(
                     "UPDATE invitations
                      SET status = 'accepted',
@@ -59,11 +60,11 @@ class ClerkInvitationSyncService
                      WHERE id = :invitationId",
                     [
                         'acceptedAt' => $acceptedAtText,
-                        'invitationId' => (int)$localInvitation['id'],
+                        'invitationId' => $localInvitationId,
                     ],
                     [
                         'acceptedAt' => ParameterType::STRING,
-                        'invitationId' => ParameterType::INTEGER,
+                        'invitationId' => ParameterType::STRING,
                     ]
                 );
             }
