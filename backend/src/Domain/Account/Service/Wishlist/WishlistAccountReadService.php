@@ -50,6 +50,7 @@ class WishlistAccountReadService
              WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
                AND UPPER(COALESCE(accounts.role_designation, '')) NOT IN ('ROLE_STAFF', 'STAFF', 'EMPLOYEE', 'ROLE_EMPLOYEE')
                AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')
+               AND latest_invitation.accepted_at IS NULL
                AND (
                     LOWER(COALESCE(accounts.status, 'pending')) IN ('pending', 'invited')
                     OR COALESCE(NULLIF(accounts.clerk_user_id, ''), '') = ''
