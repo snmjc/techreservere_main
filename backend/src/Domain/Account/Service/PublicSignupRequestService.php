@@ -402,12 +402,7 @@ class PublicSignupRequestService
 
         try {
             return $this->success($this->signupSupportingDocumentStorageService->store(
-                $supportingDocumentFile,
-                $this->signupSupportingDocumentValidationService->buildExpectedBaseName(
-                    $payload['idNumber'],
-                    $payload['lastName'],
-                    $payload['firstName']
-                )
+                $supportingDocumentFile
             ));
         } catch (\Throwable $exception) {
             return $this->error(

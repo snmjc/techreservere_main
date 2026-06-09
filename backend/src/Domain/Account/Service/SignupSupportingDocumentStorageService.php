@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class SignupSupportingDocumentStorageService
 {
-    public function store(UploadedFile $uploadedFile, string $expectedBaseName): array
+    public function store(UploadedFile $uploadedFile, ?string $storageBaseName = null): array
     {
         if (!$uploadedFile->isValid()) {
             throw new \RuntimeException('The supporting document upload is invalid.');
@@ -26,7 +26,7 @@ class SignupSupportingDocumentStorageService
         $storageDirectory = $this->ensureStorageDirectory($uploadDate);
         $storageFileName = sprintf(
             '%s_%s.%s',
-            $expectedBaseName,
+            $this->buildStorageBaseName($uploadedFile, $storageBaseName),
             bin2hex(random_bytes(6)),
             $extension
         );
@@ -93,5 +93,18 @@ class SignupSupportingDocumentStorageService
         }
 
         return dirname(__DIR__, 4) . '/var/storage/signup-supporting-documents';
+    }
+
+    private function buildStorageBaseName(UploadedFile $uploadedFile, ?string $storageBaseName): string
+    {
+        $candidate = trim((string) $storageBaseName);
+        if ($candidate === '') {
+            $candidate = pathinfo((string) $uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+        }
+
+        $normalized = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $candidate));
+        $normalized = trim($normalized, '-');
+
+        return $normalized !== '' ? $normalized : 'supporting-document';
     }
 }

@@ -16,7 +16,14 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
   const departmentName = ref('');
   const participantCount = ref('');
   const selectedVenueName = ref(null);
+  const selectedVenueRecord = ref(null);
   const selectedEquipmentItems = ref([]);
+  const securityGuardCount = ref('None');
+  const securityCrewCount = ref('None');
+  const supportingDocumentsList = ref([]);
+  const recommendationDocumentsList = ref([]);
+  const additionalDocumentsList = ref([]);
+  const documentType = ref('Reservation');
 
   function resetForm() {
     reservationType.value = 'Venue';
@@ -29,7 +36,14 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     departmentName.value = '';
     participantCount.value = '';
     selectedVenueName.value = null;
+    selectedVenueRecord.value = null;
     selectedEquipmentItems.value = [];
+    securityGuardCount.value = 'None';
+    securityCrewCount.value = 'None';
+    supportingDocumentsList.value = [];
+    recommendationDocumentsList.value = [];
+    additionalDocumentsList.value = [];
+    documentType.value = 'Reservation';
   }
 
   return {
@@ -43,7 +57,14 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     departmentName,
     participantCount,
     selectedVenueName,
+    selectedVenueRecord,
     selectedEquipmentItems,
+    securityGuardCount,
+    securityCrewCount,
+    supportingDocumentsList,
+    recommendationDocumentsList,
+    additionalDocumentsList,
+    documentType,
     resetForm,
   };
 });

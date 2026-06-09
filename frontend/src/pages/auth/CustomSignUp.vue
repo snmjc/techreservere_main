@@ -207,7 +207,7 @@
                     </button>
                   </div>
                   <p class="custom-signup-role-boundary-note">
-                    Required for student requests: upload a PDF or JPG named <strong>{{ expectedSupportingFileName }}</strong>. Maximum file size: 5 MB.
+                    Required for student requests: upload a PDF, DOC, DOCX, JPG, or PNG file. Maximum file size: 5 MB.
                   </p>
                 </div>
 
@@ -300,20 +300,19 @@
 <script setup>
 import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
 
-const {
-  formData,
+  const {
+    formData,
   isLoading,
   successMessage,
   awaitingVerification,
   verificationCode,
   showPassword,
   showConfirmPassword,
-  studentSupportingFileInput,
-  firstErrorMessage,
-  isStudentRole,
-  expectedSupportingFileName,
-  supportingFileAccept,
-  openStudentSupportingFile,
+    studentSupportingFileInput,
+    firstErrorMessage,
+    isStudentRole,
+    supportingFileAccept,
+    openStudentSupportingFile,
   handleStudentSupportingFileChange,
   removeStudentSupportingFile,
   handleSignUp,

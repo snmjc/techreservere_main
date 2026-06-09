@@ -1,0 +1,126 @@
+.reservation-summary-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 1rem;
+}
+
+.reservation-summary-main {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.reservation-summary-section,
+.reservation-summary-progress {
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e3ebe6;
+  border-radius: 14px;
+}
+
+.reservation-summary-section h3,
+.reservation-summary-progress h3 {
+  margin: 0 0 0.85rem;
+  color: #194833;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.reservation-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.1rem;
+}
+
+.reservation-summary-grid span {
+  display: block;
+  color: #73877c;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.reservation-summary-grid strong {
+  display: block;
+  margin-top: 0.16rem;
+  color: #24362d;
+  font-size: 0.78rem;
+}
+
+.reservation-summary-documents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.reservation-summary-documents span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.7rem;
+  color: #0f7a47;
+  background: #f1fbf5;
+  border: 1px solid #d9eee1;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.reservation-summary-progress {
+  align-content: start;
+  background: linear-gradient(180deg, #f8fbf9, #f1f7f3);
+}
+
+.reservation-summary-progress article {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 0.6rem;
+  align-items: start;
+  margin-bottom: 0.85rem;
+}
+
+.reservation-summary-progress article:last-child {
+  margin-bottom: 0;
+}
+
+.reservation-summary-progress i {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+  background: #0c8048;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.reservation-summary-progress strong {
+  display: block;
+  color: #24362d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.reservation-summary-progress p {
+  margin: 0.18rem 0 0;
+  color: #74887d;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.reservation-summary-error {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .reservation-summary-layout,
+  .reservation-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

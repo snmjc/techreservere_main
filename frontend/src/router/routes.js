@@ -331,6 +331,26 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/borrower/create-reservation/additional-information',
+    name: 'borrowerCreateReservationAdditionalPage',
+    component: () => import('@/pages/borrower/CreateReservationAdditional.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.SUBMIT_RESERVATION, RBAC_ACTION.CREATE)),
+    },
+  },
+  {
+    path: '/borrower/create-reservation/review-summary',
+    name: 'borrowerCreateReservationSummaryPage',
+    component: () => import('@/pages/borrower/CreateReservationSummary.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.SUBMIT_RESERVATION, RBAC_ACTION.CREATE)),
+    },
+  },
+  {
     path: '/borrower/active-reservations',
     name: 'borrowerActiveReservationsPage',
     component: () => import('@/pages/borrower/ActiveReservations.vue'),
