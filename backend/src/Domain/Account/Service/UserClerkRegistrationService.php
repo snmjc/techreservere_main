@@ -161,7 +161,7 @@ class UserClerkRegistrationService
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
         $nextIsActive = $nextIsApproved
             ? $account->getIsActive()
             : $account->getIsActive();
@@ -178,7 +178,7 @@ class UserClerkRegistrationService
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'shouldMarkInvitationAccepted' => !$existingIsAdmin && !$nextIsApproved && !$hasAcceptedInvitation,
+            'shouldMarkInvitationAccepted' => !$existingIsAdmin && !$hasAcceptedInvitation,
         ];
     }
 
@@ -195,10 +195,6 @@ class UserClerkRegistrationService
             }
 
             return $nextIsActive ? 'approved' : 'disabled';
-        }
-
-        if ($hasAcceptedInvitation) {
-            return 'invited';
         }
 
         if ($hasOpenInvitation) {

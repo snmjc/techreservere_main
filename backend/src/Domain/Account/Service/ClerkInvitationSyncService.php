@@ -41,12 +41,8 @@ class ClerkInvitationSyncService
         $acceptedAtText = $acceptedAt->format('Y-m-d H:i:sP');
         $updatedTimestamp = AppClock::now()->format('Y-m-d H:i:s');
         $resolvedClerkUserId = trim((string)($clerkUserId ?? $account['clerk_user_id'] ?? ''));
-        $accountIsApproved = $this->toDatabaseBoolean($account['is_approved'] ?? false);
-        $accountStatus = strtolower(trim((string)($account['status'] ?? 'pending')));
-        $nextStatus = $accountIsApproved && in_array($accountStatus, ['approved', 'accepted'], true)
-            ? ($accountStatus === 'accepted' ? 'accepted' : 'approved')
-            : 'invited';
-        $nextIsApproved = $accountIsApproved && in_array($accountStatus, ['approved', 'accepted'], true);
+        $nextStatus = 'accepted';
+        $nextIsApproved = true;
 
         $this->connection->beginTransaction();
 
@@ -119,13 +115,13 @@ class ClerkInvitationSyncService
     {
         $this->connection->executeStatement(
             "UPDATE accounts
-             SET status = 'invited',
-                 is_approved = FALSE,
+             SET status = 'accepted',
+                 is_approved = TRUE,
                  is_active = TRUE,
                  updated_timestamp = :updatedTimestamp
              WHERE COALESCE(is_approved, FALSE) = FALSE
                AND COALESCE(NULLIF(clerk_user_id, ''), '') <> ''
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'disabled', 'rejected', 'denied')
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')
                AND EXISTS (
                     SELECT 1
                     FROM invitations
@@ -137,24 +133,10 @@ class ClerkInvitationSyncService
         );
     }
 
-    private function toDatabaseBoolean(mixed $value): bool
-    {
-        if (is_bool($value)) {
-            return $value;
-        }
-
-        if (is_int($value)) {
-            return $value === 1;
-        }
-
-        $normalized = strtolower(trim((string)$value));
-        return in_array($normalized, ['1', 't', 'true', 'yes'], true);
-    }
-
     private function findAccountByEmail(string $emailAddress): ?array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, clerk_user_id, status
+            "SELECT account_identifier, email_address, clerk_user_id, status, is_approved
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
              LIMIT 1",
