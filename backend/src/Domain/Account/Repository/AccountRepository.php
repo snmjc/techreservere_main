@@ -205,7 +205,7 @@ class AccountRepository extends ServiceEntityRepository
                 );
 
                 if ($existingAfterConflict === null) {
-                    throw;
+                    throw new \RuntimeException('Clerk account upsert hit a unique constraint, but no matching account could be reloaded.');
                 }
 
                 $connection->executeStatement(
