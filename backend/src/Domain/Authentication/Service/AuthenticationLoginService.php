@@ -61,7 +61,7 @@ class AuthenticationLoginService
         $refreshedAccount = $this->accountRepository->find($account->getAccountIdentifier()) ?? $account;
         if (
             !$refreshedAccount->getIsApproved()
-            || !in_array(strtolower(trim((string)$refreshedAccount->getStatus())), ['approved', 'accepted'], true)
+            || strtolower(trim((string)$refreshedAccount->getStatus())) !== 'approved'
         ) {
             return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
         }

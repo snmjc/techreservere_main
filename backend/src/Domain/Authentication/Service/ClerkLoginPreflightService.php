@@ -37,12 +37,16 @@ class ClerkLoginPreflightService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (DatabaseBoolean::toBool($account['is_approved'] ?? false) && in_array($status, ['approved', 'accepted'], true)) {
+        if (DatabaseBoolean::toBool($account['is_approved'] ?? false) && $status === 'approved') {
             return $this->success($status);
         }
 
         if (in_array($status, ['rejected', 'denied'], true)) {
             return $this->error('AccountRejected', 'This account request was denied. Please contact the administrator.', 403);
+        }
+
+        if (in_array($status, ['inactive', 'suspended'], true)) {
+            return $this->error('AccountDisabled', 'This account is inactive. Please contact an administrator.', 403);
         }
 
         $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
@@ -62,7 +66,7 @@ class ClerkLoginPreflightService
         $refreshedStatus = strtolower(trim((string)($refreshedAccount['status'] ?? $status)));
         if (DatabaseBoolean::toBool($refreshedAccount['is_active'] ?? true)
             && DatabaseBoolean::toBool($refreshedAccount['is_approved'] ?? false)
-            && in_array($refreshedStatus, ['approved', 'accepted'], true)
+            && $refreshedStatus === 'approved'
         ) {
             return $this->success($refreshedStatus);
         }

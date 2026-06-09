@@ -272,10 +272,15 @@ class AccountRepository extends ServiceEntityRepository
     public function updateClerkAccountFromWebhook(array $attributes): ?array
     {
         return $this->connection()->transactional(function (Connection $connection) use ($attributes): ?array {
+            $clerkUserId = trim((string)($attributes['clerkUserId'] ?? ''));
+            if ($clerkUserId === '') {
+                return null;
+            }
+
             $existing = $this->findWebhookTargetAccountForUpdate(
                 $connection,
-                (string)$attributes['clerkUserId'],
-                (string)$attributes['emailAddress']
+                $clerkUserId,
+                ''
             );
 
             if ($existing === null) {

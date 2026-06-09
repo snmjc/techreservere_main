@@ -135,6 +135,54 @@ class AccountClerkProvisioningService
         return $clerkUserId !== '' ? $clerkUserId : null;
     }
 
+    public function ensureMigratedUser(array $account): array
+    {
+        $emailAddress = strtolower(trim((string)($account['emailAddress'] ?? '')));
+        if ($emailAddress === '') {
+            throw new \InvalidArgumentException('Cannot migrate a PostgreSQL account without an email address.');
+        }
+
+        $existingClerkUser = $this->findUserByEmail($emailAddress);
+        if ($existingClerkUser !== null) {
+            return [
+                'clerkUserId' => (string)$existingClerkUser['id'],
+                'created' => false,
+            ];
+        }
+
+        $response = $this->httpClient->request('POST', $this->clerkApiBaseUrl() . '/v1/users', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->clerkSecretKey(),
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ],
+            'json' => $this->buildMigrationUserPayload($account, $emailAddress),
+        ]);
+
+        $payload = $response->toArray(false);
+        if ($response->getStatusCode() >= 400) {
+            $existingAfterConflict = $this->findUserByEmail($emailAddress);
+            if ($existingAfterConflict !== null) {
+                return [
+                    'clerkUserId' => (string)$existingAfterConflict['id'],
+                    'created' => false,
+                ];
+            }
+
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user migration failed.'));
+        }
+
+        $clerkUserId = trim((string)($payload['id'] ?? ''));
+        if ($clerkUserId === '') {
+            throw new \RuntimeException('Clerk created the migrated user but did not return a user ID.');
+        }
+
+        return [
+            'clerkUserId' => $clerkUserId,
+            'created' => true,
+        ];
+    }
+
     private function findUserByEmail(string $emailAddress): ?array
     {
         $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl() . '/v1/users', [
@@ -268,6 +316,55 @@ class AccountClerkProvisioningService
             'techreserve_id_number' => $idNumber,
             'techreserve_approval_status' => 'pending',
         ];
+    }
+
+    private function buildMigrationUserPayload(array $account, string $emailAddress): array
+    {
+        $username = trim((string)($account['username'] ?? ''));
+        $roleDesignation = trim((string)($account['roleDesignation'] ?? 'ROLE_BORROWER'));
+        $status = trim((string)($account['status'] ?? 'pending'));
+        $passwordHash = trim((string)($account['passwordHash'] ?? ''));
+        $payload = [
+            'email_address' => [$emailAddress],
+            'username' => $username !== '' ? $username : AccountUsername::fromEmail($emailAddress),
+            'first_name' => trim((string)($account['firstName'] ?? '')),
+            'last_name' => trim((string)($account['lastName'] ?? '')),
+            'external_id' => (string)($account['accountIdentifier'] ?? ''),
+            'created_at' => $this->normalizeClerkCreatedAt($account['createdTimestamp'] ?? null),
+            'skip_legal_checks' => true,
+            'public_metadata' => [
+                'techreserve_account_identifier' => (int)($account['accountIdentifier'] ?? 0),
+                'techreserve_role_designation' => $roleDesignation,
+                'techreserve_department' => (string)($account['department'] ?? ''),
+                'techreserve_id_number' => (string)($account['idNumber'] ?? ''),
+                'techreserve_status' => $status,
+            ],
+        ];
+
+        if ($passwordHash !== '') {
+            $payload['password_digest'] = $passwordHash;
+            $payload['password_hasher'] = 'bcrypt';
+        } else {
+            $payload['skip_password_requirement'] = true;
+        }
+
+        return $payload;
+    }
+
+    private function normalizeClerkCreatedAt(mixed $value): string
+    {
+        try {
+            if ($value instanceof \DateTimeInterface) {
+                return $value->format(\DateTimeInterface::ATOM);
+            }
+
+            if (is_string($value) && trim($value) !== '') {
+                return (new \DateTimeImmutable($value))->format(\DateTimeInterface::ATOM);
+            }
+        } catch (\Throwable) {
+        }
+
+        return (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
     }
 
     private function resolveClerkErrorMessage(array $payload, string $fallback): string
