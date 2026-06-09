@@ -41,7 +41,7 @@ export function normalizeAccount(account) {
 
 export function normalizeManageAccountStatus(status, isActive) {
   const normalizedStatus = String(status || '').trim().toLowerCase();
-  if (isActive === false || normalizedStatus === 'disabled') return 'Disabled';
+  if (isActive === false || normalizedStatus === 'disabled' || normalizedStatus === 'inactive' || normalizedStatus === 'suspended') return 'Disabled';
   if (normalizedStatus === 'pending' || normalizedStatus === 'invited') return 'Pending';
   return 'Active';
 }

@@ -129,7 +129,7 @@ class WishlistAccountApprovalService
              ) latest_invitation ON TRUE
              WHERE accounts.account_identifier = :accountIdentifier
                AND COALESCE(accounts.is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'accepted', 'rejected', 'disabled')",
+               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('approved', 'accepted', 'inactive', 'disabled', 'suspended', 'rejected')",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );

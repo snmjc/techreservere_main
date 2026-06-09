@@ -27,7 +27,7 @@ class ClerkInvitationSyncService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (in_array($status, ['disabled', 'rejected', 'denied'], true)) {
+        if (in_array($status, ['inactive', 'disabled', 'rejected', 'denied', 'suspended'], true)) {
             return false;
         }
 
@@ -121,7 +121,7 @@ class ClerkInvitationSyncService
                  updated_timestamp = :updatedTimestamp
              WHERE COALESCE(is_approved, FALSE) = FALSE
                AND COALESCE(NULLIF(clerk_user_id, ''), '') <> ''
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'inactive', 'disabled', 'rejected', 'denied', 'suspended')
                AND EXISTS (
                     SELECT 1
                     FROM invitations
