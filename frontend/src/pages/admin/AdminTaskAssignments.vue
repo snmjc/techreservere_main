@@ -5,69 +5,192 @@
   >
     <section class="admin-task-assignments-page">
       <header class="admin-task-assignments-header">
-        <div>
+        <div class="admin-task-assignments-header-copy">
+          <p class="admin-task-assignments-kicker">Operations Workspace</p>
           <h1>Task Assignments</h1>
-          <p>Review reservation tasks assigned to staff accounts.</p>
+          <p>Monitor reservation workloads, review staff assignments, and keep every deployment on schedule.</p>
         </div>
-        <div class="admin-task-assignments-toolbar">
+
+        <div class="admin-task-assignments-header-actions">
           <button class="admin-task-assignments-secondary" type="button" :disabled="isLoading" @click="loadPageData">
             {{ isLoading ? 'Refreshing...' : 'Refresh' }}
           </button>
           <button class="admin-task-assignments-primary" type="button" @click="openCreateModal">
-            Create Task
+            + Assign Task
           </button>
         </div>
       </header>
 
-      <p v-if="loadError" class="admin-task-assignments-error">{{ loadError }}</p>
-
-      <div v-if="isLoading" class="admin-task-assignments-state">
-        Loading task assignments...
-      </div>
-
-      <div v-else-if="tasks.length === 0" class="admin-task-assignments-state">
-        No task assignments found.
-      </div>
-
-      <div v-else class="admin-task-assignments-list">
+      <section class="admin-task-assignments-summary">
         <article
-          v-for="task in tasks"
-          :key="task.taskIdentifier"
-          class="admin-task-assignment-card"
+          v-for="card in summaryCards"
+          :key="card.label"
+          class="admin-task-summary-card"
+          :class="`admin-task-summary-card--${card.tone}`"
         >
-          <div class="admin-task-assignment-main">
-            <div>
-              <h2>{{ task.taskTitle }}</h2>
-              <p>{{ task.taskDescription || 'No task description provided.' }}</p>
-            </div>
-            <span class="admin-task-assignment-status">{{ task.taskStatus }}</span>
-          </div>
-
-          <dl class="admin-task-assignment-meta">
-            <div>
-              <dt>Task Type</dt>
-              <dd>{{ task.taskType || 'N/A' }}</dd>
-            </div>
-            <div>
-              <dt>Reservation</dt>
-              <dd>{{ task.reservationLabel || formatReservationLabel(task.reservationIdentifier) }}</dd>
-            </div>
-            <div>
-              <dt>Assigned Staff</dt>
-              <dd>{{ formatStaffLabel(task) }}</dd>
-            </div>
-            <div>
-              <dt>Due Date</dt>
-              <dd>{{ formatDateTime(task.dueDateTimestamp) }}</dd>
-            </div>
-          </dl>
-
-          <div class="admin-task-assignment-actions">
-            <button type="button" class="admin-task-assignments-secondary" @click="openUpdateModal(task)">Update</button>
-            <button type="button" class="admin-task-assignments-danger" @click="openDeleteModal(task)">Delete</button>
+          <span class="admin-task-summary-card-icon">{{ card.icon }}</span>
+          <div>
+            <p>{{ card.label }}</p>
+            <strong>{{ card.value }}</strong>
+            <small>{{ card.caption }}</small>
           </div>
         </article>
-      </div>
+      </section>
+
+      <section class="admin-task-assignments-panel">
+        <div class="admin-task-assignments-filters">
+          <label class="admin-task-assignments-search">
+            <span class="sr-only">Search tasks</span>
+            <input
+              v-model.trim="searchQuery"
+              type="search"
+              placeholder="Search reservation, facility, task, or personnel..."
+            />
+          </label>
+
+          <label>
+            <span>Status</span>
+            <select v-model="statusFilter">
+              <option value="all">All Status</option>
+              <option v-for="option in statusOptions" :key="option" :value="option">{{ option }}</option>
+              <option value="Overdue">Overdue</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Personnel</span>
+            <select v-model="personnelFilter">
+              <option value="all">All Personnel</option>
+              <option v-for="staff in staffFilterOptions" :key="staff.value" :value="staff.value">{{ staff.label }}</option>
+            </select>
+          </label>
+
+          <label>
+            <span>From</span>
+            <input v-model="dateFilterStart" type="date" />
+          </label>
+
+          <label>
+            <span>To</span>
+            <input v-model="dateFilterEnd" type="date" />
+          </label>
+        </div>
+
+        <p v-if="loadError" class="admin-task-assignments-error">{{ loadError }}</p>
+
+        <div v-if="isLoading" class="admin-task-assignments-state">
+          Loading task assignments...
+        </div>
+
+        <div v-else-if="filteredTasks.length === 0" class="admin-task-assignments-state">
+          No task assignments match the current filters.
+        </div>
+
+        <template v-else>
+          <div class="admin-task-assignments-table-wrap">
+            <table class="admin-task-assignments-table">
+              <thead>
+                <tr>
+                  <th>Reservation ID</th>
+                  <th>Reservation Details</th>
+                  <th>Assigned To</th>
+                  <th>Schedule</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="task in paginatedTasks" :key="task.taskIdentifier">
+                  <td class="admin-task-cell-id">
+                    <strong>{{ getReservationCode(task) }}</strong>
+                    <small>Task #{{ task.taskIdentifier }}</small>
+                  </td>
+
+                  <td class="admin-task-cell-details">
+                    <strong>{{ task.reservationLabel || formatReservationLabel(task.reservationIdentifier) }}</strong>
+                    <span>{{ task.taskTitle }}</span>
+                    <small>{{ task.taskDescription || task.taskType }}</small>
+                  </td>
+
+                  <td class="admin-task-cell-staff">
+                    <strong>{{ formatStaffLabel(task) }}</strong>
+                    <small>{{ task.assignedStaffRole || 'Technician' }}</small>
+                  </td>
+
+                  <td class="admin-task-cell-schedule">
+                    <strong>{{ formatScheduleDate(task.dueDateTimestamp || task.createdTimestamp) }}</strong>
+                    <small>{{ formatScheduleTime(task.dueDateTimestamp || task.createdTimestamp) }}</small>
+                  </td>
+
+                  <td>
+                    <span
+                      class="admin-task-status-pill"
+                      :class="`admin-task-status-pill--${getStatusTone(task)}`"
+                    >
+                      {{ getStatusLabel(task) }}
+                    </span>
+                  </td>
+
+                  <td class="admin-task-cell-progress">
+                    <div class="admin-task-progress-copy">
+                      <strong>{{ getProgressValue(task) }}%</strong>
+                      <small>{{ getProgressCaption(task) }}</small>
+                    </div>
+                    <div class="admin-task-progress-bar" aria-hidden="true">
+                      <span
+                        class="admin-task-progress-fill"
+                        :class="`admin-task-progress-fill--${getStatusTone(task)}`"
+                        :style="{ width: `${getProgressValue(task)}%` }"
+                      />
+                    </div>
+                  </td>
+
+                  <td>
+                    <div class="admin-task-actions">
+                      <button type="button" class="admin-task-action admin-task-action--edit" @click="openUpdateModal(task)">
+                        Edit
+                      </button>
+                      <button type="button" class="admin-task-action admin-task-action--delete" @click="openDeleteModal(task)">
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <footer class="admin-task-assignments-footer">
+            <p>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredTasks.length }} task assignments</p>
+
+            <div class="admin-task-assignments-pagination">
+              <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">
+                Prev
+              </button>
+              <button
+                v-for="pageNumber in visiblePageNumbers"
+                :key="pageNumber"
+                type="button"
+                :class="{ 'is-active': pageNumber === currentPage }"
+                @click="currentPage = pageNumber"
+              >
+                {{ pageNumber }}
+              </button>
+              <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">
+                Next
+              </button>
+            </div>
+          </footer>
+
+          <div class="admin-task-assignments-legend">
+            <span><i class="legend-dot legend-dot--pending" />Pending</span>
+            <span><i class="legend-dot legend-dot--progress" />In Progress</span>
+            <span><i class="legend-dot legend-dot--done" />Completed</span>
+            <span><i class="legend-dot legend-dot--overdue" />Overdue</span>
+          </div>
+        </template>
+      </section>
     </section>
 
     <div v-if="showTaskModal" class="admin-task-assignments-modal-overlay" @click.self="closeTaskModal">
@@ -201,7 +324,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -221,6 +344,14 @@ const showTaskModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
 const deleteTask = ref(null);
+
+const searchQuery = ref('');
+const statusFilter = ref('all');
+const personnelFilter = ref('all');
+const dateFilterStart = ref('');
+const dateFilterEnd = ref('');
+const currentPage = ref(1);
+const pageSize = 6;
 
 const taskTypeOptions = ['Preparation', 'Deployment', 'Maintenance', 'Inspection', 'Return'];
 const statusOptions = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
@@ -249,6 +380,113 @@ const currentAdminEmail = computed(() => {
 });
 
 const canDelete = computed(() => deleteForm.confirmedAdminEmail.trim() !== '' && deleteForm.confirmedAdminPassword.trim() !== '');
+
+const summaryCards = computed(() => {
+  const totalAssignments = tasks.value.length;
+  const inProgress = tasks.value.filter((task) => normalizeStatus(task.taskStatus) === 'in_progress').length;
+  const completed = tasks.value.filter((task) => normalizeStatus(task.taskStatus) === 'completed').length;
+  const overdue = tasks.value.filter((task) => isTaskOverdue(task)).length;
+
+  return [
+    {
+      label: 'Total Assignments',
+      value: totalAssignments,
+      caption: 'All recorded tasks',
+      icon: '👥',
+      tone: 'emerald',
+    },
+    {
+      label: 'In Progress',
+      value: inProgress,
+      caption: 'Currently ongoing',
+      icon: '🕘',
+      tone: 'amber',
+    },
+    {
+      label: 'Completed',
+      value: completed,
+      caption: 'Finished assignments',
+      icon: '☑',
+      tone: 'sky',
+    },
+    {
+      label: 'Overdue',
+      value: overdue,
+      caption: 'Require immediate attention',
+      icon: '❗',
+      tone: 'rose',
+    },
+  ];
+});
+
+const staffFilterOptions = computed(() => tasks.value
+  .map((task) => ({
+    value: String(task.assignedToAccountId || ''),
+    label: formatStaffLabel(task),
+  }))
+  .filter((staff) => staff.value && staff.label !== 'Unassigned')
+  .filter((staff, index, list) => list.findIndex((entry) => entry.value === staff.value) === index)
+  .sort((first, second) => first.label.localeCompare(second.label)));
+
+const filteredTasks = computed(() => tasks.value.filter((task) => {
+  const query = searchQuery.value.trim().toLowerCase();
+  const staffId = String(task.assignedToAccountId || '');
+  const searchableText = [
+    task.taskTitle,
+    task.taskDescription,
+    task.taskType,
+    task.reservationLabel,
+    getReservationCode(task),
+    formatStaffLabel(task),
+    task.assignedStaffRole,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (query && !searchableText.includes(query)) return false;
+
+  if (statusFilter.value !== 'all') {
+    if (statusFilter.value === 'Overdue') {
+      if (!isTaskOverdue(task)) return false;
+    } else if (normalizeStatus(task.taskStatus) !== normalizeStatus(statusFilter.value)) {
+      return false;
+    }
+  }
+
+  if (personnelFilter.value !== 'all' && personnelFilter.value !== staffId) return false;
+
+  const taskDate = getComparableTaskDate(task);
+  if (dateFilterStart.value && (!taskDate || taskDate < startOfDay(dateFilterStart.value))) return false;
+  if (dateFilterEnd.value && (!taskDate || taskDate > endOfDay(dateFilterEnd.value))) return false;
+
+  return true;
+}));
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredTasks.value.length / pageSize)));
+
+const paginatedTasks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredTasks.value.slice(start, start + pageSize);
+});
+
+const pageStart = computed(() => filteredTasks.value.length === 0 ? 0 : ((currentPage.value - 1) * pageSize) + 1);
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize, filteredTasks.value.length));
+
+const visiblePageNumbers = computed(() => {
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= totalPages.value; pageNumber += 1) {
+    pages.push(pageNumber);
+  }
+  return pages;
+});
+
+watch([searchQuery, statusFilter, personnelFilter, dateFilterStart, dateFilterEnd], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
+});
 
 onMounted(() => {
   loadPageData();
@@ -477,7 +715,75 @@ function formatStaffLabel(task) {
 }
 
 function formatReservationLabel(reservationIdentifier) {
-  return reservationIdentifier ? `#${reservationIdentifier}` : 'No linked reservation';
+  return reservationIdentifier ? `Reservation #${reservationIdentifier}` : 'No linked reservation';
+}
+
+function getReservationCode(task) {
+  const label = String(task.reservationLabel || '').trim();
+  if (label.includes(' - ')) {
+    return label.split(' - ')[0];
+  }
+  if (label) return label;
+  return task.reservationIdentifier ? `RES-${String(task.reservationIdentifier).padStart(4, '0')}` : `TASK-${String(task.taskIdentifier).padStart(4, '0')}`;
+}
+
+function normalizeStatus(status) {
+  return String(status || '').trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function isTaskOverdue(task) {
+  const dueDate = task.dueDateTimestamp ? new Date(task.dueDateTimestamp) : null;
+  if (!dueDate || Number.isNaN(dueDate.getTime())) return false;
+  return dueDate.getTime() < Date.now() && !['completed', 'cancelled'].includes(normalizeStatus(task.taskStatus));
+}
+
+function getStatusLabel(task) {
+  return isTaskOverdue(task) ? 'Overdue' : (task.taskStatus || 'Pending');
+}
+
+function getStatusTone(task) {
+  if (isTaskOverdue(task)) return 'overdue';
+
+  const status = normalizeStatus(task.taskStatus);
+  if (status === 'completed') return 'completed';
+  if (status === 'in_progress') return 'progress';
+  if (status === 'cancelled') return 'neutral';
+  return 'pending';
+}
+
+function getProgressValue(task) {
+  if (isTaskOverdue(task)) return 15;
+
+  const status = normalizeStatus(task.taskStatus);
+  if (status === 'completed') return 100;
+  if (status === 'in_progress') return 60;
+  if (status === 'cancelled') return 0;
+  return 0;
+}
+
+function getProgressCaption(task) {
+  const status = normalizeStatus(task.taskStatus);
+  if (isTaskOverdue(task)) return 'Past due';
+  if (status === 'completed') return 'Task closed';
+  if (status === 'in_progress') return 'Work ongoing';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Awaiting start';
+}
+
+function getComparableTaskDate(task) {
+  const rawValue = task.dueDateTimestamp || task.createdTimestamp;
+  if (!rawValue) return null;
+  const parsedDate = new Date(rawValue);
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  return parsedDate;
+}
+
+function startOfDay(dateValue) {
+  return new Date(`${dateValue}T00:00:00`);
+}
+
+function endOfDay(dateValue) {
+  return new Date(`${dateValue}T23:59:59.999`);
 }
 
 function formatDateTime(value) {
@@ -489,6 +795,27 @@ function formatDateTime(value) {
     day: '2-digit',
     year: 'numeric',
     hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatScheduleDate(value) {
+  if (!value) return 'No schedule set';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatScheduleTime(value) {
+  if (!value) return 'No time';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No time';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
     minute: '2-digit',
   }).format(date);
 }
@@ -526,9 +853,10 @@ function resetDeleteForm() {
 
 <style scoped>
 .admin-task-assignments-page {
-  width: min(1120px, calc(100vw - 2rem));
+  width: min(1180px, calc(100vw - 2rem));
   margin: 0 auto;
   padding: 6rem 0 2.5rem;
+  color: #14261f;
 }
 
 .admin-task-assignments-header {
@@ -536,56 +864,73 @@ function resetDeleteForm() {
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.35rem;
+}
+
+.admin-task-assignments-header-copy {
+  max-width: 720px;
+}
+
+.admin-task-assignments-kicker {
+  margin: 0 0 0.35rem;
+  color: #15803d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .admin-task-assignments-header h1,
 .admin-task-assignments-modal-header h2 {
   margin: 0;
-  color: #111827;
+  color: #143222;
+  font-size: clamp(1.85rem, 2.2vw, 2.45rem);
   font-weight: 900;
+  line-height: 1;
 }
 
-.admin-task-assignments-header h1 {
-  font-size: 1.55rem;
-}
-
-.admin-task-assignments-header p,
+.admin-task-assignments-header-copy > p:last-child,
 .admin-task-assignments-modal-header p,
 .admin-task-assignments-state {
-  margin: 0.35rem 0 0;
-  color: #52645c;
-  font-size: 0.92rem;
+  margin: 0.5rem 0 0;
+  color: #587062;
+  font-size: 0.95rem;
 }
 
-.admin-task-assignments-toolbar,
-.admin-task-assignment-actions,
+.admin-task-assignments-header-actions,
 .admin-task-assignments-modal-actions {
   display: flex;
-  gap: 0.7rem;
-  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .admin-task-assignments-primary,
 .admin-task-assignments-secondary,
-.admin-task-assignments-danger {
-  min-height: 38px;
+.admin-task-assignments-danger,
+.admin-task-action,
+.admin-task-assignments-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
   padding: 0 1rem;
-  border-radius: 6px;
+  border-radius: 10px;
+  font-size: 0.86rem;
   font-weight: 850;
   cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .admin-task-assignments-primary {
   color: #ffffff;
-  background: #0f6b3f;
-  border: 1px solid #0b5c35;
+  background: linear-gradient(135deg, #159957, #0f8f46);
+  border: 1px solid #0f8f46;
+  box-shadow: 0 14px 26px rgba(21, 153, 87, 0.22);
 }
 
 .admin-task-assignments-secondary {
-  color: #1f2937;
+  color: #1f3a2c;
   background: #ffffff;
-  border: 1px solid #cbd5d1;
+  border: 1px solid #d6e3da;
 }
 
 .admin-task-assignments-danger {
@@ -597,89 +942,390 @@ function resetDeleteForm() {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+  transform: none;
 }
 
-.admin-task-assignments-error {
-  padding: 0.8rem 1rem;
-  color: #9f1239;
-  background: #ffe4e6;
-  border: 1px solid #fecdd3;
-  border-radius: 6px;
-  font-weight: 750;
-}
-
-.admin-task-assignments-list {
+.admin-task-assignments-summary {
   display: grid;
-  gap: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.admin-task-assignment-card {
-  padding: 1rem;
-  background: #ffffff;
-  border: 1px solid #d8e3dd;
-  border-left: 5px solid #0f6b3f;
-  border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-}
-
-.admin-task-assignment-main {
+.admin-task-summary-card {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 246, 0.95));
+  border: 1px solid #dfe9e2;
+  border-radius: 18px;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.07);
 }
 
-.admin-task-assignment-main h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 1rem;
-  font-weight: 900;
+.admin-task-summary-card-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 1.25rem;
 }
 
-.admin-task-assignment-main p {
-  margin: 0.35rem 0 0;
-  color: #4b5563;
-  font-size: 0.85rem;
+.admin-task-summary-card p,
+.admin-task-summary-card strong,
+.admin-task-summary-card small {
+  display: block;
 }
 
-.admin-task-assignment-status {
-  flex: 0 0 auto;
-  padding: 0.25rem 0.55rem;
-  color: #075985;
-  background: #e0f2fe;
-  border-radius: 5px;
+.admin-task-summary-card p {
+  margin: 0 0 0.22rem;
+  color: #567061;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-task-summary-card strong {
+  color: #10281d;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.admin-task-summary-card small {
+  margin-top: 0.3rem;
+  color: #6b7f74;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.admin-task-summary-card--emerald .admin-task-summary-card-icon {
+  background: #dcfce7;
+}
+
+.admin-task-summary-card--amber .admin-task-summary-card-icon {
+  background: #fef3c7;
+}
+
+.admin-task-summary-card--sky .admin-task-summary-card-icon {
+  background: #dbeafe;
+}
+
+.admin-task-summary-card--rose .admin-task-summary-card-icon {
+  background: #fee2e2;
+}
+
+.admin-task-assignments-panel {
+  padding: 1.1rem;
+  background:
+    radial-gradient(circle at top right, rgba(21, 153, 87, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 248, 0.98));
+  border: 1px solid #dfe7e1;
+  border-radius: 22px;
+  box-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
+}
+
+.admin-task-assignments-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(4, minmax(130px, 0.7fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.admin-task-assignments-filters label,
+.admin-task-assignments-form label,
+.admin-task-assignments-security-grid label {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.admin-task-assignments-filters span,
+.admin-task-assignments-form span,
+.admin-task-assignments-delete-summary strong {
+  color: #566c60;
   font-size: 0.75rem;
   font-weight: 850;
 }
 
-.admin-task-assignment-meta {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0;
+.admin-task-assignments-filters input,
+.admin-task-assignments-filters select,
+.admin-task-assignments-form input,
+.admin-task-assignments-form textarea,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.68rem 0.78rem;
+  color: #12271d;
+  background: #ffffff;
+  border: 1px solid #d6e2da;
+  border-radius: 12px;
 }
 
-.admin-task-assignment-meta div,
-.admin-task-assignments-delete-summary p {
-  padding: 0.65rem;
+.admin-task-assignments-search input {
+  padding-left: 0.92rem;
+}
+
+.admin-task-assignments-error {
+  margin: 0 0 1rem;
+  padding: 0.82rem 0.95rem;
+  color: #9f1239;
+  background: #ffe4e6;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-state {
+  padding: 1rem;
+  text-align: center;
   background: #f7faf8;
-  border: 1px solid #e4ece8;
-  border-radius: 6px;
+  border: 1px dashed #cfddd4;
+  border-radius: 16px;
 }
 
-.admin-task-assignment-meta dt,
-.admin-task-assignments-form span,
-.admin-task-assignments-delete-summary strong {
-  color: #52645c;
-  font-size: 0.72rem;
+.admin-task-assignments-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-task-assignments-table {
+  width: 100%;
+  min-width: 1030px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-task-assignments-table thead th {
+  padding: 0.95rem 0.8rem;
+  color: #294638;
+  background: #f2f7f4;
+  border-bottom: 1px solid #dbe6df;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-task-assignments-table tbody td {
+  padding: 0.95rem 0.8rem;
+  color: #12271d;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e6ede8;
+  vertical-align: top;
+}
+
+.admin-task-assignments-table tbody tr:hover td {
+  background: #fcfefd;
+}
+
+.admin-task-cell-id strong,
+.admin-task-cell-details strong,
+.admin-task-cell-staff strong,
+.admin-task-cell-schedule strong,
+.admin-task-progress-copy strong {
+  display: block;
+  color: #123224;
+  font-size: 0.86rem;
   font-weight: 850;
 }
 
-.admin-task-assignment-meta dd {
-  margin: 0.25rem 0 0;
-  color: #111827;
-  font-size: 0.85rem;
+.admin-task-cell-id small,
+.admin-task-cell-details span,
+.admin-task-cell-details small,
+.admin-task-cell-staff small,
+.admin-task-cell-schedule small,
+.admin-task-progress-copy small {
+  display: block;
+  margin-top: 0.24rem;
+  color: #688072;
+  font-size: 0.75rem;
+}
+
+.admin-task-cell-details span {
+  color: #25513d;
   font-weight: 800;
+}
+
+.admin-task-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 102px;
+  min-height: 32px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.admin-task-status-pill--pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.admin-task-status-pill--progress {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.admin-task-status-pill--completed {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.admin-task-status-pill--overdue {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.admin-task-status-pill--neutral {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+.admin-task-cell-progress {
+  min-width: 180px;
+}
+
+.admin-task-progress-copy {
+  margin-bottom: 0.48rem;
+}
+
+.admin-task-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: #e8efea;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-task-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.admin-task-progress-fill--pending {
+  background: #f59e0b;
+}
+
+.admin-task-progress-fill--progress {
+  background: #3b82f6;
+}
+
+.admin-task-progress-fill--completed {
+  background: #16a34a;
+}
+
+.admin-task-progress-fill--overdue {
+  background: #ef4444;
+}
+
+.admin-task-progress-fill--neutral {
+  background: #9ca3af;
+}
+
+.admin-task-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.admin-task-action {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+
+.admin-task-action--edit {
+  color: #0f766e;
+  background: #ccfbf1;
+  border-color: #99f6e4;
+}
+
+.admin-task-action--delete {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.admin-task-assignments-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.9rem;
+}
+
+.admin-task-assignments-footer p {
+  margin: 0;
+  color: #607668;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-task-assignments-pagination {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-task-assignments-pagination button {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  color: #305040;
+  background: #ffffff;
+  border: 1px solid #d3dfd7;
+  border-radius: 10px;
+}
+
+.admin-task-assignments-pagination .is-active {
+  color: #ffffff;
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.admin-task-assignments-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.95rem;
+  color: #607668;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.legend-dot--pending {
+  background: #f59e0b;
+}
+
+.legend-dot--progress {
+  background: #3b82f6;
+}
+
+.legend-dot--done {
+  background: #16a34a;
+}
+
+.legend-dot--overdue {
+  background: #ef4444;
 }
 
 .admin-task-assignments-modal-overlay {
@@ -698,8 +1344,9 @@ button:disabled {
   overflow: auto;
   padding: 1.25rem;
   background: #ffffff;
-  border-radius: 8px;
   border: 1px solid #d8e3dd;
+  border-radius: 18px;
+  box-shadow: 0 26px 45px rgba(15, 23, 42, 0.18);
 }
 
 .admin-task-assignments-modal--narrow {
@@ -732,25 +1379,6 @@ button:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.admin-task-assignments-form label,
-.admin-task-assignments-security-grid label {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.admin-task-assignments-form textarea,
-.admin-task-assignments-form input,
-.admin-task-assignments-form select,
-.admin-task-assignments-security-grid input {
-  width: 100%;
-  min-height: 40px;
-  padding: 0.55rem 0.65rem;
-  color: #111827;
-  background: #ffffff;
-  border: 1px solid #cfdad5;
-  border-radius: 6px;
-}
-
 .admin-task-assignments-form textarea,
 .admin-task-assignments-override,
 .admin-task-assignments-modal-actions,
@@ -760,7 +1388,6 @@ button:disabled {
 
 .admin-task-assignments-checkbox {
   display: flex !important;
-  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 0.5rem !important;
 }
@@ -771,10 +1398,10 @@ button:disabled {
 }
 
 .admin-task-assignments-override {
-  padding: 0.8rem;
-  background: #f8fafc;
+  padding: 0.85rem;
+  background: #f7faf8;
   border: 1px solid #dbe4df;
-  border-radius: 6px;
+  border-radius: 12px;
 }
 
 .admin-task-assignments-delete-summary {
@@ -786,26 +1413,72 @@ button:disabled {
   justify-content: space-between;
   gap: 1rem;
   margin: 0;
+  padding: 0.7rem 0.8rem;
+  background: #f8fbf9;
+  border: 1px solid #e2ebe5;
+  border-radius: 10px;
 }
 
 .admin-task-assignments-delete-summary span {
-  color: #111827;
+  color: #13271d;
   font-weight: 800;
   text-align: right;
 }
 
-@media (max-width: 760px) {
-  .admin-task-assignments-header,
-  .admin-task-assignment-main,
-  .admin-task-assignments-toolbar,
-  .admin-task-assignment-actions {
-    align-items: stretch;
-    flex-direction: column;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (hover: hover) {
+  .admin-task-assignments-primary:hover,
+  .admin-task-assignments-secondary:hover,
+  .admin-task-assignments-danger:hover,
+  .admin-task-action:hover,
+  .admin-task-assignments-pagination button:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .admin-task-assignments-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-task-assignment-meta,
+  .admin-task-assignments-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-task-assignments-page {
+    width: min(100%, calc(100vw - 1rem));
+    padding-top: 5.4rem;
+  }
+
+  .admin-task-assignments-header,
+  .admin-task-assignments-header-actions,
+  .admin-task-assignments-footer,
+  .admin-task-assignments-modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-task-assignments-summary,
+  .admin-task-assignments-filters,
   .admin-task-assignments-form {
     grid-template-columns: 1fr;
+  }
+
+  .admin-task-assignments-panel {
+    padding: 0.9rem;
   }
 }
 </style>

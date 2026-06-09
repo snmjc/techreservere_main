@@ -3,229 +3,272 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Header -->
-    <div class="facilities-page-header">
-      <h2 class="facilities-page-heading">Facilities</h2>
-    </div>
+    <section class="facilities-page">
+      <header class="facilities-hero">
+        <div>
+          <h1>Manage Facilities</h1>
+          <p>Dashboard <span>/</span> Manage Facilities</p>
+        </div>
 
-    <!-- Tabs Section -->
-    <div class="facilities-tabs">
-      <button
-        class="facilities-tab"
-        :class="{ 'facilities-tab--active': activeTab === 'venue' }"
-        @click="activeTab = 'venue'"
-      >
-        Venue
-      </button>
-      <button
-        class="facilities-tab"
-        :class="{ 'facilities-tab--active': activeTab === 'equipment' }"
-        @click="activeTab = 'equipment'"
-      >
-        Equipment
-      </button>
-    </div>
+        <div class="facilities-hero-actions">
+          <button
+            class="facilities-hero-button facilities-hero-button--secondary"
+            type="button"
+            :disabled="!selectedVenueRecord"
+            @click="handleEditVenue(selectedVenueRecord)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+            </svg>
+            Edit Venue
+          </button>
+          <button class="facilities-hero-button facilities-hero-button--primary" type="button" @click="handleAddVenue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            Add Venue
+          </button>
+        </div>
+      </header>
 
-    <!-- Venue Tab Content -->
-    <div v-if="activeTab === 'venue'" class="facilities-content">
-      <!-- Add Venue Button -->
-      <div class="facilities-toolbar">
-        <button class="facilities-add-button" @click="handleAddVenue">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Add Venue
+      <div class="facilities-tabs">
+        <button
+          class="facilities-tab"
+          :class="{ 'facilities-tab--active': activeTab === 'venue' }"
+          type="button"
+          @click="activeTab = 'venue'"
+        >
+          Venue
+        </button>
+        <button
+          class="facilities-tab"
+          :class="{ 'facilities-tab--active': activeTab === 'equipment' }"
+          type="button"
+          @click="activeTab = 'equipment'"
+        >
+          Equipment
         </button>
       </div>
 
-      <!-- Filter & Legend Section -->
-      <div class="facilities-toolbar">
-        <div class="facilities-filter-group">
-          <label for="facilityFilter" class="facilities-filter-label">Filter:</label>
-          <select v-model="venueFilterValue" id="facilityFilter" class="facilities-filter-select">
-            <option value="all">All Venues</option>
-            <option value="available">Available Only</option>
-            <option value="unavailable">Unavailable Only</option>
-          </select>
-          <button class="facilities-sort-button" @click="venueSortOrder = venueSortOrder === 'asc' ? 'desc' : 'asc'" :title="venueSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
-            <svg v-if="venueSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <polyline points="19 12 12 19 5 12"></polyline>
+      <section v-if="activeTab === 'venue'" class="facilities-panel">
+        <div class="facilities-filter-bar">
+          <label class="facilities-search">
+            <span class="sr-only">Search venue</span>
+            <input
+              v-model.trim="venueSearchQuery"
+              type="search"
+              placeholder="Search venue..."
+            />
+          </label>
+
+          <label>
+            <span>Floor</span>
+            <select v-model="venueFloorFilter">
+              <option value="all">All Floors</option>
+              <option v-for="floor in venueFloorOptions" :key="floor" :value="floor">{{ floor }}</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Status</span>
+            <select v-model="venueStatusFilter">
+              <option value="all">All</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Sort By</span>
+            <select v-model="venueSortValue">
+              <option value="name-asc">Venue Name (A - Z)</option>
+              <option value="name-desc">Venue Name (Z - A)</option>
+              <option value="floor-asc">Floor (Low - High)</option>
+              <option value="floor-desc">Floor (High - Low)</option>
+              <option value="capacity-desc">Capacity (High - Low)</option>
+              <option value="capacity-asc">Capacity (Low - High)</option>
+            </select>
+          </label>
+
+          <button class="facilities-reset-button" type="button" @click="resetVenueFilters">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18" />
+              <path d="M7 12h10" />
+              <path d="M10 18h4" />
             </svg>
-            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="19" x2="12" y2="5"></line>
-              <polyline points="5 12 12 5 19 12"></polyline>
-            </svg>
+            Reset Filters
           </button>
         </div>
-        <div class="facilities-legend">
-          <span class="facilities-legend-item">
-            <span class="facilities-legend-dot facilities-legend-dot--available"></span>
-            Available
-          </span>
-          <span class="facilities-legend-item">
-            <span class="facilities-legend-dot facilities-legend-dot--unavailable"></span>
-            Unavailable
-          </span>
-        </div>
-      </div>
 
-      <!-- Venues Grid by Floor -->
-      <div class="facilities-venues-grid">
-        <div
-          v-for="floorGroup in filteredVenuesByFloor"
-          :key="floorGroup.floorLabel"
-          class="facilities-floor-section"
-        >
-          <h3 class="facilities-floor-heading">{{ floorGroup.floorLabel }}</h3>
-          <div class="facilities-venue-grid">
-            <div
-              v-for="venue in floorGroup.venueRecords"
-              :key="venue.venueIdentifier"
-              class="facilities-venue-card"
-              :class="{
-                'facilities-venue-card--available': venue.venueAvailable,
-                'facilities-venue-card--unavailable': !venue.venueAvailable,
-              }"
-            >
-              <div class="facilities-venue-card-header">
-                <h4 class="facilities-venue-name">{{ venue.venueName }}</h4>
-                <div class="facilities-venue-status">
-                  <span class="facilities-status-badge" :class="venue.venueAvailable ? 'available' : 'unavailable'">
-                    {{ venue.venueAvailable ? 'Available' : 'Unavailable' }}
-                  </span>
-                </div>
-              </div>
-              <div class="facilities-venue-card-body">
-                <p v-if="venue.venueLocation" class="facilities-venue-detail">
-                  <span class="facilities-detail-label">Location:</span> {{ venue.venueLocation }}
-                </p>
-                <p v-if="venue.floorLevel" class="facilities-venue-detail">
-                  <span class="facilities-detail-label">Floor:</span> {{ venue.floorLevel }}
-                </p>
-                <p v-if="venue.capacityLimit" class="facilities-venue-detail">
-                  <span class="facilities-detail-label">Capacity:</span> {{ venue.capacityLimit }} persons
-                </p>
-              </div>
-              <div class="facilities-venue-card-actions">
-                <button class="facilities-action-btn facilities-action-btn--edit" @click="handleEditVenue(venue)" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
-                <button class="facilities-action-btn facilities-action-btn--toggle" @click="handleToggleAvailability(venue)" :title="venue.venueAvailable ? 'Mark Unavailable' : 'Mark Available'">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </button>
-                <button class="facilities-action-btn facilities-action-btn--delete" @click="handleDeleteVenue(venue)" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
+        <div class="facilities-table-card">
+          <div class="facilities-table-wrap">
+            <table class="facilities-table">
+              <thead>
+                <tr>
+                  <th>Floor</th>
+                  <th>Venue Name</th>
+                  <th>Status</th>
+                  <th>Capacity</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="venue in paginatedVenues"
+                  :key="venue.venueIdentifier"
+                  :class="{ 'is-selected': selectedVenueRecord?.venueIdentifier === venue.venueIdentifier }"
+                  @click="selectedVenueRecord = venue"
+                >
+                  <td>{{ formatFloorLabel(venue.floorLevel) }}</td>
+                  <td class="facilities-table-name">{{ venue.venueName }}</td>
+                  <td>
+                    <span
+                      class="facilities-status-pill"
+                      :class="venue.venueAvailable ? 'facilities-status-pill--available' : 'facilities-status-pill--unavailable'"
+                    >
+                      {{ venue.venueAvailable ? 'Available' : 'Unavailable' }}
+                    </span>
+                  </td>
+                  <td>{{ formatCapacity(venue.capacityLimit) }}</td>
+                  <td>{{ resolveVenueType(venue) }}</td>
+                  <td>
+                    <div class="facilities-row-actions">
+                      <button
+                        class="facilities-row-action"
+                        type="button"
+                        title="View Venue"
+                        @click.stop="handleViewVenue(venue)"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                      <button
+                        class="facilities-row-action"
+                        type="button"
+                        title="Edit Venue"
+                        @click.stop="handleEditVenue(venue)"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="!venueLoading && paginatedVenues.length === 0">
+                  <td colspan="6" class="facilities-table-empty">No venues found matching the selected filters.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="facilities-table-footer">
+            <p>Showing {{ venuePageStart }} to {{ venuePageEnd }} of {{ filteredVenueRecords.length }} venues</p>
+
+            <div class="facilities-pagination">
+              <button type="button" :disabled="venueCurrentPage === 1" @click="venueCurrentPage -= 1">&laquo;</button>
+              <button type="button" :disabled="venueCurrentPage === 1" @click="venueCurrentPage -= 1">&lsaquo;</button>
+              <button
+                v-for="pageNumber in visibleVenuePages"
+                :key="pageNumber"
+                type="button"
+                :class="{ 'is-active': pageNumber === venueCurrentPage }"
+                @click="venueCurrentPage = pageNumber"
+              >
+                {{ pageNumber }}
+              </button>
+              <button type="button" :disabled="venueCurrentPage === venueTotalPages" @click="venueCurrentPage += 1">&rsaquo;</button>
+              <button type="button" :disabled="venueCurrentPage === venueTotalPages" @click="venueCurrentPage += 1">&raquo;</button>
             </div>
+
+            <label class="facilities-page-size">
+              <span>Items per page:</span>
+              <select v-model.number="venuePageSize">
+                <option :value="5">5</option>
+                <option :value="10">10</option>
+                <option :value="15">15</option>
+              </select>
+            </label>
           </div>
         </div>
 
-        <div v-if="filteredVenuesByFloor.length === 0" class="facilities-empty-state">
-          <p>No venues found matching your filter.</p>
+        <div class="facilities-legend-card">
+          <strong>Legend:</strong>
+          <span><i class="facilities-legend-dot facilities-legend-dot--available" />Available <small>The venue is free and can be reserved.</small></span>
+          <span><i class="facilities-legend-dot facilities-legend-dot--unavailable" />Unavailable <small>The venue is already reserved or not accessible.</small></span>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Equipment Tab Content -->
-    <div v-if="activeTab === 'equipment'" class="facilities-content">
-      <div class="facilities-toolbar">
-        <div class="facilities-toolbar-left">
-          <button class="facilities-edit-button" @click="openEquipmentManager">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            Manage Equipment
-          </button>
-          <button class="facilities-add-button" @click="openEquipmentManager">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Open Full Lifecycle
-          </button>
-        </div>
-        <div class="facilities-filter-group">
-          <label for="equipmentFilter" class="facilities-filter-label">Filter:</label>
-          <select v-model="equipmentFilterValue" id="equipmentFilter" class="facilities-filter-select">
-            <option value="all">All</option>
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
-            <option value="maintenance">Under Maintenance</option>
-            <option value="retired">Retired</option>
-          </select>
-          <button class="facilities-sort-button" @click="equipmentSortOrder = equipmentSortOrder === 'asc' ? 'desc' : 'asc'" :title="equipmentSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
-            <svg v-if="equipmentSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <polyline points="19 12 12 19 5 12"></polyline>
-            </svg>
-            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="19" x2="12" y2="5"></line>
-              <polyline points="5 12 12 5 19 12"></polyline>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Legend -->
-      <div class="facilities-legend">
-        <span class="facilities-legend-item">
-          <span class="facilities-legend-dot facilities-legend-dot--available"></span>
-          Available
-        </span>
-        <span class="facilities-legend-item">
-          <span class="facilities-legend-dot facilities-legend-dot--unavailable"></span>
-          Unavailable / Retired
-        </span>
-      </div>
-
-      <p v-if="equipmentError" class="facilities-feedback facilities-feedback--error">{{ equipmentError }}</p>
-      <div v-if="equipmentLoading" class="facilities-empty-state">
-        <p>Loading equipment records...</p>
-      </div>
-      <div v-else class="facilities-equipment-grid">
-        <div
-          v-for="equipment in filteredEquipment"
-          :key="equipment.equipmentIdentifier"
-          class="facilities-equipment-chip facilities-equipment-chip--card"
-          :class="{
-            'facilities-equipment-chip--available': equipment.equipmentState === 'Available',
-            'facilities-equipment-chip--unavailable': equipment.equipmentState !== 'Available',
-          }"
-        >
-          <div class="facilities-equipment-chip-header">
-            <span class="facilities-equipment-chip-name">{{ equipment.equipmentName }}</span>
-            <span class="facilities-status-badge" :class="equipment.equipmentState === 'Available' ? 'available' : 'unavailable'">
-              {{ equipment.equipmentState }}
-            </span>
+      <section v-else class="facilities-panel">
+        <div class="facilities-equipment-toolbar">
+          <div class="facilities-toolbar-left">
+            <button class="facilities-hero-button facilities-hero-button--secondary" type="button" @click="openEquipmentManager">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+              </svg>
+              Manage Equipment
+            </button>
+            <button class="facilities-hero-button facilities-hero-button--primary" type="button" @click="openEquipmentManager">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              Open Full Lifecycle
+            </button>
           </div>
-          <p class="facilities-equipment-detail"><strong>Category:</strong> {{ equipment.categoryName }}</p>
-          <p class="facilities-equipment-detail"><strong>Available:</strong> {{ equipment.availableQuantity }} / {{ equipment.totalQuantity }}</p>
-          <p class="facilities-equipment-detail"><strong>Updated:</strong> {{ formatDateTime(equipment.updatedTimestamp || equipment.createdTimestamp) }}</p>
-        </div>
-      </div>
 
-      <div v-if="!equipmentLoading && filteredEquipment.length === 0" class="facilities-empty-state">
-        <p>No equipment records match the selected filter.</p>
-      </div>
-    </div>
+          <label class="facilities-inline-filter">
+            <span>Status</span>
+            <select v-model="equipmentFilterValue">
+              <option value="all">All</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+              <option value="maintenance">Under Maintenance</option>
+              <option value="retired">Retired</option>
+            </select>
+          </label>
+        </div>
+
+        <p v-if="equipmentError" class="facilities-feedback facilities-feedback--error">{{ equipmentError }}</p>
+        <div v-if="equipmentLoading" class="facilities-empty-state">
+          <p>Loading equipment records...</p>
+        </div>
+        <div v-else class="facilities-equipment-grid">
+          <div
+            v-for="equipment in filteredEquipment"
+            :key="equipment.equipmentIdentifier"
+            class="facilities-equipment-card"
+            :class="equipment.equipmentState === 'Available' ? 'facilities-equipment-card--available' : 'facilities-equipment-card--unavailable'"
+          >
+            <div class="facilities-equipment-card-header">
+              <strong>{{ equipment.equipmentName }}</strong>
+              <span class="facilities-status-pill" :class="equipment.equipmentState === 'Available' ? 'facilities-status-pill--available' : 'facilities-status-pill--unavailable'">
+                {{ equipment.equipmentState }}
+              </span>
+            </div>
+            <p><strong>Category:</strong> {{ equipment.categoryName }}</p>
+            <p><strong>Available:</strong> {{ equipment.availableQuantity }} / {{ equipment.totalQuantity }}</p>
+            <p><strong>Updated:</strong> {{ formatDateTime(equipment.updatedTimestamp || equipment.createdTimestamp) }}</p>
+          </div>
+        </div>
+
+        <div v-if="!equipmentLoading && filteredEquipment.length === 0" class="facilities-empty-state">
+          <p>No equipment records match the selected filter.</p>
+        </div>
+      </section>
+    </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -235,108 +278,82 @@ import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 
 const router = useRouter();
 const activeTab = ref('venue');
-const venueFilterValue = ref('all');
-const venueSortOrder = ref('asc');
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentList = ref([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
+const venueLoading = ref(false);
 
-// Mock venue data organized by floor
-const venueFloorGroupsList = ref([
-  {
-    floorLabel: '18th Floor',
-    venueRecords: [
-      { venueIdentifier: 1, venueName: '18F Roofdeck', venueAvailable: true, venueLocation: 'Rooftop', floorLevel: '18', capacityLimit: 500 },
-    ],
-  },
-  {
-    floorLabel: '17th Floor',
-    venueRecords: [
-      { venueIdentifier: 2, venueName: '17F MPR', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '17', capacityLimit: 300 },
-      { venueIdentifier: 3, venueName: 'Basketball without Aircon', venueAvailable: true, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 200 },
-      { venueIdentifier: 4, venueName: 'Basketball gym with Aircon', venueAvailable: false, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 250 },
-      { venueIdentifier: 5, venueName: 'Basketball gym with Aircon and Green Matting', venueAvailable: true, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 250 },
-    ],
-  },
-  {
-    floorLabel: '16th Floor',
-    venueRecords: [
-      { venueIdentifier: 6, venueName: 'F1603 Audio Visual Room', venueAvailable: false, venueLocation: 'Tech Building', floorLevel: '16', capacityLimit: 100 },
-      { venueIdentifier: 7, venueName: 'F1604 Case Room', venueAvailable: true, venueLocation: 'Tech Building', floorLevel: '16', capacityLimit: 80 },
-    ],
-  },
-  {
-    floorLabel: '15th Floor',
-    venueRecords: [
-      { venueIdentifier: 8, venueName: 'F1502 Multipurpose Room', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 150 },
-      { venueIdentifier: 9, venueName: 'F1503 Multipurpose Room', venueAvailable: false, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 150 },
-      { venueIdentifier: 10, venueName: 'F1504 Multipurpose Room', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 150 },
-    ],
-  },
-  {
-    floorLabel: '8th Floor',
-    venueRecords: [
-      { venueIdentifier: 11, venueName: '8F Exec. Lounge 1', venueAvailable: false, venueLocation: 'Executive Wing', floorLevel: '8', capacityLimit: 50 },
-      { venueIdentifier: 12, venueName: '8F Exec. Lounge 2', venueAvailable: true, venueLocation: 'Executive Wing', floorLevel: '8', capacityLimit: 50 },
-      { venueIdentifier: 13, venueName: '8F Exec. Lounge 1 and 2 Combined', venueAvailable: true, venueLocation: 'Executive Wing', floorLevel: '8', capacityLimit: 100 },
-      { venueIdentifier: 14, venueName: '8F Student Lounge', venueAvailable: true, venueLocation: 'Student Area', floorLevel: '8', capacityLimit: 75 },
-    ],
-  },
-  {
-    floorLabel: '4th - 7th Floor',
-    venueRecords: [
-      { venueIdentifier: 15, venueName: 'F407', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '4', capacityLimit: 60 },
-      { venueIdentifier: 16, venueName: 'F503', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '5', capacityLimit: 60 },
-      { venueIdentifier: 17, venueName: 'F608', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '6', capacityLimit: 60 },
-      { venueIdentifier: 18, venueName: 'F704', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '7', capacityLimit: 60 },
-      { venueIdentifier: 19, venueName: 'F711', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '7', capacityLimit: 60 },
-    ],
-  },
-  {
-    floorLabel: '3rd Floor',
-    venueRecords: [
-      { venueIdentifier: 20, venueName: 'FEU Tech Swimming Pool', venueAvailable: true, venueLocation: 'Sports Complex', floorLevel: '3', capacityLimit: 300 },
-    ],
-  },
-  {
-    floorLabel: '2nd Floor',
-    venueRecords: [
-      { venueIdentifier: 21, venueName: '2F FIT Student Plaza', venueAvailable: false, venueLocation: 'Student Area', floorLevel: '2', capacityLimit: 400 },
-    ],
-  },
+const venueSearchQuery = ref('');
+const venueFloorFilter = ref('all');
+const venueStatusFilter = ref('all');
+const venueSortValue = ref('name-asc');
+const venueCurrentPage = ref(1);
+const venuePageSize = ref(10);
+const selectedVenueRecord = ref(null);
+
+const venueRecords = ref([
+  { venueIdentifier: 1, venueName: '18F Roofdeck', venueAvailable: true, venueLocation: 'Rooftop', floorLevel: '18', capacityLimit: 150, venueType: 'Open Space' },
+  { venueIdentifier: 2, venueName: '17F MPR', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '17', capacityLimit: 200, venueType: 'Multipurpose Room' },
+  { venueIdentifier: 3, venueName: 'Basketball without Aircon', venueAvailable: true, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 50, venueType: 'Sports Facility' },
+  { venueIdentifier: 4, venueName: 'Basketball gym with Aircon', venueAvailable: false, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 50, venueType: 'Sports Facility' },
+  { venueIdentifier: 5, venueName: 'Basketball gym with Aircon and Green Matting', venueAvailable: true, venueLocation: 'Sports Wing', floorLevel: '17', capacityLimit: 50, venueType: 'Sports Facility' },
+  { venueIdentifier: 6, venueName: 'F1603 Audio Visual Room', venueAvailable: false, venueLocation: 'Tech Building', floorLevel: '16', capacityLimit: 40, venueType: 'Audio Visual Room' },
+  { venueIdentifier: 7, venueName: 'F1604 Case Room', venueAvailable: true, venueLocation: 'Tech Building', floorLevel: '16', capacityLimit: 40, venueType: 'Case Room' },
+  { venueIdentifier: 8, venueName: 'F1502 Multipurpose Room', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 100, venueType: 'Multipurpose Room' },
+  { venueIdentifier: 9, venueName: 'F1503 Multipurpose Room', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 100, venueType: 'Multipurpose Room' },
+  { venueIdentifier: 10, venueName: 'F1504 Multipurpose Room', venueAvailable: true, venueLocation: 'Main Building', floorLevel: '15', capacityLimit: 100, venueType: 'Multipurpose Room' },
+  { venueIdentifier: 11, venueName: '8F Exec. Lounge 1', venueAvailable: false, venueLocation: 'Executive Wing', floorLevel: '8', capacityLimit: 35, venueType: 'Executive Lounge' },
+  { venueIdentifier: 12, venueName: '2F FIT Student Plaza', venueAvailable: false, venueLocation: 'Student Area', floorLevel: '2', capacityLimit: 180, venueType: 'Student Plaza' },
 ]);
 
-const filteredVenuesByFloor = computed(() => {
-  let filtered = venueFloorGroupsList.value;
-  
-  // Apply availability filter
-  if (venueFilterValue.value !== 'all') {
-    const isAvailableFilter = venueFilterValue.value === 'available';
-    filtered = filtered
-      .map((floorGroup) => ({
-        ...floorGroup,
-        venueRecords: floorGroup.venueRecords.filter(
-          (venue) => venue.venueAvailable === isAvailableFilter
-        ),
-      }))
-      .filter((floorGroup) => floorGroup.venueRecords.length > 0);
-  }
-  
-  // Apply sorting to venue names within each floor group
-  return filtered.map((floorGroup) => ({
-    ...floorGroup,
-    venueRecords: [...floorGroup.venueRecords].sort((a, b) => {
-      const nameA = a.venueName.toLowerCase();
-      const nameB = b.venueName.toLowerCase();
-      if (venueSortOrder.value === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
+const venueFloorOptions = computed(() => [...new Set(
+  venueRecords.value
+    .map((venue) => formatFloorLabel(venue.floorLevel))
+    .filter(Boolean),
+)].sort((first, second) => extractFloorNumber(second) - extractFloorNumber(first)));
+
+const filteredVenueRecords = computed(() => {
+  const query = venueSearchQuery.value.trim().toLowerCase();
+
+  return [...venueRecords.value]
+    .filter((venue) => {
+      if (venueFloorFilter.value !== 'all' && formatFloorLabel(venue.floorLevel) !== venueFloorFilter.value) {
+        return false;
       }
-    }),
-  }));
+
+      if (venueStatusFilter.value === 'available' && !venue.venueAvailable) return false;
+      if (venueStatusFilter.value === 'unavailable' && venue.venueAvailable) return false;
+
+      if (!query) return true;
+
+      return [
+        venue.venueName,
+        venue.venueLocation,
+        venue.venueType,
+        formatFloorLabel(venue.floorLevel),
+      ].filter(Boolean).join(' ').toLowerCase().includes(query);
+    })
+    .sort((first, second) => sortVenueRecords(first, second, venueSortValue.value));
+});
+
+const venueTotalPages = computed(() => Math.max(1, Math.ceil(filteredVenueRecords.value.length / venuePageSize.value)));
+
+const paginatedVenues = computed(() => {
+  const startIndex = (venueCurrentPage.value - 1) * venuePageSize.value;
+  return filteredVenueRecords.value.slice(startIndex, startIndex + venuePageSize.value);
+});
+
+const venuePageStart = computed(() => filteredVenueRecords.value.length === 0 ? 0 : ((venueCurrentPage.value - 1) * venuePageSize.value) + 1);
+const venuePageEnd = computed(() => Math.min(venueCurrentPage.value * venuePageSize.value, filteredVenueRecords.value.length));
+
+const visibleVenuePages = computed(() => {
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= venueTotalPages.value; pageNumber += 1) {
+    pages.push(pageNumber);
+  }
+  return pages.slice(0, 5);
 });
 
 const filteredEquipment = computed(() => {
@@ -352,49 +369,88 @@ const filteredEquipment = computed(() => {
     filtered = filtered.filter((equipment) => equipment.equipmentState === 'Retired');
   }
 
-  return [...filtered].sort((a, b) => {
-    const nameA = a.equipmentName.toLowerCase();
-    const nameB = b.equipmentName.toLowerCase();
+  return [...filtered].sort((first, second) => {
+    const nameA = first.equipmentName.toLowerCase();
+    const nameB = second.equipmentName.toLowerCase();
     if (equipmentSortOrder.value === 'asc') {
       return nameA.localeCompare(nameB);
-    } else {
-      return nameB.localeCompare(nameA);
     }
+    return nameB.localeCompare(nameA);
   });
 });
 
+watch([venueSearchQuery, venueFloorFilter, venueStatusFilter, venueSortValue, venuePageSize], () => {
+  venueCurrentPage.value = 1;
+});
+
+watch(venueTotalPages, (pageCount) => {
+  if (venueCurrentPage.value > pageCount) {
+    venueCurrentPage.value = pageCount;
+  }
+});
+
 function handleAddVenue() {
-  console.log('Add new venue');
   alert('Add venue functionality coming soon');
 }
 
 function handleEditVenue(venue) {
-  console.log('Edit venue:', venue);
+  if (!venue) return;
+  selectedVenueRecord.value = venue;
   alert(`Edit venue: ${venue.venueName}`);
 }
 
-function handleToggleAvailability(venue) {
-  venue.venueAvailable = !venue.venueAvailable;
-  console.log('Toggled availability for:', venue.venueName);
-}
-
-function handleDeleteVenue(venue) {
-  const index = venueFloorGroupsList.value.findIndex(
-    (group) => group.venueRecords.some((v) => v.venueIdentifier === venue.venueIdentifier)
-  );
-  if (index !== -1) {
-    const venueIndex = venueFloorGroupsList.value[index].venueRecords.findIndex(
-      (v) => v.venueIdentifier === venue.venueIdentifier
-    );
-    if (venueIndex !== -1) {
-      venueFloorGroupsList.value[index].venueRecords.splice(venueIndex, 1);
-      console.log('Deleted venue:', venue.venueName);
-    }
-  }
+function handleViewVenue(venue) {
+  selectedVenueRecord.value = venue;
+  alert(`View venue: ${venue.venueName}`);
 }
 
 function openEquipmentManager() {
   router.push({ name: 'adminManageEquipmentPage' });
+}
+
+function resetVenueFilters() {
+  venueSearchQuery.value = '';
+  venueFloorFilter.value = 'all';
+  venueStatusFilter.value = 'all';
+  venueSortValue.value = 'name-asc';
+  venuePageSize.value = 10;
+}
+
+function sortVenueRecords(first, second, sortValue) {
+  if (sortValue === 'name-desc') {
+    return second.venueName.localeCompare(first.venueName);
+  }
+  if (sortValue === 'floor-asc') {
+    return extractFloorNumber(first.floorLevel) - extractFloorNumber(second.floorLevel);
+  }
+  if (sortValue === 'floor-desc') {
+    return extractFloorNumber(second.floorLevel) - extractFloorNumber(first.floorLevel);
+  }
+  if (sortValue === 'capacity-desc') {
+    return Number(second.capacityLimit || 0) - Number(first.capacityLimit || 0);
+  }
+  if (sortValue === 'capacity-asc') {
+    return Number(first.capacityLimit || 0) - Number(second.capacityLimit || 0);
+  }
+  return first.venueName.localeCompare(second.venueName);
+}
+
+function formatFloorLabel(value) {
+  if (!value && value !== 0) return 'No Floor';
+  return `${value}th Floor`;
+}
+
+function extractFloorNumber(value) {
+  const parsedNumber = Number.parseInt(String(value || '').replace(/[^\d-]/g, ''), 10);
+  return Number.isNaN(parsedNumber) ? 0 : parsedNumber;
+}
+
+function formatCapacity(value) {
+  return Number(value || 0);
+}
+
+function resolveVenueType(venue) {
+  return venue.venueType || (String(venue.venueName || '').toLowerCase().includes('gym') ? 'Sports Facility' : 'Venue');
 }
 
 async function fetchEquipment() {
@@ -412,14 +468,10 @@ async function fetchEquipment() {
 }
 
 function formatDateTime(value) {
-  if (!value) {
-    return 'N/A';
-  }
+  if (!value) return 'N/A';
 
   const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return 'N/A';
-  }
+  if (Number.isNaN(parsedDate.getTime())) return 'N/A';
 
   return new Intl.DateTimeFormat('en-PH', {
     year: 'numeric',
@@ -429,6 +481,7 @@ function formatDateTime(value) {
 }
 
 onMounted(() => {
+  venueLoading.value = false;
   fetchEquipment();
 });
 </script>

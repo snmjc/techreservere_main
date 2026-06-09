@@ -2,7 +2,6 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
-  buildExpectedSupportingFileName,
   getSupportingFileAcceptValue,
   validateSignupSupportingFile,
 } from '../signupSupportingDocumentHelpers.js';
@@ -33,10 +32,6 @@ export function useCustomSignUpPage() {
   const studentSupportingFileInput = ref(null);
   const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
   const isStudentRole = computed(() => formData.value.role === 'Student');
-  const expectedSupportingFileName = computed(() => {
-    const extension = String(formData.value.supportingFile?.name || '').toLowerCase().endsWith('.jpg') ? 'jpg' : 'pdf';
-    return buildExpectedSupportingFileName(formData.value, extension);
-  });
   const supportingFileAccept = getSupportingFileAcceptValue();
 
   watch(
@@ -75,7 +70,7 @@ export function useCustomSignUpPage() {
   }
 
   function validateSupportingFile(file) {
-    return validateSignupSupportingFile(file, formData.value);
+    return validateSignupSupportingFile(file);
   }
 
   async function handleSignUp() {
@@ -220,7 +215,6 @@ export function useCustomSignUpPage() {
     studentSupportingFileInput,
     firstErrorMessage,
     isStudentRole,
-    expectedSupportingFileName,
     supportingFileAccept,
     openStudentSupportingFile,
     handleStudentSupportingFileChange,
