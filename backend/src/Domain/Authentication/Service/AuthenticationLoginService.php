@@ -4,6 +4,7 @@ namespace App\Domain\Authentication\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Account\Service\ClerkInvitationSyncService;
 use App\Shared\Utils\RoleDesignationNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -12,7 +13,8 @@ class AuthenticationLoginService
 {
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
     ) {
     }
 
@@ -51,10 +53,15 @@ class AuthenticationLoginService
             return $this->error('AccountDisabled', 'This account has been disabled. Please contact an administrator.', 403);
         }
 
-        $accountStatus = strtolower(trim((string)$account->getStatus()));
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            $account->getEmailAddress(),
+            $account->getClerkUserId()
+        );
+
+        $refreshedAccount = $this->accountRepository->find($account->getAccountIdentifier()) ?? $account;
         if (
-            !$account->getIsApproved()
-            || !in_array($accountStatus, ['approved', 'accepted'], true)
+            !$refreshedAccount->getIsApproved()
+            || !in_array(strtolower(trim((string)$refreshedAccount->getStatus())), ['approved', 'accepted'], true)
         ) {
             return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
         }
