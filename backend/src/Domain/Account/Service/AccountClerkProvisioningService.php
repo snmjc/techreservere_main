@@ -62,7 +62,13 @@ class AccountClerkProvisioningService
 
         if ($response->getStatusCode() >= 400) {
             $payload = $response->toArray(false);
-            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation revoke failed.'));
+            $errorMessage = $this->resolveClerkErrorMessage($payload, 'Clerk invitation revoke failed.');
+
+            if ($this->isAlreadyRevokedInvitationError($errorMessage)) {
+                return;
+            }
+
+            throw new \RuntimeException($errorMessage);
         }
     }
 
@@ -270,5 +276,14 @@ class AccountClerkProvisioningService
             ?? $payload['errors'][0]['message']
             ?? $payload['message']
             ?? $fallback;
+    }
+
+    private function isAlreadyRevokedInvitationError(string $errorMessage): bool
+    {
+        $normalizedMessage = strtolower(trim($errorMessage));
+
+        return str_contains($normalizedMessage, 'already revoked')
+            || str_contains($normalizedMessage, 'has already been revoked')
+            || str_contains($normalizedMessage, 'invitation is already revoked');
     }
 }
