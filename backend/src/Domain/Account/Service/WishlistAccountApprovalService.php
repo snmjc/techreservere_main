@@ -13,6 +13,7 @@ class WishlistAccountApprovalService
         private readonly Connection $connection,
         private readonly AccountAcceptanceEmailService $accountAcceptanceEmailService,
         private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService,
         private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
         private readonly AccountSupportingDocumentService $accountSupportingDocumentService,
         private readonly InvitationExpiryPolicyService $invitationExpiryPolicyService,
@@ -47,24 +48,42 @@ class WishlistAccountApprovalService
         $adminResult = $this->resolveConfirmedAdminEmail($requestBody, $authenticatedAdminId, 'approving access');
         if (!$adminResult['success']) return $adminResult;
 
-        $account = $this->findEmailVerifiedAccount($accountIdentifier);
+        $account = $this->findAccountByIdentifier($accountIdentifier);
         if (!$account) {
             return $this->error(
                 'WishlistAccountNotFound',
-                'This account is not ready for email verification approval.',
+                'This account could not be found.',
                 404
             );
         }
 
-        $now = AppClock::now();
-        $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
-        $this->approveAccountRow($accountIdentifier, $now, $clerkUserId);
-        $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($accountIdentifier);
+        if ($this->isAccountApproved($account)) {
+            return $this->success([
+                'message' => 'Account is already approved.',
+                'account' => $this->buildApprovedAccountPayload($account),
+            ]);
+        }
 
-        return $this->success([
-            'message' => 'Email verified and account approved.',
-            'account' => $this->buildApprovedAccountPayload($account),
-        ]);
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            (string)$account['email_address'],
+            $this->findExistingClerkUserId((string)$account['email_address'])
+        );
+
+        $refreshedAccount = $this->findAccountByIdentifier($accountIdentifier);
+        if ($refreshedAccount && $this->isAccountApproved($refreshedAccount)) {
+            $this->accountSupportingDocumentService->clearSupportingDocumentForAccount($accountIdentifier);
+
+            return $this->success([
+                'message' => 'Invitation acceptance synced and account approved.',
+                'account' => $this->buildApprovedAccountPayload($refreshedAccount),
+            ]);
+        }
+
+        return $this->error(
+            'WishlistAccountNotReady',
+            'This account has not accepted the invitation yet, so there is nothing to approve manually.',
+            409
+        );
     }
 
     private function resolveConfirmedAdminEmail(array $requestBody, int $authenticatedAdminId, string $actionLabel): array
@@ -134,6 +153,18 @@ class WishlistAccountApprovalService
                AND COALESCE(accounts.is_approved, FALSE) = FALSE
                AND LOWER(COALESCE(accounts.status, 'pending')) = 'invited'
                AND latest_invitation.accepted_at IS NOT NULL",
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+    }
+
+    private function findAccountByIdentifier(int $accountIdentifier): array|false
+    {
+        return $this->connection->fetchAssociative(
+            "SELECT account_identifier, email_address, role_designation, status, is_approved
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+             LIMIT 1",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
@@ -559,14 +590,22 @@ class WishlistAccountApprovalService
 
     private function buildApprovedAccountPayload(array $account): array
     {
+        $status = strtolower((string)($account['status'] ?? 'approved'));
+
         return [
             'accountIdentifier' => (int)$account['account_identifier'],
             'emailAddress' => (string)$account['email_address'],
             'roleDesignation' => (string)$account['role_designation'],
-            'status' => 'approved',
+            'status' => in_array($status, ['approved', 'accepted'], true) ? $status : 'approved',
             'isApproved' => true,
             'isActive' => true,
         ];
+    }
+
+    private function isAccountApproved(array $account): bool
+    {
+        return $this->toDatabaseBoolean($account['is_approved'] ?? false)
+            && in_array(strtolower((string)($account['status'] ?? 'pending')), ['approved', 'accepted'], true);
     }
 
     private function findExistingClerkUserId(string $emailAddress): ?string
@@ -602,6 +641,20 @@ class WishlistAccountApprovalService
     {
         $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
         return strtolower(trim($normalizedEmailAddress));
+    }
+
+    private function toDatabaseBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, ['1', 't', 'true', 'yes'], true);
     }
 
     private function success(array $data, int $status = 200): array

@@ -95,10 +95,6 @@ export const adminWishlistApi = {
     return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/approve`, { method: 'POST', token, payload });
   },
 
-  async verifyEmailAndApproveAccount(accountIdentifier, token, payload = {}) {
-    return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/verify-email`, { method: 'POST', token, payload });
-  },
-
   async denyAccount(accountIdentifier, token, payload = {}) {
     return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/reject`, { method: 'POST', token, payload });
   },

@@ -41,7 +41,9 @@ class ClerkWebhookController
         $eventType = (string)($event['type'] ?? '');
         $data = is_array($event['data'] ?? null) ? $event['data'] : [];
 
-        if (in_array($eventType, ['user.created', 'user.updated'], true)) {
+        if ($eventType === 'user.created') {
+            $this->approveInvitedAccountFromClerkUser($data);
+        } elseif ($eventType === 'user.updated') {
             $this->syncClerkUserToAccount($data);
         }
 
@@ -127,6 +129,43 @@ class ClerkWebhookController
                  updated_timestamp = :updatedTimestamp
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                AND (clerk_user_id IS NULL OR clerk_user_id = '' OR clerk_user_id = :clerkUserId)",
+            [
+                'clerkUserId' => $clerkUserId,
+                'username' => AccountUsername::fromEmail($emailAddress),
+                'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
+                'emailAddress' => $emailAddress,
+            ],
+            [
+                'clerkUserId' => ParameterType::STRING,
+                'username' => ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+                'emailAddress' => ParameterType::STRING,
+            ]
+        );
+
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail($emailAddress, $clerkUserId);
+    }
+
+    private function approveInvitedAccountFromClerkUser(array $userData): void
+    {
+        $clerkUserId = trim((string)($userData['id'] ?? ''));
+        $emailAddress = $this->resolvePrimaryEmailAddress($userData);
+
+        if ($clerkUserId === '' || $emailAddress === '') {
+            return;
+        }
+
+        $this->connection->executeStatement(
+            "UPDATE accounts
+             SET clerk_user_id = :clerkUserId,
+                 username = COALESCE(NULLIF(username, ''), :username),
+                 is_active = TRUE,
+                 is_approved = TRUE,
+                 status = 'accepted',
+                 updated_timestamp = :updatedTimestamp
+             WHERE LOWER(email_address) = LOWER(:emailAddress)
+               AND COALESCE(is_approved, FALSE) = FALSE
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'accepted', 'disabled', 'rejected', 'denied')",
             [
                 'clerkUserId' => $clerkUserId,
                 'username' => AccountUsername::fromEmail($emailAddress),
