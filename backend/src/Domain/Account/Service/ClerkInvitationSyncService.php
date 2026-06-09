@@ -41,7 +41,7 @@ class ClerkInvitationSyncService
         $acceptedAtText = $acceptedAt->format('Y-m-d H:i:sP');
         $updatedTimestamp = AppClock::now()->format('Y-m-d H:i:s');
         $resolvedClerkUserId = trim((string)($clerkUserId ?? $account['clerk_user_id'] ?? ''));
-        $nextStatus = 'accepted';
+        $nextStatus = 'approved';
         $nextIsApproved = true;
 
         $this->connection->beginTransaction();
@@ -115,7 +115,7 @@ class ClerkInvitationSyncService
     {
         $this->connection->executeStatement(
             "UPDATE accounts
-             SET status = 'accepted',
+             SET status = 'approved',
                  is_approved = TRUE,
                  is_active = TRUE,
                  updated_timestamp = :updatedTimestamp

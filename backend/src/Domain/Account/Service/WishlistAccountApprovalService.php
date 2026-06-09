@@ -622,14 +622,16 @@ class WishlistAccountApprovalService
         try {
             $this->auditLogRecordService->recordAuditLog(
                 $performedByAccountId,
-                $isResend ? 'RESEND_INVITATION' : 'SEND_INVITATION',
-                'invitation',
+                $isResend ? 'USER_INVITED_RESENT' : 'USER_INVITED',
+                'account',
                 (int)$account['account_identifier'],
                 [
                     'emailAddress' => (string)$account['email_address'],
+                    'clerkUserId' => $this->findExistingClerkUserId((string)$account['email_address']),
                     'invitedBy' => $invitedBy,
                     'expiresAt' => $invitationRecord['expiresAt']->format('Y-m-d H:i:sP'),
                     'sentAt' => $invitationRecord['createdAt']->format('Y-m-d H:i:sP'),
+                    'timestamp' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
                     'policy' => $this->invitationExpiryPolicyService->currentPolicySummary(),
                 ]
             );

@@ -190,10 +190,6 @@ class UserClerkRegistrationService
         bool $hasAcceptedInvitation
     ): string {
         if ($nextIsApproved) {
-            if ($nextIsActive && $hasAcceptedInvitation) {
-                return 'accepted';
-            }
-
             return $nextIsActive ? 'approved' : 'disabled';
         }
 
