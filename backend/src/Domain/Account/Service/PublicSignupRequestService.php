@@ -13,12 +13,9 @@ class PublicSignupRequestService
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
-<<<<<<< HEAD
-        private readonly AccountInputValidationService $accountInputValidationService
-=======
+        private readonly AccountInputValidationService $accountInputValidationService,
         private readonly SignupSupportingDocumentValidationService $signupSupportingDocumentValidationService,
         private readonly SignupSupportingDocumentStorageService $signupSupportingDocumentStorageService
->>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
     ) {
     }
 
