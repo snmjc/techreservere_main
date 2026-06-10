@@ -4,6 +4,7 @@ import './style.css'
 import App from './App.vue'
 import applicationRouter from './router/index.js'
 import { clerkPlugin } from '@clerk/vue'
+import { resolveClerkRedirectOptions } from './modules/authentication/utils/clerkRedirects.js'
 
 const PLACEHOLDER_CLERK_KEYS = new Set([
   'pk_test_your_clerk_key_here',
@@ -73,7 +74,10 @@ techReserveApplication.use(techReservePinia)
 techReserveApplication.use(applicationRouter)
 
 if (!shouldDisableClerkOnLiveHost) {
-  techReserveApplication.use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+  techReserveApplication.use(clerkPlugin, {
+    publishableKey: PUBLISHABLE_KEY,
+    ...resolveClerkRedirectOptions(),
+  })
 }
 
 techReserveApplication.mount('#app')

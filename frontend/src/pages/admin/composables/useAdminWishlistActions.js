@@ -38,7 +38,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   ));
   const isDeleteConfirmationReady = computed(() => (
     Boolean(deleteAccountRequest.value)
-    && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)
+    && Boolean(currentAdminEmail.value)
+    && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
     && deleteConfirmPassword.value.trim() !== ''
   ));
 
@@ -263,8 +264,12 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function canSubmitDeletion() {
     if (!deleteAccountRequest.value) return false;
-    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(deleteAccountRequest.value.emailAddress)) {
-      deleteFormError.value = 'Please type the exact email address to delete this request.';
+    if (!currentAdminEmail.value) {
+      deleteFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
+      return false;
+    }
+    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
+      deleteFormError.value = 'Please type your exact admin email to delete this request.';
       return false;
     }
     if (deleteConfirmPassword.value.trim() === '') {

@@ -4,6 +4,7 @@ const AUTH_PAGE_NAMES = [
   ROUTE_NAMES.login,
   ROUTE_NAMES.signUp,
   ROUTE_NAMES.clerkLogin,
+  ROUTE_NAMES.acceptInvitation,
   ROUTE_NAMES.customSignUp,
 ];
 const APPROVED_ACCOUNT_STATUSES = ['approved', 'accepted'];
