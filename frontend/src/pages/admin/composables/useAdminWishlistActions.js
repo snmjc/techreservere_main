@@ -154,12 +154,23 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSendInvite(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'unverified' && !isProcessing.value;
+    const normalizedStatus = String(account?.accountStatus || '').toLowerCase();
+    const invitationStatus = String(account?.invitationStatus || account?.inviteStatus || 'not_sent').toLowerCase();
+    const emailAddress = String(account?.emailAddress || '').trim().toLowerCase();
+    const hasValidEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
+
+    return normalizedStatus === 'unverified'
+      && invitationStatus === 'not_sent'
+      && hasValidEmailAddress
+      && !Boolean(account?.isApproved)
+      && !isProcessing.value;
   }
 
   function canResendInvite(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'expired'
+    const normalizedStatus = String(account?.accountStatus || '').toLowerCase();
+    return normalizedStatus === 'expired'
       && Boolean(account?.inviteSentAt)
+      && !Boolean(account?.isApproved)
       && !isProcessing.value;
   }
 
@@ -193,7 +204,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     };
     const messages = {
       resend: 'Resend invite becomes available after 7 days.',
-      send: 'Send invite is only available for pending accounts that have not been invited yet.',
+      send: 'Send invite is only available for unverified pending accounts with a valid email address.',
     };
     const normalizedMode = mode === 'resend' ? 'resend' : 'send';
     if (validators[normalizedMode](account)) return true;

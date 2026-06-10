@@ -28,6 +28,7 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAUL
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS verification_status VARCHAR(20) NOT NULL DEFAULT 'unverified';
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invitation_status VARCHAR(20) NOT NULL DEFAULT 'not_sent';
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT NULL;
@@ -36,6 +37,10 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by INT DEFAULT NULL REFERE
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts (status);
 CREATE INDEX IF NOT EXISTS idx_accounts_clerk_user_id ON accounts (clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_verification_status ON accounts (verification_status);
+CREATE INDEX IF NOT EXISTS idx_accounts_invitation_status ON accounts (invitation_status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accounts_clerk_user_id
+    ON accounts (clerk_user_id)
+    WHERE clerk_user_id IS NOT NULL;
 
 -- ===== 2. EQUIPMENT =====
 CREATE TABLE IF NOT EXISTS equipment (
