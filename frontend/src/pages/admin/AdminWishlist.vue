@@ -74,9 +74,9 @@
             <span>Status</span>
             <select v-model="statusFilter">
               <option value="all">All</option>
-              <option value="not_invited">Not invited</option>
+              <option value="unverified">Pending</option>
               <option value="verified">Verified</option>
-              <option value="unverified">Unverified</option>
+              <option value="approved">Approved</option>
               <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
             </select>

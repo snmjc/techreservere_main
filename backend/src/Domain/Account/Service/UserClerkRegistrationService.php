@@ -4,18 +4,19 @@ namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
-use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 class UserClerkRegistrationService
 {
+    private const ADMIN_EMAIL_ALLOWLIST = [
+        'smmojica@fit.edu.ph',
+    ];
+
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection,
-        private readonly AccountSupportingDocumentService $accountSupportingDocumentService,
-        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
+        private readonly Connection $connection
     ) {
     }
 
@@ -92,7 +93,7 @@ class UserClerkRegistrationService
     {
         $status = strtolower($account->getStatus());
 
-        return $account->getIsApproved() && in_array($status, ['approved', 'accepted'], true);
+        return $account->getIsApproved() && $status === 'approved';
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -117,7 +118,7 @@ class UserClerkRegistrationService
             'status' => 'approved',
             'isApproved' => true,
             'isActive' => true,
-            'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
+            'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
             'accountIdentifier' => $account->getAccountIdentifier(),
         ];
     }
@@ -136,20 +137,17 @@ class UserClerkRegistrationService
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
     {
-        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail($registration['emailAddress'], $registration['clerkUserId']);
-        $freshAccount = $this->accountRepository->findOneByEmailAddress($registration['emailAddress']) ?? $account;
-        $nextState = $this->resolveExistingEmailAccountState($freshAccount, $registration);
-        $updatedAt = AppClock::now()->format('Y-m-d H:i:s');
-        $acceptedAt = AppClock::now()->format('Y-m-d H:i:sP');
+        $nextState = $this->resolveExistingEmailAccountState($account, $registration);
+        $now = (new \DateTime())->format('Y-m-d H:i:s');
 
-        $this->updateExistingEmailAccount($freshAccount, $registration, $nextState, $updatedAt);
+        $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
 
         if ($nextState['shouldMarkInvitationAccepted']) {
-            $this->markLatestInvitationAccepted($registration['emailAddress'], $acceptedAt);
+            $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
         }
 
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
-            'accountIdentifier' => $freshAccount->getAccountIdentifier(),
+            'accountIdentifier' => $account->getAccountIdentifier(),
         ]));
     }
 
@@ -160,44 +158,20 @@ class UserClerkRegistrationService
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
-        $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
-        $nextIsActive = $nextIsApproved
-            ? $account->getIsActive()
-            : $account->getIsActive();
-        $nextStatus = $this->resolveNextExistingEmailAccountStatus(
-            $existingStatus,
-            $nextIsApproved,
-            $nextIsActive,
-            $hasOpenInvitation,
-            $hasAcceptedInvitation
-        );
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
+        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
+        $nextStatus = $nextIsApproved
+            ? ($nextIsActive ? 'approved' : 'disabled')
+            : ($hasOpenInvitation || $existingStatus === 'invited' ? 'invited' : $existingStatus);
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'shouldMarkInvitationAccepted' => !$existingIsAdmin && !$hasAcceptedInvitation,
+            'hasOpenInvitation' => $hasOpenInvitation,
+            'shouldMarkInvitationAccepted' => false,
         ];
-    }
-
-    private function resolveNextExistingEmailAccountStatus(
-        string $existingStatus,
-        bool $nextIsApproved,
-        bool $nextIsActive,
-        bool $hasOpenInvitation,
-        bool $hasAcceptedInvitation
-    ): string {
-        if ($nextIsApproved) {
-            return $nextIsActive ? 'approved' : 'disabled';
-        }
-
-        if ($hasOpenInvitation) {
-            return 'invited';
-        }
-
-        return $existingStatus;
     }
 
     private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
@@ -225,13 +199,13 @@ class UserClerkRegistrationService
     private function buildExistingEmailUpdateParameters(AccountEntity $account, array $registration, array $nextState, string $updatedAt): array
     {
         return [
-            'lastName' => $registration['lastName'] !== '' ? $registration['lastName'] : $account->getLastName(),
-            'firstName' => $registration['firstName'] !== '' ? $registration['firstName'] : $account->getFirstName(),
-            'username' => $registration['username'] !== '' ? $registration['username'] : $account->getUsername(),
-            'roleDesignation' => $account->getRoleDesignation() ?: $nextState['role'],
-            'idNumber' => $registration['idNumber'] !== '' ? $registration['idNumber'] : ($account->getIdNumber() ?: null),
-            'department' => $registration['department'] !== '' ? $registration['department'] : ($account->getDepartment() ?: null),
-            'contactNumber' => $registration['contactNumber'] !== '' ? $registration['contactNumber'] : ($account->getContactNumber() ?: null),
+            'lastName' => $registration['lastName'],
+            'firstName' => $registration['firstName'],
+            'username' => $registration['username'],
+            'roleDesignation' => $nextState['role'],
+            'idNumber' => $registration['idNumber'] ?: null,
+            'department' => $registration['department'] ?: null,
+            'contactNumber' => $registration['contactNumber'] ?: null,
             'clerkUserId' => $registration['clerkUserId'],
             'status' => $nextState['status'],
             'isApproved' => $nextState['isApproved'],
@@ -267,7 +241,7 @@ class UserClerkRegistrationService
         }
 
         try {
-            $now = AppClock::now()->format('Y-m-d H:i:s');
+            $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, username, role_designation, id_number, department,
@@ -337,7 +311,7 @@ class UserClerkRegistrationService
 
     private function isAdminEmail(string $emailAddress): bool
     {
-        return false;
+        return in_array(strtolower(trim($emailAddress)), self::ADMIN_EMAIL_ALLOWLIST, true);
     }
 
     private function resolveRole(string $requestedRole, string $emailAddress): string
@@ -378,7 +352,7 @@ class UserClerkRegistrationService
         }
 
         try {
-            return new \DateTimeImmutable((string)$invitation['expires_at'], AppClock::timezone()) >= AppClock::now();
+            return new \DateTimeImmutable((string)$invitation['expires_at']) >= new \DateTimeImmutable();
         } catch (\Throwable) {
             return false;
         }
