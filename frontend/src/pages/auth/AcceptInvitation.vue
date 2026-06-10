@@ -38,7 +38,7 @@
 
         <div v-else-if="hasInvitationTicket" class="accept-invitation-widget">
           <SignUp
-            path="/accept-invitation"
+            :path="clerkPath"
             routing="path"
             sign-in-url="/accept-invitation"
             :appearance="clerkAppearance"
@@ -70,6 +70,10 @@ const statusMessage = ref('')
 const loadingMessage = ref('Preparing your invitation...')
 
 const invitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim())
+const clerkPath = computed(() => {
+  const currentPath = String(route.path || '').trim()
+  return currentPath.startsWith('/accept-invitation') ? currentPath : '/accept-invitation'
+})
 const hasInvitationTicket = computed(() => invitationTicket.value !== '')
 const showLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value)
 const cardTitle = computed(() => {
