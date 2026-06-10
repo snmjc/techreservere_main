@@ -38,7 +38,7 @@
 
         <div v-else-if="hasInvitationTicket" class="accept-invitation-widget">
           <SignUp
-            :path="clerkPath"
+            path="/accept-invitation"
             routing="path"
             sign-in-url="/accept-invitation"
             :appearance="clerkAppearance"
@@ -65,17 +65,36 @@ const { signOut } = useAuth()
 
 const isSigningOutExistingSession = ref(false)
 const hasTriggeredSignOut = ref(false)
+const hasNormalizedRoute = ref(false)
 const errorMessage = ref('')
 const statusMessage = ref('')
 const loadingMessage = ref('Preparing your invitation...')
 
 const invitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim())
-const clerkPath = computed(() => {
-  const currentPath = String(route.path || '').trim()
-  return currentPath.startsWith('/accept-invitation') ? currentPath : '/accept-invitation'
-})
 const hasInvitationTicket = computed(() => invitationTicket.value !== '')
 const showLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value)
+const canonicalInvitationPath = computed(() => '/accept-invitation')
+const canonicalInvitationFullPath = computed(() => {
+  const searchParams = new URLSearchParams()
+
+  Object.entries(route.query || {}).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (entry !== undefined && entry !== null) {
+          searchParams.append(key, String(entry))
+        }
+      })
+      return
+    }
+
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value))
+    }
+  })
+
+  const queryString = searchParams.toString()
+  return queryString ? `${canonicalInvitationPath.value}?${queryString}` : canonicalInvitationPath.value
+})
 const cardTitle = computed(() => {
   if (!hasInvitationTicket.value) return 'Invitation Link Missing'
   if (isSigningOutExistingSession.value) return 'Switching Account'
@@ -92,6 +111,24 @@ const cardDescription = computed(() => {
 
   return 'Create the invited account session below. Clerk will keep the invitation email locked to the email address from the invitation.'
 })
+
+watch(() => route.path, async (currentPath) => {
+  if (hasNormalizedRoute.value) {
+    return
+  }
+
+  if (currentPath === canonicalInvitationPath.value) {
+    hasNormalizedRoute.value = true
+    return
+  }
+
+  hasNormalizedRoute.value = true
+  await router.replace({
+    path: canonicalInvitationPath.value,
+    query: route.query,
+    hash: route.hash,
+  })
+}, { immediate: true })
 
 watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, hasTicket]) => {
   if (!loaded) {
@@ -122,7 +159,7 @@ watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, has
   try {
     authStore.performLogout()
     await signOutClerk(signOut, {
-      redirectUrl: `${window.location.origin}${route.fullPath}`,
+      redirectUrl: `${window.location.origin}${canonicalInvitationFullPath.value}`,
     })
   } catch (error) {
     console.error('[AcceptInvitation] Failed to sign out the existing Clerk session.', error)
