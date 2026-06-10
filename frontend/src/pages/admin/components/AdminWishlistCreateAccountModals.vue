@@ -35,6 +35,14 @@
           <input v-model.trim="addAdminForm.firstName" type="text" placeholder="First Name" minlength="2" required :disabled="isProcessing" @input="sanitizeAdminNameField('firstName')" />
         </label>
         <label class="admin-wishlist-field-wide">
+<<<<<<< HEAD
+          <span>Email</span>
+          <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="admin@feutech.edu.ph" required :disabled="isProcessing" />
+        </label>
+        <label>
+          <span>ID Number</span>
+          <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required :disabled="isProcessing" />
+=======
           <span>Admin Email</span>
           <input
             v-model.trim="addAdminForm.emailAddress"
@@ -43,6 +51,7 @@
             required
             :disabled="isProcessing"
           />
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Role</span>
@@ -107,7 +116,11 @@
           <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required />
         </label>
         <label class="admin-wishlist-field-wide">
+<<<<<<< HEAD
+          <span>Institutional Email Address</span>
+=======
           <span>FIT Email Address</span>
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
           <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph or jtvito@feutech.edu.ph" required />
         </label>
         <label>

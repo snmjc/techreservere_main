@@ -4,6 +4,16 @@ namespace App\Domain\Account\Service;
 
 class AccountInputValidationService
 {
+<<<<<<< HEAD
+    private const USER_EMAIL_DOMAINS = [
+        '@fit.edu.ph',
+        '@feutech.edu.ph',
+    ];
+
+    private const ADMIN_EMAIL_DOMAINS = [
+        '@feutech.edu.ph',
+        '@fit.edu.ph',
+=======
     private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
         'feutech.edu.ph',
     ];
@@ -11,6 +21,7 @@ class AccountInputValidationService
     private const DEFAULT_ALLOWED_REQUEST_HUB_USER_EMAIL_DOMAINS = [
         'fit.edu.ph',
         'feutech.edu.ph',
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
     ];
 
     public function isValidPersonName(string $name): bool
@@ -29,6 +40,17 @@ class AccountInputValidationService
 
     public function isInstitutionalAdminEmail(string $emailAddress): bool
     {
+<<<<<<< HEAD
+        return $this->hasAllowedDomain($emailAddress, self::ADMIN_EMAIL_DOMAINS);
+    }
+
+    public function isInstitutionalUserEmail(string $emailAddress): bool
+    {
+        return $this->hasAllowedDomain($emailAddress, self::USER_EMAIL_DOMAINS);
+    }
+
+    private function hasAllowedDomain(string $emailAddress, array $allowedDomains): bool
+=======
         $normalizedEmailAddress = strtolower(trim($emailAddress));
         if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
             return false;
@@ -52,12 +74,22 @@ class AccountInputValidationService
     }
 
     public function isAllowedRequestHubUserEmail(string $emailAddress): bool
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
     {
         $normalizedEmailAddress = strtolower(trim($emailAddress));
         if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
             return false;
         }
 
+<<<<<<< HEAD
+        foreach ($allowedDomains as $allowedDomain) {
+            if (str_ends_with($normalizedEmailAddress, $allowedDomain)) {
+                return true;
+            }
+        }
+
+        return false;
+=======
         $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
         if ($domain === '') {
             return false;
@@ -89,5 +121,6 @@ class AccountInputValidationService
     public function blockedAdminEmailDomains(): array
     {
         return ['techreserve.edu.ph', 'techreserve.feu.edu.ph'];
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
     }
 }

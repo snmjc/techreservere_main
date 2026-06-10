@@ -19,8 +19,13 @@ export function validateAdminAccountForm(form) {
     return 'First name must have at least 2 letters and cannot contain numbers or symbols.';
   }
 
+<<<<<<< HEAD
+  if (!isInstitutionalAdminEmail(emailAddress)) {
+    return 'Admin account must use a valid @feutech.edu.ph email address. For testing, @fit.edu.ph is also allowed.';
+=======
   if (!isAllowedAdminEmail(emailAddress)) {
     return 'Admin email must use @feutech.edu.ph only.';
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
   }
 
   return '';
@@ -53,8 +58,16 @@ export function buildAdminAccountPayload(form) {
 }
 
 export function getUserCreateError(form, accounts) {
+<<<<<<< HEAD
+  const emailAddress = String(form.emailAddress || '').trim().toLowerCase();
+
+  if (!isInstitutionalUserEmail(emailAddress)) {
+    return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+  }
+=======
   const validationError = validateUserAccountForm(form);
   if (validationError) return validationError;
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
 
   if (form.password !== form.confirmPassword) {
     return 'Password and confirm password must match.';
@@ -160,6 +173,19 @@ export function formatCreateAccountError(result, accountType) {
   return `This ${formatMatchedField(conflict.matchedField)} is already used by ${formatConflictAccount(conflict)}. Check ${formatConflictLocation(conflict)}.`;
 }
 
+<<<<<<< HEAD
+function isInstitutionalAdminEmail(emailAddress) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
+    && (emailAddress.endsWith('@feutech.edu.ph') || emailAddress.endsWith('@fit.edu.ph'));
+}
+
+function isInstitutionalUserEmail(emailAddress) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
+    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@feutech.edu.ph'));
+}
+
+=======
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
 function wishlistIdNumberExists(accounts, idNumber) {
   const normalizedIdNumber = normalizeIdNumber(idNumber).toLowerCase();
 
