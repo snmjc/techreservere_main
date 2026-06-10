@@ -2,6 +2,7 @@ export const ROUTE_NAMES = Object.freeze({
   login: 'loginPage',
   signUp: 'signUpPage',
   clerkLogin: 'clerkLoginPage',
+  acceptInvitation: 'acceptInvitationPage',
   customSignUp: 'customSignUpPage',
   postLogin: 'postLoginPage',
   handleSignIn: 'handleSignInPage',

@@ -21,7 +21,7 @@ export function usePostLoginRedirect() {
     const token = await resolveClerkSessionToken(getToken);
     const emailAddress = user.value.primaryEmailAddress?.emailAddress || '';
     const roleDesignation = resolveRole(user.value.publicMetadata?.role, emailAddress);
-    const backendRegistration = await ensureBackendAccount(user.value, roleDesignation, token);
+    const backendRegistration = await ensureApprovedBackendAccount(user.value, roleDesignation, token);
 
     if (!backendRegistration.account) {
       await resetToLogin(
@@ -106,6 +106,32 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
       error: error?.message || 'Unable to complete TechReserve sign-in.',
     };
   }
+}
+
+async function ensureApprovedBackendAccount(clerkUser, roleDesignation, token) {
+  const maxAttempts = 6;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const registration = await ensureBackendAccount(clerkUser, roleDesignation, token);
+    const backendStatus = resolveBackendAccountStatus(registration.account);
+
+    if (registration.account && backendStatus !== 'pending') {
+      return registration;
+    }
+
+    const shouldRetry = attempt < maxAttempts && (
+      registration.account
+      || /sync|activate|pending|invitation/i.test(String(registration.error || ''))
+    );
+
+    if (!shouldRetry) {
+      return registration;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 800));
+  }
+
+  return ensureBackendAccount(clerkUser, roleDesignation, token);
 }
 
 function routeWithBackendAccount({ authStore, router, token, backendAccount, clerkUser, emailAddress, roleDesignation, rememberSession }) {

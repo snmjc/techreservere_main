@@ -436,7 +436,7 @@ class WishlistAccountApprovalService
             'createdAt' => $createdAt,
             'expiresAt' => $createdAt->modify('+7 days'),
             'token' => bin2hex(random_bytes(24)),
-            'redirectUrl' => $frontendUrl . '/clerk-login',
+            'redirectUrl' => $frontendUrl . '/accept-invitation',
         ];
     }
 
