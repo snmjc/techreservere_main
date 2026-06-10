@@ -144,6 +144,10 @@ class UserClerkRegistrationService
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
     {
+        if (!$this->canLinkExistingEmailAccount($account, $registration)) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
         $nextState = $this->resolveExistingEmailAccountState($account, $registration);
         $now = (new \DateTime())->format('Y-m-d H:i:s');
 
@@ -156,6 +160,24 @@ class UserClerkRegistrationService
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
             'accountIdentifier' => $account->getAccountIdentifier(),
         ]));
+    }
+
+    private function canLinkExistingEmailAccount(AccountEntity $account, array $registration): bool
+    {
+        if ($registration['isAdminEmail']) {
+            return true;
+        }
+
+        $status = strtolower(trim($account->getStatus()));
+        if (in_array($status, ['active', 'approved', 'accepted'], true) && $account->getClerkUserId() !== null) {
+            return true;
+        }
+
+        if (!$account->getIsVerified()) {
+            return false;
+        }
+
+        return $this->hasAcceptedInvitation($registration['emailAddress']);
     }
 
     private function resolveExistingEmailAccountState(AccountEntity $account, array $registration): array
@@ -404,6 +426,11 @@ class UserClerkRegistrationService
 
         $status = strtolower((string)($invitation['status'] ?? 'pending'));
         return in_array($status, ['accepted', 'completed'], true);
+    }
+
+    private function hasAcceptedInvitation(string $emailAddress): bool
+    {
+        return $this->isAcceptedInvitation($this->findLatestInvitationForEmail($emailAddress));
     }
 
     private function markLatestInvitationAccepted(string $emailAddress, string $acceptedAt): void

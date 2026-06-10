@@ -56,6 +56,18 @@ class ClerkWebhookUserSyncService
                 return;
             }
 
+            if (!$this->canActivateMatchedAccount($matchedAccount)) {
+                $this->connection->rollBack();
+                $this->logger->warning('Clerk webhook ignored because the matched account is still pending invitation.', [
+                    'clerkUserId' => $syncContext['clerkUserId'],
+                    'emailAddress' => $syncContext['emailAddress'],
+                    'accountIdentifier' => (int)($matchedAccount['account_identifier'] ?? 0),
+                    'status' => (string)($matchedAccount['status'] ?? ''),
+                    'isVerified' => (bool)($matchedAccount['is_verified'] ?? false),
+                ]);
+                return;
+            }
+
             $targetAccountIdentifier = (int)$matchedAccount['account_identifier'];
             $updatedRows = $this->linkApprovedAccount($syncContext, $matchedAccount, $targetAccountIdentifier);
 
@@ -224,7 +236,7 @@ class ClerkWebhookUserSyncService
     {
         if ($accountIdentifier !== null) {
             $account = $this->connection->fetchAssociative(
-                'SELECT account_identifier, role_designation
+                'SELECT account_identifier, role_designation, status, is_verified
                  FROM accounts
                  WHERE account_identifier = :accountIdentifier
                  LIMIT 1',
@@ -238,7 +250,7 @@ class ClerkWebhookUserSyncService
         }
 
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, role_designation
+            'SELECT account_identifier, role_designation, status, is_verified
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR clerk_user_id = :clerkUserId
@@ -257,6 +269,18 @@ class ClerkWebhookUserSyncService
         return $account !== false ? $account : null;
     }
 
+    private function canActivateMatchedAccount(array $matchedAccount): bool
+    {
+        $status = strtolower(trim((string)($matchedAccount['status'] ?? 'pending')));
+        $isVerified = $this->toDatabaseBoolean($matchedAccount['is_verified'] ?? false);
+
+        if (in_array($status, ['active', 'approved', 'accepted'], true)) {
+            return true;
+        }
+
+        return $isVerified && in_array($status, ['verified', 'invited'], true);
+    }
+
     private function resolvePrimaryEmailAddress(array $userData): string
     {
         $primaryEmailAddressId = (string)($userData['primary_email_address_id'] ?? '');
@@ -269,5 +293,19 @@ class ClerkWebhookUserSyncService
         }
 
         return trim((string)($emailAddresses[0]['email_address'] ?? ''));
+    }
+
+    private function toDatabaseBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, ['1', 't', 'true', 'yes'], true);
     }
 }
