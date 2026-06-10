@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\RoleDesignationNormalizer;
 use App\Shared\Utils\RoleConstants;
 
 class AccountResponseMapperService
@@ -65,7 +66,11 @@ class AccountResponseMapperService
             'profilePhotoData' => $profilePhotoData,
             'supportingDocumentName' => !empty($row['signup_supporting_document_name']) ? (string)$row['signup_supporting_document_name'] : null,
             'supportingDocumentMimeType' => !empty($row['signup_supporting_document_mime_type']) ? (string)$row['signup_supporting_document_mime_type'] : null,
-            'supportingDocumentData' => !empty($row['signup_supporting_document_data']) ? (string)$row['signup_supporting_document_data'] : null,
+            'supportingDocumentPath' => !empty($row['signup_supporting_document_path']) ? (string)$row['signup_supporting_document_path'] : null,
+            'supportingDocumentSizeBytes' => isset($row['signup_supporting_document_size_bytes']) ? (int)$row['signup_supporting_document_size_bytes'] : null,
+            'supportingDocumentUploadedAt' => !empty($row['signup_supporting_document_uploaded_at']) ? (string)$row['signup_supporting_document_uploaded_at'] : null,
+            'supportingDocumentVerificationStatus' => !empty($row['signup_supporting_document_verification_status']) ? (string)$row['signup_supporting_document_verification_status'] : null,
+            'supportingDocumentData' => null,
             'createdTimestamp' => (string)$row['created_timestamp'],
             'lastLoginTimestamp' => !empty($row['last_login_timestamp']) ? (string)$row['last_login_timestamp'] : null,
             'inviteSentAt' => !empty($row['invite_sent_at']) ? (string)$row['invite_sent_at'] : null,
@@ -141,16 +146,7 @@ class AccountResponseMapperService
 
     private function normalizeRoleDesignation(string $roleDesignation): string
     {
-        $normalized = strtoupper(trim($roleDesignation));
-        if ($normalized === 'ADMIN') {
-            return RoleConstants::ROLE_ADMIN;
-        }
-
-        if ($normalized === 'USER') {
-            return RoleConstants::ROLE_BORROWER;
-        }
-
-        return $normalized ?: RoleConstants::ROLE_BORROWER;
+        return RoleDesignationNormalizer::normalize($roleDesignation);
     }
 
     private function resolveRoleLabelForAccountRow(array $row, string $accountType): string

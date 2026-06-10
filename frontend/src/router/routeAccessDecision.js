@@ -1,6 +1,12 @@
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
-const AUTH_PAGE_NAMES = [ROUTE_NAMES.login, ROUTE_NAMES.signUp];
+const AUTH_PAGE_NAMES = [
+  ROUTE_NAMES.login,
+  ROUTE_NAMES.signUp,
+  ROUTE_NAMES.clerkLogin,
+  ROUTE_NAMES.customSignUp,
+];
+const APPROVED_ACCOUNT_STATUSES = ['approved', 'accepted'];
 
 export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
@@ -11,7 +17,7 @@ export function resolveAccountStatus(authStore) {
     return 'disabled';
   }
 
-  if (account.isApproved === false && normalizedStatus !== 'approved') {
+  if (account.isApproved === false && !APPROVED_ACCOUNT_STATUSES.includes(normalizedStatus)) {
     return 'pending';
   }
 
@@ -29,16 +35,20 @@ export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, 
     return { name: ROUTE_NAMES.accountDeactivated };
   }
 
-  if (AUTH_PAGE_NAMES.includes(toRoute.name) && isSignedIn && accountStatus === 'approved') {
+  if (AUTH_PAGE_NAMES.includes(toRoute.name) && isSignedIn && APPROVED_ACCOUNT_STATUSES.includes(accountStatus)) {
     return getDashboardRouteForRole(userRole);
   }
 
   return true;
 }
 
-export function evaluateProtectedRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {
+export function evaluateProtectedRouteAccess({ toRoute, isSignedIn, hasAuthToken, hasClerkSession, accountStatus, userRole }) {
   if (!isSignedIn && toRoute.name !== ROUTE_NAMES.handleSignIn) {
     return { name: ROUTE_NAMES.clerkLogin };
+  }
+
+  if (isSignedIn && hasClerkSession && !hasAuthToken && toRoute.name !== ROUTE_NAMES.postLogin) {
+    return { name: ROUTE_NAMES.postLogin };
   }
 
   if (accountStatus === 'pending') {

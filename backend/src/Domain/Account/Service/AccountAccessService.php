@@ -48,7 +48,7 @@ class AccountAccessService
         $this->persistAccessChange($accountIdentifier, $isActive, $currentIsApproved);
 
         return $this->success([
-            'message' => $isActive ? 'Account reactivated.' : 'Account disabled.',
+            'message' => $isActive ? 'Account reactivated.' : 'Account marked inactive.',
             'account' => $this->accountReadService->getMappedAccountById($accountIdentifier),
         ]);
     }
@@ -85,7 +85,7 @@ class AccountAccessService
             [
                 'isActive' => $isActive,
                 'isApproved' => $isActive ? true : $currentIsApproved,
-                'status' => $isActive ? 'approved' : 'disabled',
+                'status' => $isActive ? 'approved' : 'inactive',
                 'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
             ],

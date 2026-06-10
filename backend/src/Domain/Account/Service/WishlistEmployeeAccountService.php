@@ -9,6 +9,7 @@ use Doctrine\DBAL\ParameterType;
 class WishlistEmployeeAccountService
 {
     private const STAFF_ROLE_LABEL = 'Maintenance Staff';
+    private const DEFAULT_STAFF_PASSWORD = 'staff123';
 
     public function __construct(
         private readonly Connection $connection,
@@ -121,12 +122,13 @@ class WishlistEmployeeAccountService
                 'roleDesignation' => 'ROLE_STAFF',
                 'roleLabel' => $payload['role'],
                 'accountType' => 'Employee',
-                'accountStatus' => 'pending',
-                'isApproved' => false,
+                'accountStatus' => 'approved',
+                'isApproved' => true,
                 'registeredAt' => $now,
                 'inviteSentAt' => null,
                 'inviteExpiresAt' => null,
                 'inviteAcceptedAt' => null,
+                'defaultPassword' => self::DEFAULT_STAFF_PASSWORD,
             ], 201);
         } catch (\Throwable $exception) {
             return $this->error(
@@ -149,9 +151,9 @@ class WishlistEmployeeAccountService
             'department' => $payload['role'],
             'contactNumber' => $payload['phone'],
             'clerkUserId' => null,
-            'passwordHash' => null,
-            'status' => 'pending',
-            'isApproved' => false,
+            'passwordHash' => password_hash(self::DEFAULT_STAFF_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
+            'status' => 'approved',
+            'isApproved' => true,
             'isActive' => true,
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $now,
@@ -171,7 +173,7 @@ class WishlistEmployeeAccountService
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::STRING,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::NULL,
+            'passwordHash' => ParameterType::STRING,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,

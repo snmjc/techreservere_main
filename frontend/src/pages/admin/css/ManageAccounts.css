@@ -29,6 +29,14 @@
   font-weight: 650;
 }
 
+.manage-accounts-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
 .manage-accounts-refresh-button {
   display: inline-flex;
   align-items: center;

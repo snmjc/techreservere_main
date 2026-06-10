@@ -22,7 +22,7 @@
             </svg>
             Refresh
           </button>
-          <button class="admin-wishlist-add-button" type="button" @click="openAddAccountModal">
+          <button v-if="activeTab !== 'employee'" class="admin-wishlist-add-button" type="button" @click="openAddAccountModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 5v14" />
               <path d="M5 12h14" />
@@ -137,13 +137,24 @@
                   </span>
                 </td>
                 <td>
-                  <div v-if="account.supportingDocumentData" class="admin-wishlist-proof-cell">
-                    <a
-                      :href="account.supportingDocumentData"
-                      :download="account.supportingDocumentName || 'signup-proof'"
+                  <div v-if="hasSupportingDocument(account)" class="admin-wishlist-proof-cell">
+                    <button
+                      v-if="isPdfProof(account)"
+                      class="admin-wishlist-proof-button"
+                      type="button"
+                      :disabled="previewIsLoading"
+                      @click="openProofPreview(account)"
+                    >
+                      Preview PDF
+                    </button>
+                    <button
+                      class="admin-wishlist-proof-button"
+                      type="button"
+                      :disabled="previewIsLoading"
+                      @click="downloadProof(account)"
                     >
                       Download proof
-                    </a>
+                    </button>
                   </div>
                   <span v-else class="admin-wishlist-proof-empty">N/A</span>
                 </td>
@@ -256,7 +267,7 @@
               <p><strong>Account Status:</strong> <span>{{ getStatusLabel(selectedAccount.accountStatus) }}</span></p>
               <p><strong>Account Registered:</strong> <span>{{ formatDisplayDateTime(selectedAccount.registeredAt) }}</span></p>
               <p><strong>Account Type:</strong> <span>{{ selectedAccount.accountType }}</span></p>
-              <p><strong>Proof File:</strong> <span>{{ selectedAccount.supportingDocumentName || 'N/A' }}</span></p>
+              <p v-if="shouldShowProofDetails(selectedAccount)"><strong>Proof File:</strong> <span>{{ selectedAccount.supportingDocumentName || 'N/A' }}</span></p>
             </div>
             <div class="admin-wishlist-view-account-side">
               <p><strong>Invite Sent:</strong> <span>{{ getInviteSentStatus(selectedAccount) }}</span></p>
@@ -268,14 +279,24 @@
             </div>
           </div>
 
-          <div v-if="selectedAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
-            <a
+          <div v-if="shouldShowProofDetails(selectedAccount) && hasSupportingDocument(selectedAccount)" class="admin-wishlist-proof-actions">
+            <button
+              v-if="isPdfProof(selectedAccount)"
+              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
+              type="button"
+              :disabled="previewIsLoading"
+              @click="openProofPreview(selectedAccount)"
+            >
+              Preview PDF
+            </button>
+            <button
               class="admin-wishlist-proof-link"
-              :href="selectedAccount.supportingDocumentData"
-              :download="selectedAccount.supportingDocumentName || 'signup-proof'"
+              type="button"
+              :disabled="previewIsLoading"
+              @click="downloadProof(selectedAccount)"
             >
               Download proof
-            </a>
+            </button>
           </div>
 
           <div class="admin-wishlist-modal-actions">
@@ -348,14 +369,24 @@
             </div>
           </div>
 
-          <div v-if="approvalAccount.supportingDocumentData" class="admin-wishlist-proof-actions">
-            <a
+          <div v-if="hasSupportingDocument(approvalAccount)" class="admin-wishlist-proof-actions">
+            <button
+              v-if="isPdfProof(approvalAccount)"
+              class="admin-wishlist-proof-link admin-wishlist-proof-link--secondary"
+              type="button"
+              :disabled="isProcessing || previewIsLoading"
+              @click="openProofPreview(approvalAccount)"
+            >
+              Preview PDF
+            </button>
+            <button
               class="admin-wishlist-proof-link"
-              :href="approvalAccount.supportingDocumentData"
-              :download="approvalAccount.supportingDocumentName || 'signup-proof'"
+              type="button"
+              :disabled="isProcessing || previewIsLoading"
+              @click="downloadProof(approvalAccount)"
             >
               Download proof
-            </a>
+            </button>
           </div>
 
           <label class="admin-wishlist-confirm-field">
@@ -363,7 +394,7 @@
             <input
               v-model.trim="approvalForm.confirmEmail"
               type="email"
-              :placeholder="currentAdminEmail || 'admin@fit.edu.ph'"
+              :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
               autocomplete="off"
               :disabled="isProcessing"
             />
@@ -481,9 +512,9 @@
         </section>
       </div>
 
-      <div v-if="deleteAccountRequest" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeDeleteModal">
+      <div v-if="deleteAccountRequest" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeDeleteModal()">
         <section class="admin-wishlist-denial-modal">
-          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeDeleteModal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeDeleteModal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -492,7 +523,7 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>Delete Account Request</h2>
-            <p>This will permanently remove the request and its invitation record from the database.</p>
+            <p>This will permanently remove only the selected request account from the Wishlist database and close this modal when successful.</p>
           </div>
 
           <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">
@@ -508,32 +539,37 @@
               </em>
               <div class="admin-wishlist-invite-details">
                 <p>
+                  <span>Work ID Number</span>
+                  <strong>{{ deleteAccountRequest.rawIdNumber || deleteAccountRequest.idNumber }}</strong>
+                </p>
+                <p>
                   <span>Name</span>
                   <strong>{{ deleteAccountRequest.fullName }}</strong>
                 </p>
                 <p>
-                  <span>ID Number</span>
-                  <strong>{{ deleteAccountRequest.rawIdNumber || deleteAccountRequest.idNumber }}</strong>
-                </p>
-                <p>
-                  <span>Email to delete</span>
-                  <strong>{{ deleteAccountRequest.emailAddress }}</strong>
+                  <span>Phone Number</span>
+                  <strong>{{ deleteAccountRequest.contactNumber || 'N/A' }}</strong>
                 </p>
                 <p>
                   <span>Role</span>
                   <strong>{{ deleteAccountRequest.role }}</strong>
+                </p>
+                <p>
+                  <span>Request Email</span>
+                  <strong>{{ deleteAccountRequest.emailAddress }}</strong>
                 </p>
               </div>
             </div>
           </div>
 
           <label class="admin-wishlist-confirm-field">
-            <span>Type the exact email <strong>{{ deleteAccountRequest.emailAddress }}</strong> to confirm deletion:</span>
+            <span>Type your admin email <strong>{{ currentAdminEmail || 'from your account' }}</strong> to confirm deletion:</span>
             <input
               v-model.trim="deleteConfirmEmail"
               type="email"
-              :placeholder="deleteAccountRequest.emailAddress"
+              :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
               autocomplete="off"
+              :disabled="isProcessing"
             />
           </label>
 
@@ -544,6 +580,7 @@
               type="password"
               placeholder="Admin password"
               autocomplete="current-password"
+              :disabled="isProcessing"
             />
           </label>
 
@@ -564,7 +601,60 @@
               :disabled="isProcessing || !isDeleteConfirmationReady"
               @click="deleteWishlistAccount"
             >
-              {{ isProcessing ? 'Deleting...' : 'Delete Request' }}
+              {{ isProcessing ? 'Deleting Request...' : 'Delete Request' }}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="previewAccount" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="closeProofPreview">
+        <section class="admin-wishlist-proof-modal">
+          <button class="admin-wishlist-modal-close" type="button" aria-label="Close" @click="closeProofPreview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="admin-wishlist-modal-heading">
+            <h2>Validation PDF Preview</h2>
+            <p>Review the submitted file before approving the request.</p>
+          </div>
+
+          <div class="admin-wishlist-proof-modal-meta">
+            <p><strong>Requestor:</strong> <span>{{ previewAccount.fullName }}</span></p>
+            <p><strong>File:</strong> <span>{{ previewAccount.supportingDocumentName || 'N/A' }}</span></p>
+          </div>
+
+          <p v-if="previewErrorMessage" class="admin-wishlist-add-error">{{ previewErrorMessage }}</p>
+
+          <div v-else-if="previewIsLoading" class="admin-wishlist-empty-state">
+            Loading supporting document...
+          </div>
+
+          <div v-else-if="previewDocumentUrl" class="admin-wishlist-proof-preview-frame">
+            <iframe
+              :src="previewDocumentUrl"
+              :title="previewAccount.supportingDocumentName || 'Validation PDF preview'"
+            />
+          </div>
+
+          <div class="admin-wishlist-proof-actions">
+            <button
+              v-if="hasSupportingDocument(previewAccount)"
+              class="admin-wishlist-proof-link"
+              type="button"
+              :disabled="previewIsLoading"
+              @click="downloadProof(previewAccount)"
+            >
+              Download proof
+            </button>
+            <button
+              class="admin-wishlist-close-button"
+              type="button"
+              @click="closeProofPreview"
+            >
+              Close
             </button>
           </div>
         </section>
@@ -581,6 +671,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useAuth } from '@clerk/vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
 import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
@@ -589,6 +680,8 @@ import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
+import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 import {
   filterWishlistAccounts,
   formatDisplayDateTime,
@@ -599,11 +692,13 @@ import {
   getInviteSentStatus,
   getStatusClass,
   getStatusLabel,
+  isPdfProof,
   getUniqueRequestAccounts,
   normalizeWishlistAccount,
 } from './wishlist/adminWishlistHelpers.js';
 
 const authStore = useAuthenticationStore();
+const { getToken } = useAuth();
 
 const activeTab = ref('user');
 const searchText = ref('');
@@ -616,6 +711,10 @@ const isLoading = ref(false);
 const toastMessage = ref('');
 const loadErrorMessage = ref('');
 const wishlistAccounts = ref([]);
+const previewAccount = ref(null);
+const previewDocumentUrl = ref('');
+const previewIsLoading = ref(false);
+const previewErrorMessage = ref('');
 
 const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
@@ -628,7 +727,6 @@ const wishlistTabs = computed(() => {
   return [
     { label: 'Admin', value: 'admin', count: accounts.filter((account) => account.accountType === 'Admin').length },
     { label: 'User', value: 'user', count: accounts.filter((account) => account.accountType === 'User').length },
-    { label: 'Employee', value: 'employee', count: accounts.filter((account) => account.accountType === 'Employee').length },
   ];
 });
 
@@ -698,7 +796,8 @@ function handleTabChange(tabName) {
 async function loadWishlistAccounts() {
   isLoading.value = true;
   loadErrorMessage.value = '';
-  const result = await adminWishlistApi.getWishlistAccounts(authStore.authToken);
+  const authToken = await ensureWishlistToken();
+  const result = await adminWishlistApi.getWishlistAccounts(authToken);
   if (result.success) {
     wishlistAccounts.value = result.data.users || result.data || [];
   } else {
@@ -709,13 +808,116 @@ async function loadWishlistAccounts() {
   isLoading.value = false;
 }
 
+async function ensureWishlistToken() {
+  const currentToken = normalizeAuthToken(authStore.authToken) || getStoredAuthToken();
+  if (currentToken) {
+    return currentToken;
+  }
+
+  const clerkToken = await getClerkToken(getToken).catch(() => null);
+  const normalizedClerkToken = normalizeAuthToken(clerkToken);
+  if (!normalizedClerkToken) {
+    return null;
+  }
+
+  const existingAccount = authStore.clerkAccountData || authStore.accountData;
+  if (existingAccount) {
+    authStore.setClerkAuth(normalizedClerkToken, existingAccount, { rememberSession: true });
+  }
+
+  return normalizedClerkToken;
+}
+
 function openAddAccountModal() {
   createAccountModals.value?.openForTab(activeTab.value);
 }
 
-async function handleAccountCreated(accountType) {
-  activeTab.value = accountType;
+async function openProofPreview(account) {
+  if (!hasSupportingDocument(account)) {
+    previewAccount.value = null;
+    revokePreviewDocumentUrl();
+    previewErrorMessage.value = '';
+    showToast('No validation PDF was submitted for this request.');
+    return;
+  }
+
+  previewAccount.value = account;
+  revokePreviewDocumentUrl();
+  previewErrorMessage.value = '';
+
+  if (!isPdfProof(account)) {
+    previewErrorMessage.value = 'This file is not available for in-app PDF preview. Please use the download button instead.';
+    return;
+  }
+
+  previewIsLoading.value = true;
+  const result = await adminWishlistApi.getSupportingDocumentBlob(account.accountIdentifier, authStore.authToken);
+  previewIsLoading.value = false;
+
+  if (!result.success) {
+    previewErrorMessage.value = result.error || 'Unable to load the supporting document preview.';
+    return;
+  }
+
+  previewDocumentUrl.value = URL.createObjectURL(result.data.blob);
+}
+
+function closeProofPreview() {
+  previewAccount.value = null;
+  revokePreviewDocumentUrl();
+  previewErrorMessage.value = '';
+}
+
+async function downloadProof(account) {
+  if (!hasSupportingDocument(account) || previewIsLoading.value) {
+    return;
+  }
+
+  previewIsLoading.value = true;
+  const result = await adminWishlistApi.getSupportingDocumentBlob(account.accountIdentifier, authStore.authToken);
+  previewIsLoading.value = false;
+
+  if (!result.success) {
+    showToast(result.error || 'Unable to download the supporting document.');
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(result.data.blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = account.supportingDocumentName || 'signup-proof';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+}
+
+function hasSupportingDocument(account) {
+  return Boolean(account?.supportingDocumentName && account?.supportingDocumentPath);
+}
+
+function shouldShowProofDetails(account) {
+  return account?.accountType !== 'Admin';
+}
+
+function revokePreviewDocumentUrl() {
+  if (previewDocumentUrl.value) {
+    URL.revokeObjectURL(previewDocumentUrl.value);
+    previewDocumentUrl.value = '';
+  }
+}
+
+async function handleAccountCreated(payload) {
+  const accountType = typeof payload === 'string' ? payload : payload?.type;
+  const defaultPassword = typeof payload === 'object' ? payload?.data?.defaultPassword : '';
+
+  activeTab.value = accountType || 'admin';
   await loadWishlistAccounts();
+  if (accountType === 'admin' && defaultPassword) {
+    showToast(`Admin account created. Default password: ${defaultPassword}`);
+    return;
+  }
+
   showToast('Account created!');
 }
 

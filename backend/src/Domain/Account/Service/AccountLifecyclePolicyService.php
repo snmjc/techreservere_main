@@ -6,12 +6,12 @@ class AccountLifecyclePolicyService
 {
     public function resolveAccountStatus(bool $isActive, string $status, bool $isApproved): string
     {
-        $normalized = strtolower($status);
-        if (!$isActive || $normalized === 'disabled') {
+        $normalized = strtolower(trim($status));
+        if (!$isActive || in_array($normalized, ['disabled', 'inactive', 'suspended'], true)) {
             return 'Disabled';
         }
 
-        if ($normalized === 'pending' || !$isApproved) {
+        if ($normalized === 'pending' || $normalized === 'invited' || !$isApproved) {
             return 'Pending';
         }
 

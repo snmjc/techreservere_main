@@ -2,19 +2,23 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class PublicSignupRequestService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountConflictLookupService $accountConflictLookupService
+        private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly SignupSupportingDocumentValidationService $signupSupportingDocumentValidationService,
+        private readonly SignupSupportingDocumentStorageService $signupSupportingDocumentStorageService
     ) {
     }
 
-    public function create(array $requestBody): array
+    public function create(array $requestBody, ?UploadedFile $supportingDocumentFile = null): array
     {
         $payload = $this->normalizeRequestBody($requestBody);
         $validationError = $this->validateRequest($payload);
@@ -27,7 +31,7 @@ class PublicSignupRequestService
         $existingEmailAccount = $this->accountConflictLookupService->findByEmail($payload['emailAddress']);
 
         if ($existingEmailAccount) {
-            return $this->handleExistingEmailAccount($existingEmailAccount, $payload, $roleLabel);
+            return $this->handleExistingEmailAccount($existingEmailAccount, $payload, $roleLabel, $supportingDocumentFile);
         }
 
         $existingIdNumberAccount = $this->accountConflictLookupService->findByIdNumber($payload['idNumber']);
@@ -35,7 +39,12 @@ class PublicSignupRequestService
             return $this->duplicateIdNumberError($existingIdNumberAccount);
         }
 
-        return $this->createNewSignupRequest($payload, $roleLabel);
+        $documentError = $this->signupSupportingDocumentValidationService->validateRequiredUpload($payload, $supportingDocumentFile);
+        if ($documentError !== null) {
+            return $this->error('ValidationError', $documentError, 422);
+        }
+
+        return $this->createNewSignupRequest($payload, $roleLabel, $supportingDocumentFile);
     }
 
     private function normalizeRequestBody(array $requestBody): array
@@ -52,10 +61,7 @@ class PublicSignupRequestService
             'department' => trim($requestBody['department'] ?? ($requestBody['role'] ?? 'Student')),
             'passwordText' => $passwordText,
             'confirmPasswordText' => (string)($requestBody['confirmPasswordText'] ?? $requestBody['confirmPassword'] ?? $passwordText),
-            'acceptedPrivacy' => (bool)($requestBody['acceptedPrivacy'] ?? false),
-            'supportingDocumentName' => trim((string)($requestBody['supportingDocumentName'] ?? '')),
-            'supportingDocumentMimeType' => trim((string)($requestBody['supportingDocumentMimeType'] ?? '')),
-            'supportingDocumentData' => trim((string)($requestBody['supportingDocumentData'] ?? '')),
+            'acceptedPrivacy' => filter_var($requestBody['acceptedPrivacy'] ?? false, FILTER_VALIDATE_BOOL),
         ];
     }
 
@@ -93,43 +99,18 @@ class PublicSignupRequestService
             return 'Passwords do not match.';
         }
 
-        return $this->validateSupportingDocument($payload);
-    }
-
-    private function validateSupportingDocument(array $payload): ?string
-    {
-        $roleLabel = strtolower($payload['role']) === 'faculty' ? 'Faculty' : 'Student';
-
-        if ($roleLabel === 'Student' && $payload['supportingDocumentName'] === '') {
-            return 'PDF proof is required for student signup requests.';
-        }
-
-        if (
-            $roleLabel === 'Student'
-            && !$this->isPdfSupportingDocument(
-                $payload['supportingDocumentName'],
-                $payload['supportingDocumentMimeType'],
-                $payload['supportingDocumentData']
-            )
-        ) {
-            return 'Student proof must be uploaded as a PDF file.';
-        }
-
-        if ($payload['supportingDocumentName'] !== '' && $payload['supportingDocumentData'] === '') {
-            return 'Supporting file data is missing.';
-        }
-
-        if ($payload['supportingDocumentData'] !== '' && strlen($payload['supportingDocumentData']) > 7000000) {
-            return 'Supporting file is too large. Please upload a file up to 5 MB.';
-        }
-
         return null;
     }
 
-    private function handleExistingEmailAccount(array $existingEmailAccount, array $payload, string $roleLabel): array
+    private function handleExistingEmailAccount(
+        array $existingEmailAccount,
+        array $payload,
+        string $roleLabel,
+        ?UploadedFile $supportingDocumentFile = null
+    ): array
     {
         if ($this->isReusablePendingSignupRequest($existingEmailAccount, $payload['idNumber'])) {
-            return $this->reusePendingSignupRequest($existingEmailAccount, $payload, $roleLabel);
+            return $this->reusePendingSignupRequest($existingEmailAccount, $payload, $roleLabel, $supportingDocumentFile);
         }
 
         return $this->error(
@@ -140,30 +121,65 @@ class PublicSignupRequestService
         );
     }
 
-    private function reusePendingSignupRequest(array $existingEmailAccount, array $payload, string $roleLabel): array
+    private function reusePendingSignupRequest(
+        array $existingEmailAccount,
+        array $payload,
+        string $roleLabel,
+        ?UploadedFile $supportingDocumentFile = null
+    ): array
     {
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $documentError = $this->signupSupportingDocumentValidationService->validateRequiredUpload($payload, $supportingDocumentFile);
+        if ($documentError !== null) {
+            return $this->error('ValidationError', $documentError, 422);
+        }
 
-        $this->connection->executeStatement(
-            'UPDATE accounts
-             SET last_name = :lastName,
-                 first_name = :firstName,
-                 username = :username,
-                 department = :department,
-                 clerk_user_id = :clerkUserId,
-                 password_hash = :passwordHash,
-                 signup_supporting_document_name = :supportingDocumentName,
-                 signup_supporting_document_mime_type = :supportingDocumentMimeType,
-                 signup_supporting_document_data = :supportingDocumentData,
-                 status = :status,
-                 is_approved = :isApproved,
-                 is_active = :isActive,
-                 created_timestamp = :createdTimestamp,
-                 updated_timestamp = :updatedTimestamp
-             WHERE account_identifier = :accountIdentifier',
-            $this->buildReusableSignupParameters($existingEmailAccount, $payload, $now),
-            $this->buildReusableSignupTypes($payload)
-        );
+        $now = AppClock::now()->format('Y-m-d H:i:s');
+        $storedDocument = $this->storeSupportingDocumentIfPresent($payload, $supportingDocumentFile);
+        if (($storedDocument['success'] ?? false) !== true) {
+            return $storedDocument;
+        }
+
+        $existingFilePath = !empty($existingEmailAccount['signup_supporting_document_path'])
+            ? (string)$existingEmailAccount['signup_supporting_document_path']
+            : null;
+
+        try {
+            $this->connection->executeStatement(
+                'UPDATE accounts
+                 SET last_name = :lastName,
+                     first_name = :firstName,
+                     username = :username,
+                     department = :department,
+                     clerk_user_id = :clerkUserId,
+                     password_hash = :passwordHash,
+                     signup_supporting_document_name = :supportingDocumentName,
+                     signup_supporting_document_mime_type = :supportingDocumentMimeType,
+                     signup_supporting_document_path = :supportingDocumentPath,
+                     signup_supporting_document_size_bytes = :supportingDocumentSizeBytes,
+                     signup_supporting_document_uploaded_at = :supportingDocumentUploadedAt,
+                     signup_supporting_document_verification_status = :supportingDocumentVerificationStatus,
+                     status = :status,
+                     is_approved = :isApproved,
+                     is_active = :isActive,
+                     created_timestamp = :createdTimestamp,
+                     updated_timestamp = :updatedTimestamp
+                 WHERE account_identifier = :accountIdentifier',
+                $this->buildReusableSignupParameters($existingEmailAccount, $payload, $now, $storedDocument['data']),
+                $this->buildReusableSignupTypes($storedDocument['data'])
+            );
+        } catch (\Throwable $exception) {
+            $this->deleteStoredDocument($storedDocument['data']['filePath'] ?? null);
+
+            return $this->error(
+                'CreateSignupRequestFailed',
+                'Failed to update signup request: ' . $exception->getMessage(),
+                500
+            );
+        }
+
+        if (($storedDocument['data']['filePath'] ?? null) !== null) {
+            $this->deleteStoredDocument($existingFilePath);
+        }
 
         return $this->success([
             'accountIdentifier' => (int)$existingEmailAccount['account_identifier'],
@@ -182,24 +198,30 @@ class PublicSignupRequestService
         ]);
     }
 
-    private function createNewSignupRequest(array $payload, string $roleLabel): array
+    private function createNewSignupRequest(array $payload, string $roleLabel, ?UploadedFile $supportingDocumentFile): array
     {
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $now = AppClock::now()->format('Y-m-d H:i:s');
+        $storedDocument = $this->storeSupportingDocumentIfPresent($payload, $supportingDocumentFile);
+        if (($storedDocument['success'] ?? false) !== true) {
+            return $storedDocument;
+        }
 
         try {
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
-                     signup_supporting_document_name, signup_supporting_document_mime_type, signup_supporting_document_data,
+                     signup_supporting_document_name, signup_supporting_document_mime_type, signup_supporting_document_path,
+                     signup_supporting_document_size_bytes, signup_supporting_document_uploaded_at, signup_supporting_document_verification_status,
                      failed_login_attempts, created_timestamp, updated_timestamp)
                 VALUES
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
-                     :supportingDocumentName, :supportingDocumentMimeType, :supportingDocumentData,
+                     :supportingDocumentName, :supportingDocumentMimeType, :supportingDocumentPath,
+                     :supportingDocumentSizeBytes, :supportingDocumentUploadedAt, :supportingDocumentVerificationStatus,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildNewSignupParameters($payload, $roleLabel, $now),
-                $this->buildNewSignupTypes($payload)
+                $this->buildNewSignupParameters($payload, $roleLabel, $now, $storedDocument['data']),
+                $this->buildNewSignupTypes($storedDocument['data'])
             );
 
             return $this->success([
@@ -218,6 +240,8 @@ class PublicSignupRequestService
                 'registeredAt' => $now,
             ], 201);
         } catch (\Throwable $exception) {
+            $this->deleteStoredDocument($storedDocument['data']['filePath'] ?? null);
+
             return $this->error(
                 'CreateSignupRequestFailed',
                 'Failed to create signup request: ' . $exception->getMessage(),
@@ -236,7 +260,12 @@ class PublicSignupRequestService
         );
     }
 
-    private function buildReusableSignupParameters(array $existingEmailAccount, array $payload, string $now): array
+    private function buildReusableSignupParameters(
+        array $existingEmailAccount,
+        array $payload,
+        string $now,
+        array $storedDocument
+    ): array
     {
         return [
             'lastName' => $payload['lastName'],
@@ -245,9 +274,12 @@ class PublicSignupRequestService
             'department' => strtolower($payload['role']) === 'faculty' ? 'Faculty' : 'Student',
             'clerkUserId' => null,
             'passwordHash' => password_hash($payload['passwordText'], PASSWORD_BCRYPT),
-            'supportingDocumentName' => $payload['supportingDocumentName'] ?: null,
-            'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] ?: null,
-            'supportingDocumentData' => $payload['supportingDocumentData'] ?: null,
+            'supportingDocumentName' => $storedDocument['fileName'] ?? null,
+            'supportingDocumentMimeType' => $storedDocument['fileType'] ?? null,
+            'supportingDocumentPath' => $storedDocument['filePath'] ?? null,
+            'supportingDocumentSizeBytes' => $storedDocument['fileSize'] ?? null,
+            'supportingDocumentUploadedAt' => $storedDocument['uploadDate'] ?? null,
+            'supportingDocumentVerificationStatus' => $storedDocument['verificationStatus'] ?? null,
             'status' => 'pending',
             'isApproved' => false,
             'isActive' => true,
@@ -257,7 +289,7 @@ class PublicSignupRequestService
         ];
     }
 
-    private function buildReusableSignupTypes(array $payload): array
+    private function buildReusableSignupTypes(array $storedDocument): array
     {
         return [
             'lastName' => ParameterType::STRING,
@@ -266,9 +298,12 @@ class PublicSignupRequestService
             'department' => ParameterType::STRING,
             'clerkUserId' => ParameterType::NULL,
             'passwordHash' => ParameterType::STRING,
-            'supportingDocumentName' => $payload['supportingDocumentName'] === '' ? ParameterType::NULL : ParameterType::STRING,
-            'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] === '' ? ParameterType::NULL : ParameterType::STRING,
-            'supportingDocumentData' => $payload['supportingDocumentData'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentName' => empty($storedDocument['fileName']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentMimeType' => empty($storedDocument['fileType']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentPath' => empty($storedDocument['filePath']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentSizeBytes' => !isset($storedDocument['fileSize']) ? ParameterType::NULL : ParameterType::INTEGER,
+            'supportingDocumentUploadedAt' => empty($storedDocument['uploadDate']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentVerificationStatus' => empty($storedDocument['verificationStatus']) ? ParameterType::NULL : ParameterType::STRING,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
@@ -278,7 +313,7 @@ class PublicSignupRequestService
         ];
     }
 
-    private function buildNewSignupParameters(array $payload, string $roleLabel, string $now): array
+    private function buildNewSignupParameters(array $payload, string $roleLabel, string $now, array $storedDocument): array
     {
         return [
             'lastName' => $payload['lastName'],
@@ -294,16 +329,19 @@ class PublicSignupRequestService
             'status' => 'pending',
             'isApproved' => false,
             'isActive' => true,
-            'supportingDocumentName' => $payload['supportingDocumentName'] ?: null,
-            'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] ?: null,
-            'supportingDocumentData' => $payload['supportingDocumentData'] ?: null,
+            'supportingDocumentName' => $storedDocument['fileName'] ?? null,
+            'supportingDocumentMimeType' => $storedDocument['fileType'] ?? null,
+            'supportingDocumentPath' => $storedDocument['filePath'] ?? null,
+            'supportingDocumentSizeBytes' => $storedDocument['fileSize'] ?? null,
+            'supportingDocumentUploadedAt' => $storedDocument['uploadDate'] ?? null,
+            'supportingDocumentVerificationStatus' => $storedDocument['verificationStatus'] ?? null,
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $now,
             'updatedTimestamp' => $now,
         ];
     }
 
-    private function buildNewSignupTypes(array $payload): array
+    private function buildNewSignupTypes(array $storedDocument): array
     {
         return [
             'lastName' => ParameterType::STRING,
@@ -319,23 +357,16 @@ class PublicSignupRequestService
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
-            'supportingDocumentName' => $payload['supportingDocumentName'] === '' ? ParameterType::NULL : ParameterType::STRING,
-            'supportingDocumentMimeType' => $payload['supportingDocumentMimeType'] === '' ? ParameterType::NULL : ParameterType::STRING,
-            'supportingDocumentData' => $payload['supportingDocumentData'] === '' ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentName' => empty($storedDocument['fileName']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentMimeType' => empty($storedDocument['fileType']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentPath' => empty($storedDocument['filePath']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentSizeBytes' => !isset($storedDocument['fileSize']) ? ParameterType::NULL : ParameterType::INTEGER,
+            'supportingDocumentUploadedAt' => empty($storedDocument['uploadDate']) ? ParameterType::NULL : ParameterType::STRING,
+            'supportingDocumentVerificationStatus' => empty($storedDocument['verificationStatus']) ? ParameterType::NULL : ParameterType::STRING,
             'failedLoginAttempts' => ParameterType::INTEGER,
             'createdTimestamp' => ParameterType::STRING,
             'updatedTimestamp' => ParameterType::STRING,
         ];
-    }
-
-    private function isPdfSupportingDocument(string $documentName, string $mimeType, string $documentData): bool
-    {
-        $lowerName = strtolower($documentName);
-        $lowerMimeType = strtolower($mimeType);
-
-        return str_ends_with($lowerName, '.pdf')
-            && ($lowerMimeType === '' || $lowerMimeType === 'application/pdf')
-            && str_starts_with($documentData, 'data:application/pdf;base64,');
     }
 
     private function isReusablePendingSignupRequest(array $account, string $idNumber): bool
@@ -361,6 +392,30 @@ class PublicSignupRequestService
 
         $normalized = strtolower(trim((string)$value));
         return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+
+    private function storeSupportingDocumentIfPresent(array $payload, ?UploadedFile $supportingDocumentFile): array
+    {
+        if ($supportingDocumentFile === null) {
+            return $this->success([], 200);
+        }
+
+        try {
+            return $this->success($this->signupSupportingDocumentStorageService->store(
+                $supportingDocumentFile
+            ));
+        } catch (\Throwable $exception) {
+            return $this->error(
+                'SupportingDocumentUploadFailed',
+                'Unable to upload the supporting document: ' . $exception->getMessage(),
+                500
+            );
+        }
+    }
+
+    private function deleteStoredDocument(?string $relativePath): void
+    {
+        $this->signupSupportingDocumentStorageService->delete($relativePath);
     }
 
     private function success(array $data, int $status = 200): array

@@ -41,13 +41,6 @@
 
     <div class="admin-main-area">
       <header class="admin-topbar">
-        <div class="admin-topbar-page">
-          <div>
-            <p class="admin-topbar-eyebrow">{{ portalSubtitle }}</p>
-            <h2 class="admin-topbar-title">{{ currentPageTitle }}</h2>
-          </div>
-        </div>
-
         <div class="admin-topbar-actions">
           <NotificationDropdown />
           <div class="admin-topbar-user">
@@ -70,11 +63,8 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuth } from '@clerk/vue';
+import { useRoute } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
-import { redirectToPostLogoutHome } from '@/modules/authentication/utils/logoutRedirect.js';
 import NotificationDropdown from '@/components/NotificationDropdown.vue';
 import SettingsDropdown from '@/components/SettingsDropdown.vue';
 import './adminSidebarLayout.css';
@@ -97,13 +87,7 @@ const props = defineProps({
 });
 
 const currentRoute = useRoute();
-const router = useRouter();
 const authStore = useAuthenticationStore();
-const { signOut } = useAuth();
-
-const currentNavigationItem = computed(() => {
-  return props.navigationItems.find((item) => item.routeName === currentRoute.name);
-});
 
 const isAdminPortal = computed(() => {
   return props.navigationItems.some((item) => String(item.routeName).startsWith('admin'));
@@ -116,14 +100,6 @@ const portalLabel = computed(() => {
   if (isEmployeePortal.value) return 'Employee Portal';
   return 'Borrower Portal';
 });
-
-const portalSubtitle = computed(() => {
-  if (isAdminPortal.value) return 'System administrator';
-  if (isEmployeePortal.value) return 'Work log workspace';
-  return 'Reservation workspace';
-});
-
-const currentPageTitle = computed(() => currentNavigationItem.value?.label || currentRoute.meta?.title || 'TechReserve');
 
 /**
  * @function displayedNameLabel
@@ -165,24 +141,5 @@ const userProfilePhoto = computed(() => {
  */
 function isActiveRoute(routeName) {
   return currentRoute.name === routeName;
-}
-
-async function handleLogout() {
-  try {
-    await signOut();
-  } catch (e) {
-    // Continue local logout even if Clerk has no active session.
-  }
-
-  authStore.performLogout();
-
-  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
-  try {
-    await Promise.race([signOutClerk(signOut), timeoutPromise]);
-  } catch (e) {
-    // ignore
-  } finally {
-    redirectToPostLogoutHome();
-  }
 }
 </script>

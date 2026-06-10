@@ -13,60 +13,47 @@ class EquipmentRepository extends ServiceEntityRepository
         parent::__construct($registry, EquipmentEntity::class);
     }
 
-    // ===== AI GENERATED: findAllEquipment =====
-    // Purpose: Retrieve all equipment records
-    // Inputs: none
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query all records from equipment table
-    // 2. Return array of entities
-
     /** @return EquipmentEntity[] */
     public function findAllEquipment(): array
     {
-        return $this->findAll();
+        return $this->createQueryBuilder('equip')
+            ->orderBy('equip.equipmentName', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
-
-    // ===== AI GENERATED: findAvailableEquipment =====
-    // Purpose: Retrieve equipment with Active status and available quantity > 0
-    // Inputs: none
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query equipment where operational_status = Active and available_quantity > 0
-    // 2. Return filtered array
 
     /** @return EquipmentEntity[] */
     public function findAvailableEquipment(): array
     {
         return $this->createQueryBuilder('equip')
-            ->where('equip.operationalStatus = :activeStatus')
-            ->andWhere('equip.availableQuantity > 0')
-            ->setParameter('activeStatus', 'Active')
+            ->where('equip.availableQuantity > 0')
+            ->andWhere('equip.equipmentState = :equipmentState OR equip.operationalStatus = :legacyStatus')
+            ->setParameter('equipmentState', 'Available')
+            ->setParameter('legacyStatus', 'Active')
+            ->orderBy('equip.equipmentName', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-    // ===== AI GENERATED: findByCategoryName =====
-    // Purpose: Retrieve equipment filtered by category
-    // Inputs: categoryName (string)
-    // Returns: EquipmentEntity[]
-    // Flow:
-    // 1. Query equipment by category_name
-    // 2. Return filtered array
-
-    /** @return EquipmentEntity[] */
-    public function findByCategoryName(string $categoryName): array
+    public function findOneByBarcode(string $barcode): ?EquipmentEntity
     {
-        return $this->findBy(['categoryName' => $categoryName]);
+        return $this->createQueryBuilder('equip')
+            ->where('LOWER(equip.barcode) = LOWER(:barcode)')
+            ->setParameter('barcode', trim($barcode))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
-    // ===== AI GENERATED: persistEquipment =====
-    // Purpose: Persist a new or updated equipment entity
-    // Inputs: equipmentEntity (EquipmentEntity)
-    // Returns: void
-    // Flow:
-    // 1. Persist entity via EntityManager
-    // 2. Flush changes
+    public function findOneByAssetId(string $assetId): ?EquipmentEntity
+    {
+        return $this->createQueryBuilder('equip')
+            ->where('LOWER(equip.assetId) = LOWER(:assetId)')
+            ->setParameter('assetId', trim($assetId))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
     public function persistEquipment(EquipmentEntity $equipmentEntity): void
     {
@@ -74,14 +61,6 @@ class EquipmentRepository extends ServiceEntityRepository
         $entityManager->persist($equipmentEntity);
         $entityManager->flush();
     }
-
-    // ===== AI GENERATED: removeEquipment =====
-    // Purpose: Remove an equipment entity from the database
-    // Inputs: equipmentEntity (EquipmentEntity)
-    // Returns: void
-    // Flow:
-    // 1. Remove entity via EntityManager
-    // 2. Flush changes
 
     public function removeEquipment(EquipmentEntity $equipmentEntity): void
     {

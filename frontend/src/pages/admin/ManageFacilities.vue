@@ -4,10 +4,8 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Heading -->
     <h2 class="manage-facilities-page-heading">Facilities</h2>
 
-    <!-- Tabs: Venue | Equipment -->
     <div class="manage-facilities-tabs-row">
       <button
         class="manage-facilities-tab-button"
@@ -27,7 +25,6 @@
 
       <div class="manage-facilities-toolbar-spacer"></div>
 
-      <!-- Action Buttons -->
       <button class="manage-facilities-edit-button" @click="handleEditFacility">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -44,7 +41,6 @@
       </button>
     </div>
 
-    <!-- Filter Pills -->
     <div class="manage-facilities-filter-row">
       <button
         class="manage-facilities-filter-pill"
@@ -69,7 +65,6 @@
       </button>
     </div>
 
-    <!-- Search and Sort Row -->
     <div class="manage-facilities-search-sort-row">
       <div class="manage-facilities-search-group">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -80,7 +75,7 @@
           v-model="searchQuery"
           type="text"
           class="manage-facilities-search-input"
-          placeholder="Search by venue name or floor..."
+          :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name, location, or floor...' : 'Search by equipment name, type, brand, barcode, or asset ID...'"
         />
       </div>
       <div class="manage-facilities-sort-group">
@@ -92,15 +87,10 @@
       </div>
     </div>
 
-    <!-- Showing Row + Legend -->
     <div class="manage-facilities-showing-row">
       <div class="manage-facilities-showing-group">
         <label class="manage-facilities-showing-label">Showing:</label>
-        <select
-          id="facilityShowingSelect"
-          v-model="showingFilterValue"
-          class="manage-facilities-showing-select"
-        >
+        <select id="facilityShowingSelect" v-model="showingFilterValue" class="manage-facilities-showing-select">
           <option value="all">All</option>
         </select>
       </div>
@@ -116,30 +106,42 @@
       </div>
     </div>
 
-    <!-- Venue Tab Content -->
-    <div v-if="loading" class="manage-facilities-loading">Loading venues...</div>
-    <FacilityVenueListComponent
-      v-else-if="activeFacilityTab === 'venue'"
-      :venue-floor-groups="venueFloorGroups"
-      :availability-filter="availabilityFilter"
-      @edit-venue="handleEditVenue"
-      @delete-venue="handleDeleteVenue"
-      @toggle-availability="handleToggleAvailability"
-    />
+    <div v-if="activeFacilityTab === 'venue'">
+      <div v-if="loading" class="manage-facilities-loading">Loading venues...</div>
+      <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+      <template v-else>
+        <VenueAvailabilityCalendarComponent
+          :venues="calendarVenueRecords"
+          :selected-date="selectedVenueCalendarDate"
+          @update:selected-date="selectedVenueCalendarDate = $event"
+        />
+        <FacilityVenueListComponent
+          :venue-floor-groups="venueFloorGroups"
+          :availability-filter="availabilityFilter"
+          @view-venue="handleViewVenue"
+          @edit-venue="handleEditVenue"
+          @delete-venue="handleDeleteVenue"
+        />
+      </template>
+    </div>
 
-    <!-- Equipment Tab Content -->
+    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
+    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <FacilityEquipmentGridComponent
-      v-if="activeFacilityTab === 'equipment'"
-      :equipment-categories="equipmentCategoriesList"
+      v-else-if="activeFacilityTab === 'equipment'"
+      :equipment-records="filteredEquipmentRecords"
       :availability-filter="availabilityFilter"
+      :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
+      @edit-equipment="handleEditEquipment"
+      @delete-equipment="openDeleteEquipmentModal"
+      @view-equipment="handleViewEquipment"
+      @select-equipment="handleSelectEquipment"
     />
 
-    <!-- Footer -->
     <div class="manage-facilities-page-footer">
       &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
     </div>
 
-    <!-- Venue Modal -->
     <VenueModalComponent
       :show="showVenueModal"
       :venue="selectedVenue"
@@ -147,7 +149,28 @@
       @saved="handleVenueModalSaved"
     />
 
-    <!-- Equipment Modal -->
+    <VenueDetailsModalComponent
+      :show="Boolean(viewVenueRecord || viewVenueLoading || viewVenueError)"
+      :venue="viewVenueRecord"
+      :error-message="viewVenueLoading ? 'Loading venue details...' : viewVenueError"
+      @close="closeVenueDetails"
+    />
+
+    <VenueDeleteModalComponent
+      :show="Boolean(deleteVenueRecord)"
+      :venue="deleteVenueRecord"
+      :current-admin-email="currentAdminEmail"
+      :confirm-email="deleteConfirmEmail"
+      :confirm-password="deleteConfirmPassword"
+      :error-message="deleteVenueError"
+      :is-deleting="isDeletingVenue"
+      :is-ready="isDeleteVenueReady"
+      @update:confirm-email="deleteConfirmEmail = $event"
+      @update:confirm-password="deleteConfirmPassword = $event"
+      @close="closeDeleteVenueModal"
+      @confirm="confirmDeleteVenue"
+    />
+
     <EquipmentModalComponent
       :show="showEquipmentModal"
       :equipment="selectedEquipment"
@@ -155,18 +178,28 @@
       @saved="handleEquipmentModalSaved"
     />
 
+    <EquipmentDetailsModalComponent
+      :show="Boolean(viewEquipmentRecord)"
+      :equipment="viewEquipmentRecord"
+      title="View Equipment Details"
+      subtitle="Equipment details for admin review and editing."
+      secondary-action-label="Edit Equipment"
+      @close="closeEquipmentDetails"
+      @secondary-action="openEditFromDetails"
+    />
+
     <div
-      v-if="deleteVenueRecord"
+      v-if="deleteEquipmentRecord"
       class="manage-facilities-modal-overlay"
-      @click.self="!isDeletingVenue && closeDeleteVenueModal()"
+      @click.self="!isDeletingEquipment && closeDeleteEquipmentModal()"
     >
-      <section class="manage-facilities-delete-modal">
+      <section class="manage-facilities-delete-modal manage-facilities-equipment-details-modal">
         <button
           class="manage-facilities-modal-close"
           type="button"
           aria-label="Close"
-          :disabled="isDeletingVenue"
-          @click="closeDeleteVenueModal"
+          :disabled="isDeletingEquipment"
+          @click="closeDeleteEquipmentModal"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6 6 18" />
@@ -175,20 +208,38 @@
         </button>
 
         <div class="manage-facilities-modal-heading">
-          <h2>Delete Venue</h2>
-          <p>This action permanently removes the venue from TechReserve.</p>
+          <h2>Delete Equipment</h2>
+          <p>This action permanently removes the selected equipment record from TechReserve.</p>
         </div>
 
-        <div class="manage-facilities-delete-summary">
-          <p><strong>Venue</strong><span>{{ deleteVenueRecord.venueName }}</span></p>
-          <p><strong>Location</strong><span>{{ deleteVenueRecord.venueLocation || 'N/A' }}</span></p>
-          <p><strong>Floor</strong><span>{{ deleteVenueRecord.floorLevel || 'N/A' }}</span></p>
+        <div class="manage-facilities-equipment-details-layout">
+          <div class="manage-facilities-equipment-photo-card">
+            <img
+              :src="resolveEquipmentPhoto(deleteEquipmentRecord)"
+              :alt="`${formatEquipmentText(deleteEquipmentRecord.equipmentName)} photo`"
+              class="manage-facilities-equipment-photo"
+            />
+          </div>
+
+          <dl class="manage-facilities-equipment-details-grid">
+            <div><dt>Equipment Name</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentName) }}</dd></div>
+            <div><dt>Equipment Type/Category</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentCategory || deleteEquipmentRecord.categoryName) }}</dd></div>
+            <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.equipmentBrand) }}</dd></div>
+            <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(deleteEquipmentRecord.availableQuantity) }}</dd></div>
+            <div><dt>Operational Status</dt><dd>{{ formatEquipmentStatus(deleteEquipmentRecord) }}</dd></div>
+            <div><dt>Barcode</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.barcode) }}</dd></div>
+            <div><dt>Asset ID</dt><dd>{{ formatEquipmentText(deleteEquipmentRecord.assetId || deleteEquipmentRecord.serialNumber) }}</dd></div>
+            <div class="manage-facilities-equipment-details-grid__full">
+              <dt>Description</dt>
+              <dd>{{ formatEquipmentText(deleteEquipmentRecord.description || deleteEquipmentRecord.scheduleDescription) }}</dd>
+            </div>
+          </dl>
         </div>
 
         <label class="manage-facilities-confirm-field">
           <span>Type your admin email to confirm deletion:</span>
           <input
-            v-model.trim="deleteConfirmEmail"
+            v-model.trim="deleteEquipmentConfirmEmail"
             type="email"
             :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
             autocomplete="off"
@@ -198,31 +249,31 @@
         <label class="manage-facilities-confirm-field">
           <span>Type your admin password to confirm deletion:</span>
           <input
-            v-model="deleteConfirmPassword"
+            v-model="deleteEquipmentConfirmPassword"
             type="password"
             placeholder="Admin password"
             autocomplete="current-password"
           />
         </label>
 
-        <p v-if="deleteVenueError" class="manage-facilities-modal-error">{{ deleteVenueError }}</p>
+        <p v-if="deleteEquipmentError" class="manage-facilities-modal-error">{{ deleteEquipmentError }}</p>
 
         <div class="manage-facilities-modal-actions">
           <button
             class="manage-facilities-cancel-button"
             type="button"
-            :disabled="isDeletingVenue"
-            @click="closeDeleteVenueModal"
+            :disabled="isDeletingEquipment"
+            @click="closeDeleteEquipmentModal"
           >
             Cancel
           </button>
           <button
             class="manage-facilities-delete-confirm-button"
             type="button"
-            :disabled="isDeletingVenue || !isDeleteVenueReady"
-            @click="confirmDeleteVenue"
+            :disabled="isDeletingEquipment || !isDeleteEquipmentReady"
+            @click="confirmDeleteEquipment"
           >
-            {{ isDeletingVenue ? 'Deleting...' : 'Delete Venue' }}
+            {{ isDeletingEquipment ? 'Deleting...' : 'Delete Equipment' }}
           </button>
         </div>
       </section>
@@ -231,17 +282,31 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ManageFacilities.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import FacilityVenueListComponent from '@/modules/facility/components/FacilityVenueListComponent.vue';
 import FacilityEquipmentGridComponent from '@/modules/facility/components/FacilityEquipmentGridComponent.vue';
+import VenueAvailabilityCalendarComponent from '@/modules/facility/components/VenueAvailabilityCalendarComponent.vue';
+import VenueDeleteModalComponent from '@/modules/facility/components/VenueDeleteModalComponent.vue';
+import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
+import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
+import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import {
+  deriveVenueAvailabilityForDate,
+} from '@/modules/facility/utils/venueFormValidation.js';
+import {
+  formatEquipmentQuantity,
+  formatEquipmentStatus,
+  formatEquipmentText,
+  resolveEquipmentPhoto,
+} from '@/modules/facility/utils/equipmentPresentation.js';
 
 const authStore = useAuthenticationStore();
 const activeFacilityTab = ref('venue');
@@ -253,10 +318,26 @@ const searchQuery = ref('');
 const showVenueModal = ref(false);
 const showEquipmentModal = ref(false);
 const selectedVenue = ref(null);
+const selectedVenueCard = ref(null);
 const selectedEquipment = ref(null);
+const selectedEquipmentCard = ref(null);
+const viewEquipmentRecord = ref(null);
+const viewVenueRecord = ref(null);
+const viewVenueLoading = ref(false);
+const viewVenueError = ref('');
 
 const venuesList = ref([]);
+const equipmentList = ref([]);
 const loading = ref(false);
+const venueError = ref('');
+const equipmentLoading = ref(false);
+const equipmentError = ref('');
+const selectedVenueCalendarDate = ref(getTodayDateInputValue());
+const deleteEquipmentRecord = ref(null);
+const deleteEquipmentConfirmEmail = ref('');
+const deleteEquipmentConfirmPassword = ref('');
+const deleteEquipmentError = ref('');
+const isDeletingEquipment = ref(false);
 const deleteVenueRecord = ref(null);
 const deleteConfirmEmail = ref('');
 const deleteConfirmPassword = ref('');
@@ -266,195 +347,240 @@ const isDeletingVenue = ref(false);
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
 );
+
 const isDeleteVenueReady = computed(() =>
   Boolean(deleteVenueRecord.value)
   && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
   && deleteConfirmPassword.value.trim() !== ''
 );
 
+const isDeleteEquipmentReady = computed(() =>
+  Boolean(deleteEquipmentRecord.value)
+  && deleteEquipmentConfirmEmail.value.trim() !== ''
+  && deleteEquipmentConfirmPassword.value.trim() !== ''
+);
+
 const floorOrder = [
   '18th Floor', '17th Floor', '16th Floor', '15th Floor', '8th Floor',
-  '4th Floor', '5th Floor', '6th Floor', '7th Floor', '3rd Floor',
-  '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor'
+  '7th Floor', '6th Floor', '5th Floor', '4th Floor', '3rd Floor',
+  '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor',
 ];
 
-const filteredVenues = computed(() => {
-  let venues = [...venuesList.value];
+const searchedAndSortedVenues = computed(() => filterAndSortVenues(
+  venuesList.value,
+  searchQuery.value,
+  sortValue.value,
+));
 
-  // Apply search
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    venues = venues.filter(venue =>
-      venue.venueName?.toLowerCase().includes(query) ||
-      venue.floorLevel?.toLowerCase().includes(query)
-    );
-  }
+const calendarVenueRecords = computed(() =>
+  searchedAndSortedVenues.value.filter((venueRecord) => matchesCalendarAvailability(
+    venueRecord,
+    availabilityFilter.value,
+    selectedVenueCalendarDate.value,
+  ))
+);
 
-  // Apply availability filter
-  if (availabilityFilter.value === 'available') {
-    venues = venues.filter(venue => venue.availabilityStatus === 'Available');
-  } else if (availabilityFilter.value === 'unavailable') {
-    venues = venues.filter(venue => venue.availabilityStatus !== 'Available');
-  }
+const filteredEquipmentRecords = computed(() => filterAndSortEquipment(
+  equipmentList.value,
+  searchQuery.value,
+  availabilityFilter.value,
+  sortValue.value,
+));
 
-  // Apply sort
-  venues.sort((a, b) => {
-    const nameA = a.venueName?.toLowerCase() || '';
-    const nameB = b.venueName?.toLowerCase() || '';
-    if (sortValue.value === 'asc') {
-      return nameA.localeCompare(nameB);
-    } else {
-      return nameB.localeCompare(nameA);
-    }
-  });
+const venueFloorGroups = computed(() => buildVenueFloorGroups(
+  searchedAndSortedVenues.value,
+  floorOrder,
+  selectedVenueCalendarDate.value,
+));
 
-  return venues;
-});
-
-const venueFloorGroups = computed(() => {
-  const groups = {};
-  const filtered = filteredVenues.value;
-
-  filtered.forEach(venue => {
-    const floor = venue.floorLevel || 'Other';
-    if (!groups[floor]) {
-      groups[floor] = [];
-    }
-    groups[floor].push(venue);
-  });
-
-  // Sort groups by floor order
-  const sortedGroups = {};
-  floorOrder.forEach(floor => {
-    if (groups[floor]) {
-      sortedGroups[floor] = groups[floor];
-    }
-  });
-
-  // Add any floors not in the predefined order
-  Object.keys(groups).forEach(floor => {
-    if (!sortedGroups[floor]) {
-      sortedGroups[floor] = groups[floor];
-    }
-  });
-
-  return Object.entries(sortedGroups).map(([floorLabel, venueRecords]) => ({
-    floorLabel,
-    venueRecords: venueRecords.map(venue => ({
-      venueIdentifier: venue.venueIdentifier,
-      venueName: venue.venueName,
-      venueAvailable: venue.availabilityStatus === 'Available',
-      venueLocation: venue.venueLocation,
-      floorLevel: venue.floorLevel,
-      capacityLimit: venue.capacityLimit,
-      description: venue.description,
-      imageUrl: venue.imageUrl
-    }))
-  }));
-});
-
-/**
- * @function handleFacilityTabChange
- * @description Switches active tab and resets filters.
- * @param {string} tabName - 'venue' or 'equipment'
- * @returns {void}
- */
 function handleFacilityTabChange(tabName) {
+  if (activeFacilityTab.value === tabName) {
+    return;
+  }
+
+  if (activeFacilityTab.value === 'venue') {
+    handleVenueModalClose();
+    closeVenueDetails();
+    closeDeleteVenueModal();
+  }
+
+  if (activeFacilityTab.value === 'equipment') {
+    handleEquipmentModalClose();
+    closeEquipmentDetails();
+    closeDeleteEquipmentModal();
+  }
+
   activeFacilityTab.value = tabName;
   availabilityFilter.value = 'all';
+  searchQuery.value = '';
 }
 
-/**
- * @function handleEditFacility
- * @description Opens edit modal for selected venue or equipment.
- * @returns {void}
- */
 function handleEditFacility() {
   if (activeFacilityTab.value === 'venue') {
-    selectedVenue.value = { venueIdentifier: 0, venueName: '', venueLocation: '', capacityLimit: null };
-    showVenueModal.value = true;
-  } else {
-    selectedEquipment.value = { equipmentIdentifier: 0, equipmentName: '', categoryName: '', totalQuantity: 0, operationalStatus: 'Active', scheduleDescription: '' };
-    showEquipmentModal.value = true;
+    if (!selectedVenueCard.value) {
+      venueError.value = 'Use a venue card action to choose which venue you want to edit.';
+      return;
+    }
+
+    handleEditVenue(selectedVenueCard.value);
+    return;
   }
+
+  if (!selectedEquipmentCard.value) {
+    equipmentError.value = 'Select an equipment record first before editing.';
+    return;
+  }
+
+  handleEditEquipment(selectedEquipmentCard.value);
 }
 
-function handleEditVenue(venue) {
-  selectedVenue.value = venue;
+function handleAddFacility() {
+  if (activeFacilityTab.value === 'venue') {
+    venueError.value = '';
+    selectedVenue.value = null;
+    showVenueModal.value = true;
+    return;
+  }
+
+  selectedEquipment.value = null;
+  equipmentError.value = '';
+  showEquipmentModal.value = true;
+}
+
+function handleEditVenue(venueRecord) {
+  selectedVenueCard.value = venueRecord;
+  venueError.value = '';
+  selectedVenue.value = venueRecord;
   showVenueModal.value = true;
 }
 
-/**
- * @function handleAddFacility
- * @description Opens add modal for new venue or equipment.
- * @returns {void}
- */
-function handleAddFacility() {
-  if (activeFacilityTab.value === 'venue') {
-    selectedVenue.value = null;
-    showVenueModal.value = true;
-  } else {
-    selectedEquipment.value = null;
-    showEquipmentModal.value = true;
+async function handleViewVenue(venueRecord) {
+  if (!venueRecord?.venueIdentifier) {
+    return;
+  }
+
+  selectedVenueCard.value = venueRecord;
+  viewVenueLoading.value = true;
+  viewVenueError.value = '';
+  viewVenueRecord.value = null;
+
+  try {
+    const response = await venueApi.getVenueById(venueRecord.venueIdentifier);
+    viewVenueRecord.value = normalizeVenueRecord(response?.data || response);
+  } catch (error) {
+    viewVenueError.value = error?.response?.data?.errorMessage || 'Failed to load venue details.';
+  } finally {
+    viewVenueLoading.value = false;
   }
 }
 
-/**
- * @function handleVenueModalClose
- * @description Closes the venue modal.
- * @returns {void}
- */
+function closeVenueDetails() {
+  viewVenueRecord.value = null;
+  viewVenueError.value = '';
+  viewVenueLoading.value = false;
+}
+
 function handleVenueModalClose() {
   showVenueModal.value = false;
   selectedVenue.value = null;
 }
 
-/**
- * @function handleVenueModalSaved
- * @description Handles venue save event.
- * @returns {void}
- */
 function handleVenueModalSaved() {
   showVenueModal.value = false;
   selectedVenue.value = null;
   fetchVenues();
 }
 
-/**
- * @function handleEquipmentModalClose
- * @description Closes the equipment modal.
- * @returns {void}
- */
 function handleEquipmentModalClose() {
   showEquipmentModal.value = false;
   selectedEquipment.value = null;
 }
 
-/**
- * @function handleEquipmentModalSaved
- * @description Handles equipment save event.
- * @returns {void}
- */
 function handleEquipmentModalSaved() {
   showEquipmentModal.value = false;
   selectedEquipment.value = null;
+  fetchEquipment();
 }
 
 async function fetchVenues() {
   try {
     loading.value = true;
+    venueError.value = '';
     const response = await venueApi.listVenues();
-    venuesList.value = response.venues || [];
+    const venuePayload = response?.data?.venues || response?.venues || [];
+    venuesList.value = Array.isArray(venuePayload)
+      ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
+      : [];
   } catch (error) {
-    console.error('Error fetching venues:', error);
     venuesList.value = [];
+    venueError.value = error?.response?.data?.errorMessage || 'Failed to load venue records.';
   } finally {
     loading.value = false;
   }
 }
 
-function handleDeleteVenue(venueIdentifier) {
-  deleteVenueRecord.value = venuesList.value.find((venue) => venue.venueIdentifier === venueIdentifier) || null;
+async function fetchEquipment() {
+  try {
+    equipmentLoading.value = true;
+    equipmentError.value = '';
+    const response = await equipmentApi.listEquipment();
+    equipmentList.value = response?.data?.equipment || [];
+  } catch (error) {
+    equipmentList.value = [];
+    equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment.';
+  } finally {
+    equipmentLoading.value = false;
+  }
+}
+
+function openDeleteEquipmentModal(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  deleteEquipmentRecord.value = equipmentRecord;
+  deleteEquipmentConfirmEmail.value = '';
+  deleteEquipmentConfirmPassword.value = '';
+  deleteEquipmentError.value = '';
+  equipmentError.value = '';
+}
+
+function closeDeleteEquipmentModal() {
+  if (isDeletingEquipment.value) return;
+  deleteEquipmentRecord.value = null;
+  deleteEquipmentConfirmEmail.value = '';
+  deleteEquipmentConfirmPassword.value = '';
+  deleteEquipmentError.value = '';
+}
+
+async function confirmDeleteEquipment() {
+  if (!deleteEquipmentRecord.value || isDeletingEquipment.value) return;
+
+  if (!isDeleteEquipmentReady.value) {
+    deleteEquipmentError.value = 'Please type your admin email and password to delete this equipment.';
+    return;
+  }
+
+  try {
+    isDeletingEquipment.value = true;
+    deleteEquipmentError.value = '';
+
+    await equipmentApi.deleteEquipment(deleteEquipmentRecord.value.equipmentIdentifier, {
+      confirmedAdminEmail: deleteEquipmentConfirmEmail.value.trim(),
+      confirmedAdminPassword: deleteEquipmentConfirmPassword.value,
+    });
+
+    const deletedIdentifier = deleteEquipmentRecord.value.equipmentIdentifier;
+    closeDeleteEquipmentModal();
+    clearDeletedEquipmentSelection(deletedIdentifier);
+    await fetchEquipment();
+  } catch (error) {
+    deleteEquipmentError.value = error?.response?.data?.errorMessage || 'Failed to delete equipment. Please try again.';
+  } finally {
+    isDeletingEquipment.value = false;
+  }
+}
+
+function handleDeleteVenue(venueRecord) {
+  selectedVenueCard.value = venueRecord;
+  deleteVenueRecord.value = venueRecord;
   deleteConfirmEmail.value = '';
   deleteConfirmPassword.value = '';
   deleteVenueError.value = '';
@@ -483,66 +609,238 @@ async function confirmDeleteVenue() {
 
   try {
     isDeletingVenue.value = true;
+    deleteVenueError.value = '';
+
     await venueApi.deleteVenue(deleteVenueRecord.value.venueIdentifier, {
       confirmedAdminEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
       confirmedAdminPassword: deleteConfirmPassword.value,
     });
-    isDeletingVenue.value = false;
+
+    if (selectedVenueCard.value?.venueIdentifier === deleteVenueRecord.value.venueIdentifier) {
+      selectedVenueCard.value = null;
+    }
+
+    if (viewVenueRecord.value?.venueIdentifier === deleteVenueRecord.value.venueIdentifier) {
+      closeVenueDetails();
+    }
+
     closeDeleteVenueModal();
     await fetchVenues();
   } catch (error) {
-    console.error('Error deleting venue:', error);
     deleteVenueError.value = error?.response?.data?.errorMessage || 'Failed to delete venue. Please try again.';
   } finally {
     isDeletingVenue.value = false;
   }
 }
 
-async function handleToggleAvailability(venue) {
-  try {
-    const newStatus = venue.venueAvailable ? 'Unavailable' : 'Available';
-    await venueApi.updateVenue(venue.venueIdentifier, {
-      venueName: venue.venueName,
-      venueLocation: venue.venueLocation,
-      floorLevel: venue.floorLevel,
-      capacityLimit: venue.capacityLimit,
-      description: venue.description,
-      imageUrl: venue.imageUrl,
-      availabilityStatus: newStatus
-    });
-    fetchVenues();
-  } catch (error) {
-    console.error('Error updating venue availability:', error);
-    alert('Failed to update venue availability. Please try again.');
-  }
-}
-
 onMounted(() => {
   fetchVenues();
+  fetchEquipment();
 });
+
+function handleEditEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  selectedEquipment.value = equipmentRecord;
+  equipmentError.value = '';
+  showEquipmentModal.value = true;
+}
+
+function handleViewEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  viewEquipmentRecord.value = equipmentRecord;
+  equipmentError.value = '';
+}
+
+function handleSelectEquipment(equipmentRecord) {
+  selectedEquipmentCard.value = equipmentRecord;
+  equipmentError.value = '';
+}
+
+function closeEquipmentDetails() {
+  viewEquipmentRecord.value = null;
+}
+
+function openEditFromDetails() {
+  if (!viewEquipmentRecord.value) {
+    return;
+  }
+
+  handleEditEquipment(viewEquipmentRecord.value);
+  closeEquipmentDetails();
+}
 
 function normalizeEmailForConfirmation(emailAddress) {
   return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
 }
 
-/**
- * @constant {Array<Object>} equipmentCategoriesList
- * @description Static equipment category data for display.
- */
-const equipmentCategoriesList = ref([
-  { categoryName: 'Chairs', categoryAvailable: true },
-  { categoryName: 'Tables', categoryAvailable: true },
-  { categoryName: 'Podium', categoryAvailable: true },
-  { categoryName: 'Microphone', categoryAvailable: true },
-  { categoryName: 'Wifi Card', categoryAvailable: true },
-  { categoryName: 'Board Eraser System', categoryAvailable: true },
-  { categoryName: 'Extension Cord', categoryAvailable: true },
-  { categoryName: 'Flood Board', categoryAvailable: true },
-  { categoryName: 'Stage', categoryAvailable: true },
-  { categoryName: 'White Screen', categoryAvailable: true },
-  { categoryName: 'Philippine Flag', categoryAvailable: true },
-  { categoryName: 'FEU Tech Logo', categoryAvailable: true },
-  { categoryName: 'LED Video Wall', categoryAvailable: true },
-  { categoryName: 'Others', categoryAvailable: true },
-]);
+function filterAndSortVenues(venues, rawQuery, sortDirection) {
+  const query = normalizeFilterQuery(rawQuery);
+
+  return [...venues]
+    .filter((venue) => matchesVenueSearch(venue, query))
+    .sort((left, right) => compareByName(left?.venueName, right?.venueName, sortDirection));
+}
+
+function filterAndSortEquipment(equipmentRecords, rawQuery, availability, sortDirection) {
+  const query = normalizeFilterQuery(rawQuery);
+
+  return [...equipmentRecords]
+    .filter((equipmentRecord) => matchesEquipmentSearch(equipmentRecord, query))
+    .filter((equipmentRecord) => matchesEquipmentAvailability(equipmentRecord, availability))
+    .sort((left, right) => compareByName(left?.equipmentName, right?.equipmentName, sortDirection));
+}
+
+function buildVenueFloorGroups(venues, orderedFloors, selectedDate) {
+  const groupedVenues = groupVenuesByFloor(venues, selectedDate);
+  const sortedGroups = sortVenueGroupsByFloor(groupedVenues, orderedFloors);
+
+  return Object.entries(sortedGroups).map(([floorLabel, venueRecords]) => ({
+    floorLabel,
+    venueRecords,
+  }));
+}
+
+function normalizeFilterQuery(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function matchesVenueSearch(venue, query) {
+  if (query === '') {
+    return true;
+  }
+
+  return [venue?.venueName, venue?.venueLocation, venue?.floorLevel]
+    .some((value) => normalizeFilterQuery(value).includes(query));
+}
+
+function matchesCalendarAvailability(venueRecord, availability, selectedDate) {
+  if (availability === 'all') {
+    return true;
+  }
+
+  const resolvedStatus = deriveVenueAvailabilityForDate(venueRecord, selectedDate);
+  return availability === 'available'
+    ? resolvedStatus === 'Available'
+    : resolvedStatus !== 'Available';
+}
+
+function matchesEquipmentSearch(equipmentRecord, query) {
+  if (query === '') {
+    return true;
+  }
+
+  return getEquipmentSearchableValues(equipmentRecord)
+    .some((value) => normalizeFilterQuery(value).includes(query));
+}
+
+function getEquipmentSearchableValues(equipmentRecord) {
+  return [
+    equipmentRecord?.equipmentName,
+    equipmentRecord?.equipmentCategory || equipmentRecord?.categoryName,
+    equipmentRecord?.equipmentBrand,
+    equipmentRecord?.barcode,
+    equipmentRecord?.assetId || equipmentRecord?.serialNumber,
+  ];
+}
+
+function matchesEquipmentAvailability(equipmentRecord, availability) {
+  if (availability === 'available') {
+    return formatEquipmentStatus(equipmentRecord) === 'Available';
+  }
+
+  if (availability === 'unavailable') {
+    return formatEquipmentStatus(equipmentRecord) !== 'Available';
+  }
+
+  return true;
+}
+
+function compareByName(leftName, rightName, sortDirection) {
+  const normalizedLeft = normalizeFilterQuery(leftName);
+  const normalizedRight = normalizeFilterQuery(rightName);
+
+  return sortDirection === 'asc'
+    ? normalizedLeft.localeCompare(normalizedRight)
+    : normalizedRight.localeCompare(normalizedLeft);
+}
+
+function groupVenuesByFloor(venues, selectedDate) {
+  return venues.reduce((groups, venue) => {
+    const floor = venue?.floorLevel || 'Other';
+    const normalizedVenue = mapVenueRecordForList(venue, selectedDate);
+
+    if (!groups[floor]) {
+      groups[floor] = [];
+    }
+
+    groups[floor].push(normalizedVenue);
+    return groups;
+  }, {});
+}
+
+function sortVenueGroupsByFloor(groupedVenues, orderedFloors) {
+  const sortedGroups = {};
+
+  orderedFloors.forEach((floor) => {
+    if (groupedVenues[floor]) {
+      sortedGroups[floor] = groupedVenues[floor];
+    }
+  });
+
+  Object.keys(groupedVenues).forEach((floor) => {
+    if (!sortedGroups[floor]) {
+      sortedGroups[floor] = groupedVenues[floor];
+    }
+  });
+
+  return sortedGroups;
+}
+
+function normalizeVenueRecord(venue) {
+  if (!venue) {
+    return null;
+  }
+
+  return {
+    venueIdentifier: venue.venueIdentifier,
+    venueName: venue.venueName || '',
+    venueLocation: venue.venueLocation || '',
+    floorLevel: venue.floorLevel || '',
+    capacityLimit: venue.capacityLimit ?? null,
+    availabilityDate: venue.availabilityDate || '',
+    operationalStatus: venue.operationalStatus || '',
+    availabilityStatus: venue.availabilityStatus || 'Unavailable',
+    description: venue.description || '',
+    imageUrl: venue.imageUrl || '',
+    photoData: venue.imageUrl || '',
+  };
+}
+
+function mapVenueRecordForList(venue, selectedDate) {
+  const availabilityStatus = deriveVenueAvailabilityForDate(venue, selectedDate);
+
+  return {
+    ...venue,
+    venueAvailable: availabilityStatus === 'Available',
+    availabilityStatus,
+  };
+}
+
+function clearDeletedEquipmentSelection(deletedIdentifier) {
+  if (selectedEquipmentCard.value?.equipmentIdentifier === deletedIdentifier) {
+    selectedEquipmentCard.value = null;
+  }
+
+  if (viewEquipmentRecord.value?.equipmentIdentifier === deletedIdentifier) {
+    closeEquipmentDetails();
+  }
+}
+
+function getTodayDateInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 </script>

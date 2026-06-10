@@ -5,6 +5,8 @@ namespace App\Domain\Venue\Controller;
 use App\Domain\Account\Service\AdminSecurityConfirmationService;
 use App\Domain\Account\Service\AuthenticatedAccountResolver;
 use App\Domain\Venue\Service\VenueManagementService;
+use App\Shared\Exceptions\DomainNotFoundException;
+use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
@@ -41,38 +43,66 @@ class VenueController extends AbstractController
         return $this->createSuccessResponse(['venues' => $responseList]);
     }
 
+    #[Route('/{venueIdentifier}', name: 'venue_get_by_id', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER, RoleConstants::ROLE_BORROWER])]
+    public function getVenueById(int $venueIdentifier): JsonResponse
+    {
+        try {
+            $venueDTO = $this->venueManagementService->getVenueById($venueIdentifier);
+
+            return $this->createSuccessResponse($venueDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
+        }
+    }
+
     #[Route('', name: 'venue_create', methods: ['POST'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function createVenue(Request $request): JsonResponse
     {
-        $body = json_decode($request->getContent(), true) ?? [];
-        $dto = $this->venueManagementService->createVenue(
-            $body['venueName'] ?? '',
-            $body['venueLocation'] ?? null,
-            $body['floorLevel'] ?? null,
-            isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
-            $body['description'] ?? null,
-            $body['imageUrl'] ?? null
-        );
-        return $this->createSuccessResponse($dto->toResponseArray(), 201);
+        try {
+            $body = json_decode($request->getContent(), true) ?? [];
+            $dto = $this->venueManagementService->createVenue(
+                $body['venueName'] ?? '',
+                $body['venueLocation'] ?? null,
+                $body['floorLevel'] ?? null,
+                isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
+                $body['availabilityDate'] ?? null,
+                $body['operationalStatus'] ?? null,
+                $body['description'] ?? null,
+                $body['imageUrl'] ?? $body['photoData'] ?? null
+            );
+
+            return $this->createSuccessResponse($dto->toResponseArray(), 201);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('VenueValidationFailed', $exception->getMessage(), 422);
+        }
     }
 
     #[Route('/{venueIdentifier}', name: 'venue_update', methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateVenue(int $venueIdentifier, Request $request): JsonResponse
     {
-        $body = json_decode($request->getContent(), true) ?? [];
-        $dto = $this->venueManagementService->updateVenue(
-            $venueIdentifier,
-            $body['venueName'] ?? '',
-            $body['venueLocation'] ?? null,
-            $body['floorLevel'] ?? null,
-            isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
-            $body['description'] ?? null,
-            $body['imageUrl'] ?? null,
-            $body['availabilityStatus'] ?? null
-        );
-        return $this->createSuccessResponse($dto->toResponseArray());
+        try {
+            $body = json_decode($request->getContent(), true) ?? [];
+            $dto = $this->venueManagementService->updateVenue(
+                $venueIdentifier,
+                $body['venueName'] ?? '',
+                $body['venueLocation'] ?? null,
+                $body['floorLevel'] ?? null,
+                isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
+                $body['availabilityDate'] ?? null,
+                $body['operationalStatus'] ?? null,
+                $body['description'] ?? null,
+                $body['imageUrl'] ?? $body['photoData'] ?? null
+            );
+
+            return $this->createSuccessResponse($dto->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('VenueValidationFailed', $exception->getMessage(), 422);
+        }
     }
 
     #[Route('/{venueIdentifier}', name: 'venue_delete', methods: ['DELETE'])]
@@ -91,7 +121,12 @@ class VenueController extends AbstractController
             return $this->createErrorResponse('SecurityConfirmationFailed', $securityError, 422);
         }
 
-        $this->venueManagementService->deleteVenue($venueIdentifier);
-        return $this->createSuccessResponse(['message' => 'Venue deleted successfully']);
+        try {
+            $this->venueManagementService->deleteVenue($venueIdentifier);
+
+            return $this->createSuccessResponse(['message' => 'Venue deleted successfully']);
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
+        }
     }
 }

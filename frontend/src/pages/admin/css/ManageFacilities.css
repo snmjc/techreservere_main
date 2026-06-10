@@ -348,6 +348,16 @@
   cursor: default;
 }
 
+.facility-venue-card-photo {
+  display: block;
+  width: 100%;
+  height: 160px;
+  margin-bottom: 0.75rem;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #f3f4f6;
+}
+
 .facility-venue-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -376,11 +386,22 @@
 }
 
 .facility-venue-card-name {
+  display: block;
   font-size: 0.85rem;
   font-weight: 600;
   color: #1f2937;
   flex: 1;
   margin-right: 0.5rem;
+}
+
+.facility-venue-card-status {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1a6e3a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .facility-venue-card-actions {
@@ -416,7 +437,7 @@
 .facility-venue-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 .facility-venue-card-detail {
@@ -655,11 +676,87 @@
   border: 1px solid #dc2626;
 }
 
+.manage-facilities-delete-confirm-button--neutral {
+  background: #1a6e3a;
+  border-color: #1a6e3a;
+}
+
 .manage-facilities-delete-confirm-button:disabled,
 .manage-facilities-cancel-button:disabled,
 .manage-facilities-modal-close:disabled {
   cursor: not-allowed;
   opacity: 0.62;
+}
+
+.manage-facilities-equipment-details-modal {
+  position: relative;
+  width: min(900px, 100%);
+  padding: 1.4rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 18px;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
+}
+
+.manage-facilities-venue-details-modal {
+  width: min(960px, 100%);
+}
+
+.manage-facilities-equipment-details-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.manage-facilities-equipment-photo-card {
+  padding: 0.75rem;
+  background: #f7faf8;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+
+.manage-facilities-equipment-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.manage-facilities-equipment-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.manage-facilities-equipment-details-grid div {
+  padding: 0.85rem 0.95rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.manage-facilities-equipment-details-grid dt {
+  margin-bottom: 0.35rem;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-equipment-details-grid dd {
+  margin: 0;
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.manage-facilities-equipment-details-grid__full {
+  grid-column: 1 / -1;
 }
 
 /* ========================================= */
@@ -682,5 +779,10 @@
 
   .manage-facilities-page-heading {
     font-size: 1.25rem;
+  }
+
+  .manage-facilities-equipment-details-layout,
+  .manage-facilities-equipment-details-grid {
+    grid-template-columns: 1fr;
   }
 }

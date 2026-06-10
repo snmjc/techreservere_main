@@ -1,30 +1,11 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
-
-function createLocalBackendToken() {
-  try {
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const accountString = localStorage.getItem(AUTH_STORAGE_KEYS.account);
-    if (!accountString && !isLocalDev) return null;
-
-    const account = accountString ? JSON.parse(accountString) : {};
-    return btoa(JSON.stringify({
-      accountId: account?.accountIdentifier || 1,
-      email: account?.emailAddress,
-      role: 'ROLE_ADMIN',
-      exp: Math.floor(Date.now() / 1000) + 86400,
-    }));
-  } catch (error) {
-    console.warn('Unable to create local backend auth token:', error);
-    return null;
-  }
-}
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 
 function buildHeaders(token, includeJson = false) {
   const headers = {};
-  const localBackendToken = createLocalBackendToken();
+  const bearerToken = normalizeAuthToken(token) || getStoredAuthToken();
   if (includeJson) headers['Content-Type'] = 'application/json';
-  if (localBackendToken || token) headers.Authorization = `Bearer ${localBackendToken || token}`;
+  if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
   return headers;
 }
 
@@ -46,6 +27,18 @@ export const adminManageAccountsApi = {
   async getAccounts(token) {
     try {
       const response = await fetch(apiUrl('/api/v1/accounts'), {
+        method: 'GET',
+        headers: buildHeaders(token),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getAccountById(accountIdentifier, token) {
+    try {
+      const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}`), {
         method: 'GET',
         headers: buildHeaders(token),
       });

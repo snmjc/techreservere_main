@@ -13,14 +13,16 @@ import {
   getAccountFullName,
   getAccountRole,
   isActiveSession,
-  persistAuthSession,
-  persistClerkSession,
+  persistAuthSessionWithPreference,
+  persistClerkSessionWithPreference,
   resolveClerkAccount,
   resolveInitialClerkAccount,
 } from '../utils/authenticationSession.js';
+import { getClerkToken } from '../utils/clerkAuthUtils.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
 
 export const useAuthenticationStore = defineStore('authentication', () => {
-  const authToken = ref(readStoredToken());
+  const authToken = ref(getStoredAuthToken());
   const accountDataValue = readStoredJson(AUTH_STORAGE_KEYS.account);
   const accountData = ref(accountDataValue);
   const clerkAccountData = ref(resolveInitialClerkAccount(accountDataValue));
@@ -34,7 +36,21 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   const clerkUserFullName = computed(() => getAccountFullName(clerkAccountData.value));
 
   async function loadClerkAccount(getTokenFn) {
-    clerkAccountData.value = await resolveClerkAccount(getTokenFn);
+    const token = await getClerkToken(getTokenFn).catch(() => null);
+    const resolvedAccount = await resolveClerkAccount(() => Promise.resolve(token));
+    const normalizedAccount = resolvedAccount ? buildSessionAccount(resolvedAccount, 'clerk') : null;
+
+    clerkAccountData.value = normalizedAccount;
+
+    if (normalizedAccount) {
+      authToken.value = normalizeAuthToken(token) || getStoredAuthToken() || authToken.value || null;
+      accountData.value = normalizedAccount;
+      persistClerkSessionWithPreference(authToken.value, normalizedAccount, true);
+    }
+
+    if (!normalizedAccount && token === null) {
+      authToken.value = null;
+    }
     return clerkAccountData.value;
   }
 
@@ -43,13 +59,15 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     clearStoredClerkAccount();
   }
 
-  async function performLogin(emailAddress, passwordText) {
+  async function performLogin(emailAddress, passwordText, options = {}) {
+    const persistent = options.rememberSession === true;
+
     try {
       const response = await loginRequest({ emailAddress, passwordText });
 
       authToken.value = response.token;
       accountData.value = buildSessionAccount(response.account);
-      persistAuthSession(response.token, accountData.value);
+      persistAuthSessionWithPreference(response.token, accountData.value, persistent);
 
       return response.account;
     } catch (error) {
@@ -58,13 +76,15 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     }
   }
 
-  function setClerkAuth(token, account) {
+  function setClerkAuth(token, account, options = {}) {
+    const persistent = options.rememberSession === true;
     const normalizedAccount = buildSessionAccount(account, 'clerk');
+    const resolvedToken = normalizeAuthToken(token);
 
-    authToken.value = token || null;
+    authToken.value = resolvedToken;
     accountData.value = normalizedAccount;
     clerkAccountData.value = normalizedAccount;
-    persistClerkSession(token, normalizedAccount);
+    persistClerkSessionWithPreference(resolvedToken, normalizedAccount, persistent);
   }
 
   function performLogout() {

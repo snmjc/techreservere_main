@@ -43,11 +43,9 @@ final class Version20260521000000 extends AbstractMigration
     {
         $this->addSql("
             DELETE FROM accounts
-            WHERE email_address IN (
-                'kdelafuente@fit.edu.ph',
-                'avaldes@fit.edu.ph',
-                'msantos@fit.edu.ph'
-            )
+            WHERE (email_address = 'kdelafuente@fit.edu.ph' AND clerk_user_id = 'clerk_seed_wishlist_admin_karin')
+               OR (email_address = 'avaldes@fit.edu.ph' AND clerk_user_id = 'clerk_seed_wishlist_student_anabela')
+               OR (email_address = 'msantos@fit.edu.ph' AND clerk_user_id = 'clerk_seed_wishlist_faculty_miguel')
         ");
         $this->addSql('DROP INDEX IF EXISTS IDX_ACCOUNTS_ID_NUMBER');
         $this->addSql('ALTER TABLE accounts DROP COLUMN IF EXISTS id_number');

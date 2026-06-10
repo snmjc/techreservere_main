@@ -247,9 +247,21 @@ class AccountEntity
         return $this->createdTimestamp;
     }
 
+    public function setCreatedTimestamp(\DateTimeInterface $createdTimestamp): self
+    {
+        $this->createdTimestamp = $createdTimestamp;
+        return $this;
+    }
+
     public function getUpdatedTimestamp(): \DateTimeInterface
     {
         return $this->updatedTimestamp;
+    }
+
+    public function setUpdatedTimestamp(\DateTimeInterface $updatedTimestamp): self
+    {
+        $this->updatedTimestamp = $updatedTimestamp;
+        return $this;
     }
 
     public function getIsActive(): bool

@@ -117,6 +117,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { createTextPlaceholderDataUrl } from '@/shared/utils/mockImage.js';
 
 const router = useRouter();
 const searchQuery = ref('');
@@ -131,7 +132,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-16 2:00 PM',
     facility: 'Conference Room A',
-    facilityImage: 'https://via.placeholder.com/50?text=Conference',
+    facilityImage: createTextPlaceholderDataUrl('Conference', { width: 100, height: 50, fontSize: 14 }),
     type: 'Venue',
     purpose: 'Department Meeting - Academic Planning',
     status: 'Approved',
@@ -144,7 +145,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-18 9:00 AM',
     facility: 'Lecture Hall B',
-    facilityImage: 'https://via.placeholder.com/50?text=Lecture',
+    facilityImage: createTextPlaceholderDataUrl('Lecture', { width: 100, height: 50, fontSize: 14 }),
     type: 'Venue',
     purpose: 'Lecture - Advanced Database Systems',
     status: 'Approved',
@@ -157,7 +158,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-20 11:00 AM',
     facility: 'Meeting Room C',
-    facilityImage: 'https://via.placeholder.com/50?text=Meeting',
+    facilityImage: createTextPlaceholderDataUrl('Meeting', { width: 100, height: 50, fontSize: 14 }),
     type: 'Venue',
     purpose: 'Advisory Session - Student Mentoring',
     status: 'Approved',
@@ -170,7 +171,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-22 2:30 PM',
     facility: 'Seminar Room',
-    facilityImage: 'https://via.placeholder.com/50?text=Seminar',
+    facilityImage: createTextPlaceholderDataUrl('Seminar', { width: 100, height: 50, fontSize: 14 }),
     type: 'Venue',
     purpose: 'Seminar - Research Methodology Workshop',
     status: 'Approved',
@@ -183,7 +184,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-24 1:30 PM',
     facility: 'Board Room',
-    facilityImage: 'https://via.placeholder.com/50?text=Board+Room',
+    facilityImage: createTextPlaceholderDataUrl('Board Room', { width: 100, height: 50, fontSize: 13 }),
     type: 'Venue',
     purpose: 'Faculty Meeting - Curriculum Review',
     status: 'Approved',
@@ -196,7 +197,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-26 10:00 AM',
     facility: 'Training Room A',
-    facilityImage: 'https://via.placeholder.com/50?text=Training',
+    facilityImage: createTextPlaceholderDataUrl('Training', { width: 100, height: 50, fontSize: 14 }),
     type: 'Venue',
     purpose: 'Training Session - Software Development Tools',
     status: 'Approved',
@@ -209,7 +210,7 @@ const mockLogs = ref([
     role: 'Faculty',
     date: '2026-05-28 11:30 AM',
     facility: 'Discussion Room',
-    facilityImage: 'https://via.placeholder.com/50?text=Discussion',
+    facilityImage: createTextPlaceholderDataUrl('Discussion', { width: 100, height: 50, fontSize: 13 }),
     type: 'Venue',
     purpose: 'Class Discussion - Literature Analysis',
     status: 'Approved',
