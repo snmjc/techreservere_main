@@ -1,4 +1,3 @@
-import { normalizeEmailForConfirmation } from './wishlistTextHelpers.js';
 import { resolveRequestStatus } from './wishlistStatusHelpers.js';
 import { resolveAccountType, resolveRoleLabel, resolveRoleName } from './wishlistRoleHelpers.js';
 
@@ -41,18 +40,7 @@ export function normalizeWishlistAccount(account) {
 }
 
 export function getUniqueRequestAccounts(accounts) {
-  const accountsByEmail = new Map();
-  accounts.forEach((account) => {
-    const emailKey = normalizeEmailForConfirmation(account.emailAddress);
-    if (!emailKey) return;
-
-    const existingAccount = accountsByEmail.get(emailKey);
-    if (!existingAccount || isNewerAccount(account, existingAccount)) {
-      accountsByEmail.set(emailKey, account);
-    }
-  });
-
-  return Array.from(accountsByEmail.values());
+  return Array.isArray(accounts) ? [...accounts] : [];
 }
 
 export function isPdfProof(account) {
@@ -96,6 +84,3 @@ function normalizeWishlistAccountSource(account) {
   };
 }
 
-function isNewerAccount(account, existingAccount) {
-  return new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime();
-}
