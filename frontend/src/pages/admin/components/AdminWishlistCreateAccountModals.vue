@@ -26,7 +26,7 @@
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Email</span>
-          <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="Email" required :disabled="isProcessing" />
+          <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="admin@feutech.edu.ph" required :disabled="isProcessing" />
         </label>
         <label>
           <span>ID Number</span>
@@ -77,8 +77,8 @@
           <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>FIT Email Address</span>
-          <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph" required />
+          <span>Institutional Email Address</span>
+          <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph or jtvito@feutech.edu.ph" required />
         </label>
         <label>
           <span>ID Number</span>

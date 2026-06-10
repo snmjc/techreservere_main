@@ -10,7 +10,8 @@ class WishlistUserAccountService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountConflictLookupService $accountConflictLookupService
+        private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly AccountInputValidationService $accountInputValidationService
     ) {
     }
 
@@ -62,6 +63,10 @@ class WishlistUserAccountService
 
         if (!filter_var($payload['emailAddress'], FILTER_VALIDATE_EMAIL)) {
             return 'Please provide a valid email address.';
+        }
+
+        if (!$this->accountInputValidationService->isInstitutionalUserEmail($payload['emailAddress'])) {
+            return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
         }
 
         return null;

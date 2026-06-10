@@ -10,7 +10,8 @@ class PublicSignupRequestService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountConflictLookupService $accountConflictLookupService
+        private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly AccountInputValidationService $accountInputValidationService
     ) {
     }
 
@@ -81,8 +82,8 @@ class PublicSignupRequestService
             return 'Names may only contain letters, spaces, periods, apostrophes, and hyphens.';
         }
 
-        if (!filter_var($payload['emailAddress'], FILTER_VALIDATE_EMAIL) || !str_ends_with($payload['emailAddress'], '@fit.edu.ph')) {
-            return 'Please use a valid @fit.edu.ph email address.';
+        if (!$this->accountInputValidationService->isInstitutionalUserEmail($payload['emailAddress'])) {
+            return 'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.';
         }
 
         if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $payload['passwordText'])) {

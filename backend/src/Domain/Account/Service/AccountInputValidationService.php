@@ -4,6 +4,16 @@ namespace App\Domain\Account\Service;
 
 class AccountInputValidationService
 {
+    private const USER_EMAIL_DOMAINS = [
+        '@fit.edu.ph',
+        '@feutech.edu.ph',
+    ];
+
+    private const ADMIN_EMAIL_DOMAINS = [
+        '@feutech.edu.ph',
+        '@fit.edu.ph',
+    ];
+
     public function isValidPersonName(string $name): bool
     {
         $normalizedName = $this->normalizePersonName($name);
@@ -20,9 +30,27 @@ class AccountInputValidationService
 
     public function isInstitutionalAdminEmail(string $emailAddress): bool
     {
-        $normalizedEmailAddress = strtolower(trim($emailAddress));
+        return $this->hasAllowedDomain($emailAddress, self::ADMIN_EMAIL_DOMAINS);
+    }
 
-        return str_ends_with($normalizedEmailAddress, '@fit.edu.ph')
-            || str_ends_with($normalizedEmailAddress, '@techreserve.edu.ph');
+    public function isInstitutionalUserEmail(string $emailAddress): bool
+    {
+        return $this->hasAllowedDomain($emailAddress, self::USER_EMAIL_DOMAINS);
+    }
+
+    private function hasAllowedDomain(string $emailAddress, array $allowedDomains): bool
+    {
+        $normalizedEmailAddress = strtolower(trim($emailAddress));
+        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        foreach ($allowedDomains as $allowedDomain) {
+            if (str_ends_with($normalizedEmailAddress, $allowedDomain)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

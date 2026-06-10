@@ -15,7 +15,7 @@ export function validateAdminAccountForm(form) {
   }
 
   if (!isInstitutionalAdminEmail(emailAddress)) {
-    return 'Admin account must use a valid institutional email address.';
+    return 'Admin account must use a valid @feutech.edu.ph email address. For testing, @fit.edu.ph is also allowed.';
   }
 
   return '';
@@ -46,6 +46,12 @@ export function buildAdminAccountPayload(form) {
 }
 
 export function getUserCreateError(form, accounts) {
+  const emailAddress = String(form.emailAddress || '').trim().toLowerCase();
+
+  if (!isInstitutionalUserEmail(emailAddress)) {
+    return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+  }
+
   if (form.password !== form.confirmPassword) {
     return 'Password and confirm password must match.';
   }
@@ -129,7 +135,12 @@ export function formatCreateAccountError(result, accountType) {
 
 function isInstitutionalAdminEmail(emailAddress) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
-    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@techreserve.edu.ph'));
+    && (emailAddress.endsWith('@feutech.edu.ph') || emailAddress.endsWith('@fit.edu.ph'));
+}
+
+function isInstitutionalUserEmail(emailAddress) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
+    && (emailAddress.endsWith('@fit.edu.ph') || emailAddress.endsWith('@feutech.edu.ph'));
 }
 
 function wishlistIdNumberExists(accounts, idNumber) {
