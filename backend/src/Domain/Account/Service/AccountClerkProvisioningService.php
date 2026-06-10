@@ -61,6 +61,39 @@ class AccountClerkProvisioningService
         return $clerkUserId !== '' ? $clerkUserId : null;
     }
 
+    public function findLatestInvitationByEmail(string $emailAddress): ?array
+    {
+        $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl() . '/v1/invitations', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->clerkSecretKey(),
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'email_address' => $emailAddress,
+                'limit' => 1,
+            ],
+        ]);
+
+        $payload = $response->toArray(false);
+        if ($response->getStatusCode() >= 400) {
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation lookup failed.'));
+        }
+
+        if (isset($payload['id'])) {
+            return $payload;
+        }
+
+        if (isset($payload[0]['id'])) {
+            return $payload[0];
+        }
+
+        if (isset($payload['data'][0]['id'])) {
+            return $payload['data'][0];
+        }
+
+        return null;
+    }
+
     private function findUserByEmail(string $emailAddress): ?array
     {
         $response = $this->httpClient->request('GET', $this->clerkApiBaseUrl() . '/v1/users', [
