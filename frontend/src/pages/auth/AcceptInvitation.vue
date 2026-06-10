@@ -65,7 +65,6 @@ const { signOut } = useAuth()
 
 const isSigningOutExistingSession = ref(false)
 const hasTriggeredSignOut = ref(false)
-const hasNormalizedRoute = ref(false)
 const errorMessage = ref('')
 const statusMessage = ref('')
 const loadingMessage = ref('Preparing your invitation...')
@@ -111,24 +110,6 @@ const cardDescription = computed(() => {
 
   return 'Create the invited account session below. Clerk will keep the invitation email locked to the email address from the invitation.'
 })
-
-watch(() => route.path, async (currentPath) => {
-  if (hasNormalizedRoute.value) {
-    return
-  }
-
-  if (currentPath === canonicalInvitationPath.value) {
-    hasNormalizedRoute.value = true
-    return
-  }
-
-  hasNormalizedRoute.value = true
-  await router.replace({
-    path: canonicalInvitationPath.value,
-    query: route.query,
-    hash: route.hash,
-  })
-}, { immediate: true })
 
 watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, hasTicket]) => {
   if (!loaded) {
