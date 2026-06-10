@@ -22,6 +22,7 @@ class ClerkWebhookUserSyncService
             is_verified = TRUE,
             verification_status = 'verified',
             is_approved = TRUE,
+            invitation_status = 'accepted',
             status = 'approved',
             approved_at = COALESCE(approved_at, :approvedAt),
             updated_timestamp = :updatedTimestamp

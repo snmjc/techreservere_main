@@ -29,7 +29,7 @@ class AccountReadService
                        staff_info.role AS staff_role,
                        staff_info.image_url AS staff_image_url,
                        accounts.status, accounts.is_approved, accounts.is_verified, accounts.verification_status,
-                       accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
+                       accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
                        accounts.last_login_timestamp,
                        latest_invitation.created_at AS invite_sent_at,
                        latest_invitation.expires_at AS invite_expires_at,
@@ -45,7 +45,18 @@ class AccountReadService
                 ) latest_invitation ON TRUE
                 WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
                   AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
-                  AND COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                  AND (
+                        COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%ADMIN%'
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%STAFF%'
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%EMPLOYEE%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%admin%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%staff%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%employee%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%maintenance%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%technical%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%support%'
+                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
@@ -75,7 +86,7 @@ class AccountReadService
         $row = $this->connection->fetchAssociative(
             "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified, accounts.verification_status,
-                    accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
+                    accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
                     accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,

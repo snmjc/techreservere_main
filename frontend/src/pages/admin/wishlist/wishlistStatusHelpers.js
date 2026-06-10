@@ -20,10 +20,10 @@ export function getStatusLabel(status) {
   const normalized = String(status || '').toLowerCase();
   if (APPROVED_STATUSES.includes(normalized)) return 'Approved';
   if (VERIFIED_STATUSES.includes(normalized)) return 'Verified';
-  if (PENDING_STATUSES.includes(normalized)) return 'Pending';
+  if (PENDING_STATUSES.includes(normalized)) return 'Unverified';
   if (normalized === 'expired') return 'Expired';
   if (DENIED_STATUSES.includes(normalized)) return 'Denied';
-  return 'Pending';
+  return 'Unverified';
 }
 
 export function getStatusClass(status) {

@@ -31,6 +31,7 @@ export function normalizeWishlistAccount(account) {
     accountStatus: source.accountStatus,
     registeredAt: account.registeredAt || account.createdTimestamp || account.created_timestamp || null,
     inviteStatus: source.inviteStatus,
+    invitationStatus: source.invitationStatus,
     inviteInvitedBy: source.inviteInvitedBy,
     inviteSentAt: source.inviteSentAt,
     inviteExpiresAt: source.inviteExpiresAt,
@@ -81,6 +82,7 @@ function normalizeWishlistAccountSource(account) {
     inviteExpiresAt,
     inviteAcceptedAt,
     inviteStatus: account.inviteStatus || account.invite_status || null,
+    invitationStatus: account.invitationStatus || account.invitation_status || 'not_sent',
     inviteInvitedBy: account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || null,
     accountStatus: resolveRequestStatus(
       account.accountStatus || account.status,

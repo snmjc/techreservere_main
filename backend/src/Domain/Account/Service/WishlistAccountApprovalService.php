@@ -108,7 +108,8 @@ class WishlistAccountApprovalService
     {
         return $this->connection->fetchAssociative(
             "SELECT account_identifier, email_address, role_designation, first_name, last_name,
-                    department, id_number, status, is_approved,
+                    department, id_number, status, is_approved, is_verified,
+                    verification_status, invitation_status, clerk_user_id,
                     latest_invitation.created_at AS invite_sent_at,
                     latest_invitation.expires_at AS invite_expires_at,
                     latest_invitation.accepted_at AS invite_accepted_at
@@ -154,12 +155,17 @@ class WishlistAccountApprovalService
     private function validateInvitationState(array $account): ?array
     {
         $accountStatus = strtolower((string)($account['status'] ?? 'pending'));
+        $invitationStatus = strtolower((string)($account['invitation_status'] ?? 'not_sent'));
 
         if (!empty($account['invite_accepted_at'])) {
             return $this->error('InviteAlreadyAccepted', 'This account invitation has already been accepted.', 409);
         }
 
-        if ($accountStatus === 'invited' && empty($account['invite_expires_at'])) {
+        if ($accountStatus === 'approved') {
+            return $this->error('InviteAlreadyAccepted', 'This account is already approved.', 409);
+        }
+
+        if ($accountStatus === 'invited' && $invitationStatus === 'sent' && empty($account['invite_expires_at'])) {
             return $this->error(
                 'InviteAlreadySent',
                 'This account is already marked as invited. Resend becomes available after 7 days.',
@@ -288,7 +294,7 @@ class WishlistAccountApprovalService
         $this->connection->beginTransaction();
 
         try {
-            $this->markAccountAsInvited($context['accountIdentifier'], $context['draft']['createdAt'], $context['clerkUserId']);
+            $this->markAccountAsInvited($context['accountIdentifier'], $context['draft']['createdAt']);
 
             $this->connection->executeStatement(
                 'INSERT INTO invitations
@@ -327,7 +333,6 @@ class WishlistAccountApprovalService
             'accountIdentifier' => (int)$account['account_identifier'],
             'invitedBy' => $invitedBy,
             'draft' => $invitationDraft,
-            'clerkUserId' => $this->findExistingClerkUserId((string)$account['email_address']),
         ];
     }
 
@@ -348,28 +353,28 @@ class WishlistAccountApprovalService
         ];
     }
 
-    private function markAccountAsInvited(int $accountIdentifier, \DateTimeImmutable $updatedAt, ?string $clerkUserId): void
+    private function markAccountAsInvited(int $accountIdentifier, \DateTimeImmutable $updatedAt): void
     {
         $this->connection->executeStatement(
             'UPDATE accounts
              SET status = :status,
                  is_verified = :isVerified,
                  verification_status = :verificationStatus,
+                 invitation_status = :invitationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
                  invited_at = :invitedAt,
                  approved_at = NULL,
-                 clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
                 'status' => 'invited',
                 'isVerified' => true,
                 'verificationStatus' => 'verified',
+                'invitationStatus' => 'sent',
                 'isApproved' => false,
                 'isActive' => true,
                 'invitedAt' => $updatedAt->format('Y-m-d H:i:s'),
-                'clerkUserId' => $clerkUserId,
                 'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
             ],
@@ -377,10 +382,10 @@ class WishlistAccountApprovalService
                 'status' => ParameterType::STRING,
                 'isVerified' => ParameterType::BOOLEAN,
                 'verificationStatus' => ParameterType::STRING,
+                'invitationStatus' => ParameterType::STRING,
                 'isApproved' => ParameterType::BOOLEAN,
                 'isActive' => ParameterType::BOOLEAN,
                 'invitedAt' => ParameterType::STRING,
-                'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'accountIdentifier' => ParameterType::INTEGER,
             ]
@@ -393,14 +398,18 @@ class WishlistAccountApprovalService
             'UPDATE accounts
              SET status = :status,
                  is_approved = :isApproved,
+                 invitation_status = :invitationStatus,
                  is_active = :isActive,
+                 approved_at = COALESCE(approved_at, :approvedAt),
                  clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
                 'status' => 'approved',
                 'isApproved' => true,
+                'invitationStatus' => 'accepted',
                 'isActive' => true,
+                'approvedAt' => $updatedAt->format('Y-m-d H:i:s'),
                 'clerkUserId' => $clerkUserId,
                 'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
@@ -408,7 +417,9 @@ class WishlistAccountApprovalService
             [
                 'status' => ParameterType::STRING,
                 'isApproved' => ParameterType::BOOLEAN,
+                'invitationStatus' => ParameterType::STRING,
                 'isActive' => ParameterType::BOOLEAN,
+                'approvedAt' => ParameterType::STRING,
                 'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'accountIdentifier' => ParameterType::INTEGER,
@@ -467,6 +478,7 @@ class WishlistAccountApprovalService
             'accountStatus' => 'verified',
             'isVerified' => true,
             'verificationStatus' => 'verified',
+            'invitationStatus' => 'sent',
             'status' => 'invited',
             'isApproved' => false,
             'isActive' => true,
@@ -481,6 +493,7 @@ class WishlistAccountApprovalService
             'emailAddress' => (string)$account['email_address'],
             'roleDesignation' => (string)$account['role_designation'],
             'status' => 'approved',
+            'invitationStatus' => 'accepted',
             'isApproved' => true,
             'isActive' => true,
         ];

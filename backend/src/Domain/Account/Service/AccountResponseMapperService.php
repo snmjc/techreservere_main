@@ -60,6 +60,7 @@ class AccountResponseMapperService
             'isApproved' => $isApproved,
             'isVerified' => $isVerified,
             'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : ($isVerified ? 'verified' : 'unverified'),
+            'invitationStatus' => !empty($row['invitation_status']) ? (string)$row['invitation_status'] : 'not_sent',
             'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,
             'actionPermissions' => $this->accountLifecyclePolicyService->buildActionPermissions($accountStatus, $isApproved),
             'contactNumber' => $contactNumber,

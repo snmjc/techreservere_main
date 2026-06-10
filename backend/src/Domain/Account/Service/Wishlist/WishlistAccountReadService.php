@@ -17,7 +17,7 @@ class WishlistAccountReadService
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
                     accounts.email_address, accounts.username, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified,
-                    accounts.verification_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at,
+                    accounts.verification_status, accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at,
                     accounts.created_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,
@@ -84,6 +84,7 @@ class WishlistAccountReadService
             'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
             'isVerified' => $this->toDatabaseBoolean($row['is_verified'] ?? false),
             'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : null,
+            'invitationStatus' => !empty($row['invitation_status']) ? (string)$row['invitation_status'] : 'not_sent',
             'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,
             'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
             'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
@@ -104,8 +105,13 @@ class WishlistAccountReadService
         $status = strtolower((string)($row['status'] ?? 'pending'));
         $isApproved = $this->toDatabaseBoolean($row['is_approved'] ?? false);
         $isVerified = $this->toDatabaseBoolean($row['is_verified'] ?? false);
+        $invitationStatus = strtolower((string)($row['invitation_status'] ?? $row['invite_status'] ?? 'not_sent'));
 
         if ($isApproved && $status === 'approved' && !empty($row['clerk_user_id'])) {
+            return 'approved';
+        }
+
+        if ($invitationStatus === 'accepted') {
             return 'approved';
         }
 
@@ -113,13 +119,17 @@ class WishlistAccountReadService
             return $status;
         }
 
-        if (!empty($row['invite_expires_at'])) {
+        if ($invitationStatus === 'sent' && !empty($row['invite_expires_at'])) {
             try {
                 $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
                 return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'verified';
             } catch (\Throwable) {
                 return $status;
             }
+        }
+
+        if ($invitationStatus === 'sent') {
+            return 'verified';
         }
 
         if ($isVerified || strtolower((string)($row['verification_status'] ?? '')) === 'verified') {
