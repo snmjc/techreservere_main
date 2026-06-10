@@ -78,7 +78,13 @@ function normalizeWishlistAccountSource(account) {
     inviteAcceptedAt,
     inviteStatus: account.inviteStatus || account.invite_status || null,
     inviteInvitedBy: account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || null,
-    accountStatus: resolveRequestStatus(account.accountStatus || account.status, inviteAcceptedAt, inviteExpiresAt),
+    accountStatus: resolveRequestStatus(
+      account.accountStatus || account.status,
+      inviteAcceptedAt,
+      inviteExpiresAt,
+      account.isVerified ?? account.is_verified ?? false,
+      account.isApproved ?? account.is_approved ?? false,
+    ),
     idNumber: account.idNumber || account.studentIdNumber || account.accountIdentifier || account.account_identifier || 'N/A',
     contactNumber: account.contactNumber || account.contact_number || account.phone || 'N/A',
   };

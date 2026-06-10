@@ -17,6 +17,7 @@ class AccountResponseMapperService
         $normalizedRole = strtoupper($roleDesignation);
         $isActive = $this->toDatabaseBoolean($row['is_active'] ?? false);
         $isApproved = $this->toDatabaseBoolean($row['is_approved'] ?? false);
+        $isVerified = $this->toDatabaseBoolean($row['is_verified'] ?? false);
         $accountStatus = $this->accountLifecyclePolicyService->resolveAccountStatus($isActive, (string)($row['status'] ?? ''), $isApproved);
         $isAdmin = str_contains($normalizedRole, 'ADMIN') || strtolower($roleDesignation) === 'admin';
         $isEmployee = !$isAdmin && (
@@ -56,6 +57,9 @@ class AccountResponseMapperService
             'accountStatus' => $accountStatus,
             'isActive' => $isActive,
             'isApproved' => $isApproved,
+            'isVerified' => $isVerified,
+            'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : ($isVerified ? 'verified' : 'unverified'),
+            'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,
             'actionPermissions' => $this->accountLifecyclePolicyService->buildActionPermissions($accountStatus, $isApproved),
             'contactNumber' => $contactNumber,
             'profilePhotoData' => $profilePhotoData,
@@ -67,6 +71,8 @@ class AccountResponseMapperService
             'inviteSentAt' => !empty($row['invite_sent_at']) ? (string)$row['invite_sent_at'] : null,
             'inviteExpiresAt' => !empty($row['invite_expires_at']) ? (string)$row['invite_expires_at'] : null,
             'inviteAcceptedAt' => !empty($row['invite_accepted_at']) ? (string)$row['invite_accepted_at'] : null,
+            'invitedAt' => !empty($row['invited_at']) ? (string)$row['invited_at'] : null,
+            'approvedAt' => !empty($row['approved_at']) ? (string)$row['approved_at'] : null,
         ];
     }
 

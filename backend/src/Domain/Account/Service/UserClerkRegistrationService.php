@@ -158,11 +158,11 @@ class UserClerkRegistrationService
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
-        $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $acceptedViaClerkInvite = !$account->getIsApproved() && ($hasAcceptedInvitation || ($existingStatus === 'invited' && $hasOpenInvitation));
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $acceptedViaClerkInvite;
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
         $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved ? ($nextIsActive ? 'approved' : 'disabled') : ($hasOpenInvitation ? 'invited' : $existingStatus);
+        $nextStatus = $nextIsApproved
+            ? ($nextIsActive ? 'approved' : 'disabled')
+            : ($hasOpenInvitation || $existingStatus === 'invited' ? 'invited' : $existingStatus);
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
@@ -170,7 +170,7 @@ class UserClerkRegistrationService
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
             'hasOpenInvitation' => $hasOpenInvitation,
-            'shouldMarkInvitationAccepted' => $acceptedViaClerkInvite && !$hasAcceptedInvitation,
+            'shouldMarkInvitationAccepted' => false,
         ];
     }
 

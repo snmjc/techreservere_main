@@ -4,13 +4,15 @@ namespace App\Domain\Account\Service;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Psr\Log\LoggerInterface;
 
 class WishlistAccountApprovalService
 {
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountAcceptanceEmailService $accountAcceptanceEmailService,
-        private readonly AccountClerkProvisioningService $accountClerkProvisioningService
+        private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -220,6 +222,12 @@ class WishlistAccountApprovalService
         try {
             $clerkInvitation = $this->accountClerkProvisioningService->sendInvitation($account, $invitationDraft['redirectUrl'], !$useBrandedMailer);
         } catch (\Throwable $exception) {
+            $this->logger->error('Clerk invitation failed.', [
+                'accountIdentifier' => (int)($account['account_identifier'] ?? 0),
+                'emailAddress' => (string)($account['email_address'] ?? ''),
+                'error' => $exception->getMessage(),
+            ]);
+
             return $this->error(
                 'ClerkInvitationFailed',
                 'Clerk could not send the invitation: ' . $exception->getMessage(),
@@ -238,6 +246,13 @@ class WishlistAccountApprovalService
         if ($databaseError !== null) {
             return $databaseError;
         }
+
+        $this->logger->info('Invitation sent and recorded.', [
+            'accountIdentifier' => $invitationContext['accountIdentifier'],
+            'emailAddress' => (string)$account['email_address'],
+            'clerkInvitationId' => $clerkInvitation['id'] ?? null,
+            'invitedBy' => $invitedBy,
+        ]);
 
         return $this->success($this->buildInvitationSuccessPayload($invitationContext, $clerkInvitation, $clerkInvitationUrl));
     }
@@ -338,23 +353,33 @@ class WishlistAccountApprovalService
         $this->connection->executeStatement(
             'UPDATE accounts
              SET status = :status,
+                 is_verified = :isVerified,
+                 verification_status = :verificationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
+                 invited_at = :invitedAt,
+                 approved_at = NULL,
                  clerk_user_id = COALESCE(NULLIF(clerk_user_id, \'\'), :clerkUserId),
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
                 'status' => 'invited',
+                'isVerified' => true,
+                'verificationStatus' => 'verified',
                 'isApproved' => false,
                 'isActive' => true,
+                'invitedAt' => $updatedAt->format('Y-m-d H:i:s'),
                 'clerkUserId' => $clerkUserId,
                 'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
             ],
             [
                 'status' => ParameterType::STRING,
+                'isVerified' => ParameterType::BOOLEAN,
+                'verificationStatus' => ParameterType::STRING,
                 'isApproved' => ParameterType::BOOLEAN,
                 'isActive' => ParameterType::BOOLEAN,
+                'invitedAt' => ParameterType::STRING,
                 'clerkUserId' => $clerkUserId === null ? ParameterType::NULL : ParameterType::STRING,
                 'updatedTimestamp' => ParameterType::STRING,
                 'accountIdentifier' => ParameterType::INTEGER,
@@ -418,7 +443,7 @@ class WishlistAccountApprovalService
             'invitation' => [
                 'emailAddress' => (string)$account['email_address'],
                 'role' => (string)$account['role_designation'],
-                'status' => 'pending',
+                'status' => 'invited',
                 'token' => $invitationDraft['token'],
                 'clerkInvitationId' => $clerkInvitation['id'] ?? null,
                 'sentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
@@ -439,9 +464,13 @@ class WishlistAccountApprovalService
             'accountIdentifier' => (int)$account['account_identifier'],
             'emailAddress' => (string)$account['email_address'],
             'roleDesignation' => (string)$account['role_designation'],
+            'accountStatus' => 'verified',
+            'isVerified' => true,
+            'verificationStatus' => 'verified',
             'status' => 'invited',
             'isApproved' => false,
             'isActive' => true,
+            'invitedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:sP'),
         ];
     }
 

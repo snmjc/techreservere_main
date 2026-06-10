@@ -26,11 +26,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email ON accounts (email_address)
 -- ===== Missing columns added to accounts (safe ALTER TABLE) =====
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending';
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS verification_status VARCHAR(20) NOT NULL DEFAULT 'unverified';
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by INT DEFAULT NULL REFERENCES accounts(account_identifier) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts (status);
 CREATE INDEX IF NOT EXISTS idx_accounts_clerk_user_id ON accounts (clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_verification_status ON accounts (verification_status);
 
 -- ===== 2. EQUIPMENT =====
 CREATE TABLE IF NOT EXISTS equipment (

@@ -16,7 +16,9 @@ class WishlistAccountReadService
             "SELECT DISTINCT ON (LOWER(accounts.email_address))
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
                     accounts.email_address, accounts.username, accounts.role_designation, accounts.department,
-                    accounts.contact_number, accounts.status, accounts.is_approved, accounts.created_timestamp,
+                    accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified,
+                    accounts.verification_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at,
+                    accounts.created_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,
@@ -39,14 +41,8 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE (
-                COALESCE(accounts.is_approved, FALSE) = FALSE
-                AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
-             )
-             OR (
-                latest_invitation.accepted_at IS NOT NULL
-                AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
-             )
+             WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
+               AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
              ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 
@@ -86,6 +82,9 @@ class WishlistAccountReadService
             'accountType' => $accountType,
             'accountStatus' => $this->resolveWishlistStatus($row),
             'isApproved' => $this->toDatabaseBoolean($row['is_approved'] ?? false),
+            'isVerified' => $this->toDatabaseBoolean($row['is_verified'] ?? false),
+            'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : null,
+            'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,
             'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
             'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
             'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
@@ -95,18 +94,19 @@ class WishlistAccountReadService
             'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
             'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
             'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
+            'invitedAt' => $row['invited_at'] ? (string)$row['invited_at'] : null,
+            'approvedAt' => $row['approved_at'] ? (string)$row['approved_at'] : null,
         ];
     }
 
     private function resolveWishlistStatus(array $row): string
     {
         $status = strtolower((string)($row['status'] ?? 'pending'));
-        if (!empty($row['invite_accepted_at'])) {
-            return 'verified';
-        }
+        $isApproved = $this->toDatabaseBoolean($row['is_approved'] ?? false);
+        $isVerified = $this->toDatabaseBoolean($row['is_verified'] ?? false);
 
-        if ($this->toDatabaseBoolean($row['is_approved'] ?? false) && $status === 'approved') {
-            return 'verified';
+        if ($isApproved && $status === 'approved' && !empty($row['clerk_user_id'])) {
+            return 'approved';
         }
 
         if (in_array($status, ['rejected', 'denied'], true)) {
@@ -116,21 +116,25 @@ class WishlistAccountReadService
         if (!empty($row['invite_expires_at'])) {
             try {
                 $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
-                return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'unverified';
+                return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'verified';
             } catch (\Throwable) {
                 return $status;
             }
         }
 
-        if ($status === 'invited') {
-            return 'unverified';
-        }
-
-        if ($status === 'approved' || $status === 'verified') {
+        if ($isVerified || strtolower((string)($row['verification_status'] ?? '')) === 'verified') {
             return 'verified';
         }
 
-        return 'not_invited';
+        if ($status === 'invited') {
+            return 'verified';
+        }
+
+        if ($status === 'approved') {
+            return $isApproved ? 'approved' : 'verified';
+        }
+
+        return 'unverified';
     }
 
     private function toDatabaseBoolean(mixed $value): bool

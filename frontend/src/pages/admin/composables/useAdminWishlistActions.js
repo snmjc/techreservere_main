@@ -154,7 +154,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSendInvite(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'not_invited' && !isProcessing.value;
+    return String(account?.accountStatus || '').toLowerCase() === 'unverified' && !isProcessing.value;
   }
 
   function canResendInvite(account) {
@@ -193,7 +193,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     };
     const messages = {
       resend: 'Resend invite is only available after the previous invitation expires.',
-      send: 'Send invite is only available for accounts that are not invited.',
+      send: 'Send invite is only available for pending accounts that have not been invited yet.',
     };
     const normalizedMode = mode === 'resend' ? 'resend' : 'send';
     if (validators[normalizedMode](account)) return true;
