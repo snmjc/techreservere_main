@@ -893,7 +893,7 @@ async function downloadProof(account) {
 }
 
 function hasSupportingDocument(account) {
-  return Boolean(account?.supportingDocumentName && account?.supportingDocumentPath);
+  return Boolean(account?.supportingDocumentName);
 }
 
 function shouldShowProofDetails(account) {
