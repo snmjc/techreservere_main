@@ -52,6 +52,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_accounts_clerk_user_id
     ON accounts (clerk_user_id)
     WHERE clerk_user_id IS NOT NULL;
 
+ALTER TABLE accounts
+    DROP CONSTRAINT IF EXISTS chk_accounts_status_allowed;
+
+ALTER TABLE accounts
+    ADD CONSTRAINT chk_accounts_status_allowed
+    CHECK (status IN ('pending', 'verified', 'active', 'approved', 'accepted', 'disabled', 'rejected', 'invited'));
+
 -- ===== Account invitation lifecycle defaults =====
 -- Request created:
 --   status = 'pending'
