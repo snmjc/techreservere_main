@@ -165,6 +165,16 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/employee/dashboard',
+    name: ROUTE_NAMES.employeeDashboard,
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_STAFF'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
+    },
+  },
+  {
     path: '/admin/requestor-approval',
     name: 'requestorApprovalPage',
     component: () => import('@/pages/admin/RequestorApproval.vue'),

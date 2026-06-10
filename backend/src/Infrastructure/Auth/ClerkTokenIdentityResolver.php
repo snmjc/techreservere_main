@@ -55,8 +55,8 @@ class ClerkTokenIdentityResolver
     private function canAttachClerkUserId(\App\Domain\Account\Entity\AccountEntity $account, string $clerkUserId): bool
     {
         return $account->getClerkUserId() !== $clerkUserId
-            && $account->getIsApproved()
+            && $account->getIsVerified()
             && $account->getIsActive()
-            && in_array(strtolower($account->getStatus()), ['approved', 'accepted'], true);
+            && in_array(strtolower($account->getStatus()), ['active', 'approved', 'accepted'], true);
     }
 }

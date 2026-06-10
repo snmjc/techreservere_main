@@ -9,12 +9,8 @@ class AccountIdentityBuilder
 {
     public function validateApprovedAccount(AccountEntity $account): void
     {
-        if (!$account->getIsApproved()) {
-            throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
-        }
-
-        if (!in_array($account->getStatus(), ['approved', 'accepted'], true)) {
-            throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only accepted accounts can access the system.');
+        if (!in_array($account->getStatus(), ['active', 'approved', 'accepted'], true)) {
+            throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only active invitation accounts can access the system.');
         }
 
         if (!$account->getIsActive()) {
@@ -32,6 +28,7 @@ class AccountIdentityBuilder
             'roleDesignation' => $account->getRoleDesignation(),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
+            'isVerified' => $account->getIsVerified(),
         ];
 
         if ($clerkUserId !== null) {

@@ -317,7 +317,7 @@ async function syncPostgresPasswordFromClerk(newPassword) {
 
 function getLandingRouteName(role) {
   if (role === 'ROLE_ADMIN' || role === 'ADMIN') return ROUTE_NAMES.adminDashboard;
-  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.settings;
+  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.employeeDashboard;
   return ROUTE_NAMES.borrowerMyReservations;
 }
 

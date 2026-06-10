@@ -21,10 +21,8 @@ class ClerkWebhookUserSyncService
             END,
             is_verified = TRUE,
             verification_status = 'verified',
-            is_approved = TRUE,
             invitation_status = 'accepted',
-            status = 'approved',
-            approved_at = COALESCE(approved_at, :approvedAt),
+            status = 'active',
             updated_timestamp = :updatedTimestamp
         WHERE account_identifier = :accountIdentifier
           AND (clerk_user_id IS NULL OR clerk_user_id = '' OR clerk_user_id = :clerkUserId)";
@@ -69,7 +67,7 @@ class ClerkWebhookUserSyncService
             $this->markLatestInvitationAccepted($syncContext['emailAddress'], $syncContext['timestamp']);
             $this->connection->commit();
 
-            $this->logger->info('Clerk account linked and approved.', [
+            $this->logger->info('Clerk account linked and activated.', [
                 'accountIdentifier' => $targetAccountIdentifier,
                 'clerkUserId' => $syncContext['clerkUserId'],
                 'emailAddress' => $syncContext['emailAddress'],
@@ -163,7 +161,6 @@ class ClerkWebhookUserSyncService
             'firstName' => $syncContext['firstName'],
             'lastName' => $syncContext['lastName'],
             'roleDesignation' => $roleFromDatabase !== '' ? $roleFromDatabase : $syncContext['roleDesignation'],
-            'approvedAt' => $syncContext['timestamp'],
             'updatedTimestamp' => $syncContext['timestamp'],
             'accountIdentifier' => $targetAccountIdentifier,
         ];
@@ -177,7 +174,6 @@ class ClerkWebhookUserSyncService
             'firstName' => ParameterType::STRING,
             'lastName' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
-            'approvedAt' => ParameterType::STRING,
             'updatedTimestamp' => ParameterType::STRING,
             'accountIdentifier' => ParameterType::INTEGER,
         ];

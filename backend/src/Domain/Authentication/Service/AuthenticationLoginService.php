@@ -51,12 +51,17 @@ class AuthenticationLoginService
         }
 
         $accountStatus = strtolower(trim((string)$account->getStatus()));
-        if ($account->getIsVerified() && !$account->getIsApproved() && $accountStatus === 'invited') {
+        $isActiveInvitationAccount = in_array($accountStatus, ['active', 'approved', 'accepted'], true);
+        if ($account->getIsVerified() && in_array($accountStatus, ['verified', 'invited'], true)) {
             return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 
-        if (!$account->getIsApproved() || $accountStatus !== 'approved') {
-            return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
+        if ((!$account->getIsVerified() && !$isActiveInvitationAccount) || $accountStatus === 'pending') {
+            return $this->error('AccountPendingApproval', 'Your account is still pending verification. Please wait for an administrator invitation.', 403);
+        }
+
+        if (!$isActiveInvitationAccount) {
+            return $this->error('AccountInvitationPending', 'Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 
         $lockedUntil = $account->getLockedUntilTimestamp();

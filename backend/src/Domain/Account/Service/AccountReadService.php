@@ -43,10 +43,11 @@ class AccountReadService
                    ORDER BY created_at DESC
                    LIMIT 1
                 ) latest_invitation ON TRUE
-                WHERE COALESCE(accounts.is_approved, FALSE) = TRUE
-                  AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
+                WHERE COALESCE(accounts.is_verified, FALSE) = TRUE
+                  AND LOWER(COALESCE(accounts.status, 'pending')) IN ('verified', 'active', 'approved', 'accepted')
                   AND (
-                        COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                        LOWER(COALESCE(accounts.status, 'pending')) = 'verified'
+                        OR COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
                         OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%ADMIN%'
                         OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%STAFF%'
                         OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%EMPLOYEE%'

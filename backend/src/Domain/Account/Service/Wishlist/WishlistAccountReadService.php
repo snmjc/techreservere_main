@@ -41,8 +41,8 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE COALESCE(accounts.is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(accounts.status, 'pending')) <> 'approved'
+             WHERE COALESCE(accounts.is_verified, FALSE) = FALSE
+               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('active', 'approved', 'accepted', 'verified')
              ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 
@@ -107,7 +107,7 @@ class WishlistAccountReadService
         $isVerified = $this->toDatabaseBoolean($row['is_verified'] ?? false);
         $invitationStatus = strtolower((string)($row['invitation_status'] ?? $row['invite_status'] ?? 'not_sent'));
 
-        if ($isApproved && $status === 'approved' && !empty($row['clerk_user_id'])) {
+        if ($status === 'active' && !empty($row['clerk_user_id'])) {
             return 'approved';
         }
 
@@ -132,7 +132,7 @@ class WishlistAccountReadService
             return 'verified';
         }
 
-        if ($isVerified || strtolower((string)($row['verification_status'] ?? '')) === 'verified') {
+        if ($isVerified || strtolower((string)($row['verification_status'] ?? '')) === 'verified' || $status === 'verified') {
             return 'verified';
         }
 
@@ -140,7 +140,7 @@ class WishlistAccountReadService
             return 'verified';
         }
 
-        if ($status === 'approved') {
+        if (in_array($status, ['approved', 'active'], true)) {
             return $isApproved ? 'approved' : 'verified';
         }
 
