@@ -3,10 +3,14 @@
 namespace App\Domain\Account\Service\Wishlist;
 
 use Doctrine\DBAL\Connection;
+use App\Domain\Account\Service\SignupSupportingDocumentStorageService;
 
 class WishlistAccountReadService
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly SignupSupportingDocumentStorageService $signupSupportingDocumentStorageService
+    )
     {
     }
 
@@ -69,6 +73,8 @@ class WishlistAccountReadService
             : ($department !== '' ? ucwords($department) : 'Technical Staff');
         $roleLabel = $isAdmin ? 'Admin' : ($isEmployee ? $employeeRoleLabel : 'User: Student');
 
+        $supportingDocumentPath = $this->resolveAvailableSupportingDocumentPath($row);
+
         return [
             'accountIdentifier' => (int)$row['account_identifier'],
             'idNumber' => ($isEmployee && !empty($row['staff_employee_id_number'])) ? (string)$row['staff_employee_id_number'] : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT)),
@@ -86,10 +92,14 @@ class WishlistAccountReadService
             'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : null,
             'invitationStatus' => !empty($row['invitation_status']) ? (string)$row['invitation_status'] : 'not_sent',
             'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,
-            'supportingDocumentName' => $row['signup_supporting_document_name'] ? (string)$row['signup_supporting_document_name'] : null,
-            'supportingDocumentMimeType' => $row['signup_supporting_document_mime_type'] ? (string)$row['signup_supporting_document_mime_type'] : null,
+            'supportingDocumentName' => $supportingDocumentPath !== null && $row['signup_supporting_document_name']
+                ? (string)$row['signup_supporting_document_name']
+                : null,
+            'supportingDocumentMimeType' => $supportingDocumentPath !== null && $row['signup_supporting_document_mime_type']
+                ? (string)$row['signup_supporting_document_mime_type']
+                : null,
             'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
-            'supportingDocumentPath' => $row['signup_supporting_document_path'] ? (string)$row['signup_supporting_document_path'] : null,
+            'supportingDocumentPath' => $supportingDocumentPath,
             'registeredAt' => (string)$row['created_timestamp'],
             'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
             'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
@@ -160,5 +170,20 @@ class WishlistAccountReadService
 
         $normalized = strtolower(trim((string)$value));
         return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+
+    private function resolveAvailableSupportingDocumentPath(array $row): ?string
+    {
+        $relativePath = !empty($row['signup_supporting_document_path'])
+            ? (string)$row['signup_supporting_document_path']
+            : '';
+
+        if ($relativePath === '') {
+            return null;
+        }
+
+        return $this->signupSupportingDocumentStorageService->fileExists($relativePath)
+            ? $relativePath
+            : null;
     }
 }

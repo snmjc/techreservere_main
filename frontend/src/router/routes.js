@@ -47,8 +47,8 @@ export const routeDefinitions = [
     redirect: '/clerk-login',
   },
   {
-    path: '/accept-invitation',
-    alias: '/accept-invite',
+    path: '/accept-invitation/:pathMatch(.*)*',
+    alias: ['/accept-invitation', '/accept-invite', '/accept-invite/:pathMatch(.*)*'],
     name: ROUTE_NAMES.acceptInvitation,
     component: () => import('@/pages/auth/AcceptInvitation.vue'),
     meta: {
