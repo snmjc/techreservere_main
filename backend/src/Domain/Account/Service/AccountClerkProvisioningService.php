@@ -9,8 +9,7 @@ class AccountClerkProvisioningService
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly ClerkInvitationPayloadFactory $invitationPayloadFactory,
-        private readonly ClerkApiErrorMessageResolver $errorMessageResolver
+        private readonly ClerkInvitationPayloadFactory $invitationPayloadFactory
     ) {
     }
 
@@ -27,7 +26,7 @@ class AccountClerkProvisioningService
 
         $payload = $response->toArray(false);
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
-            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk invitation request failed.'));
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation request failed.'));
         }
 
         return $payload;
@@ -76,7 +75,7 @@ class AccountClerkProvisioningService
 
         $payload = $response->toArray(false);
         if ($response->getStatusCode() >= 400) {
-            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user lookup failed.'));
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user lookup failed.'));
         }
 
         if (isset($payload['id'])) {
@@ -125,7 +124,7 @@ class AccountClerkProvisioningService
                 return (string)$existingClerkUser['id'];
             }
 
-            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user creation failed.'));
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user creation failed.'));
         }
 
         $clerkUserId = (string)($payload['id'] ?? '');
@@ -166,7 +165,7 @@ class AccountClerkProvisioningService
 
         if ($response->getStatusCode() >= 400) {
             $payload = $response->toArray(false);
-            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user update failed.'));
+            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user update failed.'));
         }
     }
 
@@ -195,5 +194,13 @@ class AccountClerkProvisioningService
             'techreserve_id_number' => $idNumber,
             'techreserve_approval_status' => 'pending',
         ];
+    }
+
+    private function resolveClerkErrorMessage(array $payload, string $fallback): string
+    {
+        return $payload['errors'][0]['long_message']
+            ?? $payload['errors'][0]['message']
+            ?? $payload['message']
+            ?? $fallback;
     }
 }

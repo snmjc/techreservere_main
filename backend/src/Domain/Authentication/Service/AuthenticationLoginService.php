@@ -51,6 +51,10 @@ class AuthenticationLoginService
         }
 
         $accountStatus = strtolower(trim((string)$account->getStatus()));
+        if ($account->getIsVerified() && !$account->getIsApproved() && $accountStatus === 'invited') {
+            return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
+        }
+
         if (!$account->getIsApproved() || $accountStatus !== 'approved') {
             return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
         }
@@ -131,9 +135,14 @@ class AuthenticationLoginService
             'emailAddress' => $account->getEmailAddress(),
             'username' => $account->getUsername(),
             'roleDesignation' => $account->getRoleDesignation(),
+            'clerkUserId' => $account->getClerkUserId(),
             'status' => $account->getStatus(),
+            'isVerified' => $account->getIsVerified(),
+            'verificationStatus' => $account->getVerificationStatus(),
             'isApproved' => $account->getIsApproved(),
             'isActive' => $account->getIsActive(),
+            'invitedAt' => $account->getInvitedAt()?->format('Y-m-d H:i:s'),
+            'approvedAt' => $account->getApprovedAt()?->format('Y-m-d H:i:s'),
             'profilePhotoData' => $profilePhotoData ? (string)$profilePhotoData : null,
         ];
     }
