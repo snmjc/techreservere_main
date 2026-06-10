@@ -207,6 +207,7 @@ import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
 
 const router = useRouter();
 const authStore = useAuthenticationStore();
@@ -368,29 +369,7 @@ async function loadDashboardSummary() {
 }
 
 function buildDashboardHeaders() {
-  const headers = {};
-  const storedToken = authStore.authToken && !String(authStore.authToken).startsWith('mock_token_')
-    ? authStore.authToken
-    : null;
-  const token = storedToken || createLocalBackendToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return headers;
-}
-
-function createLocalBackendToken() {
-  try {
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (!isLocalDev) return null;
-    const account = authStore.accountData || {};
-    return btoa(JSON.stringify({
-      accountId: account.accountIdentifier || 1,
-      email: account.emailAddress || 'admin@techreserve.edu.ph',
-      role: 'ROLE_ADMIN',
-      exp: Math.floor(Date.now() / 1000) + 86400,
-    }));
-  } catch (error) {
-    return null;
-  }
+  return buildAuthorizationHeaders(authStore.authToken);
 }
 
 function navigateToMetricPage(routeName) {

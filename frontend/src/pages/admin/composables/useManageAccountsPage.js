@@ -8,12 +8,14 @@ import {
   compareManageAccounts,
   formatAssignedEmployee,
   formatDateTime,
+  formatDisplayValue,
   formatEquipmentList,
   formatNullableDateTime,
+  getAcceptedStatusLabel,
   getAccountTypeClass,
   getDefaultAccountTab,
-  getEmailLabel,
   getEmployeeRoleOptions,
+  getInviteSentStatusLabel,
   getReservationLabel,
   getStatusClass,
   getUserRoleName,
@@ -23,6 +25,7 @@ import {
   normalizeUpdateRoleDesignation,
   sanitizeAccountNameInput,
   sanitizeAccountPhoneInput,
+  validateProfilePhotoFile,
   validateManageAccountUpdateForm,
 } from '../manageAccounts/manageAccountsHelpers.js';
 
@@ -41,7 +44,10 @@ export function useManageAccountsPage() {
   const modalErrorMessage = ref('');
   const accounts = ref([]);
   const viewAccount = ref(null);
+  const viewAccountLoading = ref(false);
+  const viewAccountError = ref('');
   const updateAccount = ref(null);
+  const updateAccountLoading = ref(false);
   const accessAccount = ref(null);
   const workLogsAccount = ref(null);
   const employeeWorkLogs = ref([]);
@@ -62,6 +68,7 @@ export function useManageAccountsPage() {
     roleLabel: 'Admin',
     accountType: 'Admin',
     profilePhotoName: '',
+    profilePhotoMimeType: '',
     profilePhotoData: '',
     profilePhotoPreview: '',
   });
@@ -85,7 +92,7 @@ export function useManageAccountsPage() {
 
     return true;
   });
-  const isUpdateFormReady = computed(() => validateUpdateAccountForm() === '');
+  const isUpdateFormReady = computed(() => !updateAccountLoading.value && validateUpdateAccountForm() === '');
 
   const accountTabs = computed(() => [
     { label: 'Admin', value: 'admin', count: countAccountsByType('Admin') },
@@ -144,8 +151,28 @@ export function useManageAccountsPage() {
     return compareManageAccounts(first, second, sortMode.value);
   }
 
-  function openViewModal(account) {
+  async function openViewModal(account) {
+    if (!account) return;
     viewAccount.value = account;
+    viewAccountLoading.value = true;
+    viewAccountError.value = '';
+
+    const result = await adminManageAccountsApi.getAccountById(account.accountIdentifier, authStore.authToken);
+    viewAccountLoading.value = false;
+
+    if (!result.success) {
+      viewAccountError.value = result.error || 'Unable to load the latest account details.';
+      return;
+    }
+
+    const latestAccount = result.data.account || result.data;
+    if (!latestAccount) {
+      viewAccountError.value = 'Account details are unavailable.';
+      return;
+    }
+
+    viewAccount.value = normalizeAccount(latestAccount);
+    upsertAccount(latestAccount);
   }
 
   async function openWorkLogs(account) {
@@ -181,28 +208,35 @@ export function useManageAccountsPage() {
     expandedWorkLogIds.value = nextExpanded;
   }
 
-  function openUpdateModal(account) {
+  async function openUpdateModal(account) {
     if (!canUpdateAccount(account)) {
       showToast('Only active accounts can be updated.');
       return;
     }
 
     updateAccount.value = account;
-    updateForm.idNumber = account.rawIdNumber || account.idNumber;
-    updateForm.lastName = account.lastName;
-    updateForm.firstName = account.firstName;
-    updateForm.emailAddress = account.emailAddress;
-    updateForm.contactNumber = account.contactNumber || '';
-    updateForm.roleDesignation = normalizeUpdateRoleDesignation(account.accountType, account.roleLabel);
-    updateForm.roleLabel = account.roleLabel;
-    updateForm.accountType = account.accountType;
-    updateForm.profilePhotoName = '';
-    updateForm.profilePhotoData = '';
-    updateForm.profilePhotoPreview = account.profilePhotoData || '';
-    if (account.accountType === 'Employee' && !getEmployeeRoleOptions().includes(updateForm.roleLabel)) {
-      updateForm.roleLabel = account.roleLabel || 'Technical Staff';
-    }
+    hydrateUpdateForm(account);
     modalErrorMessage.value = '';
+    updateAccountLoading.value = true;
+
+    const result = await adminManageAccountsApi.getAccountById(account.accountIdentifier, authStore.authToken);
+    updateAccountLoading.value = false;
+
+    if (!result.success) {
+      modalErrorMessage.value = result.error || 'Unable to load the latest account details.';
+      return;
+    }
+
+    const latestAccount = result.data.account || result.data;
+    if (!latestAccount) {
+      modalErrorMessage.value = 'Account details are unavailable.';
+      return;
+    }
+
+    const normalizedAccount = normalizeAccount(latestAccount);
+    updateAccount.value = normalizedAccount;
+    hydrateUpdateForm(normalizedAccount);
+    upsertAccount(latestAccount);
   }
 
   function openAccessModal(account, mode) {
@@ -266,7 +300,10 @@ export function useManageAccountsPage() {
 
   function closeModals() {
     viewAccount.value = null;
+    viewAccountLoading.value = false;
+    viewAccountError.value = '';
     updateAccount.value = null;
+    updateAccountLoading.value = false;
     accessAccount.value = null;
     workLogsAccount.value = null;
     employeeWorkLogs.value = [];
@@ -289,8 +326,27 @@ export function useManageAccountsPage() {
     updateForm.roleLabel = 'Admin';
     updateForm.accountType = 'Admin';
     updateForm.profilePhotoName = '';
+    updateForm.profilePhotoMimeType = '';
     updateForm.profilePhotoData = '';
     updateForm.profilePhotoPreview = '';
+  }
+
+  function hydrateUpdateForm(account) {
+    updateForm.idNumber = account.rawIdNumber || account.idNumber;
+    updateForm.lastName = account.lastName;
+    updateForm.firstName = account.firstName;
+    updateForm.emailAddress = account.emailAddress;
+    updateForm.contactNumber = account.contactNumber || '';
+    updateForm.roleDesignation = normalizeUpdateRoleDesignation(account.accountType, account.roleLabel);
+    updateForm.roleLabel = account.roleLabel;
+    updateForm.accountType = account.accountType;
+    updateForm.profilePhotoName = '';
+    updateForm.profilePhotoMimeType = '';
+    updateForm.profilePhotoData = '';
+    updateForm.profilePhotoPreview = account.profilePhotoData || '';
+    if (account.accountType === 'Employee' && !getEmployeeRoleOptions().includes(updateForm.roleLabel)) {
+      updateForm.roleLabel = account.roleLabel || 'Technical Staff';
+    }
   }
 
   function sanitizeUpdateNameField(fieldName) {
@@ -308,6 +364,7 @@ export function useManageAccountsPage() {
   function handleUpdateProfilePhotoChange(event) {
     const file = event.target.files?.[0] || null;
     updateForm.profilePhotoName = '';
+    updateForm.profilePhotoMimeType = '';
     updateForm.profilePhotoData = '';
 
     if (!file) {
@@ -316,8 +373,9 @@ export function useManageAccountsPage() {
       return;
     }
 
-    if (!file.name.toLowerCase().endsWith('.jpg') || file.type !== 'image/jpeg') {
-      modalErrorMessage.value = 'Profile photo must be a .jpg image only.';
+    const profilePhotoError = validateProfilePhotoFile(file);
+    if (profilePhotoError) {
+      modalErrorMessage.value = profilePhotoError;
       event.target.value = '';
       updateForm.profilePhotoPreview = updateAccount.value?.profilePhotoData || '';
       return;
@@ -326,6 +384,7 @@ export function useManageAccountsPage() {
     const reader = new FileReader();
     reader.onload = () => {
       updateForm.profilePhotoName = file.name;
+      updateForm.profilePhotoMimeType = file.type;
       updateForm.profilePhotoData = String(reader.result || '');
       updateForm.profilePhotoPreview = updateForm.profilePhotoData;
       modalErrorMessage.value = '';
@@ -339,7 +398,7 @@ export function useManageAccountsPage() {
 
   async function saveAccountChanges() {
     if (!updateAccount.value) return;
-    if (isProcessing.value) return;
+    if (isProcessing.value || updateAccountLoading.value) return;
 
     const validationError = validateUpdateAccountForm();
     if (validationError) {
@@ -517,13 +576,17 @@ export function useManageAccountsPage() {
     showingFilterValue,
     sortMode,
     userRoleFilter,
+    normalizedAccounts,
     isLoading,
     isProcessing,
     toastMessage,
     loadErrorMessage,
     modalErrorMessage,
     viewAccount,
+    viewAccountLoading,
+    viewAccountError,
     updateAccount,
+    updateAccountLoading,
     accessAccount,
     workLogsAccount,
     employeeWorkLogs,
@@ -567,12 +630,14 @@ export function useManageAccountsPage() {
     canUpdateAccount,
     formatAssignedEmployee,
     formatDateTime,
+    formatDisplayValue,
     formatEquipmentList,
     formatNullableDateTime,
+    getAcceptedStatusLabel,
     getReservationLabel,
+    getInviteSentStatusLabel,
     getWorkLogStatusClass,
     getAccountTypeClass,
-    getEmailLabel,
     getStatusClass,
   };
 }

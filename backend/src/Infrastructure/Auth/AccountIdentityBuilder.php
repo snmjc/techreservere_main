@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Auth;
 
 use App\Domain\Account\Entity\AccountEntity;
+use App\Shared\Utils\RoleDesignationNormalizer;
 
 class AccountIdentityBuilder
 {
@@ -12,8 +13,8 @@ class AccountIdentityBuilder
             throw new ClerkVerificationFailedException('Account is pending approval. Please wait for administrator approval.');
         }
 
-        if ($account->getStatus() !== 'approved') {
-            throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only approved accounts can access the system.');
+        if (!in_array($account->getStatus(), ['approved', 'accepted'], true)) {
+            throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only accepted accounts can access the system.');
         }
 
         if (!$account->getIsActive()) {
@@ -36,6 +37,8 @@ class AccountIdentityBuilder
         if ($clerkUserId !== null) {
             $identity['clerkUserId'] = $clerkUserId;
         }
+
+        $identity['roleDesignation'] = RoleDesignationNormalizer::normalize($identity['roleDesignation']);
 
         return $identity;
     }

@@ -73,5 +73,5 @@ function hasEmployeeDepartment(account) {
 
 function hasFacultyDepartment(account) {
   const department = String(account.department || '').toLowerCase();
-  return department.includes('faculty') || department.includes('employee');
+  return department.includes('faculty');
 }

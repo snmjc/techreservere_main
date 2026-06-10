@@ -65,8 +65,13 @@ class WishlistUserAccountService
             return 'Please provide a valid email address.';
         }
 
+<<<<<<< HEAD
         if (!$this->accountInputValidationService->isInstitutionalUserEmail($payload['emailAddress'])) {
             return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+=======
+        if (!$this->accountInputValidationService->isAllowedRequestHubUserEmail($payload['emailAddress'])) {
+            return 'User email must use @fit.edu.ph or @feutech.edu.ph only.';
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
         }
 
         return null;

@@ -74,10 +74,10 @@ class UserApprovalMiddleware implements EventSubscriberInterface
             }
 
             // Check account status
-            if (isset($identity['status']) && $identity['status'] !== 'approved') {
+            if (isset($identity['status']) && !in_array($identity['status'], ['approved', 'accepted'], true)) {
                 $event->setResponse(new JsonResponse([
                     'error' => 'AccountNotApproved',
-                    'message' => 'Your account status is ' . $identity['status'] . '. Only approved accounts can access the system.',
+                    'message' => 'Your account status is ' . $identity['status'] . '. Only accepted accounts can access the system.',
                 ], 403));
                 return;
             }

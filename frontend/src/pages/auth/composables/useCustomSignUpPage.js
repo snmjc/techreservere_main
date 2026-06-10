@@ -1,6 +1,10 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiUrl } from '@/shared/utils/apiBase.js';
+import {
+  getSupportingFileAcceptValue,
+  validateSignupSupportingFile,
+} from '../signupSupportingDocumentHelpers.js';
 
 export function useCustomSignUpPage() {
   const router = useRouter();
@@ -28,6 +32,7 @@ export function useCustomSignUpPage() {
   const studentSupportingFileInput = ref(null);
   const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
   const isStudentRole = computed(() => formData.value.role === 'Student');
+  const supportingFileAccept = getSupportingFileAcceptValue();
 
   watch(
     () => formData.value.role,
@@ -64,6 +69,10 @@ export function useCustomSignUpPage() {
     }
   }
 
+  function validateSupportingFile(file) {
+    return validateSignupSupportingFile(file);
+  }
+
   async function handleSignUp() {
     if (!validateForm()) return;
 
@@ -92,11 +101,19 @@ export function useCustomSignUpPage() {
   }
 
   async function createSignupRequest() {
-    const supportingDocumentData = await readFileAsDataUrl(formData.value.supportingFile);
+    const requestBody = buildSignupRequestBody();
+    const multipartForm = new FormData();
+    Object.entries(requestBody).forEach(([key, value]) => {
+      multipartForm.append(key, value == null ? '' : String(value));
+    });
+
+    if (formData.value.supportingFile) {
+      multipartForm.append('supportingDocument', formData.value.supportingFile);
+    }
+
     const response = await fetch(apiUrl('/api/v1/users/signup-requests'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildSignupRequestBody(supportingDocumentData)),
+      body: multipartForm,
     });
 
     const result = await response.json().catch(() => ({}));
@@ -108,7 +125,7 @@ export function useCustomSignUpPage() {
     return result.data;
   }
 
-  function buildSignupRequestBody(supportingDocumentData) {
+  function buildSignupRequestBody() {
     return {
       firstName: formData.value.firstName.trim(),
       lastName: formData.value.lastName.trim(),
@@ -116,9 +133,6 @@ export function useCustomSignUpPage() {
       idNumber: formData.value.idNumber.trim(),
       department: formData.value.department.trim(),
       role: formData.value.role,
-      supportingDocumentName: isStudentRole.value && formData.value.supportingFile ? formData.value.supportingFile.name : null,
-      supportingDocumentMimeType: isStudentRole.value && formData.value.supportingFile ? formData.value.supportingFile.type : null,
-      supportingDocumentData,
       passwordText: formData.value.password,
       confirmPasswordText: formData.value.confirmPassword,
       acceptedPrivacy: formData.value.acceptTerms,
@@ -181,9 +195,12 @@ export function useCustomSignUpPage() {
     if (!isStudentRole.value) return;
 
     if (!formData.value.supportingFile) {
-      errors.value.supportingFile = 'PDF proof is required for student requests.';
-    } else if (!isPdfFile(formData.value.supportingFile)) {
-      errors.value.supportingFile = 'Student proof must be uploaded as a PDF file.';
+      errors.value.supportingFile = 'Proof of enrollment or School ID is required.';
+    } else {
+      const supportingFileError = validateSupportingFile(formData.value.supportingFile);
+      if (supportingFileError) {
+        errors.value.supportingFile = supportingFileError;
+      }
     }
   }
 
@@ -198,19 +215,13 @@ export function useCustomSignUpPage() {
     studentSupportingFileInput,
     firstErrorMessage,
     isStudentRole,
+    supportingFileAccept,
     openStudentSupportingFile,
     handleStudentSupportingFileChange,
     removeStudentSupportingFile,
     handleSignUp,
     handleVerifyEmail,
   };
-}
-
-function validateSupportingFile(file) {
-  if (!file) return '';
-  if (!isPdfFile(file)) return 'Student proof must be uploaded as a PDF file.';
-  if (file.size > 5 * 1024 * 1024) return 'Supporting file must be 5 MB or smaller.';
-  return '';
 }
 
 function isValidName(value) {
@@ -225,17 +236,3 @@ function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 }
 
-function isPdfFile(file) {
-  return file?.type === 'application/pdf' || String(file?.name || '').toLowerCase().endsWith('.pdf');
-}
-
-function readFileAsDataUrl(file) {
-  if (!file) return Promise.resolve(null);
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Unable to read supporting file.'));
-    reader.readAsDataURL(file);
-  });
-}

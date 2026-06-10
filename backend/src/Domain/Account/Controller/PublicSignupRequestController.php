@@ -22,8 +22,16 @@ class PublicSignupRequestController
     #[Route('/signup-requests', name: 'create_public_signup_request', methods: ['POST'])]
     public function createPublicSignupRequest(Request $request): JsonResponse
     {
+        $requestBody = $request->request->all();
+        if ($requestBody === []) {
+            $requestBody = $this->jsonBody($request);
+        }
+
         return $this->serviceResultResponse(
-            $this->workflowService->createPublicSignupRequest($this->jsonBody($request)),
+            $this->workflowService->createPublicSignupRequest(
+                $requestBody,
+                $request->files->get('supportingDocument')
+            ),
             'CreateSignupRequestFailed',
             'Failed to create signup request.'
         );

@@ -363,6 +363,25 @@
   flex-wrap: wrap;
 }
 
+.admin-wishlist-proof-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 0.65rem;
+  color: var(--tr-green-700);
+  background: #eef8f2;
+  border: 1px solid rgba(15, 77, 47, 0.18);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-wishlist-proof-button:hover {
+  background: #e2f1e8;
+}
+
 .admin-wishlist-proof-cell a {
   color: var(--tr-green-700);
   font-size: 0.75rem;
@@ -404,6 +423,7 @@
 }
 
 .admin-wishlist-view-modal,
+.admin-wishlist-proof-modal,
 .admin-wishlist-approval-modal,
 .admin-wishlist-denial-modal,
 .admin-wishlist-add-admin-modal,
@@ -566,15 +586,54 @@
   border-top: 1px solid rgba(15, 77, 47, 0.12);
 }
 
+.admin-wishlist-proof-modal {
+  width: min(920px, 100%);
+}
+
+.admin-wishlist-proof-modal-meta {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.admin-wishlist-proof-modal-meta p {
+  margin: 0;
+  color: var(--tr-ink);
+  font-size: 0.88rem;
+}
+
+.admin-wishlist-proof-modal-meta span {
+  font-weight: 650;
+}
+
+.admin-wishlist-proof-preview-frame {
+  width: 100%;
+  min-height: min(70vh, 760px);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  background: #f4f7f5;
+  border: 1px solid var(--tr-border);
+  border-radius: 8px;
+}
+
+.admin-wishlist-proof-preview-frame iframe {
+  width: 100%;
+  min-height: min(70vh, 760px);
+  border: 0;
+}
+
 .admin-wishlist-proof-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 38px;
   padding: 0.55rem 0.95rem;
+  border: 0;
   border-radius: 6px;
   background: var(--tr-green-700);
   color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 0.85rem;
   font-weight: 850;
   text-decoration: none;
@@ -887,6 +946,17 @@
   color: #b91c1c;
   background: #fee2e2;
   border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-wishlist-add-helper {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
   border-radius: 8px;
   font-size: 0.78rem;
   font-weight: 800;

@@ -54,6 +54,8 @@ final class Version20260526020000 extends AbstractMigration
             WHERE LOWER(email_address) = 'admin@techreserve.edu.ph'
               AND first_name = 'TechReserve'
               AND last_name = 'Admin'
+              AND role_designation = 'ROLE_ADMIN'
+              AND password_hash = '\$2y\$04\$xUzEhHHKVmRaSQ0.eW1phOUluE69e2whGQczxIgeGb6lyUuJdvQx6'
         ");
     }
 }

@@ -10,6 +10,8 @@ export function evaluateRouteAccessGuard(toRoute) {
   const routeContext = {
     toRoute,
     isSignedIn: authStore.isAuthenticated,
+    hasAuthToken: Boolean(authStore.authToken),
+    hasClerkSession: Boolean(authStore.clerkAccountData?.authProvider === 'clerk' || authStore.accountData?.authProvider === 'clerk'),
     accountStatus: resolveAccountStatus(authStore),
     userRole: authStore.userRole,
   };

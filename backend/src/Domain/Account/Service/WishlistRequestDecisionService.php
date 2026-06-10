@@ -10,13 +10,15 @@ class WishlistRequestDecisionService
 {
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly AccountSupportingDocumentService $accountSupportingDocumentService
     ) {
     }
 
     public function reject(
         int $accountIdentifier,
-        string $confirmEmail,
+        string $confirmedAdminEmail,
         int $authenticatedAdminId,
         string $confirmedAdminPassword
     ): array
@@ -26,17 +28,14 @@ class WishlistRequestDecisionService
             return $this->error('UserNotFound', 'User not found.', 404);
         }
 
-        if ($this->normalizeEmailForConfirmation($confirmEmail) === '' || $this->normalizeEmailForConfirmation($confirmEmail) !== $this->normalizeEmailForConfirmation($account->getEmailAddress())) {
-            return $this->error(
-                'DenyConfirmationFailed',
-                'Please type the exact email address to deny this request.',
-                422
-            );
-        }
-
-        $adminPasswordError = $this->validateResponsibleAdminPassword($authenticatedAdminId, $confirmedAdminPassword, 'denying');
-        if ($adminPasswordError !== null) {
-            return $adminPasswordError;
+        $credentialError = $this->adminSecurityConfirmationService->validateAdminCredentials(
+            $authenticatedAdminId,
+            $confirmedAdminEmail,
+            $confirmedAdminPassword,
+            'denying'
+        );
+        if ($credentialError !== null) {
+            return $this->error('SecurityConfirmationFailed', $credentialError, 422);
         }
 
         $account->setStatus('rejected');
@@ -55,7 +54,7 @@ class WishlistRequestDecisionService
 
     public function deleteRequest(
         int $accountIdentifier,
-        string $confirmEmail,
+        string $confirmedAdminEmail,
         int $authenticatedAdminId,
         string $confirmedAdminPassword
     ): array {
@@ -64,23 +63,39 @@ class WishlistRequestDecisionService
             return $this->error('UserNotFound', 'User not found.', 404);
         }
 
-        if ($this->normalizeEmailForConfirmation($confirmEmail) === '' || $this->normalizeEmailForConfirmation($confirmEmail) !== $this->normalizeEmailForConfirmation((string)$account['email_address'])) {
+        if ($authenticatedAdminId === $accountIdentifier) {
             return $this->error(
-                'DeleteConfirmationFailed',
-                'Please type the exact email address to delete this request.',
-                422
+                'AccountActionNotAllowed',
+                'You cannot delete your own signed-in account from Requests Hub.',
+                403
             );
         }
 
-        $adminPasswordError = $this->validateResponsibleAdminPassword($authenticatedAdminId, $confirmedAdminPassword, 'deleting');
-        if ($adminPasswordError !== null) {
-            return $adminPasswordError;
+        $credentialError = $this->adminSecurityConfirmationService->validateAdminCredentials(
+            $authenticatedAdminId,
+            $confirmedAdminEmail,
+            $confirmedAdminPassword,
+            'deleting'
+        );
+        if ($credentialError !== null) {
+            return $this->error('SecurityConfirmationFailed', $credentialError, 422);
         }
 
-        if ($this->toDatabaseBoolean($account['is_approved'] ?? false) || strtolower((string)$account['status']) === 'approved') {
+        if (
+            $this->toDatabaseBoolean($account['is_approved'] ?? false)
+            || in_array(strtolower((string)$account['status']), ['approved', 'accepted'], true)
+        ) {
             return $this->error(
                 'DeleteRequestNotAllowed',
                 'Approved accounts must be deleted from Manage Accounts.',
+                403
+            );
+        }
+
+        if (!$this->isRequestHubAccount($account)) {
+            return $this->error(
+                'DeleteRequestNotAllowed',
+                'Only pending Requests Hub accounts can be deleted from this flow.',
                 403
             );
         }
@@ -91,7 +106,7 @@ class WishlistRequestDecisionService
     private function findAccountRequest(int $accountIdentifier): array|false
     {
         return $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, status, is_approved
+            "SELECT account_identifier, email_address, status, is_approved, role_designation, clerk_user_id
              FROM accounts
              WHERE account_identifier = :accountIdentifier
              LIMIT 1",
@@ -100,49 +115,13 @@ class WishlistRequestDecisionService
         );
     }
 
-    private function validateResponsibleAdminPassword(int $authenticatedAdminId, string $confirmedAdminPassword, string $actionName): ?array
-    {
-        if ($authenticatedAdminId <= 0) {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                sprintf('Please sign in as an admin before %s this request.', $actionName),
-                422
-            );
-        }
-
-        if (trim($confirmedAdminPassword) === '') {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                sprintf('Please type the responsible admin password before %s this request.', $actionName),
-                422
-            );
-        }
-
-        $confirmedAdmin = $this->connection->fetchAssociative(
-            "SELECT password_hash
-             FROM accounts
-             WHERE account_identifier = :accountIdentifier
-               AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
-               AND COALESCE(is_active, TRUE) = TRUE
-             LIMIT 1",
-            ['accountIdentifier' => $authenticatedAdminId],
-            ['accountIdentifier' => ParameterType::INTEGER]
-        );
-
-        $passwordHash = (string)($confirmedAdmin['password_hash'] ?? '');
-        if (!$confirmedAdmin || $passwordHash === '' || !password_verify($confirmedAdminPassword, $passwordHash)) {
-            return $this->error(
-                'SecurityConfirmationFailed',
-                sprintf('Please type your exact admin password before %s this request.', $actionName),
-                422
-            );
-        }
-
-        return null;
-    }
-
     private function deleteRequestRows(int $accountIdentifier, string $emailAddress): array
     {
+        $document = $this->accountSupportingDocumentService->getSupportingDocumentByAccountIdentifier($accountIdentifier);
+        $relativePath = !empty($document['signup_supporting_document_path'])
+            ? (string)$document['signup_supporting_document_path']
+            : null;
+
         $this->connection->beginTransaction();
         try {
             $this->connection->executeStatement(
@@ -173,16 +152,14 @@ class WishlistRequestDecisionService
             );
         }
 
+        if ($relativePath !== null) {
+            $this->accountSupportingDocumentService->deleteStoredDocumentByPath($relativePath);
+        }
+
         return $this->success([
             'message' => 'Account request deleted successfully.',
             'accountIdentifier' => $accountIdentifier,
         ]);
-    }
-
-    private function normalizeEmailForConfirmation(string $emailAddress): string
-    {
-        $normalizedEmailAddress = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\s]+/u', '', $emailAddress) ?? $emailAddress;
-        return strtolower(trim($normalizedEmailAddress));
     }
 
     private function toDatabaseBoolean(mixed $value): bool
@@ -197,6 +174,25 @@ class WishlistRequestDecisionService
 
         $normalized = strtolower(trim((string)$value));
         return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+
+    private function isRequestHubAccount(array $account): bool
+    {
+        if ($this->toDatabaseBoolean($account['is_approved'] ?? false)) {
+            return false;
+        }
+
+        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
+        if (!in_array($status, ['pending', 'invited'], true)) {
+            return false;
+        }
+
+        $role = strtoupper(trim((string)($account['role_designation'] ?? '')));
+        if ($role === 'ROLE_DEVELOPER' || $role === 'DEVELOPER') {
+            return false;
+        }
+
+        return true;
     }
 
     private function success(array $data, int $status = 200): array

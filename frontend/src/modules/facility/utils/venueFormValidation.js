@@ -1,0 +1,130 @@
+const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
+const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+
+const VENUE_FORM_VALIDATORS = [
+  {
+    isInvalid: (form) => form.venueName.length < 2,
+    message: 'Venue name must be at least 2 characters.',
+  },
+  {
+    isInvalid: (form) => form.venueLocation.length < 2,
+    message: 'Location must be at least 2 characters.',
+  },
+  {
+    isInvalid: (form) => !Number.isInteger(form.capacityLimit) || form.capacityLimit <= 0,
+    message: 'Capacity must be a whole number greater than zero.',
+  },
+  {
+    isInvalid: (form) => form.availabilityDate === '',
+    message: 'Availability date is required.',
+  },
+  {
+    isInvalid: (form) => form.operationalStatus === '',
+    message: 'Operational status is required.',
+  },
+  {
+    isInvalid: (form) => Boolean(form.photoData) && JPG_DATA_URL_PATTERN.test(form.photoData) !== true,
+    message: 'Venue photo must be a valid JPG image.',
+  },
+];
+
+export const venueOperationalStatuses = ['Active', 'Inactive', 'Maintenance'];
+
+export function normalizeVenueForm(form) {
+  return {
+    venueName: String(form?.venueName || '').trim(),
+    venueLocation: String(form?.venueLocation || '').trim(),
+    floorLevel: String(form?.floorLevel || '').trim(),
+    capacityLimit: Number(form?.capacityLimit ?? 0),
+    availabilityDate: String(form?.availabilityDate || '').trim(),
+    operationalStatus: String(form?.operationalStatus || '').trim(),
+    description: String(form?.description || '').trim(),
+    photoData: normalizeOptionalPhotoData(form?.photoData),
+    imageUrl: normalizeOptionalPhotoData(form?.photoData),
+  };
+}
+
+export function validateVenueForm(form) {
+  const normalizedForm = normalizeVenueForm(form);
+  const failedRule = VENUE_FORM_VALIDATORS.find(({ isInvalid }) => isInvalid(normalizedForm));
+  return failedRule?.message || '';
+}
+
+export function validateVenuePhotoFile(file) {
+  if (!file) {
+    return '';
+  }
+
+  if (!isJpgPhotoFile(file)) {
+    return 'Venue photo must be a .jpg image only.';
+  }
+
+  return '';
+}
+
+export function readVenuePhotoFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Unable to read the selected venue photo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function formatVenueText(value) {
+  const normalizedValue = String(value || '').trim();
+  return normalizedValue === '' ? 'N/A' : normalizedValue;
+}
+
+export function formatVenueCapacity(value) {
+  return Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 'N/A';
+}
+
+export function resolveVenuePhoto(record) {
+  const photoData = String(record?.photoData || record?.imageUrl || '').trim();
+  if (photoData !== '') {
+    return photoData;
+  }
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f5fbf7"/>
+          <stop offset="100%" stop-color="#dcefe1"/>
+        </linearGradient>
+      </defs>
+      <rect width="480" height="320" fill="url(#g)"/>
+      <rect x="54" y="48" width="372" height="224" rx="24" fill="#ffffff" stroke="#b7d4c0" stroke-width="6"/>
+      <rect x="98" y="100" width="284" height="114" rx="16" fill="#e7f5ea"/>
+      <path d="M118 214l74-60 50 38 60-74 76 96H118z" fill="#bfe1c8"/>
+      <text x="240" y="286" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#386641">No Venue Photo</text>
+    </svg>
+  `)}`;
+}
+
+export function deriveVenueAvailabilityForDate(venueRecord, selectedDate) {
+  const operationalStatus = String(venueRecord?.operationalStatus || '').trim();
+  if (operationalStatus !== 'Active') {
+    return 'Unavailable';
+  }
+
+  const normalizedDate = String(selectedDate || '').trim();
+  const availableDate = String(venueRecord?.availabilityDate || '').trim();
+
+  if (normalizedDate === '' || availableDate === '') {
+    return venueRecord?.availabilityStatus === 'Available' ? 'Available' : 'Unavailable';
+  }
+
+  return normalizedDate >= availableDate ? 'Available' : 'Unavailable';
+}
+
+function normalizeOptionalPhotoData(photoData) {
+  const normalizedValue = String(photoData || '').trim();
+  return normalizedValue === '' ? null : normalizedValue;
+}
+
+function isJpgPhotoFile(file) {
+  const fileName = String(file?.name || '');
+  return PHOTO_FILE_EXTENSION_PATTERN.test(fileName) && file?.type === 'image/jpeg';
+}

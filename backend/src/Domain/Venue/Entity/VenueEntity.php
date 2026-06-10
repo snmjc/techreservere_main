@@ -27,13 +27,19 @@ class VenueEntity
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $capacityLimit = null;
 
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $availabilityDate = null;
+
+    #[ORM\Column(type: Types::STRING, length: 50)]
+    private string $operationalStatus = 'Active';
+
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $availabilityStatus = 'Available';
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $imageUrl = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
@@ -60,6 +66,10 @@ class VenueEntity
     public function setFloorLevel(?string $floorLevel): self { $this->floorLevel = $floorLevel; return $this; }
     public function getCapacityLimit(): ?int { return $this->capacityLimit; }
     public function setCapacityLimit(?int $capacityLimit): self { $this->capacityLimit = $capacityLimit; return $this; }
+    public function getAvailabilityDate(): ?\DateTimeInterface { return $this->availabilityDate; }
+    public function setAvailabilityDate(?\DateTimeInterface $availabilityDate): self { $this->availabilityDate = $availabilityDate; return $this; }
+    public function getOperationalStatus(): string { return $this->operationalStatus; }
+    public function setOperationalStatus(string $operationalStatus): self { $this->operationalStatus = $operationalStatus; return $this; }
     public function getAvailabilityStatus(): string { return $this->availabilityStatus; }
     public function setAvailabilityStatus(string $availabilityStatus): self { $this->availabilityStatus = $availabilityStatus; return $this; }
     public function getDescription(): ?string { return $this->description; }

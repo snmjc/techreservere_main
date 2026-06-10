@@ -1,17 +1,74 @@
-const PRIMARY_TOKEN_KEY = 'techreserve_auth_token';
-const LEGACY_TOKEN_KEY = 'authToken';
-const CLERK_TOKEN_KEY = 'clerkToken';
+import { readStoredToken, removeStoredToken } from '@/modules/authentication/utils/authStorage.js';
 
-export function getStoredAuthToken({ includeClerkToken = true } = {}) {
-  return localStorage.getItem(PRIMARY_TOKEN_KEY)
-    || localStorage.getItem(LEGACY_TOKEN_KEY)
-    || (includeClerkToken ? localStorage.getItem(CLERK_TOKEN_KEY) : null);
+const LEGACY_TOKEN_KEY = 'authToken';
+
+function decodeBase64Json(value, useUrlSafeAlphabet = false) {
+  try {
+    const normalizedValue = useUrlSafeAlphabet
+      ? value.replace(/-/g, '+').replace(/_/g, '/')
+      : value;
+    const paddedValue = normalizedValue + '='.repeat((4 - normalizedValue.length % 4) % 4);
+    return JSON.parse(atob(paddedValue));
+  } catch {
+    return null;
+  }
+}
+
+function isExpiredTokenPayload(payload) {
+  if (!payload || typeof payload !== 'object') return true;
+  if (!Number.isFinite(payload.exp)) return false;
+  return payload.exp <= Math.floor(Date.now() / 1000);
+}
+
+export function normalizeAuthToken(token) {
+  if (typeof token !== 'string') return null;
+
+  const trimmedToken = token.trim();
+  if (!trimmedToken || trimmedToken === 'null' || trimmedToken === 'undefined') {
+    return null;
+  }
+
+  const jwtParts = trimmedToken.split('.');
+  if (jwtParts.length === 3) {
+    const payload = decodeBase64Json(jwtParts[1], true);
+    if (!payload?.sub || isExpiredTokenPayload(payload)) {
+      return null;
+    }
+    return trimmedToken;
+  }
+
+  const localPayload = decodeBase64Json(trimmedToken);
+  if (!localPayload?.accountId || isExpiredTokenPayload(localPayload)) {
+    return null;
+  }
+
+  return trimmedToken;
+}
+
+export function getStoredAuthToken() {
+  const storedToken = normalizeAuthToken(readStoredToken());
+  if (storedToken) {
+    return storedToken;
+  }
+
+  const legacyToken = normalizeAuthToken(localStorage.getItem(LEGACY_TOKEN_KEY))
+    || normalizeAuthToken(sessionStorage.getItem(LEGACY_TOKEN_KEY));
+
+  if (legacyToken) {
+    return legacyToken;
+  }
+
+  removeStoredToken();
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+  return null;
 }
 
 export function buildAuthorizationHeaders(token = getStoredAuthToken()) {
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  const authToken = normalizeAuthToken(token) || getStoredAuthToken();
+  return authToken
+    ? { Authorization: `Bearer ${authToken}` }
+    : {};
 }
 
 export function buildJsonAuthorizationHeaders(token = getStoredAuthToken()) {

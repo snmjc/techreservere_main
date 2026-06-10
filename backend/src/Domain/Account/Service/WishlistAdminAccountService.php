@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Service;
 
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -13,11 +14,12 @@ class WishlistAdminAccountService
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
-        private readonly AccountInputValidationService $accountInputValidationService
+        private readonly AccountInputValidationService $accountInputValidationService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
     ) {
     }
 
-    public function create(array $requestBody): array
+    public function create(array $requestBody, int $authenticatedAdminId): array
     {
         $payload = $this->normalizeRequestBody($requestBody);
         $validationError = $this->validatePayload($payload);
@@ -26,32 +28,44 @@ class WishlistAdminAccountService
             return $this->error('ValidationError', $validationError, 422);
         }
 
+        $securityError = $this->adminSecurityConfirmationService->validateAdminEmail(
+            $authenticatedAdminId,
+            $payload['confirmedAdminEmail'],
+            'creating the admin'
+        );
+        if ($securityError !== null) {
+            return $this->error('SecurityConfirmationFailed', $securityError, 422);
+        }
+
         $payload['lastName'] = $this->accountInputValidationService->normalizePersonName($payload['lastName']);
         $payload['firstName'] = $this->accountInputValidationService->normalizePersonName($payload['firstName']);
+        $payload['idNumber'] = $this->accountInputValidationService->normalizeIdNumber($payload['idNumber']);
 
         $duplicateError = $this->findDuplicateError($payload);
         if ($duplicateError !== null) {
             return $duplicateError;
         }
 
-        return $this->insertAdminAccount($payload);
+        return $this->createAdminAccount($payload);
     }
 
     private function normalizeRequestBody(array $requestBody): array
     {
         return [
+            'idNumber' => trim((string)($requestBody['idNumber'] ?? '')),
             'lastName' => trim($requestBody['lastName'] ?? ''),
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
             'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
-            'idNumber' => trim($requestBody['idNumber'] ?? ''),
+            'roleDesignation' => strtoupper(trim((string)($requestBody['roleDesignation'] ?? 'ROLE_ADMIN'))),
+            'confirmedAdminEmail' => strtolower(trim((string)($requestBody['confirmedAdminEmail'] ?? ''))),
         ];
     }
 
     private function validatePayload(array $payload): ?string
     {
-        if ($payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '' || $payload['idNumber'] === '') {
-            return 'Last name, first name, email, and ID number are required.';
+        if ($payload['idNumber'] === '' || $payload['lastName'] === '' || $payload['firstName'] === '' || $payload['emailAddress'] === '') {
+            return 'ID number, last name, first name, and email are required.';
         }
 
         if (!$this->accountInputValidationService->isValidPersonName($payload['lastName'])) {
@@ -67,7 +81,15 @@ class WishlistAdminAccountService
         }
 
         if (!$this->accountInputValidationService->isInstitutionalAdminEmail($payload['emailAddress'])) {
-            return 'Admin account must use a valid institutional email address.';
+            return 'Admin email must use @feutech.edu.ph only.';
+        }
+
+        if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
+            return 'ID number is required.';
+        }
+
+        if ($payload['roleDesignation'] !== 'ROLE_ADMIN') {
+            return 'Only ROLE_ADMIN can be created from this modal.';
         }
 
         return null;
@@ -88,10 +110,9 @@ class WishlistAdminAccountService
         return null;
     }
 
-    private function insertAdminAccount(array $payload): array
+    private function createAdminAccount(array $payload): array
     {
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $defaultAdminPassword = (string)($_ENV['DEFAULT_ADMIN_PASSWORD'] ?? self::DEFAULT_ADMIN_PASSWORD);
+        $now = AppClock::now()->format('Y-m-d H:i:s');
 
         try {
             $this->connection->executeStatement(
@@ -103,28 +124,31 @@ class WishlistAdminAccountService
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
                      :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildInsertParameters($payload, $defaultAdminPassword, $now),
+                $this->buildInsertParameters($payload, $now),
                 $this->buildInsertTypes()
             );
 
+            $createdAccountIdentifier = (int)$this->connection->lastInsertId();
+
             return $this->success([
-                'accountIdentifier' => (int)$this->connection->lastInsertId(),
-                'idNumber' => $payload['idNumber'],
-                'lastName' => $payload['lastName'],
-                'firstName' => $payload['firstName'],
-                'emailAddress' => $payload['emailAddress'],
-                'username' => $payload['username'],
-                'roleDesignation' => 'ROLE_ADMIN',
-                'roleLabel' => 'Admin',
-                'accountType' => 'Admin',
-                'accountStatus' => 'pending',
-                'hasDefaultPassword' => true,
-                'defaultPasswordLabel' => $defaultAdminPassword,
-                'isApproved' => false,
-                'registeredAt' => $now,
-                'inviteSentAt' => null,
-                'inviteExpiresAt' => null,
-                'inviteAcceptedAt' => null,
+                'message' => 'Admin account created successfully.',
+                'createdAccountIdentifier' => $createdAccountIdentifier,
+                'defaultPassword' => self::DEFAULT_ADMIN_PASSWORD,
+                'account' => [
+                    'accountIdentifier' => $createdAccountIdentifier,
+                    'idNumber' => $payload['idNumber'],
+                    'lastName' => $payload['lastName'],
+                    'firstName' => $payload['firstName'],
+                    'emailAddress' => $payload['emailAddress'],
+                    'username' => $payload['username'],
+                    'roleDesignation' => 'ROLE_ADMIN',
+                    'roleLabel' => 'Admin',
+                    'accountType' => 'Admin',
+                    'accountStatus' => 'approved',
+                    'isApproved' => true,
+                    'registeredAt' => $now,
+                    'createdTimestamp' => $now,
+                ],
             ], 201);
         } catch (\Throwable $exception) {
             return $this->error(
@@ -135,7 +159,7 @@ class WishlistAdminAccountService
         }
     }
 
-    private function buildInsertParameters(array $payload, string $defaultAdminPassword, string $now): array
+    private function buildInsertParameters(array $payload, string $now): array
     {
         return [
             'lastName' => $payload['lastName'],
@@ -147,9 +171,9 @@ class WishlistAdminAccountService
             'department' => 'Administration',
             'contactNumber' => null,
             'clerkUserId' => null,
-            'passwordHash' => password_hash($defaultAdminPassword, PASSWORD_BCRYPT),
-            'status' => 'pending',
-            'isApproved' => false,
+            'passwordHash' => password_hash(self::DEFAULT_ADMIN_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
+            'status' => 'approved',
+            'isApproved' => true,
             'isActive' => true,
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $now,

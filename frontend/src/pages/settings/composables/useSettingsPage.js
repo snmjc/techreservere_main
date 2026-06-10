@@ -3,7 +3,11 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { AUTH_STORAGE_KEYS } from '@/modules/authentication/utils/authStorage.js';
+import {
+  AUTH_STORAGE_KEYS,
+  isPersistentAuthStorage,
+  writeStoredJson,
+} from '@/modules/authentication/utils/authStorage.js';
 
 export function useSettingsPage() {
   const authStore = useAuthenticationStore();
@@ -377,14 +381,18 @@ function syncAuthAccount(authStore, account) {
   };
 
   authStore.accountData = nextAccount;
-  localStorage.setItem(AUTH_STORAGE_KEYS.account, JSON.stringify(nextAccount));
+  writeStoredJson(AUTH_STORAGE_KEYS.account, nextAccount, isPersistentAuthStorage());
 
   if (authStore.clerkAccountData) {
     authStore.clerkAccountData = {
       ...authStore.clerkAccountData,
       ...account,
     };
-    localStorage.setItem(AUTH_STORAGE_KEYS.clerkAccount, JSON.stringify(authStore.clerkAccountData));
+    writeStoredJson(
+      AUTH_STORAGE_KEYS.clerkAccount,
+      authStore.clerkAccountData,
+      isPersistentAuthStorage()
+    );
   }
 }
 

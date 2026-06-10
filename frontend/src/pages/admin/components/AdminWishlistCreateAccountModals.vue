@@ -9,13 +9,23 @@
       </button>
 
       <div class="admin-wishlist-modal-heading">
-        <h2>Add Admin Account</h2>
-        <p>Create an administrator request record for verification.</p>
+        <h2>Create New Admin</h2>
+        <p>Create a ready-to-use administrator account using a valid @feutech.edu.ph email address.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
+        <label>
+          <span>ID Number</span>
+          <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="2023*****" required :disabled="isProcessing" />
+        </label>
         <label>
           <span>Last Name</span>
           <input v-model.trim="addAdminForm.lastName" type="text" placeholder="Last Name" minlength="2" required :disabled="isProcessing" @input="sanitizeAdminNameField('lastName')" />
@@ -25,26 +35,49 @@
           <input v-model.trim="addAdminForm.firstName" type="text" placeholder="First Name" minlength="2" required :disabled="isProcessing" @input="sanitizeAdminNameField('firstName')" />
         </label>
         <label class="admin-wishlist-field-wide">
+<<<<<<< HEAD
           <span>Email</span>
           <input v-model.trim="addAdminForm.emailAddress" type="email" placeholder="admin@feutech.edu.ph" required :disabled="isProcessing" />
         </label>
         <label>
           <span>ID Number</span>
           <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="ID Number" required :disabled="isProcessing" />
+=======
+          <span>Admin Email</span>
+          <input
+            v-model.trim="addAdminForm.emailAddress"
+            type="email"
+            placeholder="admin@feutech.edu.ph"
+            required
+            :disabled="isProcessing"
+          />
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>Default Password</span>
-          <input type="text" value="admin123" readonly disabled />
+          <span>Role</span>
+          <input type="text" value="Admin" readonly disabled />
+        </label>
+        <label class="admin-wishlist-field-wide">
+          <span>Security Confirmation</span>
+          <input
+            v-model.trim="addAdminForm.confirmedAdminEmail"
+            type="email"
+            :placeholder="currentAdminEmail || 'admin@feutech.edu.ph'"
+            required
+            :disabled="isProcessing"
+          />
         </label>
 
+        <p class="admin-wishlist-add-helper">Default password: <strong>admin123</strong></p>
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
+        <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>
 
         <div class="admin-wishlist-modal-actions">
           <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddAdminModal">
             Cancel
           </button>
-          <button class="admin-wishlist-verify-button" type="submit" :disabled="isProcessing">
-            {{ isProcessing ? 'Creating...' : 'Create Account' }}
+          <button class="admin-wishlist-verify-button" type="submit" :disabled="isProcessing || !isAdminCreateFormReady">
+            {{ isProcessing ? 'Creating...' : 'Create Admin' }}
           </button>
         </div>
       </form>
@@ -65,7 +98,13 @@
         <p>Create a user request record for verification.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createUserAccount">
         <label>
@@ -77,7 +116,11 @@
           <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required />
         </label>
         <label class="admin-wishlist-field-wide">
+<<<<<<< HEAD
           <span>Institutional Email Address</span>
+=======
+          <span>FIT Email Address</span>
+>>>>>>> bc5ccad99854238cde43860e32aba3ff56c4d845
           <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph or jtvito@feutech.edu.ph" required />
         </label>
         <label>
@@ -91,20 +134,62 @@
             <option value="Faculty">Faculty</option>
           </select>
         </label>
-        <PasswordField
-          v-model="addUserForm.password"
-          label="Password"
-          placeholder="Password"
-          :visible="showAddUserPassword"
-          @toggle="showAddUserPassword = !showAddUserPassword"
-        />
-        <PasswordField
-          v-model="addUserForm.confirmPassword"
-          label="Confirm Password"
-          placeholder="Confirm Password"
-          :visible="showAddUserConfirmPassword"
-          @toggle="showAddUserConfirmPassword = !showAddUserConfirmPassword"
-        />
+        <label>
+          <span>Password</span>
+          <span class="admin-wishlist-password-field">
+            <input
+              v-model="addUserForm.password"
+              :type="showAddUserPassword ? 'text' : 'password'"
+              placeholder="Password"
+              required
+            />
+            <button
+              type="button"
+              class="admin-wishlist-password-toggle"
+              :aria-label="showAddUserPassword ? 'Hide password' : 'Show password'"
+              @click="showAddUserPassword = !showAddUserPassword"
+            >
+              <svg v-if="showAddUserPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3l18 18" />
+                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
+                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </span>
+        </label>
+        <label>
+          <span>Confirm Password</span>
+          <span class="admin-wishlist-password-field">
+            <input
+              v-model="addUserForm.confirmPassword"
+              :type="showAddUserConfirmPassword ? 'text' : 'password'"
+              placeholder="Confirm Password"
+              required
+            />
+            <button
+              type="button"
+              class="admin-wishlist-password-toggle"
+              :aria-label="showAddUserConfirmPassword ? 'Hide password' : 'Show password'"
+              @click="showAddUserConfirmPassword = !showAddUserConfirmPassword"
+            >
+              <svg v-if="showAddUserConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3l18 18" />
+                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
+                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </span>
+        </label>
 
         <p v-if="addUserError" class="admin-wishlist-add-error">{{ addUserError }}</p>
 
@@ -112,7 +197,7 @@
           <button class="admin-wishlist-cancel-button" type="button" @click="closeAddUserModal">
             Cancel
           </button>
-          <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing">
+          <button class="admin-wishlist-send-invite-button" type="submit" :disabled="isProcessing || !isUserCreateFormReady">
             {{ isProcessing ? 'Creating...' : 'Create Account' }}
           </button>
         </div>
@@ -131,10 +216,16 @@
 
       <div class="admin-wishlist-modal-heading admin-wishlist-modal-heading--employee">
         <h2>Add Staff Account</h2>
-        <p>Create a staff request record for verification.</p>
+        <p>Create a staff account directly in Manage Accounts.</p>
       </div>
 
-      <AccountSectionLabel />
+      <div class="admin-wishlist-add-section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        Account Information
+      </div>
 
       <form class="admin-wishlist-add-form" @submit.prevent="createEmployeeAccount">
         <label>
@@ -158,6 +249,7 @@
           <input v-model="addEmployeeForm.role" type="text" readonly />
         </label>
 
+        <p class="admin-wishlist-add-helper">Default password: <strong>staff123</strong></p>
         <p v-if="addEmployeeError" class="admin-wishlist-add-error">{{ addEmployeeError }}</p>
 
         <div class="admin-wishlist-modal-actions">
@@ -211,10 +303,12 @@ const addUserError = ref('');
 const addEmployeeError = ref('');
 
 const addAdminForm = reactive({
+  idNumber: '',
   lastName: '',
   firstName: '',
   emailAddress: '',
-  idNumber: '',
+  roleDesignation: 'ROLE_ADMIN',
+  confirmedAdminEmail: '',
 });
 
 const addUserForm = reactive({
@@ -235,6 +329,40 @@ const addEmployeeForm = reactive({
   role: 'Maintenance Staff',
 });
 
+const currentAdminEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim().toLowerCase();
+});
+const hasStartedAdminForm = computed(() => (
+  addAdminForm.idNumber.trim() !== ''
+  || addAdminForm.lastName.trim() !== ''
+  || addAdminForm.firstName.trim() !== ''
+  || addAdminForm.emailAddress.trim() !== ''
+  || addAdminForm.confirmedAdminEmail.trim() !== ''
+));
+const adminCreateHelperText = computed(() => {
+  const validationError = getAdminCreateError(addAdminForm, props.accounts);
+  if (validationError) {
+    return validationError;
+  }
+
+  if (!currentAdminEmail.value) {
+    return 'Unable to confirm the responsible admin email. Please sign in again.';
+  }
+
+  if (addAdminForm.confirmedAdminEmail.trim() === '') {
+    return 'Type your exact admin email in Security Confirmation to continue.';
+  }
+
+  if (addAdminForm.confirmedAdminEmail.trim().toLowerCase() !== currentAdminEmail.value) {
+    return 'Please type your exact admin email before creating a new admin.';
+  }
+
+  return '';
+});
+const showAdminCreateHelper = computed(() => hasStartedAdminForm.value && adminCreateHelperText.value !== '');
+const isAdminCreateFormReady = computed(() => adminCreateHelperText.value === '');
+const isUserCreateFormReady = computed(() => getUserCreateError(addUserForm, props.accounts) === '');
 const isEmployeeCreateFormReady = computed(() => validateEmployeeAccountForm(addEmployeeForm) === '');
 
 function openForTab(tabName) {
@@ -277,11 +405,22 @@ async function createAdminAccount() {
   if (isProcessing.value) return;
 
   addAdminError.value = getAdminCreateError(addAdminForm, props.accounts);
+  if (!currentAdminEmail.value) {
+    addAdminError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
+    return;
+  }
+  if (addAdminForm.confirmedAdminEmail.trim().toLowerCase() !== currentAdminEmail.value) {
+    addAdminError.value = 'Please type your exact admin email before creating a new admin.';
+    return;
+  }
   if (addAdminError.value) return;
 
   await createAccount({
     type: 'admin',
-    request: () => adminWishlistApi.createAdminAccount(buildAdminAccountPayload(addAdminForm), authStore.authToken),
+    request: () => adminWishlistApi.createAdminAccount(
+      buildAdminAccountPayload(addAdminForm),
+      authStore.authToken,
+    ),
     close: closeAddAdminModal,
   });
 }
@@ -313,17 +452,24 @@ async function createEmployeeAccount() {
 }
 
 async function createAccount({ type, request, close }) {
+  setCreateError(type, '');
   isProcessing.value = true;
-  const result = await request();
-  isProcessing.value = false;
 
-  if (!result.success) {
-    setCreateError(type, formatCreateAccountError(result, type));
-    return;
+  try {
+    const result = await request();
+
+    if (!result.success) {
+      setCreateError(type, formatCreateAccountError(result, type));
+      return;
+    }
+
+    close();
+    emit('created', { type, data: result.data || null });
+  } catch (error) {
+    setCreateError(type, error?.message || `Unable to create ${type} account.`);
+  } finally {
+    isProcessing.value = false;
   }
-
-  close();
-  emit('created', type);
 }
 
 function setCreateError(type, message) {
@@ -333,10 +479,12 @@ function setCreateError(type, message) {
 }
 
 function resetAddAdminForm() {
+  addAdminForm.idNumber = '';
   addAdminForm.lastName = '';
   addAdminForm.firstName = '';
   addAdminForm.emailAddress = '';
-  addAdminForm.idNumber = '';
+  addAdminForm.roleDesignation = 'ROLE_ADMIN';
+  addAdminForm.confirmedAdminEmail = '';
   addAdminError.value = '';
 }
 
@@ -375,62 +523,4 @@ function sanitizeEmployeePhone() {
 }
 
 defineExpose({ openForTab });
-</script>
-
-<script>
-export default {
-  components: {
-    AccountSectionLabel: {
-      template: `
-        <div class="admin-wishlist-add-section-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21a8 8 0 0 1 16 0" />
-          </svg>
-          Account Information
-        </div>
-      `,
-    },
-    PasswordField: {
-      props: {
-        modelValue: { type: String, default: '' },
-        label: { type: String, required: true },
-        placeholder: { type: String, default: '' },
-        visible: { type: Boolean, default: false },
-      },
-      emits: ['update:modelValue', 'toggle'],
-      template: `
-        <label>
-          <span>{{ label }}</span>
-          <span class="admin-wishlist-password-field">
-            <input
-              :value="modelValue"
-              :type="visible ? 'text' : 'password'"
-              :placeholder="placeholder"
-              required
-              @input="$emit('update:modelValue', $event.target.value)"
-            />
-            <button
-              type="button"
-              class="admin-wishlist-password-toggle"
-              :aria-label="visible ? 'Hide password' : 'Show password'"
-              @click="$emit('toggle')"
-            >
-              <svg v-if="visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3l18 18" />
-                <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
-                <path d="M9.88 4.24A9.77 9.77 0 0 1 12 4c6 0 10 8 10 8a17.5 17.5 0 0 1-3.1 4.35" />
-                <path d="M6.61 6.61A17.5 17.5 0 0 0 2 12s4 8 10 8a9.77 9.77 0 0 0 5.39-1.61" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
-          </span>
-        </label>
-      `,
-    },
-  },
-};
 </script>

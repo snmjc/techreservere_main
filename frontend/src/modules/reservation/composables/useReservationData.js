@@ -13,8 +13,8 @@ export function useReservationData() {
       isLoading.value = true;
       error.value = null;
       const response = await equipmentApi.listEquipment();
-      if (response && response.equipment) {
-        equipmentList.value = response.equipment.map(eq => ({
+      const equipment = response?.data?.equipment || [];
+      equipmentList.value = equipment.map(eq => ({
           equipmentIdentifier: eq.equipmentIdentifier,
           equipmentName: eq.equipmentName,
           categoryName: eq.categoryName,
@@ -23,7 +23,6 @@ export function useReservationData() {
           operationalStatus: eq.operationalStatus,
           equipmentState: eq.equipmentState,
         }));
-      }
     } catch (err) {
       error.value = err.message || 'Failed to fetch equipment';
       console.error('Equipment fetch error:', err);
@@ -37,14 +36,16 @@ export function useReservationData() {
       isLoading.value = true;
       error.value = null;
       const response = await venueApi.listVenues();
-      if (response && response.venues) {
-        venueList.value = response.venues.map(venue => ({
+      const venues = response?.data?.venues || response?.venues || [];
+      if (Array.isArray(venues)) {
+        venueList.value = venues.map(venue => ({
           venueIdentifier: venue.venueIdentifier,
           venueName: venue.venueName,
           venueLocation: venue.venueLocation,
           capacityLimit: venue.capacityLimit,
+          availabilityDate: venue.availabilityDate,
           availabilityStatus: venue.availabilityStatus,
-          operationalStatus: 'Active',
+          operationalStatus: venue.operationalStatus || 'Active',
           venueState: venue.availabilityStatus === 'Available' ? 'Available' : 'Unavailable',
         }));
       }
