@@ -19,7 +19,7 @@ class ClerkLoginPreflightService
     public function check(string $emailAddress): array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_active
+            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_verified, is_active
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR LOWER(username) = LOWER(:emailAddress)
@@ -37,8 +37,14 @@ class ClerkLoginPreflightService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (DatabaseBoolean::toBool($account['is_approved'] ?? false) && $status === 'approved') {
+        if (!empty($account['clerk_user_id'])
+            && in_array($status, ['active', 'approved', 'accepted'], true)
+        ) {
             return $this->success($status);
+        }
+
+        if (DatabaseBoolean::toBool($account['is_verified'] ?? false) && in_array($status, ['verified', 'invited'], true)) {
+            return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 
         if (in_array($status, ['rejected', 'denied'], true)) {
@@ -55,7 +61,7 @@ class ClerkLoginPreflightService
         );
 
         $refreshedAccount = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, status, is_approved, is_active
+            "SELECT account_identifier, email_address, status, is_approved, is_verified, clerk_user_id, is_active
              FROM accounts
              WHERE account_identifier = :accountIdentifier
              LIMIT 1",
@@ -65,8 +71,8 @@ class ClerkLoginPreflightService
 
         $refreshedStatus = strtolower(trim((string)($refreshedAccount['status'] ?? $status)));
         if (DatabaseBoolean::toBool($refreshedAccount['is_active'] ?? true)
-            && DatabaseBoolean::toBool($refreshedAccount['is_approved'] ?? false)
-            && $refreshedStatus === 'approved'
+            && !empty($refreshedAccount['clerk_user_id'])
+            && in_array($refreshedStatus, ['active', 'approved', 'accepted'], true)
         ) {
             return $this->success($refreshedStatus);
         }

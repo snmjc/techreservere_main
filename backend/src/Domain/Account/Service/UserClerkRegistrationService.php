@@ -65,8 +65,9 @@ class UserClerkRegistrationService
             'contactNumber' => $contactNumber,
             'department' => trim($requestBody['department'] ?? ''),
             'idNumber' => trim($requestBody['idNumber'] ?? $requestBody['studentIdNumber'] ?? $contactNumber),
-            'status' => $isAdminEmail ? 'approved' : 'pending',
+            'status' => $isAdminEmail ? 'active' : 'pending',
             'isApproved' => $isAdminEmail,
+            'isVerified' => $isAdminEmail,
             'isAdminEmail' => $isAdminEmail,
         ];
     }
@@ -77,7 +78,7 @@ class UserClerkRegistrationService
             $this->promoteExistingAccountToAdmin($account);
             return $this->success('Existing account promoted to admin.', $this->buildExistingAccountPayload($account, [
                 'roleDesignation' => 'ROLE_ADMIN',
-                'status' => 'approved',
+                'status' => 'active',
                 'isApproved' => true,
             ]));
         }
@@ -93,7 +94,7 @@ class UserClerkRegistrationService
     {
         $status = strtolower($account->getStatus());
 
-        return $account->getIsApproved() && $status === 'approved';
+        return $account->getIsVerified() && in_array($status, ['active', 'approved', 'accepted'], true);
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -102,6 +103,8 @@ class UserClerkRegistrationService
             'UPDATE accounts
              SET role_designation = :roleDesignation,
                  status = :status,
+                 is_verified = :isVerified,
+                 verification_status = :verificationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
                  updated_timestamp = :updatedTimestamp
@@ -115,7 +118,9 @@ class UserClerkRegistrationService
     {
         return [
             'roleDesignation' => 'ROLE_ADMIN',
-            'status' => 'approved',
+            'status' => 'active',
+            'isVerified' => true,
+            'verificationStatus' => 'verified',
             'isApproved' => true,
             'isActive' => true,
             'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
@@ -128,6 +133,8 @@ class UserClerkRegistrationService
         return [
             'roleDesignation' => ParameterType::STRING,
             'status' => ParameterType::STRING,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
             'updatedTimestamp' => ParameterType::STRING,
@@ -157,20 +164,22 @@ class UserClerkRegistrationService
         $existingRole = strtoupper(trim($account->getRoleDesignation()));
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
-        $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
+        $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
+        $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin;
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
-        $nextIsActive = $nextIsApproved ? $account->getIsActive() : true;
-        $nextStatus = $nextIsApproved
-            ? ($nextIsActive ? 'approved' : 'disabled')
-            : ($hasOpenInvitation || $existingStatus === 'invited' ? 'invited' : $existingStatus);
+        $nextIsActive = $account->getIsActive();
+        $nextStatus = $nextIsVerified && ($hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true))
+            ? 'active'
+            : ($nextIsVerified ? 'verified' : ($existingStatus !== '' ? $existingStatus : 'pending'));
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
+            'isVerified' => $nextIsVerified,
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'hasOpenInvitation' => $hasOpenInvitation,
-            'shouldMarkInvitationAccepted' => false,
+            'hasOpenInvitation' => $this->isOpenInvitation($latestInvitation),
+            'shouldMarkInvitationAccepted' => $hasAcceptedInvitation || $nextStatus === 'active',
         ];
     }
 
@@ -187,6 +196,9 @@ class UserClerkRegistrationService
                  contact_number = :contactNumber,
                  clerk_user_id = :clerkUserId,
                  status = :status,
+                 is_verified = :isVerified,
+                 verification_status = :verificationStatus,
+                 invitation_status = :invitationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
                  updated_timestamp = :updatedTimestamp
@@ -208,6 +220,9 @@ class UserClerkRegistrationService
             'contactNumber' => $registration['contactNumber'] ?: null,
             'clerkUserId' => $registration['clerkUserId'],
             'status' => $nextState['status'],
+            'isVerified' => $nextState['isVerified'],
+            'verificationStatus' => $nextState['isVerified'] ? 'verified' : 'unverified',
+            'invitationStatus' => $nextState['status'] === 'active' ? 'accepted' : ($nextState['isVerified'] ? 'sent' : 'not_sent'),
             'isApproved' => $nextState['isApproved'],
             'isActive' => $nextState['isActive'],
             'updatedTimestamp' => $updatedAt,
@@ -227,6 +242,9 @@ class UserClerkRegistrationService
             'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
             'clerkUserId' => ParameterType::STRING,
             'status' => ParameterType::STRING,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
+            'invitationStatus' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
             'updatedTimestamp' => ParameterType::STRING,
@@ -246,11 +264,11 @@ class UserClerkRegistrationService
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, status, is_approved, is_active,
-                     failed_login_attempts, created_timestamp, updated_timestamp)
+                     is_verified, verification_status, invitation_status, failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :status, :isApproved, :isActive,
-                     :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
+                     :isVerified, :verificationStatus, :invitationStatus, :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 $this->buildNewAccountParameters($registration, $now),
                 $this->newAccountTypes($registration)
             );
@@ -282,6 +300,9 @@ class UserClerkRegistrationService
             'status' => $registration['status'],
             'isApproved' => $registration['isApproved'],
             'isActive' => true,
+            'isVerified' => $registration['isVerified'],
+            'verificationStatus' => $registration['isVerified'] ? 'verified' : 'unverified',
+            'invitationStatus' => $registration['isVerified'] ? 'accepted' : 'not_sent',
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $timestamp,
             'updatedTimestamp' => $timestamp,
@@ -303,6 +324,9 @@ class UserClerkRegistrationService
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
+            'invitationStatus' => ParameterType::STRING,
             'failedLoginAttempts' => ParameterType::INTEGER,
             'createdTimestamp' => ParameterType::STRING,
             'updatedTimestamp' => ParameterType::STRING,
@@ -418,6 +442,7 @@ class UserClerkRegistrationService
             'roleDesignation' => $account->getRoleDesignation(),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
+            'isVerified' => $account->getIsVerified(),
         ], $overrides);
     }
 
@@ -432,6 +457,7 @@ class UserClerkRegistrationService
             'roleDesignation' => $state['role'],
             'status' => $state['status'],
             'isApproved' => $state['isApproved'],
+            'isVerified' => $state['isVerified'] ?? false,
             'isActive' => $state['isActive'] ?? true,
         ], $overrides);
     }

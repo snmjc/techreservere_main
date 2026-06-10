@@ -12,11 +12,11 @@
           alt="TechReserve Logo"
           class="accept-invitation-logo"
         />
-        <p class="accept-invitation-kicker">Clerk Invitation Access</p>
-        <h1>Finish your TechReserve invitation inside the system.</h1>
+        <p class="accept-invitation-kicker">Invitation Access</p>
+        <h1>Finish your TechReserve invitation with the invited account.</h1>
         <p>
-          Use the invitation link from your email to activate your Clerk account,
-          sign in automatically, and continue to your TechReserve dashboard.
+          If another user is currently signed in, TechReserve will sign that session out first,
+          then continue the Clerk invitation flow for the invited account only.
         </p>
       </div>
     </section>
@@ -24,56 +24,23 @@
     <section class="accept-invitation-form-panel">
       <div class="accept-invitation-card">
         <div class="accept-invitation-header">
-          <h2>{{ activeMode === 'sign-up' ? 'Accept Invitation' : 'Sign In' }}</h2>
-          <p>
-            {{ hasInvitationContext
-              ? 'Complete the Clerk invitation to create your active TechReserve session.'
-              : 'If you already accepted the invitation, sign in here to continue.' }}
-          </p>
+          <h2>{{ cardTitle }}</h2>
+          <p>{{ cardDescription }}</p>
         </div>
 
-        <div class="accept-invitation-toggle">
-          <button
-            type="button"
-            class="accept-invitation-toggle-button"
-            :class="{ 'accept-invitation-toggle-button--active': activeMode === 'sign-up' }"
-            @click="activeMode = 'sign-up'"
-          >
-            Accept Invitation
-          </button>
-          <button
-            type="button"
-            class="accept-invitation-toggle-button"
-            :class="{ 'accept-invitation-toggle-button--active': activeMode === 'sign-in' }"
-            @click="activeMode = 'sign-in'"
-          >
-            Already Registered
-          </button>
+        <p v-if="statusMessage" class="accept-invitation-helper">{{ statusMessage }}</p>
+        <p v-if="errorMessage" class="accept-invitation-error">{{ errorMessage }}</p>
+
+        <div v-if="showLoadingState" class="accept-invitation-loading">
+          <div class="accept-invitation-spinner" />
+          <span>{{ loadingMessage }}</span>
         </div>
 
-        <p v-if="routeError" class="accept-invitation-error">{{ routeError }}</p>
-        <p v-else-if="!hasInvitationContext" class="accept-invitation-helper">
-          The invitation query was not detected in this URL. Open the exact Clerk email link,
-          or sign in if your invitation was already completed.
-        </p>
-
-        <div class="accept-invitation-widget">
+        <div v-else-if="hasInvitationTicket" class="accept-invitation-widget">
           <SignUp
-            v-if="activeMode === 'sign-up'"
             path="/accept-invitation"
             routing="path"
             sign-in-url="/accept-invitation"
-            :force-redirect-url="redirects.signUpForceRedirectUrl"
-            :fallback-redirect-url="redirects.signUpFallbackRedirectUrl"
-            :appearance="clerkAppearance"
-          />
-          <SignIn
-            v-else
-            path="/accept-invitation"
-            routing="path"
-            sign-up-url="/accept-invitation"
-            :force-redirect-url="redirects.signInForceRedirectUrl"
-            :fallback-redirect-url="redirects.signInFallbackRedirectUrl"
             :appearance="clerkAppearance"
           />
         </div>
@@ -85,32 +52,84 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SignIn, SignUp, useUser } from '@clerk/vue'
+import { SignUp, useAuth, useUser } from '@clerk/vue'
 import { ROUTE_NAMES } from '@/router/routeNames.js'
-import { resolveClerkRedirectOptions } from '@/modules/authentication/utils/clerkRedirects.js'
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js'
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthenticationStore()
 const { isLoaded, isSignedIn } = useUser()
+const { signOut } = useAuth()
 
-const redirects = resolveClerkRedirectOptions()
-const routeError = computed(() => String(route.query.error || '').trim())
-const hasInvitationContext = computed(() => {
-  const queryKeys = Object.keys(route.query || {})
-  if (queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key))) {
-    return true
+const isSigningOutExistingSession = ref(false)
+const hasTriggeredSignOut = ref(false)
+const errorMessage = ref('')
+const statusMessage = ref('')
+const loadingMessage = ref('Preparing your invitation...')
+
+const invitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim())
+const hasInvitationTicket = computed(() => invitationTicket.value !== '')
+const showLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value)
+const cardTitle = computed(() => {
+  if (!hasInvitationTicket.value) return 'Invitation Link Missing'
+  if (isSigningOutExistingSession.value) return 'Switching Account'
+  return 'Accept Invitation'
+})
+const cardDescription = computed(() => {
+  if (!hasInvitationTicket.value) {
+    return 'Open the exact Clerk invitation email link so TechReserve can continue the sign-up flow for the invited account.'
   }
 
-  return /(__clerk|ticket|invitation)/i.test(String(route.hash || ''))
-})
-const activeMode = ref(hasInvitationContext.value ? 'sign-up' : 'sign-in')
+  if (isSigningOutExistingSession.value) {
+    return 'The current Clerk session is being signed out first so the invited account can finish its own registration.'
+  }
 
-watch(hasInvitationContext, (nextValue) => {
-  activeMode.value = nextValue ? 'sign-up' : 'sign-in'
-}, { immediate: false })
+  return 'Create the invited account session below. Clerk will keep the invitation email locked to the email address from the invitation.'
+})
+
+watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, hasTicket]) => {
+  if (!loaded) {
+    return
+  }
+
+  if (!hasTicket) {
+    errorMessage.value = 'This invitation link is missing the Clerk invitation ticket. Open the original email link and try again.'
+    return
+  }
+
+  if (!signedIn) {
+    statusMessage.value = 'Continue with the invited account below.'
+    errorMessage.value = ''
+    return
+  }
+
+  if (hasTriggeredSignOut.value) {
+    return
+  }
+
+  hasTriggeredSignOut.value = true
+  isSigningOutExistingSession.value = true
+  loadingMessage.value = 'Signing out the current account before continuing with the invitation...'
+  statusMessage.value = 'The currently signed-in session cannot accept this invitation safely.'
+  errorMessage.value = ''
+
+  try {
+    authStore.performLogout()
+    await signOutClerk(signOut, {
+      redirectUrl: `${window.location.origin}${route.fullPath}`,
+    })
+  } catch (error) {
+    console.error('[AcceptInvitation] Failed to sign out the existing Clerk session.', error)
+    errorMessage.value = 'Unable to sign out the current account automatically. Please sign out and reopen the invitation link.'
+    isSigningOutExistingSession.value = false
+    hasTriggeredSignOut.value = false
+  }
+}, { immediate: true })
 
 watch([isLoaded, isSignedIn], ([loaded, signedIn]) => {
-  if (!loaded || !signedIn) {
+  if (!loaded || !signedIn || isSigningOutExistingSession.value) {
     return
   }
 
@@ -130,8 +149,6 @@ const clerkAppearance = {
     footer: 'techreserve-clerk-footer',
     footerActionLink: 'techreserve-clerk-footer-link',
     formButtonPrimary: 'techreserve-clerk-primary-button',
-    socialButtonsBlockButton: 'techreserve-clerk-social-button',
-    dividerRow: 'techreserve-clerk-divider-row',
   },
 }
 </script>
@@ -240,32 +257,8 @@ const clerkAppearance = {
   line-height: 1.55;
 }
 
-.accept-invitation-toggle {
-  display: flex;
-  gap: 0.65rem;
-  margin: 1.25rem 0 1rem;
-}
-
-.accept-invitation-toggle-button {
-  flex: 1;
-  min-height: 40px;
-  border: 1px solid #d7ded9;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #4b5563;
-  font-size: 0.86rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.accept-invitation-toggle-button--active {
-  border-color: #08784a;
-  background: #08784a;
-  color: #ffffff;
-}
-
 .accept-invitation-error {
-  margin: 0 0 1rem;
+  margin: 1rem 0 0;
   padding: 0.75rem 0.8rem;
   border: 1px solid #f3b5b5;
   border-radius: 10px;
@@ -273,6 +266,25 @@ const clerkAppearance = {
   color: #9f1d1d;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.accept-invitation-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+  color: #08784a;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.accept-invitation-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(8, 120, 74, 0.18);
+  border-top-color: #08784a;
+  border-radius: 50%;
+  animation: accept-invitation-spin 0.9s linear infinite;
 }
 
 .accept-invitation-widget {
@@ -345,6 +357,11 @@ const clerkAppearance = {
 :deep(.techreserve-clerk-footer-link) {
   color: #08784a;
   font-weight: 900;
+}
+
+@keyframes accept-invitation-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 900px) {

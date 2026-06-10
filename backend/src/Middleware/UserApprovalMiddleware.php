@@ -63,21 +63,23 @@ class UserApprovalMiddleware implements EventSubscriberInterface
         try {
             // Verify Clerk token and check approval status
             $identity = $this->clerkTokenVerifier->verifyTokenAndGetIdentity($token);
+            $status = strtolower(trim((string)($identity['status'] ?? 'pending')));
+            $isActiveInvitationAccount = in_array($status, ['active', 'approved', 'accepted'], true);
 
-            // Check if user is approved
-            if (isset($identity['isApproved']) && !$identity['isApproved']) {
+            // Block only pending/unverified accounts. Legacy active rows may not have is_verified populated yet.
+            if (isset($identity['isVerified']) && !$identity['isVerified'] && !$isActiveInvitationAccount) {
                 $event->setResponse(new JsonResponse([
                     'error' => 'AccountNotApproved',
-                    'message' => 'Your account is pending approval. Please wait for administrator approval.',
+                    'message' => 'Your account is pending verification. Please wait for an administrator invitation.',
                 ], 403));
                 return;
             }
 
             // Check account status
-            if (isset($identity['status']) && !in_array($identity['status'], ['approved', 'accepted'], true)) {
+            if (isset($identity['status']) && !$isActiveInvitationAccount) {
                 $event->setResponse(new JsonResponse([
                     'error' => 'AccountNotApproved',
-                    'message' => 'Your account status is ' . $identity['status'] . '. Only accepted accounts can access the system.',
+                    'message' => 'Your account status is ' . $identity['status'] . '. Only active invitation accounts can access the system.',
                 ], 403));
                 return;
             }

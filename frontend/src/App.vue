@@ -36,7 +36,7 @@ watch([isLoaded, isSignedIn], async ([loaded, signedIn]) => {
 
   if (authStore.isAuthenticated) return
 
-  if (route.name === ROUTE_NAMES.clerkLogin) return
+  if (route.name === ROUTE_NAMES.clerkLogin || route.name === ROUTE_NAMES.acceptInvitation) return
 
   // Signed-in Clerk users must pass through PostLogin so the User Accounts DB
   // remains the source of truth for role, status, and dashboard destination.

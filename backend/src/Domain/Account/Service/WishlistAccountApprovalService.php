@@ -161,7 +161,7 @@ class WishlistAccountApprovalService
             return $this->error('InviteAlreadyAccepted', 'This account invitation has already been accepted.', 409);
         }
 
-        if ($accountStatus === 'approved') {
+        if (in_array($accountStatus, ['approved', 'active'], true)) {
             return $this->error('InviteAlreadyAccepted', 'This account is already approved.', 409);
         }
 
@@ -368,7 +368,7 @@ class WishlistAccountApprovalService
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
-                'status' => 'invited',
+                'status' => 'verified',
                 'isVerified' => true,
                 'verificationStatus' => 'verified',
                 'invitationStatus' => 'sent',
@@ -397,7 +397,6 @@ class WishlistAccountApprovalService
         $this->connection->executeStatement(
             'UPDATE accounts
              SET status = :status,
-                 is_approved = :isApproved,
                  invitation_status = :invitationStatus,
                  is_active = :isActive,
                  approved_at = COALESCE(approved_at, :approvedAt),
@@ -405,8 +404,7 @@ class WishlistAccountApprovalService
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
-                'status' => 'approved',
-                'isApproved' => true,
+                'status' => 'active',
                 'invitationStatus' => 'accepted',
                 'isActive' => true,
                 'approvedAt' => $updatedAt->format('Y-m-d H:i:s'),
@@ -416,7 +414,6 @@ class WishlistAccountApprovalService
             ],
             [
                 'status' => ParameterType::STRING,
-                'isApproved' => ParameterType::BOOLEAN,
                 'invitationStatus' => ParameterType::STRING,
                 'isActive' => ParameterType::BOOLEAN,
                 'approvedAt' => ParameterType::STRING,
@@ -479,7 +476,7 @@ class WishlistAccountApprovalService
             'isVerified' => true,
             'verificationStatus' => 'verified',
             'invitationStatus' => 'sent',
-            'status' => 'invited',
+            'status' => 'verified',
             'isApproved' => false,
             'isActive' => true,
             'invitedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:sP'),
@@ -492,9 +489,8 @@ class WishlistAccountApprovalService
             'accountIdentifier' => (int)$account['account_identifier'],
             'emailAddress' => (string)$account['email_address'],
             'roleDesignation' => (string)$account['role_designation'],
-            'status' => 'approved',
+            'status' => 'active',
             'invitationStatus' => 'accepted',
-            'isApproved' => true,
             'isActive' => true,
         ];
     }
