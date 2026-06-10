@@ -7,50 +7,27 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AccountClerkProvisioningService
 {
-    public function __construct(private readonly HttpClientInterface $httpClient)
-    {
+    public function __construct(
+        private readonly HttpClientInterface $httpClient,
+        private readonly ClerkInvitationPayloadFactory $invitationPayloadFactory,
+        private readonly ClerkApiErrorMessageResolver $errorMessageResolver
+    ) {
     }
 
     public function sendInvitation(array $account, string $redirectUrl, bool $notify): array
     {
-        $emailAddress = (string)($account['email_address'] ?? '');
-        $accountIdentifier = (int)($account['account_identifier'] ?? 0);
-        $roleDesignation = (string)($account['role_designation'] ?? '');
-        $firstName = (string)($account['first_name'] ?? '');
-        $lastName = (string)($account['last_name'] ?? '');
-
         $response = $this->httpClient->request('POST', $this->clerkApiBaseUrl() . '/v1/invitations', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->clerkSecretKey(),
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ],
-            'json' => [
-                'email_address' => $emailAddress,
-                'redirect_url' => $redirectUrl,
-                'notify' => $notify,
-                'expires_in_days' => 7,
-                'public_metadata' => [
-                    'account_id' => $accountIdentifier,
-                    'email_address' => $emailAddress,
-                    'role_designation' => $roleDesignation,
-                    'first_name' => $firstName,
-                    'last_name' => $lastName,
-                    'techreserve_account_identifier' => $accountIdentifier,
-                    'techreserve_username' => AccountUsername::fromEmail($emailAddress),
-                    'techreserve_role_designation' => $roleDesignation,
-                    'techreserve_first_name' => $firstName,
-                    'techreserve_last_name' => $lastName,
-                    'techreserve_email_address' => $emailAddress,
-                    'techreserve_id_number' => (string)($account['id_number'] ?? ''),
-                    'techreserve_department' => (string)($account['department'] ?? ''),
-                ],
-            ],
+            'json' => $this->invitationPayloadFactory->build($account, $redirectUrl, $notify),
         ]);
 
         $payload = $response->toArray(false);
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
-            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk invitation request failed.'));
+            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk invitation request failed.'));
         }
 
         return $payload;
@@ -99,7 +76,7 @@ class AccountClerkProvisioningService
 
         $payload = $response->toArray(false);
         if ($response->getStatusCode() >= 400) {
-            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user lookup failed.'));
+            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user lookup failed.'));
         }
 
         if (isset($payload['id'])) {
@@ -148,7 +125,7 @@ class AccountClerkProvisioningService
                 return (string)$existingClerkUser['id'];
             }
 
-            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user creation failed.'));
+            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user creation failed.'));
         }
 
         $clerkUserId = (string)($payload['id'] ?? '');
@@ -189,7 +166,7 @@ class AccountClerkProvisioningService
 
         if ($response->getStatusCode() >= 400) {
             $payload = $response->toArray(false);
-            throw new \RuntimeException($this->resolveClerkErrorMessage($payload, 'Clerk user update failed.'));
+            throw new \RuntimeException($this->errorMessageResolver->resolve($payload, 'Clerk user update failed.'));
         }
     }
 
@@ -218,13 +195,5 @@ class AccountClerkProvisioningService
             'techreserve_id_number' => $idNumber,
             'techreserve_approval_status' => 'pending',
         ];
-    }
-
-    private function resolveClerkErrorMessage(array $payload, string $fallback): string
-    {
-        return $payload['errors'][0]['long_message']
-            ?? $payload['errors'][0]['message']
-            ?? $payload['message']
-            ?? $fallback;
     }
 }
