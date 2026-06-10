@@ -162,7 +162,7 @@ class WishlistAccountApprovalService
         if ($accountStatus === 'invited' && empty($account['invite_expires_at'])) {
             return $this->error(
                 'InviteAlreadySent',
-                'This account is already marked as invited. Resend is only available after the invitation expires.',
+                'This account is already marked as invited. Resend becomes available after 7 days.',
                 409
             );
         }
@@ -200,7 +200,7 @@ class WishlistAccountApprovalService
     {
         return $this->error(
             'InviteAlreadySent',
-            'This account already has an active invitation. Resend is only available after the invitation expires.',
+            'This account already has an active invitation. Resend becomes available after 7 days.',
             409
         );
     }

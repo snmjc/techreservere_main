@@ -170,7 +170,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteModalDescription(account) {
     if (approvalMode.value === 'resend') {
-      return 'The previous Clerk invitation has expired. Confirm the responsible admin before resending a new invitation link.';
+      return 'The previous Clerk invitation expired after 7 days. Confirm the responsible admin before sending a new invitation link.';
     }
     return account?.accountType === 'Employee'
       ? 'Review the worker information before sending the Clerk invitation email.'
@@ -192,7 +192,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       send: canSendInvite,
     };
     const messages = {
-      resend: 'Resend invite is only available after the previous invitation expires.',
+      resend: 'Resend invite becomes available after 7 days.',
       send: 'Send invite is only available for pending accounts that have not been invited yet.',
     };
     const normalizedMode = mode === 'resend' ? 'resend' : 'send';
@@ -230,7 +230,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     }
     if (!isApprovalConfirmationReady.value) {
       approvalFormError.value = approvalMode.value === 'resend'
-        ? 'Please type your exact admin email to resend the invite.'
+        ? 'Please type your exact admin email to resend the invite after 7 days.'
         : 'Please type your exact admin email to send the invite.';
       return false;
     }

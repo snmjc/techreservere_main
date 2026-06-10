@@ -29,7 +29,6 @@ class AccountClerkProvisioningService
                 'email_address' => $emailAddress,
                 'redirect_url' => $redirectUrl,
                 'notify' => $notify,
-                'ignore_existing' => true,
                 'expires_in_days' => 7,
                 'public_metadata' => [
                     'account_id' => $accountIdentifier,
