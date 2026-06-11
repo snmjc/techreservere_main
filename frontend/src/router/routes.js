@@ -26,8 +26,12 @@ function redirectInvitationTraffic(toRoute) {
     return true;
   }
 
+  if (toRoute.name === ROUTE_NAMES.clerkLogin) {
+    return true;
+  }
+
   return {
-    name: ROUTE_NAMES.acceptInvitation,
+    name: ROUTE_NAMES.clerkLogin,
     query: toRoute.query,
     hash: toRoute.hash,
   };
@@ -50,7 +54,11 @@ export const routeDefinitions = [
     path: '/accept-invitation/:pathMatch(.*)*',
     alias: ['/accept-invitation', '/accept-invite', '/accept-invite/:pathMatch(.*)*'],
     name: ROUTE_NAMES.acceptInvitation,
-    component: () => import('@/pages/auth/AcceptInvitation.vue'),
+    redirect: (toRoute) => ({
+      name: ROUTE_NAMES.clerkLogin,
+      query: toRoute.query,
+      hash: toRoute.hash,
+    }),
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -129,7 +137,7 @@ export const routeDefinitions = [
     beforeEnter: (toRoute) => {
       if (hasInvitationContext(toRoute)) {
         return {
-          name: ROUTE_NAMES.acceptInvitation,
+          name: ROUTE_NAMES.clerkLogin,
           query: toRoute.query,
           hash: toRoute.hash,
         };

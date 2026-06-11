@@ -33,7 +33,37 @@
     <section class="clerk-login-form-panel">
       <div class="clerk-login-form-content">
         <div class="clerk-login-card">
-          <form v-if="!isResettingPassword" class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
+          <div v-if="showInvitationFlow" class="techreserve-invitation-flow">
+            <div class="techreserve-invitation-header">
+              <h2 class="techreserve-local-login-title">
+                {{ isSigningOutExistingSession ? 'Switching account...' : 'Complete your sign up' }}
+              </h2>
+              <p class="techreserve-invitation-copy">
+                {{ invitationMessage }}
+              </p>
+            </div>
+
+            <p v-if="invitationError" class="techreserve-local-login-error">{{ invitationError }}</p>
+            <p v-else-if="invitationStatusMessage" class="techreserve-local-login-info">{{ invitationStatusMessage }}</p>
+
+            <div v-if="showInvitationLoadingState" class="techreserve-invitation-loading">
+              <div class="techreserve-invitation-spinner" />
+              <span>{{ invitationLoadingMessage }}</span>
+            </div>
+
+            <div v-else-if="hasInvitationTicket" class="techreserve-invitation-widget">
+              <SignUp
+                path="/clerk-login"
+                routing="path"
+                sign-in-url="/clerk-login"
+                force-redirect-url="/auth/post-login"
+                fallback-redirect-url="/auth/post-login"
+                :appearance="clerkAppearance"
+              />
+            </div>
+          </div>
+
+          <form v-else-if="!isResettingPassword" class="techreserve-local-login-form" @submit.prevent="handleLocalLogin">
             <h2 class="techreserve-local-login-title">Welcome to TechReserve</h2>
             <p v-if="loginError" class="techreserve-local-login-error">{{ loginError }}</p>
 
@@ -188,17 +218,33 @@
 </template>
 
 <script setup>
+import { SignUp, useAuth, useUser } from '@clerk/vue';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
-import { ref } from 'vue';
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const isPasswordVisible = ref(false);
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthenticationStore();
+const { isLoaded, isSignedIn } = useUser();
+const { signOut } = useAuth();
+
+const hasTriggeredSignOut = ref(false);
+const isSigningOutExistingSession = ref(false);
+const wasSignedInOnEntry = ref(null);
+const invitationError = ref('');
+const invitationStatusMessage = ref('');
+const invitationLoadingMessage = ref('Preparing your invitation...');
 
 function togglePasswordVisibility() {
   isPasswordVisible.value = !isPasswordVisible.value;
 }
 
 const {
-  ROUTE_NAMES,
   emailAddress,
   passwordText,
   rememberMeChecked,
@@ -218,6 +264,101 @@ const {
   resolveResetPasswordButtonText,
   handleResetPasswordSubmit,
 } = useClerkLoginPage();
+
+const hasInvitationContext = computed(() => {
+  const queryKeys = Object.keys(route.query || {});
+  if (queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key))) {
+    return true;
+  }
+
+  return /(__clerk|ticket|invitation)/i.test(String(route.hash || ''));
+});
+
+const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
+const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
+const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value);
+const invitationMessage = computed(() => {
+  if (isSigningOutExistingSession.value) {
+    return 'Signing out the current session so the invited account can finish Clerk registration safely.';
+  }
+
+  return 'Create the invited account password once and Clerk will continue directly into TechReserve.';
+});
+
+const clerkAppearance = {
+  elements: {
+    rootBox: 'techreserve-clerk-root',
+    cardBox: 'techreserve-clerk-card-box',
+    card: 'techreserve-clerk-card',
+    headerTitle: 'techreserve-clerk-header-title',
+    headerSubtitle: 'techreserve-clerk-header-subtitle',
+    formFieldRow: 'techreserve-clerk-form-field',
+    formFieldLabel: 'techreserve-clerk-field-label',
+    formFieldInput: 'techreserve-clerk-field-input',
+    footer: 'techreserve-clerk-footer',
+    footerActionLink: 'techreserve-clerk-footer-link',
+    formButtonPrimary: 'techreserve-clerk-primary-button',
+  },
+};
+
+watch([isLoaded, isSignedIn, showInvitationFlow, hasInvitationTicket], async ([loaded, signedIn, invitationFlow, hasTicket]) => {
+  if (!invitationFlow || !loaded) {
+    return;
+  }
+
+  if (wasSignedInOnEntry.value === null) {
+    wasSignedInOnEntry.value = signedIn;
+  }
+
+  if (!hasTicket) {
+    invitationError.value = 'This invitation link is missing the Clerk invitation ticket. Open the original email link and try again.';
+    invitationStatusMessage.value = '';
+    return;
+  }
+
+  if (!signedIn) {
+    invitationError.value = '';
+    invitationStatusMessage.value = 'Continue with the invited account below.';
+    return;
+  }
+
+  if (hasTriggeredSignOut.value || wasSignedInOnEntry.value === false) {
+    return;
+  }
+
+  hasTriggeredSignOut.value = true;
+  isSigningOutExistingSession.value = true;
+  invitationError.value = '';
+  invitationStatusMessage.value = 'The current account will be signed out before the invited session continues.';
+  invitationLoadingMessage.value = 'Signing out the current account before continuing with the invitation...';
+
+  try {
+    authStore.performLogout();
+    await signOutClerk(signOut, {
+      redirectUrl: `${window.location.origin}${route.fullPath}`,
+    });
+  } catch (error) {
+    console.error('[ClerkLogin] Failed to sign out the existing Clerk session for invitation flow.', error);
+    invitationError.value = 'Unable to switch accounts automatically. Please sign out first, then reopen the invitation link.';
+    invitationStatusMessage.value = '';
+    isSigningOutExistingSession.value = false;
+    hasTriggeredSignOut.value = false;
+  }
+}, { immediate: true });
+
+watch([isLoaded, isSignedIn, showInvitationFlow], ([loaded, signedIn, invitationFlow]) => {
+  if (
+    !invitationFlow
+    || !loaded
+    || !signedIn
+    || isSigningOutExistingSession.value
+    || (wasSignedInOnEntry.value === true && !hasTriggeredSignOut.value)
+  ) {
+    return;
+  }
+
+  router.replace({ name: ROUTE_NAMES.postLogin });
+}, { immediate: true });
 
 </script>
 
@@ -585,6 +726,50 @@ const {
   text-decoration: none;
 }
 
+.techreserve-invitation-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.techreserve-invitation-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.techreserve-invitation-copy {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.techreserve-invitation-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #08784a;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.techreserve-invitation-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(8, 120, 74, 0.18);
+  border-top-color: #08784a;
+  border-radius: 50%;
+  animation: techreserve-invitation-spin 0.9s linear infinite;
+}
+
+.techreserve-invitation-widget {
+  width: 100%;
+}
+
 :deep(.techreserve-clerk-root) {
   display: flex;
   justify-content: center;
@@ -681,6 +866,16 @@ const {
 :deep(.techreserve-clerk-footer-link) {
   color: #08784a;
   font-weight: 900;
+}
+
+@keyframes techreserve-invitation-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1024px) {

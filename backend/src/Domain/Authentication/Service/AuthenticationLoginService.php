@@ -46,13 +46,17 @@ class AuthenticationLoginService
 
     private function validateAccountAvailability(AccountEntity $account): ?array
     {
+        $accountStatus = strtolower(trim((string)$account->getStatus()));
+        $isActiveInvitationAccount = in_array($accountStatus, ['active', 'approved', 'accepted'], true);
         if (!$account->getIsActive()) {
+            if (in_array($accountStatus, ['verified', 'invited', 'pending'], true)) {
+                return $this->error('AccountInvitationPending', 'Please finish the Clerk invitation sign-up from your email before signing in.', 403);
+            }
+
             return $this->error('AccountDisabled', 'This account has been disabled. Please contact an administrator.', 403);
         }
 
-        $accountStatus = strtolower(trim((string)$account->getStatus()));
-        $isActiveInvitationAccount = in_array($accountStatus, ['active', 'approved', 'accepted'], true);
-        if ($account->getIsVerified() && in_array($accountStatus, ['verified', 'invited'], true)) {
+        if (in_array($accountStatus, ['verified', 'invited'], true)) {
             return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 

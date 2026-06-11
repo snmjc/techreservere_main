@@ -184,10 +184,6 @@ class UserClerkRegistrationService
             return true;
         }
 
-        if (!$account->getIsVerified()) {
-            return false;
-        }
-
         return $this->hasAcceptedInvitation($registration['emailAddress']);
     }
 
@@ -201,9 +197,9 @@ class UserClerkRegistrationService
         $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin;
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
         $nextIsActive = $account->getIsActive() || $hasAcceptedInvitation;
-        $nextStatus = $nextIsVerified && ($hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true))
+        $nextStatus = $hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true)
             ? 'active'
-            : ($nextIsVerified ? 'verified' : ($existingStatus !== '' ? $existingStatus : 'pending'));
+            : ($existingStatus !== '' ? $existingStatus : 'pending');
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
