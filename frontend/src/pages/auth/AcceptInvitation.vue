@@ -41,6 +41,8 @@
             path="/accept-invitation"
             routing="path"
             sign-in-url="/accept-invitation"
+            force-redirect-url="/auth/post-login"
+            fallback-redirect-url="/auth/post-login"
             :appearance="clerkAppearance"
           />
         </div>
@@ -65,6 +67,7 @@ const { signOut } = useAuth()
 
 const isSigningOutExistingSession = ref(false)
 const hasTriggeredSignOut = ref(false)
+const wasSignedInOnEntry = ref(null)
 const errorMessage = ref('')
 const statusMessage = ref('')
 const loadingMessage = ref('Preparing your invitation...')
@@ -116,6 +119,10 @@ watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, has
     return
   }
 
+  if (wasSignedInOnEntry.value === null) {
+    wasSignedInOnEntry.value = signedIn
+  }
+
   if (!hasTicket) {
     errorMessage.value = 'This invitation link is missing the Clerk invitation ticket. Open the original email link and try again.'
     return
@@ -128,6 +135,10 @@ watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, has
   }
 
   if (hasTriggeredSignOut.value) {
+    return
+  }
+
+  if (wasSignedInOnEntry.value === false) {
     return
   }
 
@@ -151,7 +162,12 @@ watch([isLoaded, isSignedIn, hasInvitationTicket], async ([loaded, signedIn, has
 }, { immediate: true })
 
 watch([isLoaded, isSignedIn], ([loaded, signedIn]) => {
-  if (!loaded || !signedIn || isSigningOutExistingSession.value) {
+  if (
+    !loaded
+    || !signedIn
+    || isSigningOutExistingSession.value
+    || (wasSignedInOnEntry.value === true && !hasTriggeredSignOut.value)
+  ) {
     return
   }
 

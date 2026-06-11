@@ -22,7 +22,10 @@ class ClerkWebhookUserSyncService
             is_verified = TRUE,
             verification_status = 'verified',
             invitation_status = 'accepted',
+            is_approved = TRUE,
+            is_active = TRUE,
             status = 'active',
+            approved_at = COALESCE(approved_at, :approvedAt),
             updated_timestamp = :updatedTimestamp
         WHERE account_identifier = :accountIdentifier
           AND (clerk_user_id IS NULL OR clerk_user_id = '' OR clerk_user_id = :clerkUserId)";
@@ -173,6 +176,7 @@ class ClerkWebhookUserSyncService
             'firstName' => $syncContext['firstName'],
             'lastName' => $syncContext['lastName'],
             'roleDesignation' => $roleFromDatabase !== '' ? $roleFromDatabase : $syncContext['roleDesignation'],
+            'approvedAt' => $syncContext['timestamp'],
             'updatedTimestamp' => $syncContext['timestamp'],
             'accountIdentifier' => $targetAccountIdentifier,
         ];
@@ -186,6 +190,7 @@ class ClerkWebhookUserSyncService
             'firstName' => ParameterType::STRING,
             'lastName' => ParameterType::STRING,
             'roleDesignation' => ParameterType::STRING,
+            'approvedAt' => ParameterType::STRING,
             'updatedTimestamp' => ParameterType::STRING,
             'accountIdentifier' => ParameterType::INTEGER,
         ];

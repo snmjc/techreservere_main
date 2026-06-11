@@ -2,22 +2,22 @@
 
 namespace App\Domain\Dashboard\Service;
 
-use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Account\Service\AccountReadService;
 use App\Domain\Equipment\Repository\EquipmentRepository;
 use App\Domain\Reservation\Repository\ReservationRepository;
 
 class DashboardAggregationService
 {
-    private AccountRepository $accountRepository;
+    private AccountReadService $accountReadService;
     private EquipmentRepository $equipmentRepository;
     private ReservationRepository $reservationRepository;
 
     public function __construct(
-        AccountRepository $accountRepository,
+        AccountReadService $accountReadService,
         EquipmentRepository $equipmentRepository,
         ReservationRepository $reservationRepository
     ) {
-        $this->accountRepository = $accountRepository;
+        $this->accountReadService = $accountReadService;
         $this->equipmentRepository = $equipmentRepository;
         $this->reservationRepository = $reservationRepository;
     }
@@ -33,7 +33,7 @@ class DashboardAggregationService
 
     public function getAdminDashboardSummary(): array
     {
-        $accounts = $this->accountRepository->findAllAccounts();
+        $accounts = $this->accountReadService->getAcceptedAccounts();
         $equipment = $this->equipmentRepository->findAllEquipment();
         $reservations = $this->reservationRepository->findAllReservations();
 

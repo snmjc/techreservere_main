@@ -16,7 +16,8 @@ class UserClerkRegistrationService
 
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
     ) {
     }
 
@@ -83,14 +84,24 @@ class UserClerkRegistrationService
             ]));
         }
 
-        if (!$this->canUseExistingClerkAccount($account, $registration)) {
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            $registration['emailAddress'],
+            $registration['clerkUserId']
+        );
+
+        $refreshedAccount = $this->loadAccountSnapshot($account->getAccountIdentifier());
+        if ($refreshedAccount !== null && $this->canUseExistingClerkAccountSnapshot($refreshedAccount)) {
+            return $this->success('Account already registered.', $this->buildSnapshotAccountPayload($refreshedAccount));
+        }
+
+        if (!$this->canUseExistingClerkAccount($account)) {
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
         }
 
         return $this->success('Account already registered.', $this->buildExistingAccountPayload($account));
     }
 
-    private function canUseExistingClerkAccount(AccountEntity $account, array $registration): bool
+    private function canUseExistingClerkAccount(AccountEntity $account): bool
     {
         $status = strtolower($account->getStatus());
 
@@ -188,8 +199,8 @@ class UserClerkRegistrationService
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
         $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin;
-        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin;
-        $nextIsActive = $account->getIsActive();
+        $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
+        $nextIsActive = $account->getIsActive() || $hasAcceptedInvitation;
         $nextStatus = $nextIsVerified && ($hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true))
             ? 'active'
             : ($nextIsVerified ? 'verified' : ($existingStatus !== '' ? $existingStatus : 'pending'));
@@ -208,7 +219,7 @@ class UserClerkRegistrationService
     private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
     {
         $this->connection->executeStatement(
-            'UPDATE accounts
+            "UPDATE accounts
              SET last_name = :lastName,
                  first_name = :firstName,
                  username = :username,
@@ -223,10 +234,14 @@ class UserClerkRegistrationService
                  invitation_status = :invitationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
+                 approved_at = CASE
+                    WHEN :status = 'active' THEN COALESCE(approved_at, :approvedAt)
+                    ELSE approved_at
+                 END,
                  updated_timestamp = :updatedTimestamp
-             WHERE account_identifier = :accountIdentifier',
+             WHERE account_identifier = :accountIdentifier",
             $this->buildExistingEmailUpdateParameters($account, $registration, $nextState, $updatedAt),
-            $this->existingEmailUpdateTypes($registration)
+            $this->existingEmailUpdateTypes($registration, $nextState)
         );
     }
 
@@ -247,12 +262,13 @@ class UserClerkRegistrationService
             'invitationStatus' => $nextState['status'] === 'active' ? 'accepted' : ($nextState['isVerified'] ? 'sent' : 'not_sent'),
             'isApproved' => $nextState['isApproved'],
             'isActive' => $nextState['isActive'],
+            'approvedAt' => $nextState['status'] === 'active' ? $updatedAt : null,
             'updatedTimestamp' => $updatedAt,
             'accountIdentifier' => $account->getAccountIdentifier(),
         ];
     }
 
-    private function existingEmailUpdateTypes(array $registration): array
+    private function existingEmailUpdateTypes(array $registration, array $nextState): array
     {
         return [
             'lastName' => ParameterType::STRING,
@@ -269,6 +285,7 @@ class UserClerkRegistrationService
             'invitationStatus' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
+            'approvedAt' => $nextState['status'] === 'active' ? ParameterType::STRING : ParameterType::NULL,
             'updatedTimestamp' => ParameterType::STRING,
             'accountIdentifier' => ParameterType::INTEGER,
         ];
@@ -473,6 +490,45 @@ class UserClerkRegistrationService
         ], $overrides);
     }
 
+    private function loadAccountSnapshot(int $accountIdentifier): ?array
+    {
+        $account = $this->connection->fetchAssociative(
+            'SELECT account_identifier, clerk_user_id, first_name, last_name, email_address, username,
+                    role_designation, status, is_approved, is_verified, is_active
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+             LIMIT 1',
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        return $account ?: null;
+    }
+
+    private function canUseExistingClerkAccountSnapshot(array $account): bool
+    {
+        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
+        return $this->toDatabaseBoolean($account['is_verified'] ?? false)
+            && in_array($status, ['active', 'approved', 'accepted'], true);
+    }
+
+    private function buildSnapshotAccountPayload(array $account): array
+    {
+        return [
+            'accountIdentifier' => (int)$account['account_identifier'],
+            'clerkUserId' => !empty($account['clerk_user_id']) ? (string)$account['clerk_user_id'] : null,
+            'firstName' => (string)($account['first_name'] ?? ''),
+            'lastName' => (string)($account['last_name'] ?? ''),
+            'emailAddress' => (string)($account['email_address'] ?? ''),
+            'username' => (string)($account['username'] ?? ''),
+            'roleDesignation' => (string)($account['role_designation'] ?? 'ROLE_BORROWER'),
+            'status' => (string)($account['status'] ?? 'pending'),
+            'isApproved' => $this->toDatabaseBoolean($account['is_approved'] ?? false),
+            'isVerified' => $this->toDatabaseBoolean($account['is_verified'] ?? false),
+            'isActive' => $this->toDatabaseBoolean($account['is_active'] ?? true),
+        ];
+    }
+
     private function buildRegistrationAccountPayload(array $registration, array $state, array $overrides = []): array
     {
         return array_merge([
@@ -487,6 +543,19 @@ class UserClerkRegistrationService
             'isVerified' => $state['isVerified'] ?? false,
             'isActive' => $state['isActive'] ?? true,
         ], $overrides);
+    }
+
+    private function toDatabaseBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        return in_array(strtolower(trim((string)$value)), ['1', 't', 'true', 'yes'], true);
     }
 
     private function success(string $message, array $account, int $status = 200): array

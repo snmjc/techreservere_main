@@ -37,16 +37,6 @@ class ClerkLoginPreflightService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (!empty($account['clerk_user_id'])
-            && in_array($status, ['active', 'approved', 'accepted'], true)
-        ) {
-            return $this->success($status);
-        }
-
-        if (DatabaseBoolean::toBool($account['is_verified'] ?? false) && in_array($status, ['verified', 'invited'], true)) {
-            return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
-        }
-
         if (in_array($status, ['rejected', 'denied'], true)) {
             return $this->error('AccountRejected', 'This account request was denied. Please contact the administrator.', 403);
         }
@@ -75,6 +65,10 @@ class ClerkLoginPreflightService
             && in_array($refreshedStatus, ['active', 'approved', 'accepted'], true)
         ) {
             return $this->success($refreshedStatus);
+        }
+
+        if (DatabaseBoolean::toBool($refreshedAccount['is_verified'] ?? false) && in_array($refreshedStatus, ['verified', 'invited'], true)) {
+            return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 
         $invitation = $this->connection->fetchAssociative(
