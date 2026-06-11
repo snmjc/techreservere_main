@@ -19,7 +19,7 @@ class ClerkLoginPreflightService
     public function check(string $emailAddress): array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_verified, is_active
+            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_verified, is_active, invitation_status
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR LOWER(username) = LOWER(:emailAddress)
@@ -32,11 +32,17 @@ class ClerkLoginPreflightService
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
         }
 
+        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
+        $invitationStatus = strtolower(trim((string)($account['invitation_status'] ?? 'not_sent')));
+
         if (!DatabaseBoolean::toBool($account['is_active'] ?? true)) {
+            if (in_array($status, ['invited', 'pending', 'verified'], true) || in_array($invitationStatus, ['sent', 'pending'], true)) {
+                return $this->error('AccountInvitationPending', 'Please finish the Clerk invitation sign-up from your email before signing in.', 403);
+            }
+
             return $this->error('AccountDisabled', 'This account has been disabled. Please contact an administrator.', 403);
         }
 
-        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
         if (in_array($status, ['rejected', 'denied'], true)) {
             return $this->error('AccountRejected', 'This account request was denied. Please contact the administrator.', 403);
         }
@@ -51,7 +57,7 @@ class ClerkLoginPreflightService
         );
 
         $refreshedAccount = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, status, is_approved, is_verified, clerk_user_id, is_active
+            "SELECT account_identifier, email_address, status, is_approved, is_verified, clerk_user_id, is_active, invitation_status
              FROM accounts
              WHERE account_identifier = :accountIdentifier
              LIMIT 1",
@@ -60,6 +66,7 @@ class ClerkLoginPreflightService
         ) ?: $account;
 
         $refreshedStatus = strtolower(trim((string)($refreshedAccount['status'] ?? $status)));
+        $refreshedInvitationStatus = strtolower(trim((string)($refreshedAccount['invitation_status'] ?? $invitationStatus)));
         if (DatabaseBoolean::toBool($refreshedAccount['is_active'] ?? true)
             && !empty($refreshedAccount['clerk_user_id'])
             && in_array($refreshedStatus, ['active', 'approved', 'accepted'], true)
@@ -67,7 +74,10 @@ class ClerkLoginPreflightService
             return $this->success($refreshedStatus);
         }
 
-        if (DatabaseBoolean::toBool($refreshedAccount['is_verified'] ?? false) && in_array($refreshedStatus, ['verified', 'invited'], true)) {
+        if (
+            in_array($refreshedStatus, ['verified', 'invited', 'pending'], true)
+            || in_array($refreshedInvitationStatus, ['sent', 'pending'], true)
+        ) {
             return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 

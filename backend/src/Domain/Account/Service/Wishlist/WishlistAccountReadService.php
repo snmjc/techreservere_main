@@ -45,8 +45,8 @@ class WishlistAccountReadService
                 LIMIT 1
              ) latest_invitation ON TRUE
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
-             WHERE COALESCE(accounts.is_verified, FALSE) = FALSE
-               AND LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('active', 'approved', 'accepted', 'verified')
+             WHERE LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('active', 'approved', 'accepted')
+               AND LOWER(COALESCE(accounts.invitation_status, 'not_sent')) <> 'accepted'
              ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
         );
 
@@ -130,24 +130,20 @@ class WishlistAccountReadService
             return $status;
         }
 
-        if ($invitationStatus === 'sent' && !empty($row['invite_expires_at'])) {
-            try {
-                $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
-                return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'verified';
-            } catch (\Throwable) {
-                return $status;
+        if ($status === 'invited' || $invitationStatus === 'sent') {
+            if (!empty($row['invite_expires_at'])) {
+                try {
+                    $expiresAt = new \DateTimeImmutable((string)$row['invite_expires_at']);
+                    return $expiresAt < new \DateTimeImmutable() ? 'expired' : 'verified';
+                } catch (\Throwable) {
+                    return 'verified';
+                }
             }
-        }
 
-        if ($invitationStatus === 'sent') {
             return 'verified';
         }
 
         if ($isVerified || strtolower((string)($row['verification_status'] ?? '')) === 'verified' || $status === 'verified') {
-            return 'verified';
-        }
-
-        if ($status === 'invited') {
             return 'verified';
         }
 

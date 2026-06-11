@@ -241,7 +241,7 @@ class ClerkWebhookUserSyncService
     {
         if ($accountIdentifier !== null) {
             $account = $this->connection->fetchAssociative(
-                'SELECT account_identifier, role_designation, status, is_verified
+                'SELECT account_identifier, role_designation, status, is_verified, invitation_status
                  FROM accounts
                  WHERE account_identifier = :accountIdentifier
                  LIMIT 1',
@@ -255,7 +255,7 @@ class ClerkWebhookUserSyncService
         }
 
         $account = $this->connection->fetchAssociative(
-            'SELECT account_identifier, role_designation, status, is_verified
+            'SELECT account_identifier, role_designation, status, is_verified, invitation_status
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR clerk_user_id = :clerkUserId
@@ -278,8 +278,13 @@ class ClerkWebhookUserSyncService
     {
         $status = strtolower(trim((string)($matchedAccount['status'] ?? 'pending')));
         $isVerified = $this->toDatabaseBoolean($matchedAccount['is_verified'] ?? false);
+        $invitationStatus = strtolower(trim((string)($matchedAccount['invitation_status'] ?? 'not_sent')));
 
         if (in_array($status, ['active', 'approved', 'accepted'], true)) {
+            return true;
+        }
+
+        if ($status === 'invited' || $invitationStatus === 'sent') {
             return true;
         }
 

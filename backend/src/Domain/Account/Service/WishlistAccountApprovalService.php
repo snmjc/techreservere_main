@@ -123,7 +123,7 @@ class WishlistAccountApprovalService
              ) latest_invitation ON TRUE
              WHERE account_identifier = :accountIdentifier
                AND COALESCE(is_approved, FALSE) = FALSE
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'rejected', 'disabled')",
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('active', 'approved', 'accepted', 'rejected', 'disabled', 'deleted', 'archived')",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
@@ -346,7 +346,7 @@ class WishlistAccountApprovalService
             'invitedBy' => $context['invitedBy'],
             'organization' => 'TechReserve',
             'invitationToken' => $invitationDraft['token'],
-            'status' => 'pending',
+            'status' => 'sent',
             'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d H:i:sP'),
             'createdAt' => $invitationDraft['createdAt']->format('Y-m-d H:i:sP'),
             'acceptedAt' => null,
@@ -368,12 +368,12 @@ class WishlistAccountApprovalService
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier',
             [
-                'status' => 'verified',
-                'isVerified' => true,
-                'verificationStatus' => 'verified',
+                'status' => 'invited',
+                'isVerified' => false,
+                'verificationStatus' => 'unverified',
                 'invitationStatus' => 'sent',
                 'isApproved' => false,
-                'isActive' => true,
+                'isActive' => false,
                 'invitedAt' => $updatedAt->format('Y-m-d H:i:s'),
                 'updatedTimestamp' => $updatedAt->format('Y-m-d H:i:s'),
                 'accountIdentifier' => $accountIdentifier,
@@ -433,7 +433,7 @@ class WishlistAccountApprovalService
             'createdAt' => $createdAt,
             'expiresAt' => $createdAt->modify('+7 days'),
             'token' => bin2hex(random_bytes(24)),
-            'redirectUrl' => $frontendUrl . '/accept-invitation',
+            'redirectUrl' => $frontendUrl . '/clerk-login',
         ];
     }
 
@@ -472,13 +472,13 @@ class WishlistAccountApprovalService
             'accountIdentifier' => (int)$account['account_identifier'],
             'emailAddress' => (string)$account['email_address'],
             'roleDesignation' => (string)$account['role_designation'],
-            'accountStatus' => 'verified',
-            'isVerified' => true,
-            'verificationStatus' => 'verified',
+            'accountStatus' => 'invited',
+            'isVerified' => false,
+            'verificationStatus' => 'unverified',
             'invitationStatus' => 'sent',
-            'status' => 'verified',
+            'status' => 'invited',
             'isApproved' => false,
-            'isActive' => true,
+            'isActive' => false,
             'invitedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:sP'),
         ];
     }
