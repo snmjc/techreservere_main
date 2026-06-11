@@ -352,6 +352,7 @@ async function loadDashboardSummary() {
   try {
     const response = await fetch(apiUrl('/api/v1/dashboard/summary'), {
       method: 'GET',
+      cache: 'no-store',
       headers: buildDashboardHeaders(),
     });
     const result = await response.json().catch(() => ({}));
