@@ -2,7 +2,7 @@
 
 namespace App\Domain\Account\Controller;
 
-use App\Domain\Account\Service\ClerkWebhookService;
+use App\Domain\Account\Service\ClerkWebhookUserSyncService;
 use App\Domain\Account\Service\ClerkWebhookSignatureValidator;
 use App\Shared\Traits\JsonResponseTrait;
 use Psr\Log\LoggerInterface;
@@ -15,11 +15,10 @@ class ClerkWebhookController
     use JsonResponseTrait;
 
     public function __construct(
+        private readonly ClerkWebhookUserSyncService $userSyncService,
         private readonly ClerkWebhookSignatureValidator $signatureValidator,
-        private readonly ClerkWebhookService $clerkWebhookService,
         private readonly LoggerInterface $logger
-    )
-    {
+    ) {
     }
 
     #[Route('/api/v1/clerk/webhook', name: 'clerk_webhook', methods: ['POST'])]
@@ -28,12 +27,7 @@ class ClerkWebhookController
     {
         $payload = $request->getContent();
 
-        if (!$this->signatureValidator->isValid(
-            $payload,
-            (string)$request->headers->get('svix-id', ''),
-            (string)$request->headers->get('svix-timestamp', ''),
-            (string)$request->headers->get('svix-signature', '')
-        )) {
+        if (!$this->isValidClerkSignature($request, $payload)) {
             return $this->createErrorResponse('InvalidSignature', 'Invalid Clerk webhook signature.', 401);
         }
 
@@ -42,27 +36,21 @@ class ClerkWebhookController
             return $this->createErrorResponse('InvalidPayload', 'Invalid Clerk webhook payload.', 400);
         }
 
-        try {
-            $result = $this->clerkWebhookService->handle($event);
-        } catch (\Throwable $exception) {
-            $eventType = (string)($event['type'] ?? '');
-            $this->logger->error('Clerk webhook processing failed.', [
-                'eventType' => $eventType,
-                'error' => $exception->getMessage(),
-            ]);
+        $eventType = (string)($event['type'] ?? '');
+        $data = is_array($event['data'] ?? null) ? $event['data'] : [];
 
-            return $this->createErrorResponse(
-                'WebhookProcessingFailed',
-                'Clerk webhook processing failed.',
-                500
-            );
+        $this->logger->info('Clerk webhook received.', [
+            'eventType' => $eventType,
+            'clerkUserId' => $data['id'] ?? null,
+        ]);
+
+        if (in_array($eventType, ['user.created', 'user.updated'], true)) {
+            $this->userSyncService->sync($data);
         }
 
         return $this->createSuccessResponse([
             'received' => true,
-            'eventType' => $result['eventType'] ?? (string)($event['type'] ?? ''),
-            'handled' => (bool)($result['handled'] ?? false),
-            'message' => (string)($result['message'] ?? 'Webhook processed.'),
+            'eventType' => $eventType,
         ]);
     }
 
@@ -75,5 +63,14 @@ class ClerkWebhookController
             'canonicalPath' => '/api/v1/clerk/webhook',
             'legacyPath' => '/api/clerk/webhook',
         ]);
+    }
+
+    private function isValidClerkSignature(Request $request, string $payload): bool
+    {
+        $svixId = (string)$request->headers->get('svix-id', '');
+        $svixTimestamp = (string)$request->headers->get('svix-timestamp', '');
+        $svixSignature = (string)$request->headers->get('svix-signature', '');
+
+        return $this->signatureValidator->isValid($payload, $svixId, $svixTimestamp, $svixSignature);
     }
 }

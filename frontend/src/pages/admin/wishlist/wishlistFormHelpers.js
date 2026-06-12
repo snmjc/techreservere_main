@@ -20,7 +20,7 @@ export function validateAdminAccountForm(form) {
   }
 
   if (!isAllowedAdminEmail(emailAddress)) {
-    return 'Admin email must use @feutech.edu.ph only.';
+    return 'Admin account must use a valid @feutech.edu.ph email address. For testing, @fit.edu.ph is also allowed.';
   }
 
   return '';
@@ -96,6 +96,7 @@ export function buildUserAccountPayload(form) {
     firstName: form.firstName,
     emailAddress: form.emailAddress,
     idNumber: form.idNumber,
+    roleDesignation: form.roleDesignation || 'ROLE_BORROWER',
     role: form.role,
     passwordText: form.password,
   };

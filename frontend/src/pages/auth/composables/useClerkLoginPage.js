@@ -56,7 +56,9 @@ export function useClerkLoginPage() {
       });
       routeAfterBackendLogin(account);
     } catch (error) {
-      if (error?.errorType === 'LocalPasswordUnavailable' || error?.errorType === 'AuthenticationFailed') {
+      // Clerk-backed accounts can appear as invitation-pending before preflight sync
+      // updates the local account row, so allow those cases into the Clerk path too.
+      if (shouldAttemptClerkPasswordLogin(error)) {
         await handleClerkPasswordLogin();
         return;
       }
@@ -90,18 +92,21 @@ export function useClerkLoginPage() {
     try {
       const clerkSignIn = await clerk.client.signIn.create({
         identifier: emailAddress.value,
-        password: passwordText.value,
-        strategy: 'password',
       });
 
-      if (clerkSignIn.status !== 'complete' || !clerkSignIn.createdSessionId) {
+      const completedSignIn = await clerkSignIn.attemptFirstFactor({
+        strategy: 'password',
+        password: passwordText.value,
+      });
+
+      if (completedSignIn.status !== 'complete' || !completedSignIn.createdSessionId) {
         loginError.value = 'This account needs additional Clerk verification before sign-in can continue.';
         return;
       }
 
       rememberLoginEmailPreference();
       persistPendingRememberSession(rememberMeChecked.value);
-      await clerk.setActive({ session: clerkSignIn.createdSessionId });
+      await clerk.setActive({ session: completedSignIn.createdSessionId });
       router.replace({ name: ROUTE_NAMES.postLogin });
     } catch (error) {
       loginError.value = resolveClerkErrorMessage(error);
@@ -317,7 +322,7 @@ async function syncPostgresPasswordFromClerk(newPassword) {
 
 function getLandingRouteName(role) {
   if (role === 'ROLE_ADMIN' || role === 'ADMIN') return ROUTE_NAMES.adminDashboard;
-  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.settings;
+  if (role === 'ROLE_STAFF' || role === 'STAFF') return ROUTE_NAMES.employeeDashboard;
   return ROUTE_NAMES.borrowerMyReservations;
 }
 
@@ -345,6 +350,9 @@ function waitForClerk(timeoutMs = 4000) {
 
 function resolveClerkErrorMessage(error) {
   const clerkError = error?.errors?.[0];
+  if (typeof clerkError?.longMessage === 'string' && clerkError.longMessage.includes('allowed values for parameter strategy')) {
+    return 'This account must finish the Clerk invitation or use a valid Clerk password before signing in.';
+  }
   if (clerkError?.longMessage) return clerkError.longMessage;
   if (clerkError?.message) return clerkError.message;
   return error?.message || 'Invalid email address or password.';
@@ -352,4 +360,11 @@ function resolveClerkErrorMessage(error) {
 
 function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
+}
+
+function shouldAttemptClerkPasswordLogin(error) {
+  const errorType = String(error?.errorType || '');
+  return errorType === 'LocalPasswordUnavailable'
+    || errorType === 'AccountInvitationPending'
+    || errorType === 'AccountSyncPending';
 }

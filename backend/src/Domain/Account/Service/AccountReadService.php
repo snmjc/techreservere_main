@@ -9,30 +9,27 @@ class AccountReadService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountResponseMapperService $accountResponseMapperService,
-        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
+        private readonly AccountResponseMapperService $accountResponseMapperService
     ) {
     }
 
     public function getAcceptedAccounts(): array
     {
-        $this->clerkInvitationSyncService->reconcileAcceptedAccountsFromLocalInvitations();
-
         $rows = $this->connection->fetchAllAssociative(
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
                        accounts.email_address, accounts.username, accounts.role_designation, accounts.department, accounts.contact_number,
                        accounts.profile_photo_data,
                        accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                       accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
-                       accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
+                       accounts.signup_supporting_document_data,
                        staff_info.employee_id_number AS staff_employee_id_number,
                        staff_info.first_name AS staff_first_name,
                        staff_info.last_name AS staff_last_name,
                        staff_info.phone_number AS staff_phone_number,
                        staff_info.role AS staff_role,
                        staff_info.image_url AS staff_image_url,
-                       accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
+                       accounts.status, accounts.is_approved, accounts.is_verified, accounts.verification_status,
+                       accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
                        accounts.last_login_timestamp,
                        latest_invitation.created_at AS invite_sent_at,
                        latest_invitation.expires_at AS invite_expires_at,
@@ -46,9 +43,20 @@ class AccountReadService
                    ORDER BY created_at DESC
                    LIMIT 1
                 ) latest_invitation ON TRUE
-                WHERE COALESCE(accounts.is_active, TRUE) = TRUE
-                  AND COALESCE(accounts.is_approved, FALSE) = TRUE
-                  AND LOWER(COALESCE(accounts.status, 'pending')) = 'approved'
+                WHERE COALESCE(accounts.is_active, FALSE) = TRUE
+                  AND LOWER(COALESCE(accounts.status, 'pending')) IN ('active', 'approved', 'accepted')
+                  AND (
+                        COALESCE(NULLIF(accounts.clerk_user_id, ''), '') <> ''
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%ADMIN%'
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%STAFF%'
+                        OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%EMPLOYEE%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%admin%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%staff%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%employee%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%maintenance%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%technical%'
+                        OR LOWER(COALESCE(accounts.department, '')) LIKE '%support%'
+                  )
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
@@ -59,9 +67,14 @@ class AccountReadService
                 SELECT DISTINCT ON (COALESCE(NULLIF(id_number, ''), account_identifier::text)) *
                 FROM deduped_by_email
                 ORDER BY COALESCE(NULLIF(id_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
+             ),
+             deduped_by_phone AS (
+                SELECT DISTINCT ON (COALESCE(NULLIF(contact_number, ''), account_identifier::text)) *
+                FROM deduped_by_id
+                ORDER BY COALESCE(NULLIF(contact_number, ''), account_identifier::text), created_timestamp DESC, account_identifier DESC
              )
              SELECT *
-             FROM deduped_by_id
+             FROM deduped_by_phone
              ORDER BY created_timestamp DESC"
         );
 
@@ -70,15 +83,13 @@ class AccountReadService
 
     public function getMappedAccountById(int $accountIdentifier): ?array
     {
-        $this->clerkInvitationSyncService->reconcileAcceptedAccountsFromLocalInvitations();
-
         $row = $this->connection->fetchAssociative(
             "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
-                    accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
+                    accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified, accounts.verification_status,
+                    accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
                     accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
-                    accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
+                    accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -113,8 +124,7 @@ class AccountReadService
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
                     accounts.last_login_timestamp, accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_path, accounts.signup_supporting_document_size_bytes,
-                    accounts.signup_supporting_document_uploaded_at, accounts.signup_supporting_document_verification_status,
+                    accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,

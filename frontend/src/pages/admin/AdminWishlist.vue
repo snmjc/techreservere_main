@@ -74,9 +74,9 @@
             <span>Status</span>
             <select v-model="statusFilter">
               <option value="all">All</option>
-              <option value="not_invited">Not invited</option>
-              <option value="verified">Verified</option>
               <option value="unverified">Unverified</option>
+              <option value="verified">Verified</option>
+              <option value="approved">Approved</option>
               <option value="expired">Expired</option>
               <option value="rejected">Denied</option>
             </select>
@@ -913,8 +913,13 @@ async function handleAccountCreated(payload) {
 
   activeTab.value = accountType || 'admin';
   await loadWishlistAccounts();
-  if (accountType === 'admin' && defaultPassword) {
-    showToast(`Admin account created. Default password: ${defaultPassword}`);
+  if (accountType === 'admin') {
+    if (defaultPassword) {
+      showToast(`Admin request created. Default password: ${defaultPassword}. Send the Clerk email invitation to continue verification.`);
+      return;
+    }
+
+    showToast('Admin request created. Send the Clerk email invitation to continue verification.');
     return;
   }
 

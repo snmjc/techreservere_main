@@ -10,7 +10,7 @@
 
       <div class="admin-wishlist-modal-heading">
         <h2>Create New Admin</h2>
-        <p>Create a ready-to-use administrator account using a valid @feutech.edu.ph email address.</p>
+        <p>Create an administrator request account that stays unverified until the Clerk invitation is accepted.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -60,6 +60,7 @@
         </label>
 
         <p class="admin-wishlist-add-helper">Default password: <strong>admin123</strong></p>
+        <p class="admin-wishlist-add-helper">This account will remain in Wishlist as Unverified until you send the Clerk email invitation.</p>
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
         <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>
 
@@ -107,7 +108,7 @@
           <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>FIT Email Address</span>
+          <span>Institutional Email Address</span>
           <input v-model.trim="addUserForm.emailAddress" type="email" placeholder="jtvito@fit.edu.ph or jtvito@feutech.edu.ph" required />
         </label>
         <label>
@@ -115,7 +116,11 @@
           <input v-model.trim="addUserForm.idNumber" type="text" placeholder="2023*****" required />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>Role</span>
+          <span>Account Role</span>
+          <input type="text" value="Borrower / User" readonly disabled />
+        </label>
+        <label class="admin-wishlist-field-wide">
+          <span>User Type</span>
           <select v-model="addUserForm.role" required>
             <option value="Student">Student</option>
             <option value="Faculty">Faculty</option>
@@ -303,6 +308,7 @@ const addUserForm = reactive({
   firstName: '',
   emailAddress: '',
   idNumber: '',
+  roleDesignation: 'ROLE_BORROWER',
   role: 'Student',
   password: '',
   confirmPassword: '',
@@ -480,6 +486,7 @@ function resetAddUserForm() {
   addUserForm.firstName = '';
   addUserForm.emailAddress = '';
   addUserForm.idNumber = '';
+  addUserForm.roleDesignation = 'ROLE_BORROWER';
   addUserForm.role = 'Student';
   addUserForm.password = '';
   addUserForm.confirmPassword = '';

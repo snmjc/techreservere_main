@@ -26,11 +26,91 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email ON accounts (email_address)
 -- ===== Missing columns added to accounts (safe ALTER TABLE) =====
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending';
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS verification_status VARCHAR(20) NOT NULL DEFAULT 'unverified';
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invitation_status VARCHAR(20) NOT NULL DEFAULT 'not_sent';
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS username VARCHAR(100) DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS id_number VARCHAR(50) DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by INT DEFAULT NULL REFERENCES accounts(account_identifier) ON DELETE SET NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_photo_data TEXT DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_name VARCHAR(255) DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_mime_type VARCHAR(120) DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_data TEXT DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_path VARCHAR(500) DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_size_bytes INT DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_uploaded_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS signup_supporting_document_verification_status VARCHAR(30) DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts (status);
 CREATE INDEX IF NOT EXISTS idx_accounts_clerk_user_id ON accounts (clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_verification_status ON accounts (verification_status);
+CREATE INDEX IF NOT EXISTS idx_accounts_invitation_status ON accounts (invitation_status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accounts_clerk_user_id
+    ON accounts (clerk_user_id)
+    WHERE clerk_user_id IS NOT NULL;
+
+ALTER TABLE accounts
+    DROP CONSTRAINT IF EXISTS chk_accounts_status_allowed;
+
+ALTER TABLE accounts
+    ADD CONSTRAINT chk_accounts_status_allowed
+    CHECK (status IN ('pending', 'verified', 'active', 'approved', 'accepted', 'disabled', 'rejected', 'invited'));
+
+-- ===== Account invitation lifecycle defaults =====
+-- Request created:
+--   status = 'pending'
+--   is_verified = false
+--   verification_status = 'unverified'
+--   invitation_status = 'not_sent'
+-- Admin invitation sent:
+--   status = 'verified'
+--   is_verified = true
+--   verification_status = 'verified'
+--   invitation_status = 'sent'
+-- Invitation accepted / Clerk linked:
+--   status = 'active'
+--   invitation_status = 'accepted'
+
+-- ===== Safe lifecycle normalization for existing rows =====
+-- Keep active Clerk-linked accounts active.
+UPDATE accounts
+SET
+    status = 'active',
+    is_verified = TRUE,
+    verification_status = 'verified',
+    invitation_status = 'accepted',
+    updated_timestamp = CURRENT_TIMESTAMP
+WHERE COALESCE(NULLIF(clerk_user_id, ''), '') <> ''
+  AND LOWER(COALESCE(status, 'pending')) <> 'active';
+
+-- Keep invited-but-not-yet-linked accounts verified only after an invitation was sent.
+UPDATE accounts
+SET
+    status = 'verified',
+    is_verified = TRUE,
+    verification_status = 'verified',
+    invitation_status = 'sent',
+    updated_timestamp = CURRENT_TIMESTAMP
+WHERE COALESCE(NULLIF(clerk_user_id, ''), '') = ''
+  AND invited_at IS NOT NULL
+  AND LOWER(COALESCE(status, 'pending')) NOT IN ('active');
+
+-- All rows without Clerk linkage and without an invitation stay pending/unverified.
+UPDATE accounts
+SET
+    status = 'pending',
+    is_verified = FALSE,
+    verification_status = 'unverified',
+    invitation_status = 'not_sent',
+    approved_at = NULL,
+    is_approved = FALSE,
+    updated_timestamp = CURRENT_TIMESTAMP
+WHERE COALESCE(NULLIF(clerk_user_id, ''), '') = ''
+  AND invited_at IS NULL
+  AND LOWER(COALESCE(status, 'pending')) NOT IN ('active');
 
 -- ===== 2. EQUIPMENT =====
 CREATE TABLE IF NOT EXISTS equipment (

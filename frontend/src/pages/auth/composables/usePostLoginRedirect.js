@@ -21,7 +21,7 @@ export function usePostLoginRedirect() {
     const token = await resolveClerkSessionToken(getToken);
     const emailAddress = user.value.primaryEmailAddress?.emailAddress || '';
     const roleDesignation = resolveRole(user.value.publicMetadata?.role, emailAddress);
-    const backendRegistration = await ensureBackendAccount(user.value, roleDesignation, token);
+    const backendRegistration = await ensureActiveBackendAccount(user.value, roleDesignation, token);
 
     if (!backendRegistration.account) {
       await resetToLogin(
@@ -108,6 +108,32 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
   }
 }
 
+async function ensureActiveBackendAccount(clerkUser, roleDesignation, token) {
+  const maxAttempts = 6;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const registration = await ensureBackendAccount(clerkUser, roleDesignation, token);
+    const backendStatus = resolveBackendAccountStatus(registration.account);
+
+    if (registration.account && backendStatus === 'active') {
+      return registration;
+    }
+
+    const shouldRetry = attempt < maxAttempts && (
+      registration.account
+      || /sync|activate|pending|invitation/i.test(String(registration.error || ''))
+    );
+
+    if (!shouldRetry) {
+      return registration;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 800));
+  }
+
+  return ensureBackendAccount(clerkUser, roleDesignation, token);
+}
+
 function routeWithBackendAccount({ authStore, router, token, backendAccount, clerkUser, emailAddress, roleDesignation, rememberSession }) {
   const backendStatus = resolveBackendAccountStatus(backendAccount);
   authStore.setClerkAuth(
@@ -118,12 +144,12 @@ function routeWithBackendAccount({ authStore, router, token, backendAccount, cle
 
   if (backendStatus === 'disabled') {
     router.replace({ name: ROUTE_NAMES.accountDeactivated });
-  } else if (authStore.clerkAccountStatus === 'pending') {
+  } else if (backendStatus !== 'active') {
     router.replace({ name: ROUTE_NAMES.requestPending });
   } else if (authStore.userRole === 'ROLE_ADMIN') {
     router.replace({ name: ROUTE_NAMES.adminDashboard });
   } else if (authStore.userRole === 'ROLE_STAFF') {
-    router.replace({ name: ROUTE_NAMES.settings });
+    router.replace({ name: ROUTE_NAMES.employeeDashboard });
   } else {
     router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
   }
@@ -141,6 +167,7 @@ function buildClerkAuthAccount(backendAccount, clerkUser, emailAddress, roleDesi
     contactNumber: clerkUser.publicMetadata?.contactNumber || '',
     status: backendStatus,
     isApproved: backendAccount.isApproved === true,
+    isVerified: backendStatus === 'active' || backendStatus === 'verified' || backendAccount?.isVerified === true,
     isActive: backendStatus === 'disabled' ? false : backendAccount.isActive !== false,
     authProvider: 'clerk',
   };
@@ -165,17 +192,18 @@ function buildHeaders(token) {
 
 function resolveBackendAccountStatus(account) {
   const normalizedStatus = String(account?.status || '').toLowerCase();
+  const hasLinkedClerkAccount = Boolean(account?.clerkUserId || account?.clerk_user_id);
 
   if (account?.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
   }
 
-  if (normalizedStatus === 'accepted') {
-    return 'accepted';
+  if (['active', 'approved', 'accepted'].includes(normalizedStatus) && hasLinkedClerkAccount) {
+    return 'active';
   }
 
-  if (account?.isApproved === true || ['approved', 'active', 'verified'].includes(normalizedStatus)) {
-    return 'approved';
+  if (normalizedStatus === 'verified' || normalizedStatus === 'invited') {
+    return 'verified';
   }
 
   return 'pending';

@@ -42,7 +42,8 @@ export function normalizeAccount(account) {
 export function normalizeManageAccountStatus(status, isActive) {
   const normalizedStatus = String(status || '').trim().toLowerCase();
   if (isActive === false || normalizedStatus === 'disabled' || normalizedStatus === 'inactive' || normalizedStatus === 'suspended') return 'Disabled';
-  if (normalizedStatus === 'pending' || normalizedStatus === 'invited') return 'Pending';
+  if (normalizedStatus === 'pending') return 'Pending';
+  if (normalizedStatus === 'verified' || normalizedStatus === 'invited') return 'Verified';
   return 'Active';
 }
 
@@ -216,6 +217,7 @@ export function getStatusClass(status) {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'disabled') return 'manage-accounts-status--disabled';
   if (normalized === 'pending') return 'manage-accounts-status--pending';
+  if (normalized === 'verified') return 'manage-accounts-status--pending';
   return 'manage-accounts-status--active';
 }
 
@@ -268,8 +270,8 @@ export function getAccountTypeClass(accountType) {
 export function resolveActionPermissions(accountStatus, serverPermissions = null) {
   return {
     view: serverPermissions?.view ?? true,
-    update: accountStatus === 'Active',
-    disable: accountStatus === 'Active',
+    update: accountStatus === 'Active' || accountStatus === 'Verified',
+    disable: accountStatus === 'Active' || accountStatus === 'Verified',
     activate: accountStatus === 'Disabled',
   };
 }

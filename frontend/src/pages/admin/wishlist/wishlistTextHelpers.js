@@ -46,7 +46,7 @@ export function isAllowedAdminEmail(value) {
     return false;
   }
 
-  return normalized.endsWith('@feutech.edu.ph');
+  return normalized.endsWith('@feutech.edu.ph') || normalized.endsWith('@fit.edu.ph');
 }
 
 export function isAllowedRequestHubUserEmail(value) {

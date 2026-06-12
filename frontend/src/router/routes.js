@@ -12,6 +12,31 @@ import { ROUTE_NAMES } from '@/router/routeNames.js';
 const rbacAny = (...permissions) => ({ any: permissions });
 const permission = (capability, action, scope = RBAC_SCOPE.ALL) => ({ capability, action, scope });
 
+function hasInvitationContext(toRoute) {
+  const queryKeys = Object.keys(toRoute.query || {});
+  if (queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key))) {
+    return true;
+  }
+
+  return /(__clerk|ticket|invitation)/i.test(String(toRoute.hash || ''));
+}
+
+function redirectInvitationTraffic(toRoute) {
+  if (!hasInvitationContext(toRoute)) {
+    return true;
+  }
+
+  if (toRoute.name === ROUTE_NAMES.clerkLogin) {
+    return true;
+  }
+
+  return {
+    name: ROUTE_NAMES.clerkLogin,
+    query: toRoute.query,
+    hash: toRoute.hash,
+  };
+}
+
 /**
  * @constant {Array<Object>} routeDefinitions
  * @description Centralized route definitions for TechReserve application.
@@ -26,25 +51,24 @@ export const routeDefinitions = [
     redirect: '/clerk-login',
   },
   {
-    path: '/accept-invitation',
+    path: '/accept-invitation/:pathMatch(.*)*',
+    alias: ['/accept-invitation', '/accept-invite', '/accept-invite/:pathMatch(.*)*'],
+    name: ROUTE_NAMES.acceptInvitation,
     redirect: (toRoute) => ({
       name: ROUTE_NAMES.clerkLogin,
       query: toRoute.query,
       hash: toRoute.hash,
     }),
-  },
-  {
-    path: '/accept-invite',
-    redirect: (toRoute) => ({
-      name: ROUTE_NAMES.clerkLogin,
-      query: toRoute.query,
-      hash: toRoute.hash,
-    }),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
   },
   {
     path: '/clerk-login',
     name: ROUTE_NAMES.clerkLogin,
     component: () => import('@/pages/auth/ClerkLogin.vue'),
+    beforeEnter: redirectInvitationTraffic,
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -54,6 +78,7 @@ export const routeDefinitions = [
     path: '/clerk-login/:pathMatch(.*)*',
     name: ROUTE_NAMES.clerkLogin,
     component: () => import('@/pages/auth/ClerkLogin.vue'),
+    beforeEnter: redirectInvitationTraffic,
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -110,9 +135,7 @@ export const routeDefinitions = [
     name: ROUTE_NAMES.customSignUp,
     component: () => import('@/pages/auth/CustomSignUp.vue'),
     beforeEnter: (toRoute) => {
-      const queryKeys = Object.keys(toRoute.query || {});
-      const hasInvitationQuery = queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key));
-      if (hasInvitationQuery) {
+      if (hasInvitationContext(toRoute)) {
         return {
           name: ROUTE_NAMES.clerkLogin,
           query: toRoute.query,
@@ -147,6 +170,16 @@ export const routeDefinitions = [
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_DASHBOARD, RBAC_ACTION.READ)),
+    },
+  },
+  {
+    path: '/employee/dashboard',
+    name: ROUTE_NAMES.employeeDashboard,
+    component: () => import('@/pages/settings/SettingsPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_STAFF'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.ACCOUNT_MANAGEMENT, RBAC_ACTION.READ)),
     },
   },
   {

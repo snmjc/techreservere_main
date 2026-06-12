@@ -6,6 +6,17 @@ import {
   validateSignupSupportingFile,
 } from '../signupSupportingDocumentHelpers.js';
 
+const DEPARTMENT_OPTIONS = Object.freeze([
+  'Information Technology',
+  'Computer Science',
+  'Multimedia and Arts',
+  'Civil Engineering',
+  'Mechanical Engineering',
+  'Computer Engineering',
+  'Electronics Engineering',
+  'Electrical Engineering',
+]);
+
 export function useCustomSignUpPage() {
   const router = useRouter();
   const formData = ref({
@@ -30,6 +41,7 @@ export function useCustomSignUpPage() {
   const showPassword = ref(false);
   const showConfirmPassword = ref(false);
   const studentSupportingFileInput = ref(null);
+  const departmentOptions = DEPARTMENT_OPTIONS;
   const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
   const isStudentRole = computed(() => formData.value.role === 'Student');
   const supportingFileAccept = getSupportingFileAcceptValue();
@@ -206,6 +218,7 @@ export function useCustomSignUpPage() {
 
   return {
     formData,
+    departmentOptions,
     isLoading,
     successMessage,
     awaitingVerification,
