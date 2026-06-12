@@ -27,7 +27,7 @@ class ClerkTokenVerifier
         $this->localTokenIdentityResolver = $localTokenIdentityResolver;
         $this->clerkTokenIdentityResolver = $clerkTokenIdentityResolver;
         $this->clerkApiBaseUrl = $_ENV['CLERK_API_BASE_URL'] ?? 'https://api.clerk.com';
-        $this->clerkJwtIssuer = $_ENV['CLERK_JWT_ISSUER'] ?? 'https://primary-rooster-80.clerk.accounts.dev';
+        $this->clerkJwtIssuer = $_ENV['CLERK_JWT_ISSUER'] ?? 'https://clerk.techreserve.farahkenawy.codes';
         
         error_log('ClerkTokenVerifier initialized with API base: ' . $this->clerkApiBaseUrl);
         error_log('Clerk JWT Issuer: ' . $this->clerkJwtIssuer);

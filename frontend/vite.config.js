@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const frontendTunnelHost = getUrlHost(env.VITE_DEV_FRONTEND_URL) || 'employers-mall-switches-bookstore.trycloudflare.com';
   const frontendTunnelUrl = `https://${frontendTunnelHost}`;
   const clerkSources = [
-    'https://clerk.farahkenawy.codes',
+    'https://clerk.techreserve.farahkenawy.codes',
     'https://*.clerk.accounts.dev',
     'https://*.clerk.dev',
     'https://*.clerk.com',
