@@ -8,7 +8,7 @@
       {{ invitationFlowError }}
     </p>
 
-    <div v-else-if="hasInvitationTicket" class="clerk-invitation-widget-shell">
+    <div v-else-if="hasInvitationTicket && !shouldAutoConsumeInvitationTicket" class="clerk-invitation-widget-shell">
       <SignUp
         path="/clerk-login"
         routing="path"
@@ -218,6 +218,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
 import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { persistPendingRememberSession } from '@/modules/authentication/utils/authStorage.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const isPasswordVisible = ref(false);
@@ -231,6 +232,7 @@ const hasTriggeredSignOut = ref(false);
 const isSigningOutExistingSession = ref(false);
 const wasSignedInOnEntry = ref(null);
 const invitationFlowError = ref('');
+const isProcessingInvitationTicket = ref(false);
 
 function togglePasswordVisibility() {
   isPasswordVisible.value = !isPasswordVisible.value;
@@ -267,8 +269,10 @@ const hasInvitationContext = computed(() => {
 });
 
 const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
+const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
+const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
 const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
-const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value);
+const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
 
 watch([isLoaded, isSignedIn, showInvitationFlow, hasInvitationTicket], async ([loaded, signedIn, invitationFlow, hasTicket]) => {
   if (!invitationFlow || !loaded) {
@@ -322,6 +326,69 @@ watch([isLoaded, isSignedIn, showInvitationFlow], ([loaded, signedIn, invitation
 
   router.replace({ name: ROUTE_NAMES.postLogin });
 }, { immediate: true });
+
+watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTicket], async ([loaded, signedIn, invitationFlow, shouldAutoConsume]) => {
+  if (!invitationFlow || !loaded || signedIn || !shouldAutoConsume) {
+    return;
+  }
+
+  if (isSigningOutExistingSession.value || isProcessingInvitationTicket.value) {
+    return;
+  }
+
+  invitationFlowError.value = '';
+  isProcessingInvitationTicket.value = true;
+
+  try {
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signIn || !clerk?.setActive) {
+      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
+    }
+
+    const result = await clerk.client.signIn.create({
+      strategy: 'ticket',
+      ticket: String(route.query.__clerk_ticket || '').trim(),
+    });
+
+    if (result?.status !== 'complete' || !result?.createdSessionId) {
+      throw new Error('Clerk could not complete this invitation automatically.');
+    }
+
+    persistPendingRememberSession(true);
+    await clerk.setActive({ session: result.createdSessionId });
+    router.replace({ name: ROUTE_NAMES.postLogin });
+  } catch (error) {
+    console.error('[ClerkLogin] Failed to auto-consume sign-in invitation ticket.', error);
+    invitationFlowError.value = error?.errors?.[0]?.longMessage
+      || error?.errors?.[0]?.message
+      || error?.message
+      || 'This invitation could not be completed automatically. Please reopen the original invite link.';
+  } finally {
+    isProcessingInvitationTicket.value = false;
+  }
+}, { immediate: true });
+
+function waitForClerk(timeoutMs = 4000) {
+  if (window.Clerk?.loaded) {
+    return Promise.resolve(window.Clerk);
+  }
+
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (window.Clerk?.loaded) {
+        window.clearInterval(timer);
+        resolve(window.Clerk);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        window.clearInterval(timer);
+        resolve(window.Clerk || null);
+      }
+    }, 100);
+  });
+}
 
 </script>
 
