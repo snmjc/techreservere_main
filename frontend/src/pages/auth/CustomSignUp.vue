@@ -83,12 +83,21 @@
 
               <div class="custom-signup-row">
                 <label for="department">Department</label>
-                <input
+                <select
                   id="department"
                   v-model="formData.department"
-                  type="text"
                   required
-                />
+                  class="custom-signup-select"
+                >
+                  <option value="">Select Department</option>
+                  <option
+                    v-for="department in departmentOptions"
+                    :key="department"
+                    :value="department"
+                  >
+                    {{ department }}
+                  </option>
+                </select>
               </div>
 
               <div class="custom-signup-row custom-signup-row-wide">
@@ -302,6 +311,7 @@ import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
 
   const {
     formData,
+  departmentOptions,
   isLoading,
   successMessage,
   awaitingVerification,
