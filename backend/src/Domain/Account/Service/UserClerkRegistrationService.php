@@ -4,17 +4,19 @@ namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
-use App\Shared\Utils\AppClock;
 use App\Shared\Utils\AccountUsername;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 class UserClerkRegistrationService
 {
+    private const ADMIN_EMAIL_ALLOWLIST = [
+        'smmojica@fit.edu.ph',
+    ];
+
     public function __construct(
         private readonly AccountRepository $accountRepository,
         private readonly Connection $connection,
-        private readonly AccountSupportingDocumentService $accountSupportingDocumentService,
         private readonly ClerkInvitationSyncService $clerkInvitationSyncService
     ) {
     }
@@ -64,8 +66,9 @@ class UserClerkRegistrationService
             'contactNumber' => $contactNumber,
             'department' => trim($requestBody['department'] ?? ''),
             'idNumber' => trim($requestBody['idNumber'] ?? $requestBody['studentIdNumber'] ?? $contactNumber),
-            'status' => $isAdminEmail ? 'approved' : 'pending',
+            'status' => $isAdminEmail ? 'active' : 'pending',
             'isApproved' => $isAdminEmail,
+            'isVerified' => $isAdminEmail,
             'isAdminEmail' => $isAdminEmail,
         ];
     }
@@ -76,23 +79,33 @@ class UserClerkRegistrationService
             $this->promoteExistingAccountToAdmin($account);
             return $this->success('Existing account promoted to admin.', $this->buildExistingAccountPayload($account, [
                 'roleDesignation' => 'ROLE_ADMIN',
-                'status' => 'approved',
+                'status' => 'active',
                 'isApproved' => true,
             ]));
         }
 
-        if (!$this->canUseExistingClerkAccount($account, $registration)) {
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            $registration['emailAddress'],
+            $registration['clerkUserId']
+        );
+
+        $refreshedAccount = $this->loadAccountSnapshot($account->getAccountIdentifier());
+        if ($refreshedAccount !== null && $this->canUseExistingClerkAccountSnapshot($refreshedAccount)) {
+            return $this->success('Account already registered.', $this->buildSnapshotAccountPayload($refreshedAccount));
+        }
+
+        if (!$this->canUseExistingClerkAccount($account)) {
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
         }
 
         return $this->success('Account already registered.', $this->buildExistingAccountPayload($account));
     }
 
-    private function canUseExistingClerkAccount(AccountEntity $account, array $registration): bool
+    private function canUseExistingClerkAccount(AccountEntity $account): bool
     {
         $status = strtolower($account->getStatus());
 
-        return $account->getIsApproved() && in_array($status, ['approved', 'accepted'], true);
+        return $account->getIsVerified() && in_array($status, ['active', 'approved', 'accepted'], true);
     }
 
     private function promoteExistingAccountToAdmin(AccountEntity $account): void
@@ -101,6 +114,8 @@ class UserClerkRegistrationService
             'UPDATE accounts
              SET role_designation = :roleDesignation,
                  status = :status,
+                 is_verified = :isVerified,
+                 verification_status = :verificationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
                  updated_timestamp = :updatedTimestamp
@@ -114,10 +129,12 @@ class UserClerkRegistrationService
     {
         return [
             'roleDesignation' => 'ROLE_ADMIN',
-            'status' => 'approved',
+            'status' => 'active',
+            'isVerified' => true,
+            'verificationStatus' => 'verified',
             'isApproved' => true,
             'isActive' => true,
-            'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
+            'updatedTimestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
             'accountIdentifier' => $account->getAccountIdentifier(),
         ];
     }
@@ -127,6 +144,8 @@ class UserClerkRegistrationService
         return [
             'roleDesignation' => ParameterType::STRING,
             'status' => ParameterType::STRING,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
             'updatedTimestamp' => ParameterType::STRING,
@@ -136,21 +155,36 @@ class UserClerkRegistrationService
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
     {
-        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail($registration['emailAddress'], $registration['clerkUserId']);
-        $freshAccount = $this->accountRepository->findOneByEmailAddress($registration['emailAddress']) ?? $account;
-        $nextState = $this->resolveExistingEmailAccountState($freshAccount, $registration);
-        $updatedAt = AppClock::now()->format('Y-m-d H:i:s');
-        $acceptedAt = AppClock::now()->format('Y-m-d H:i:sP');
+        if (!$this->canLinkExistingEmailAccount($account, $registration)) {
+            return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
 
-        $this->updateExistingEmailAccount($freshAccount, $registration, $nextState, $updatedAt);
+        $nextState = $this->resolveExistingEmailAccountState($account, $registration);
+        $now = (new \DateTime())->format('Y-m-d H:i:s');
+
+        $this->updateExistingEmailAccount($account, $registration, $nextState, $now);
 
         if ($nextState['shouldMarkInvitationAccepted']) {
-            $this->markLatestInvitationAccepted($registration['emailAddress'], $acceptedAt);
+            $this->markLatestInvitationAccepted($registration['emailAddress'], $now);
         }
 
         return $this->success('Account linked to Clerk successfully.', $this->buildRegistrationAccountPayload($registration, $nextState, [
-            'accountIdentifier' => $freshAccount->getAccountIdentifier(),
+            'accountIdentifier' => $account->getAccountIdentifier(),
         ]));
+    }
+
+    private function canLinkExistingEmailAccount(AccountEntity $account, array $registration): bool
+    {
+        if ($registration['isAdminEmail']) {
+            return true;
+        }
+
+        $status = strtolower(trim($account->getStatus()));
+        if (in_array($status, ['active', 'approved', 'accepted'], true) && $account->getClerkUserId() !== null) {
+            return true;
+        }
+
+        return $this->hasAcceptedInvitation($registration['emailAddress']);
     }
 
     private function resolveExistingEmailAccountState(AccountEntity $account, array $registration): array
@@ -159,51 +193,29 @@ class UserClerkRegistrationService
         $existingRole = strtoupper(trim($account->getRoleDesignation()));
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
-        $hasOpenInvitation = $this->isOpenInvitation($latestInvitation);
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
+        $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin;
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
-        $nextIsActive = $nextIsApproved
-            ? $account->getIsActive()
-            : $account->getIsActive();
-        $nextStatus = $this->resolveNextExistingEmailAccountStatus(
-            $existingStatus,
-            $nextIsApproved,
-            $nextIsActive,
-            $hasOpenInvitation,
-            $hasAcceptedInvitation
-        );
+        $nextIsActive = $account->getIsActive() || $hasAcceptedInvitation;
+        $nextStatus = $hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true)
+            ? 'active'
+            : ($existingStatus !== '' ? $existingStatus : 'pending');
 
         return [
             'role' => $existingIsAdmin ? 'ROLE_ADMIN' : $registration['role'],
+            'isVerified' => $nextIsVerified,
             'isApproved' => $nextIsApproved,
             'isActive' => $nextIsActive,
             'status' => $nextStatus !== '' ? $nextStatus : $registration['status'],
-            'shouldMarkInvitationAccepted' => !$existingIsAdmin && !$hasAcceptedInvitation,
+            'hasOpenInvitation' => $this->isOpenInvitation($latestInvitation),
+            'shouldMarkInvitationAccepted' => $hasAcceptedInvitation || $nextStatus === 'active',
         ];
-    }
-
-    private function resolveNextExistingEmailAccountStatus(
-        string $existingStatus,
-        bool $nextIsApproved,
-        bool $nextIsActive,
-        bool $hasOpenInvitation,
-        bool $hasAcceptedInvitation
-    ): string {
-        if ($nextIsApproved) {
-            return $nextIsActive ? 'approved' : 'disabled';
-        }
-
-        if ($hasOpenInvitation) {
-            return 'invited';
-        }
-
-        return $existingStatus;
     }
 
     private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
     {
         $this->connection->executeStatement(
-            'UPDATE accounts
+            "UPDATE accounts
              SET last_name = :lastName,
                  first_name = :firstName,
                  username = :username,
@@ -213,35 +225,46 @@ class UserClerkRegistrationService
                  contact_number = :contactNumber,
                  clerk_user_id = :clerkUserId,
                  status = :status,
+                 is_verified = :isVerified,
+                 verification_status = :verificationStatus,
+                 invitation_status = :invitationStatus,
                  is_approved = :isApproved,
                  is_active = :isActive,
+                 approved_at = CASE
+                    WHEN :status = 'active' THEN COALESCE(approved_at, :approvedAt)
+                    ELSE approved_at
+                 END,
                  updated_timestamp = :updatedTimestamp
-             WHERE account_identifier = :accountIdentifier',
+             WHERE account_identifier = :accountIdentifier",
             $this->buildExistingEmailUpdateParameters($account, $registration, $nextState, $updatedAt),
-            $this->existingEmailUpdateTypes($registration)
+            $this->existingEmailUpdateTypes($registration, $nextState)
         );
     }
 
     private function buildExistingEmailUpdateParameters(AccountEntity $account, array $registration, array $nextState, string $updatedAt): array
     {
         return [
-            'lastName' => $registration['lastName'] !== '' ? $registration['lastName'] : $account->getLastName(),
-            'firstName' => $registration['firstName'] !== '' ? $registration['firstName'] : $account->getFirstName(),
-            'username' => $registration['username'] !== '' ? $registration['username'] : $account->getUsername(),
-            'roleDesignation' => $account->getRoleDesignation() ?: $nextState['role'],
-            'idNumber' => $registration['idNumber'] !== '' ? $registration['idNumber'] : ($account->getIdNumber() ?: null),
-            'department' => $registration['department'] !== '' ? $registration['department'] : ($account->getDepartment() ?: null),
-            'contactNumber' => $registration['contactNumber'] !== '' ? $registration['contactNumber'] : ($account->getContactNumber() ?: null),
+            'lastName' => $registration['lastName'],
+            'firstName' => $registration['firstName'],
+            'username' => $registration['username'],
+            'roleDesignation' => $nextState['role'],
+            'idNumber' => $registration['idNumber'] ?: null,
+            'department' => $registration['department'] ?: null,
+            'contactNumber' => $registration['contactNumber'] ?: null,
             'clerkUserId' => $registration['clerkUserId'],
             'status' => $nextState['status'],
+            'isVerified' => $nextState['isVerified'],
+            'verificationStatus' => $nextState['isVerified'] ? 'verified' : 'unverified',
+            'invitationStatus' => $nextState['status'] === 'active' ? 'accepted' : ($nextState['isVerified'] ? 'sent' : 'not_sent'),
             'isApproved' => $nextState['isApproved'],
             'isActive' => $nextState['isActive'],
+            'approvedAt' => $nextState['status'] === 'active' ? $updatedAt : null,
             'updatedTimestamp' => $updatedAt,
             'accountIdentifier' => $account->getAccountIdentifier(),
         ];
     }
 
-    private function existingEmailUpdateTypes(array $registration): array
+    private function existingEmailUpdateTypes(array $registration, array $nextState): array
     {
         return [
             'lastName' => ParameterType::STRING,
@@ -253,8 +276,12 @@ class UserClerkRegistrationService
             'contactNumber' => $registration['contactNumber'] === '' ? ParameterType::NULL : ParameterType::STRING,
             'clerkUserId' => ParameterType::STRING,
             'status' => ParameterType::STRING,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
+            'invitationStatus' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
+            'approvedAt' => $nextState['status'] === 'active' ? ParameterType::STRING : ParameterType::NULL,
             'updatedTimestamp' => ParameterType::STRING,
             'accountIdentifier' => ParameterType::INTEGER,
         ];
@@ -267,16 +294,16 @@ class UserClerkRegistrationService
         }
 
         try {
-            $now = AppClock::now()->format('Y-m-d H:i:s');
+            $now = (new \DateTime())->format('Y-m-d H:i:s');
             $this->connection->executeStatement(
                 'INSERT INTO accounts
                     (last_name, first_name, email_address, username, role_designation, id_number, department,
                      contact_number, clerk_user_id, status, is_approved, is_active,
-                     failed_login_attempts, created_timestamp, updated_timestamp)
+                     is_verified, verification_status, invitation_status, failed_login_attempts, created_timestamp, updated_timestamp)
                  VALUES
                     (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
                      :contactNumber, :clerkUserId, :status, :isApproved, :isActive,
-                     :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
+                     :isVerified, :verificationStatus, :invitationStatus, :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
                 $this->buildNewAccountParameters($registration, $now),
                 $this->newAccountTypes($registration)
             );
@@ -308,6 +335,9 @@ class UserClerkRegistrationService
             'status' => $registration['status'],
             'isApproved' => $registration['isApproved'],
             'isActive' => true,
+            'isVerified' => $registration['isVerified'],
+            'verificationStatus' => $registration['isVerified'] ? 'verified' : 'unverified',
+            'invitationStatus' => $registration['isVerified'] ? 'accepted' : 'not_sent',
             'failedLoginAttempts' => 0,
             'createdTimestamp' => $timestamp,
             'updatedTimestamp' => $timestamp,
@@ -329,6 +359,9 @@ class UserClerkRegistrationService
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
+            'isVerified' => ParameterType::BOOLEAN,
+            'verificationStatus' => ParameterType::STRING,
+            'invitationStatus' => ParameterType::STRING,
             'failedLoginAttempts' => ParameterType::INTEGER,
             'createdTimestamp' => ParameterType::STRING,
             'updatedTimestamp' => ParameterType::STRING,
@@ -337,7 +370,7 @@ class UserClerkRegistrationService
 
     private function isAdminEmail(string $emailAddress): bool
     {
-        return false;
+        return in_array(strtolower(trim($emailAddress)), self::ADMIN_EMAIL_ALLOWLIST, true);
     }
 
     private function resolveRole(string $requestedRole, string $emailAddress): string
@@ -378,7 +411,7 @@ class UserClerkRegistrationService
         }
 
         try {
-            return new \DateTimeImmutable((string)$invitation['expires_at'], AppClock::timezone()) >= AppClock::now();
+            return new \DateTimeImmutable((string)$invitation['expires_at']) >= new \DateTimeImmutable();
         } catch (\Throwable) {
             return false;
         }
@@ -406,6 +439,11 @@ class UserClerkRegistrationService
 
         $status = strtolower((string)($invitation['status'] ?? 'pending'));
         return in_array($status, ['accepted', 'completed'], true);
+    }
+
+    private function hasAcceptedInvitation(string $emailAddress): bool
+    {
+        return $this->isAcceptedInvitation($this->findLatestInvitationForEmail($emailAddress));
     }
 
     private function markLatestInvitationAccepted(string $emailAddress, string $acceptedAt): void
@@ -444,7 +482,47 @@ class UserClerkRegistrationService
             'roleDesignation' => $account->getRoleDesignation(),
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
+            'isVerified' => $account->getIsVerified(),
         ], $overrides);
+    }
+
+    private function loadAccountSnapshot(int $accountIdentifier): ?array
+    {
+        $account = $this->connection->fetchAssociative(
+            'SELECT account_identifier, clerk_user_id, first_name, last_name, email_address, username,
+                    role_designation, status, is_approved, is_verified, is_active
+             FROM accounts
+             WHERE account_identifier = :accountIdentifier
+             LIMIT 1',
+            ['accountIdentifier' => $accountIdentifier],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
+        return $account ?: null;
+    }
+
+    private function canUseExistingClerkAccountSnapshot(array $account): bool
+    {
+        $status = strtolower(trim((string)($account['status'] ?? 'pending')));
+        return $this->toDatabaseBoolean($account['is_verified'] ?? false)
+            && in_array($status, ['active', 'approved', 'accepted'], true);
+    }
+
+    private function buildSnapshotAccountPayload(array $account): array
+    {
+        return [
+            'accountIdentifier' => (int)$account['account_identifier'],
+            'clerkUserId' => !empty($account['clerk_user_id']) ? (string)$account['clerk_user_id'] : null,
+            'firstName' => (string)($account['first_name'] ?? ''),
+            'lastName' => (string)($account['last_name'] ?? ''),
+            'emailAddress' => (string)($account['email_address'] ?? ''),
+            'username' => (string)($account['username'] ?? ''),
+            'roleDesignation' => (string)($account['role_designation'] ?? 'ROLE_BORROWER'),
+            'status' => (string)($account['status'] ?? 'pending'),
+            'isApproved' => $this->toDatabaseBoolean($account['is_approved'] ?? false),
+            'isVerified' => $this->toDatabaseBoolean($account['is_verified'] ?? false),
+            'isActive' => $this->toDatabaseBoolean($account['is_active'] ?? true),
+        ];
     }
 
     private function buildRegistrationAccountPayload(array $registration, array $state, array $overrides = []): array
@@ -458,8 +536,22 @@ class UserClerkRegistrationService
             'roleDesignation' => $state['role'],
             'status' => $state['status'],
             'isApproved' => $state['isApproved'],
+            'isVerified' => $state['isVerified'] ?? false,
             'isActive' => $state['isActive'] ?? true,
         ], $overrides);
+    }
+
+    private function toDatabaseBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        return in_array(strtolower(trim((string)$value)), ['1', 't', 'true', 'yes'], true);
     }
 
     private function success(string $message, array $account, int $status = 200): array

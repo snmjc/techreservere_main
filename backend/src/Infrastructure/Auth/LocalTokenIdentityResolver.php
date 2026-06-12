@@ -41,8 +41,9 @@ class LocalTokenIdentityResolver
                 'firstName' => 'Local',
                 'lastName' => 'Admin',
                 'roleDesignation' => 'ROLE_ADMIN',
-                'status' => 'approved',
+                'status' => 'active',
                 'isApproved' => true,
+                'isVerified' => true,
             ];
         }
 

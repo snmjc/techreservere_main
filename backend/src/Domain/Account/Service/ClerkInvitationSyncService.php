@@ -41,7 +41,7 @@ class ClerkInvitationSyncService
         $acceptedAtText = $acceptedAt->format('Y-m-d H:i:sP');
         $updatedTimestamp = AppClock::now()->format('Y-m-d H:i:s');
         $resolvedClerkUserId = trim((string)($clerkUserId ?? $account['clerk_user_id'] ?? ''));
-        $nextStatus = 'approved';
+        $nextStatus = 'active';
         $nextIsApproved = true;
 
         $this->connection->beginTransaction();
@@ -68,14 +68,19 @@ class ClerkInvitationSyncService
             $this->connection->executeStatement(
                 "UPDATE accounts
                  SET status = :status,
+                     is_verified = TRUE,
+                     verification_status = 'verified',
+                     invitation_status = 'accepted',
                      is_approved = :isApproved,
                      is_active = TRUE,
+                     approved_at = COALESCE(approved_at, :approvedAt),
                      clerk_user_id = COALESCE(NULLIF(clerk_user_id, ''), :clerkUserId),
                      updated_timestamp = :updatedTimestamp
                  WHERE account_identifier = :accountIdentifier",
                 [
                     'status' => $nextStatus,
                     'isApproved' => $nextIsApproved,
+                    'approvedAt' => $acceptedAtText,
                     'clerkUserId' => $resolvedClerkUserId !== '' ? $resolvedClerkUserId : null,
                     'updatedTimestamp' => $updatedTimestamp,
                     'accountIdentifier' => (int)$account['account_identifier'],
@@ -83,6 +88,7 @@ class ClerkInvitationSyncService
                 [
                     'status' => ParameterType::STRING,
                     'isApproved' => ParameterType::BOOLEAN,
+                    'approvedAt' => ParameterType::STRING,
                     'clerkUserId' => $resolvedClerkUserId !== '' ? ParameterType::STRING : ParameterType::NULL,
                     'updatedTimestamp' => ParameterType::STRING,
                     'accountIdentifier' => ParameterType::INTEGER,
@@ -115,21 +121,31 @@ class ClerkInvitationSyncService
     {
         $this->connection->executeStatement(
             "UPDATE accounts
-             SET status = 'approved',
+             SET status = 'active',
+                 is_verified = TRUE,
+                 verification_status = 'verified',
+                 invitation_status = 'accepted',
                  is_approved = TRUE,
                  is_active = TRUE,
+                 approved_at = COALESCE(approved_at, :approvedAt),
                  updated_timestamp = :updatedTimestamp
              WHERE COALESCE(is_approved, FALSE) = FALSE
                AND COALESCE(NULLIF(clerk_user_id, ''), '') <> ''
-               AND LOWER(COALESCE(status, 'pending')) NOT IN ('approved', 'inactive', 'disabled', 'rejected', 'denied', 'suspended')
+               AND LOWER(COALESCE(status, 'pending')) NOT IN ('active', 'inactive', 'disabled', 'rejected', 'denied', 'suspended')
                AND EXISTS (
                     SELECT 1
                     FROM invitations
                     WHERE LOWER(invitations.email) = LOWER(accounts.email_address)
                       AND invitations.accepted_at IS NOT NULL
                )",
-            ['updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s')],
-            ['updatedTimestamp' => ParameterType::STRING]
+            [
+                'approvedAt' => AppClock::now()->format('Y-m-d H:i:s'),
+                'updatedTimestamp' => AppClock::now()->format('Y-m-d H:i:s'),
+            ],
+            [
+                'approvedAt' => ParameterType::STRING,
+                'updatedTimestamp' => ParameterType::STRING,
+            ]
         );
     }
 

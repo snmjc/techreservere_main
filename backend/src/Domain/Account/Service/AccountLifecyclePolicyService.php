@@ -11,7 +11,11 @@ class AccountLifecyclePolicyService
             return 'Disabled';
         }
 
-        if ($normalized === 'pending' || $normalized === 'invited' || !$isApproved) {
+        if (in_array($normalized, ['verified', 'invited'], true)) {
+            return 'Verified';
+        }
+
+        if ($normalized === 'pending') {
             return 'Pending';
         }
 
@@ -30,12 +34,12 @@ class AccountLifecyclePolicyService
 
     public function canUpdateAccount(string $accountStatus): bool
     {
-        return $accountStatus === 'Active';
+        return in_array($accountStatus, ['Active', 'Verified'], true);
     }
 
     public function canDisableAccount(string $accountStatus): bool
     {
-        return $accountStatus === 'Active';
+        return in_array($accountStatus, ['Active', 'Verified'], true);
     }
 
     public function canActivateAccount(string $accountStatus): bool

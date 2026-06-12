@@ -39,6 +39,18 @@ class AccountEntity
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $clerkUserId = null;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $isVerified = false;
+
+    #[ORM\Column(type: Types::STRING, length: 20)]
+    private string $verificationStatus = 'unverified';
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $invitedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $approvedAt = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $lastLoginTimestamp = null;
 
@@ -172,6 +184,50 @@ class AccountEntity
     public function setClerkUserId(?string $clerkUserId): self
     {
         $this->clerkUserId = $clerkUserId;
+        return $this;
+    }
+
+    public function getIsVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): self
+    {
+        $this->isVerified = $isVerified;
+        return $this;
+    }
+
+    public function getVerificationStatus(): string
+    {
+        return $this->verificationStatus;
+    }
+
+    public function setVerificationStatus(string $verificationStatus): self
+    {
+        $this->verificationStatus = $verificationStatus;
+        return $this;
+    }
+
+    public function getInvitedAt(): ?\DateTimeInterface
+    {
+        return $this->invitedAt;
+    }
+
+    public function setInvitedAt(?\DateTimeInterface $invitedAt): self
+    {
+        $this->invitedAt = $invitedAt;
+        return $this;
+    }
+
+    public function getApprovedAt(): ?\DateTimeInterface
+    {
+        return $this->approvedAt;
+    }
+
+    public function setApprovedAt(?\DateTimeInterface $approvedAt): self
+    {
+        $this->approvedAt = $approvedAt;
         return $this;
     }
 

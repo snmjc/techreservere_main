@@ -38,7 +38,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   ));
   const isDeleteConfirmationReady = computed(() => (
     Boolean(deleteAccountRequest.value)
-    && deleteConfirmEmail.value.trim() !== ''
+    && Boolean(currentAdminEmail.value)
+    && normalizeEmailForConfirmation(deleteConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
     && deleteConfirmPassword.value.trim() !== ''
   ));
 
@@ -100,15 +101,10 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     if (!canSubmitApproval()) return;
 
     await runAction(async () => {
-      const isResend = approvalMode.value === 'resend';
       const result = await getApprovalAction()(
         approvalAccount.value.accountIdentifier,
         authStore.authToken,
-        {
-          confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail),
-          redirectUrl: buildInviteRedirectUrl(),
-          ...(isResend ? { forceResend: true } : {}),
-        },
+        { confirmedAdminEmail: normalizeEmailForConfirmation(approvalForm.confirmEmail) },
       );
 
       if (!result.success) {
@@ -149,7 +145,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
         deleteAccountRequest.value.accountIdentifier,
         authStore.authToken,
         {
-          confirmedAdminEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
+          confirmEmail: normalizeEmailForConfirmation(deleteConfirmEmail.value),
           confirmedAdminPassword: deleteConfirmPassword.value,
         },
       );
@@ -159,13 +155,23 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSendInvite(account) {
-    return String(account?.accountStatus || '').toLowerCase() === 'not_invited' && !isProcessing.value;
+    const normalizedStatus = String(account?.accountStatus || '').toLowerCase();
+    const invitationStatus = String(account?.invitationStatus || account?.inviteStatus || 'not_sent').toLowerCase();
+    const emailAddress = String(account?.emailAddress || '').trim().toLowerCase();
+    const hasValidEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
+
+    return normalizedStatus === 'unverified'
+      && invitationStatus === 'not_sent'
+      && hasValidEmailAddress
+      && !Boolean(account?.isApproved)
+      && !isProcessing.value;
   }
 
   function canResendInvite(account) {
-    return ['expired', 'unverified'].includes(String(account?.accountStatus || '').toLowerCase())
+    const normalizedStatus = String(account?.accountStatus || '').toLowerCase();
+    return normalizedStatus === 'expired'
       && Boolean(account?.inviteSentAt)
-      && !account?.inviteAcceptedAt
+      && !Boolean(account?.isApproved)
       && !isProcessing.value;
   }
 
@@ -176,11 +182,11 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteModalDescription(account) {
     if (approvalMode.value === 'resend') {
-      return 'This will revoke the previous Clerk invitation and send a fresh one. Confirm the responsible admin before continuing.';
+      return 'The previous Clerk invitation expired after 7 days. Confirm the responsible admin before sending a new invitation link.';
     }
     return account?.accountType === 'Employee'
-      ? 'Review the worker information before approving access and sending the Clerk invitation email.'
-      : 'This will send the Clerk invitation to the requestor email and keep the request in Request Hub until the invite is accepted.';
+      ? 'Review the worker information before sending the Clerk invitation email.'
+      : 'Review the requestor details before sending the Clerk invitation email.';
   }
 
   function getInviteSubmitLabel() {
@@ -198,8 +204,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
       send: canSendInvite,
     };
     const messages = {
-      resend: 'Resend invite is only available for accounts with a previously sent invite that has not been accepted.',
-      send: 'Send invite is only available for accounts that are not invited.',
+      resend: 'Resend invite becomes available after 7 days.',
+      send: 'Send invite is only available for unverified pending accounts with a valid email address.',
     };
     const normalizedMode = mode === 'resend' ? 'resend' : 'send';
     if (validators[normalizedMode](account)) return true;
@@ -236,7 +242,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
     }
     if (!isApprovalConfirmationReady.value) {
       approvalFormError.value = approvalMode.value === 'resend'
-        ? 'Please type your exact admin email to resend the invite.'
+        ? 'Please type your exact admin email to resend the invite after 7 days.'
         : 'Please type your exact admin email to send the invite.';
       return false;
     }
@@ -244,7 +250,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSubmitDenial() {
-    if (isProcessing.value || !denialAccount.value) return false;
+    if (!denialAccount.value) return false;
     if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(denialAccount.value.emailAddress)) {
       denialFormError.value = 'Please type the exact email address to deny this request.';
       return false;
@@ -257,13 +263,9 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   }
 
   function canSubmitDeletion() {
-    if (isProcessing.value || !deleteAccountRequest.value) return false;
+    if (!deleteAccountRequest.value) return false;
     if (!currentAdminEmail.value) {
       deleteFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
-      return false;
-    }
-    if (normalizeEmailForConfirmation(deleteConfirmEmail.value) === '') {
-      deleteFormError.value = 'Please type your admin email to delete this request.';
       return false;
     }
     if (normalizeEmailForConfirmation(deleteConfirmEmail.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
@@ -279,11 +281,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   async function runAction(action) {
     isProcessing.value = true;
-    try {
-      await action();
-    } finally {
-      isProcessing.value = false;
-    }
+    await action();
+    isProcessing.value = false;
   }
 
   function getApprovalAction() {
@@ -294,14 +293,6 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteSuccessMessage() {
     return approvalMode.value === 'resend' ? 'Invitation resent successfully!' : 'Invitation sent successfully!';
-  }
-
-  function buildInviteRedirectUrl() {
-    if (typeof window === 'undefined' || !window.location?.origin) {
-      return '';
-    }
-
-    return `${window.location.origin.replace(/\/$/, '')}/clerk-login`;
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {

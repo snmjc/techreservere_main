@@ -82,13 +82,13 @@ async function processSignIn() {
     if (accountStatus === 'pending') {
       console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.requestPending);
       router.push({ name: ROUTE_NAMES.requestPending });
-    } else if (accountStatus === 'approved' || accountStatus === 'accepted') {
+    } else if (accountStatus === 'active' || accountStatus === 'approved' || accountStatus === 'accepted') {
       if (userRole === 'ROLE_ADMIN') {
         console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.adminDashboard);
         router.push({ name: ROUTE_NAMES.adminDashboard });
-      } else if (userRole === 'ROLE_FACULTY') {
-        console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.facultyDashboard);
-        router.push({ name: ROUTE_NAMES.facultyDashboard });
+      } else if (userRole === 'ROLE_STAFF') {
+        console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.employeeDashboard);
+        router.push({ name: ROUTE_NAMES.employeeDashboard });
       } else {
         console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.borrowerMyReservations);
         router.push({ name: ROUTE_NAMES.borrowerMyReservations });

@@ -4,8 +4,6 @@ namespace App\Domain\Authentication\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
-use App\Domain\Account\Service\ClerkInvitationSyncService;
-use App\Shared\Utils\RoleDesignationNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -13,8 +11,7 @@ class AuthenticationLoginService
 {
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly Connection $connection,
-        private readonly ClerkInvitationSyncService $clerkInvitationSyncService
+        private readonly Connection $connection
     ) {
     }
 
@@ -49,21 +46,26 @@ class AuthenticationLoginService
 
     private function validateAccountAvailability(AccountEntity $account): ?array
     {
+        $accountStatus = strtolower(trim((string)$account->getStatus()));
+        $isActiveInvitationAccount = in_array($accountStatus, ['active', 'approved', 'accepted'], true);
         if (!$account->getIsActive()) {
+            if (in_array($accountStatus, ['verified', 'invited', 'pending'], true)) {
+                return $this->error('AccountInvitationPending', 'Please finish the Clerk invitation sign-up from your email before signing in.', 403);
+            }
+
             return $this->error('AccountDisabled', 'This account has been disabled. Please contact an administrator.', 403);
         }
 
-        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
-            $account->getEmailAddress(),
-            $account->getClerkUserId()
-        );
+        if (in_array($accountStatus, ['verified', 'invited'], true)) {
+            return $this->error('AccountInvitationPending', 'Your invitation was sent and verified by the admin. Please finish the Clerk invitation sign-up from your email before signing in.', 403);
+        }
 
-        $refreshedAccount = $this->accountRepository->find($account->getAccountIdentifier()) ?? $account;
-        if (
-            !$refreshedAccount->getIsApproved()
-            || strtolower(trim((string)$refreshedAccount->getStatus())) !== 'approved'
-        ) {
-            return $this->error('AccountPendingApproval', 'Your account is pending administrator approval. Please wait for an invitation before signing in.', 403);
+        if ((!$account->getIsVerified() && !$isActiveInvitationAccount) || $accountStatus === 'pending') {
+            return $this->error('AccountPendingApproval', 'Your account is still pending verification. Please wait for an administrator invitation.', 403);
+        }
+
+        if (!$isActiveInvitationAccount) {
+            return $this->error('AccountInvitationPending', 'Please finish the Clerk invitation sign-up from your email before signing in.', 403);
         }
 
         $lockedUntil = $account->getLockedUntilTimestamp();
@@ -129,33 +131,29 @@ class AuthenticationLoginService
 
     private function buildAccountResponse(AccountEntity $account): array
     {
+        $profilePhotoData = $this->connection->fetchOne(
+            'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
+            ['accountIdentifier' => $account->getAccountIdentifier()],
+            ['accountIdentifier' => ParameterType::INTEGER]
+        );
+
         return [
             'accountIdentifier' => $account->getAccountIdentifier(),
             'firstName' => $account->getFirstName(),
             'lastName' => $account->getLastName(),
             'emailAddress' => $account->getEmailAddress(),
             'username' => $account->getUsername(),
-            'roleDesignation' => RoleDesignationNormalizer::normalize($account->getRoleDesignation()),
+            'roleDesignation' => $account->getRoleDesignation(),
+            'clerkUserId' => $account->getClerkUserId(),
             'status' => $account->getStatus(),
+            'isVerified' => $account->getIsVerified(),
+            'verificationStatus' => $account->getVerificationStatus(),
             'isApproved' => $account->getIsApproved(),
             'isActive' => $account->getIsActive(),
-            'profilePhotoData' => $this->resolveProfilePhotoData($account),
+            'invitedAt' => $account->getInvitedAt()?->format('Y-m-d H:i:s'),
+            'approvedAt' => $account->getApprovedAt()?->format('Y-m-d H:i:s'),
+            'profilePhotoData' => $profilePhotoData ? (string)$profilePhotoData : null,
         ];
-    }
-
-    private function resolveProfilePhotoData(AccountEntity $account): ?string
-    {
-        try {
-            $profilePhotoData = $this->connection->fetchOne(
-                'SELECT profile_photo_data FROM accounts WHERE account_identifier = :accountIdentifier',
-                ['accountIdentifier' => $account->getAccountIdentifier()],
-                ['accountIdentifier' => ParameterType::INTEGER]
-            );
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return $profilePhotoData ? (string) $profilePhotoData : null;
     }
 
     private function error(string $code, string $message, int $status): array

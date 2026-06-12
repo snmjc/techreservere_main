@@ -15,7 +15,7 @@ export const emailService = {
           recipientName: invitationData.name,
           inviterName: invitationData.inviterName,
           inviterOrganization: invitationData.inviterOrganization,
-          invitationLink: frontendUrl(`/accept-invitation?token=${encodeURIComponent(invitationData.token)}`),
+          invitationLink: frontendUrl(`/clerk-login?token=${encodeURIComponent(invitationData.token)}`),
           organizationName: invitationData.organizationName,
           supportEmail: invitationData.supportEmail || 'support@techreserve.com',
           liveChatUrl: invitationData.liveChatUrl || 'https://live.techreserve.com'

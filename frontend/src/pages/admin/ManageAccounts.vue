@@ -80,6 +80,7 @@
           <select v-model="showingFilterValue">
             <option value="all">All</option>
             <option value="active">Active</option>
+            <option value="verified">Verified</option>
             <option value="pending">Pending</option>
             <option value="disabled">Disabled</option>
           </select>

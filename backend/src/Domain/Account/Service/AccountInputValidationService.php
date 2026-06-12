@@ -4,13 +4,14 @@ namespace App\Domain\Account\Service;
 
 class AccountInputValidationService
 {
-    private const DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS = [
-        'feutech.edu.ph',
+    private const USER_EMAIL_DOMAINS = [
+        '@fit.edu.ph',
+        '@feutech.edu.ph',
     ];
 
-    private const DEFAULT_ALLOWED_REQUEST_HUB_USER_EMAIL_DOMAINS = [
-        'fit.edu.ph',
-        'feutech.edu.ph',
+    private const ADMIN_EMAIL_DOMAINS = [
+        '@feutech.edu.ph',
+        '@fit.edu.ph',
     ];
 
     public function isValidPersonName(string $name): bool
@@ -29,21 +30,12 @@ class AccountInputValidationService
 
     public function isInstitutionalAdminEmail(string $emailAddress): bool
     {
-        $normalizedEmailAddress = strtolower(trim($emailAddress));
-        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
+        return $this->hasAllowedDomain($emailAddress, self::ADMIN_EMAIL_DOMAINS);
+    }
 
-        $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
-        if ($domain === '') {
-            return false;
-        }
-
-        if (in_array($domain, $this->blockedAdminEmailDomains(), true)) {
-            return false;
-        }
-
-        return in_array($domain, $this->allowedAdminEmailDomains(), true);
+    public function isInstitutionalUserEmail(string $emailAddress): bool
+    {
+        return $this->hasAllowedDomain($emailAddress, self::USER_EMAIL_DOMAINS);
     }
 
     public function normalizeIdNumber(string $idNumber): string
@@ -53,17 +45,7 @@ class AccountInputValidationService
 
     public function isAllowedRequestHubUserEmail(string $emailAddress): bool
     {
-        $normalizedEmailAddress = strtolower(trim($emailAddress));
-        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-
-        $domain = substr(strrchr($normalizedEmailAddress, '@') ?: '', 1);
-        if ($domain === '') {
-            return false;
-        }
-
-        return in_array($domain, self::DEFAULT_ALLOWED_REQUEST_HUB_USER_EMAIL_DOMAINS, true);
+        return $this->isInstitutionalUserEmail($emailAddress);
     }
 
     public function isValidIdNumber(string $idNumber): bool
@@ -71,23 +53,19 @@ class AccountInputValidationService
         return $this->normalizeIdNumber($idNumber) !== '';
     }
 
-    public function allowedAdminEmailDomains(): array
+    private function hasAllowedDomain(string $emailAddress, array $allowedDomains): bool
     {
-        $configuredDomains = trim((string)($_ENV['ADMIN_EMAIL_DOMAINS'] ?? ''));
-        if ($configuredDomains === '') {
-            return self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS;
+        $normalizedEmailAddress = strtolower(trim($emailAddress));
+        if (!filter_var($normalizedEmailAddress, FILTER_VALIDATE_EMAIL)) {
+            return false;
         }
 
-        $domains = array_values(array_filter(array_map(
-            static fn (string $domain): string => strtolower(trim($domain)),
-            explode(',', $configuredDomains)
-        )));
+        foreach ($allowedDomains as $allowedDomain) {
+            if (str_ends_with($normalizedEmailAddress, $allowedDomain)) {
+                return true;
+            }
+        }
 
-        return $domains !== [] ? $domains : self::DEFAULT_ALLOWED_ADMIN_EMAIL_DOMAINS;
-    }
-
-    public function blockedAdminEmailDomains(): array
-    {
-        return ['techreserve.edu.ph', 'techreserve.feu.edu.ph'];
+        return false;
     }
 }

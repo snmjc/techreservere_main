@@ -1,5 +1,29 @@
 <template>
-  <div class="clerk-login-page">
+  <div v-if="showInvitationFlow" class="clerk-invitation-page">
+    <div v-if="showInvitationLoadingState" class="clerk-invitation-loading">
+      <div class="clerk-invitation-spinner" />
+    </div>
+
+    <p v-else-if="invitationFlowError" class="clerk-invitation-error">
+      {{ invitationFlowError }}
+    </p>
+
+    <div v-else-if="hasInvitationTicket && !shouldAutoConsumeInvitationTicket" class="clerk-invitation-widget-shell">
+      <SignUp
+        path="/clerk-login"
+        routing="path"
+        sign-in-url="/clerk-login"
+        force-redirect-url="/auth/post-login"
+        fallback-redirect-url="/auth/post-login"
+      />
+    </div>
+
+    <p v-else class="clerk-invitation-error">
+      This invitation link is incomplete. Open the original Clerk invitation email and try again.
+    </p>
+  </div>
+
+  <div v-else class="clerk-login-page">
     <section class="clerk-login-branding-panel">
       <img
         src="@/assets/Page-20-3.png"
@@ -188,17 +212,33 @@
 </template>
 
 <script setup>
+import { SignUp, useAuth, useUser } from '@clerk/vue';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
-import { ref } from 'vue';
+import { signOutClerk } from '@/modules/authentication/utils/clerkAuthUtils.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { persistPendingRememberSession } from '@/modules/authentication/utils/authStorage.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const isPasswordVisible = ref(false);
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthenticationStore();
+const { isLoaded, isSignedIn } = useUser();
+const { signOut } = useAuth();
+
+const hasTriggeredSignOut = ref(false);
+const isSigningOutExistingSession = ref(false);
+const wasSignedInOnEntry = ref(null);
+const invitationFlowError = ref('');
+const isProcessingInvitationTicket = ref(false);
 
 function togglePasswordVisibility() {
   isPasswordVisible.value = !isPasswordVisible.value;
 }
 
 const {
-  ROUTE_NAMES,
   emailAddress,
   passwordText,
   rememberMeChecked,
@@ -219,9 +259,180 @@ const {
   handleResetPasswordSubmit,
 } = useClerkLoginPage();
 
+const hasInvitationContext = computed(() => {
+  const queryKeys = Object.keys(route.query || {});
+  if (queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key))) {
+    return true;
+  }
+
+  return /(__clerk|ticket|invitation)/i.test(String(route.hash || ''));
+});
+
+const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
+const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
+const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
+const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
+const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
+
+watch([isLoaded, isSignedIn, showInvitationFlow, hasInvitationTicket], async ([loaded, signedIn, invitationFlow, hasTicket]) => {
+  if (!invitationFlow || !loaded) {
+    return;
+  }
+
+  if (wasSignedInOnEntry.value === null) {
+    wasSignedInOnEntry.value = signedIn;
+  }
+
+  if (!hasTicket) {
+    invitationFlowError.value = '';
+    return;
+  }
+
+  if (!signedIn) {
+    invitationFlowError.value = '';
+    return;
+  }
+
+  if (hasTriggeredSignOut.value || wasSignedInOnEntry.value === false) {
+    return;
+  }
+
+  hasTriggeredSignOut.value = true;
+  isSigningOutExistingSession.value = true;
+
+  try {
+    authStore.performLogout();
+    await signOutClerk(signOut, {
+      redirectUrl: `${window.location.origin}${route.fullPath}`,
+    });
+  } catch (error) {
+    console.error('[ClerkLogin] Failed to sign out the existing Clerk session for invitation flow.', error);
+    invitationFlowError.value = 'Please sign out of the current account, then reopen the original Clerk invitation link.';
+    isSigningOutExistingSession.value = false;
+    hasTriggeredSignOut.value = false;
+  }
+}, { immediate: true });
+
+watch([isLoaded, isSignedIn, showInvitationFlow], ([loaded, signedIn, invitationFlow]) => {
+  if (
+    !invitationFlow
+    || !loaded
+    || !signedIn
+    || isSigningOutExistingSession.value
+    || (wasSignedInOnEntry.value === true && !hasTriggeredSignOut.value)
+  ) {
+    return;
+  }
+
+  router.replace({ name: ROUTE_NAMES.postLogin });
+}, { immediate: true });
+
+watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTicket], async ([loaded, signedIn, invitationFlow, shouldAutoConsume]) => {
+  if (!invitationFlow || !loaded || signedIn || !shouldAutoConsume) {
+    return;
+  }
+
+  if (isSigningOutExistingSession.value || isProcessingInvitationTicket.value) {
+    return;
+  }
+
+  invitationFlowError.value = '';
+  isProcessingInvitationTicket.value = true;
+
+  try {
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signIn || !clerk?.setActive) {
+      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
+    }
+
+    const result = await clerk.client.signIn.create({
+      strategy: 'ticket',
+      ticket: String(route.query.__clerk_ticket || '').trim(),
+    });
+
+    if (result?.status !== 'complete' || !result?.createdSessionId) {
+      throw new Error('Clerk could not complete this invitation automatically.');
+    }
+
+    persistPendingRememberSession(true);
+    await clerk.setActive({ session: result.createdSessionId });
+    router.replace({ name: ROUTE_NAMES.postLogin });
+  } catch (error) {
+    console.error('[ClerkLogin] Failed to auto-consume sign-in invitation ticket.', error);
+    invitationFlowError.value = error?.errors?.[0]?.longMessage
+      || error?.errors?.[0]?.message
+      || error?.message
+      || 'This invitation could not be completed automatically. Please reopen the original invite link.';
+  } finally {
+    isProcessingInvitationTicket.value = false;
+  }
+}, { immediate: true });
+
+function waitForClerk(timeoutMs = 4000) {
+  if (window.Clerk?.loaded) {
+    return Promise.resolve(window.Clerk);
+  }
+
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (window.Clerk?.loaded) {
+        window.clearInterval(timer);
+        resolve(window.Clerk);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        window.clearInterval(timer);
+        resolve(window.Clerk || null);
+      }
+    }, 100);
+  });
+}
+
 </script>
 
 <style scoped>
+.clerk-invitation-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  background: #f7f8f7;
+}
+
+.clerk-invitation-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clerk-invitation-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(17, 24, 39, 0.12);
+  border-top-color: #111827;
+  border-radius: 999px;
+  animation: clerk-invitation-spin 0.85s linear infinite;
+}
+
+.clerk-invitation-widget-shell {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.clerk-invitation-error {
+  max-width: 420px;
+  margin: 0;
+  color: #9f1d1d;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .clerk-login-page {
   display: flex;
   min-height: 100vh;
@@ -585,102 +796,14 @@ const {
   text-decoration: none;
 }
 
-:deep(.techreserve-clerk-root) {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
+@keyframes clerk-invitation-spin {
+  from {
+    transform: rotate(0deg);
+  }
 
-:deep(.techreserve-clerk-card-box) {
-  width: 100%;
-  max-width: 100%;
-  box-shadow: none;
-}
-
-:deep(.techreserve-clerk-card) {
-  width: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-
-:deep(.techreserve-clerk-header-title) {
-  color: transparent;
-  font-size: 0;
-  line-height: 1;
-  text-align: center;
-  margin-bottom: 1.2rem;
-}
-
-:deep(.techreserve-clerk-header-title)::before {
-  content: 'Welcome to TechReserve';
-  display: block;
-  color: #111827;
-  font-size: 1.28rem;
-  font-weight: 900;
-  line-height: 1.25;
-}
-
-:deep(.techreserve-clerk-header-subtitle) {
-  display: none;
-}
-
-:deep(.techreserve-clerk-form-field) {
-  gap: 0.34rem;
-  margin-bottom: 0.85rem;
-}
-
-:deep(.techreserve-clerk-field-label) {
-  color: #374151;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-:deep(.techreserve-clerk-field-input) {
-  min-height: 38px;
-  border: 1px solid #d7ded9;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #111827;
-  box-shadow: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-:deep(.techreserve-clerk-field-input:focus) {
-  border-color: #08784a;
-  box-shadow: 0 0 0 3px rgba(8, 120, 74, 0.12);
-}
-
-:deep(.techreserve-clerk-primary-button) {
-  min-height: 40px;
-  border-radius: 10px;
-  background: #08784a;
-  font-weight: 900;
-  box-shadow: 0 6px 14px rgba(8, 120, 74, 0.14);
-}
-
-:deep(.techreserve-clerk-primary-button:hover) {
-  background: #05613d;
-}
-
-:deep(.techreserve-clerk-social-block),
-:deep(.techreserve-clerk-social-button),
-:deep(.techreserve-clerk-divider-row) {
-  display: none;
-}
-
-:deep(.techreserve-clerk-footer) {
-  border-top: 1px solid #edf0ed;
-  background: #ffffff;
-  opacity: 0.78;
-}
-
-:deep(.techreserve-clerk-footer-link) {
-  color: #08784a;
-  font-weight: 900;
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1024px) {
