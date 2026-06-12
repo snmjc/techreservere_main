@@ -1,6 +1,7 @@
 import { Clerk } from '@clerk/clerk-js'
+import { resolveClerkPublishableKey } from './clerkConfig.js'
 
-const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const clerkPublishableKey = resolveClerkPublishableKey()
 
 export const clerk = new Clerk({
   publishableKey: clerkPublishableKey,
