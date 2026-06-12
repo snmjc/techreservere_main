@@ -10,7 +10,7 @@
 
       <div class="admin-wishlist-modal-heading">
         <h2>Create New Admin</h2>
-        <p>Create a ready-to-use administrator account using a valid @feutech.edu.ph email address.</p>
+        <p>Create an administrator request account that stays unverified until the Clerk invitation is accepted.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -59,7 +59,7 @@
           />
         </label>
 
-        <p class="admin-wishlist-add-helper">Default password: <strong>admin123</strong></p>
+        <p class="admin-wishlist-add-helper">This account will remain in Wishlist as Unverified until you send the Clerk email invitation.</p>
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
         <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>
 
