@@ -40,6 +40,7 @@ class WishlistUserAccountService
     private function normalizeRequestBody(array $requestBody): array
     {
         $role = trim($requestBody['role'] ?? 'Student');
+        $roleDesignation = strtoupper(trim((string)($requestBody['roleDesignation'] ?? 'ROLE_BORROWER')));
 
         return [
             'lastName' => trim($requestBody['lastName'] ?? ''),
@@ -47,6 +48,7 @@ class WishlistUserAccountService
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
             'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
             'idNumber' => trim($requestBody['idNumber'] ?? ''),
+            'roleDesignation' => $roleDesignation,
             'role' => $role,
             'passwordText' => (string)($requestBody['passwordText'] ?? $requestBody['password'] ?? ''),
             'roleLabel' => strtolower($role) === 'faculty' ? 'Faculty' : 'Student',
@@ -72,6 +74,10 @@ class WishlistUserAccountService
 
         if (!$this->accountInputValidationService->isInstitutionalUserEmail($payload['emailAddress'])) {
             return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+        }
+
+        if ($payload['roleDesignation'] !== 'ROLE_BORROWER') {
+            return 'Only ROLE_BORROWER can be created from the user tab.';
         }
 
         return null;
@@ -179,7 +185,7 @@ class WishlistUserAccountService
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
             'username' => $payload['username'],
-            'roleDesignation' => 'ROLE_BORROWER',
+            'roleDesignation' => $payload['roleDesignation'],
             'idNumber' => $payload['idNumber'],
             'department' => $payload['roleLabel'],
             'contactNumber' => null,
@@ -232,7 +238,7 @@ class WishlistUserAccountService
             'lastName' => $payload['lastName'],
             'firstName' => $payload['firstName'],
             'username' => $payload['username'],
-            'roleDesignation' => 'ROLE_BORROWER',
+            'roleDesignation' => $payload['roleDesignation'],
             'idNumber' => $payload['idNumber'],
             'department' => $payload['roleLabel'],
             'passwordHash' => password_hash($payload['passwordText'], PASSWORD_BCRYPT),
@@ -277,7 +283,7 @@ class WishlistUserAccountService
             'firstName' => $payload['firstName'],
             'emailAddress' => $payload['emailAddress'],
             'username' => $payload['username'],
-            'roleDesignation' => 'ROLE_BORROWER',
+            'roleDesignation' => $payload['roleDesignation'],
             'roleLabel' => 'User: ' . $payload['roleLabel'],
             'accountType' => 'User',
             'accountStatus' => 'unverified',

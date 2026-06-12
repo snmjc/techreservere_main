@@ -115,7 +115,11 @@
           <input v-model.trim="addUserForm.idNumber" type="text" placeholder="2023*****" required />
         </label>
         <label class="admin-wishlist-field-wide">
-          <span>Role</span>
+          <span>Account Role</span>
+          <input type="text" value="Borrower / User" readonly disabled />
+        </label>
+        <label class="admin-wishlist-field-wide">
+          <span>User Type</span>
           <select v-model="addUserForm.role" required>
             <option value="Student">Student</option>
             <option value="Faculty">Faculty</option>
@@ -303,6 +307,7 @@ const addUserForm = reactive({
   firstName: '',
   emailAddress: '',
   idNumber: '',
+  roleDesignation: 'ROLE_BORROWER',
   role: 'Student',
   password: '',
   confirmPassword: '',
@@ -480,6 +485,7 @@ function resetAddUserForm() {
   addUserForm.firstName = '';
   addUserForm.emailAddress = '';
   addUserForm.idNumber = '';
+  addUserForm.roleDesignation = 'ROLE_BORROWER';
   addUserForm.role = 'Student';
   addUserForm.password = '';
   addUserForm.confirmPassword = '';

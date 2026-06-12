@@ -96,6 +96,7 @@ export function buildUserAccountPayload(form) {
     firstName: form.firstName,
     emailAddress: form.emailAddress,
     idNumber: form.idNumber,
+    roleDesignation: form.roleDesignation || 'ROLE_BORROWER',
     role: form.role,
     passwordText: form.password,
   };
