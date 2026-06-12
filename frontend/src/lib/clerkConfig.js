@@ -3,8 +3,7 @@ const PLACEHOLDER_CLERK_KEYS = new Set([
   'your_clerk_publishable_key_here',
 ])
 
-const BROKEN_CLERK_DOMAIN = 'clerk.farahkenawy.codes'
-const DEFAULT_FALLBACK_CLERK_PUBLISHABLE_KEY = 'pk_test_cHJpbWFyeS1yb29zdGVyLTgwLmNsZXJrLmFjY291bnRzLmRldiQ'
+const LEGACY_CLERK_DOMAIN = 'clerk.farahkenawy.codes'
 
 export function decodeClerkDomain(publishableKey) {
   const encodedDomain = publishableKey.split('_').slice(2).join('_')
@@ -30,31 +29,19 @@ function getConfiguredClerkKey() {
 
   return configuredKey
 }
-
-function getFallbackClerkKey() {
-  const configuredFallbackKey = import.meta.env.VITE_CLERK_FALLBACK_PUBLISHABLE_KEY?.trim()
-
-  if (configuredFallbackKey && !PLACEHOLDER_CLERK_KEYS.has(configuredFallbackKey)) {
-    return configuredFallbackKey
-  }
-
-  return DEFAULT_FALLBACK_CLERK_PUBLISHABLE_KEY
-}
-
 export function resolveClerkPublishableKey() {
   const configuredKey = getConfiguredClerkKey()
-  const fallbackKey = getFallbackClerkKey()
 
   if (!configuredKey) {
-    return fallbackKey
+    return ''
   }
 
   const configuredDomain = decodeClerkDomain(configuredKey)
-  if (configuredDomain === BROKEN_CLERK_DOMAIN) {
-    console.warn(
-      `Configured Clerk domain ${BROKEN_CLERK_DOMAIN} is unavailable; falling back to ${decodeClerkDomain(fallbackKey)}.`,
+  if (configuredDomain === LEGACY_CLERK_DOMAIN) {
+    console.error(
+      `Configured Clerk domain ${LEGACY_CLERK_DOMAIN} is no longer used. Set VITE_CLERK_PUBLISHABLE_KEY to the active Clerk domain before starting the frontend.`,
     )
-    return fallbackKey
+    return ''
   }
 
   return configuredKey
