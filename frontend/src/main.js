@@ -45,6 +45,7 @@ if (!PUBLISHABLE_KEY) {
 const LIVE_FRONTEND_HOSTS = new Set([
   'techreserve.farahkenawy.codes',
 ])
+const ACTIVE_CLERK_PROXY_URL = 'https://clerk.techreserve.farahkenawy.codes'
 
 const currentFrontendHost = typeof window !== 'undefined' ? window.location.hostname : ''
 const isLiveFrontendHost = LIVE_FRONTEND_HOSTS.has(currentFrontendHost)
@@ -72,6 +73,7 @@ techReserveApplication.use(applicationRouter)
 if (!shouldDisableClerkOnLiveHost) {
   techReserveApplication.use(clerkPlugin, {
     publishableKey: PUBLISHABLE_KEY,
+    proxyUrl: ACTIVE_CLERK_PROXY_URL,
     ...resolveClerkRedirectOptions(),
   })
 }
