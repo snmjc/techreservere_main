@@ -59,6 +59,7 @@
           />
         </label>
 
+        <p class="admin-wishlist-add-helper">Default password: <strong>admin123</strong></p>
         <p class="admin-wishlist-add-helper">This account will remain in Wishlist as Unverified until you send the Clerk email invitation.</p>
         <p v-if="addAdminError" class="admin-wishlist-add-error">{{ addAdminError }}</p>
         <p v-else-if="showAdminCreateHelper" class="admin-wishlist-add-helper">{{ adminCreateHelperText }}</p>

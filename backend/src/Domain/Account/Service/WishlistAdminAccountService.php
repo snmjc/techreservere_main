@@ -9,6 +9,8 @@ use Doctrine\DBAL\ParameterType;
 
 class WishlistAdminAccountService
 {
+    private const DEFAULT_ADMIN_PASSWORD = 'admin123';
+
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
@@ -133,6 +135,7 @@ class WishlistAdminAccountService
             return $this->success([
                 'message' => 'Admin request account created successfully.',
                 'createdAccountIdentifier' => $createdAccountIdentifier,
+                'defaultPassword' => self::DEFAULT_ADMIN_PASSWORD,
                 'account' => [
                     'accountIdentifier' => $createdAccountIdentifier,
                     'idNumber' => $payload['idNumber'],
@@ -174,7 +177,7 @@ class WishlistAdminAccountService
             'department' => 'Administration',
             'contactNumber' => null,
             'clerkUserId' => null,
-            'passwordHash' => null,
+            'passwordHash' => password_hash(self::DEFAULT_ADMIN_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
             'status' => 'pending',
             'isVerified' => false,
             'verificationStatus' => 'unverified',
@@ -201,7 +204,7 @@ class WishlistAdminAccountService
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::NULL,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::NULL,
+            'passwordHash' => ParameterType::STRING,
             'status' => ParameterType::STRING,
             'isVerified' => ParameterType::BOOLEAN,
             'verificationStatus' => ParameterType::STRING,
