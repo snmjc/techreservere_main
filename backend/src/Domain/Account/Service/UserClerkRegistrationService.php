@@ -194,7 +194,7 @@ class UserClerkRegistrationService
         $existingIsAdmin = in_array($existingRole, ['ADMIN', 'ROLE_ADMIN'], true);
         $latestInvitation = $this->findLatestInvitationForEmail($registration['emailAddress']);
         $hasAcceptedInvitation = $this->isAcceptedInvitation($latestInvitation);
-        $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin;
+        $nextIsVerified = $account->getIsVerified() || $registration['isVerified'] || $existingIsAdmin || $hasAcceptedInvitation;
         $nextIsApproved = $account->getIsApproved() || $registration['isApproved'] || $existingIsAdmin || $hasAcceptedInvitation;
         $nextIsActive = $account->getIsActive() || $hasAcceptedInvitation;
         $nextStatus = $hasAcceptedInvitation || in_array($existingStatus, ['active', 'approved', 'accepted'], true)
@@ -483,6 +483,9 @@ class UserClerkRegistrationService
             'status' => $account->getStatus(),
             'isApproved' => $account->getIsApproved(),
             'isVerified' => $account->getIsVerified(),
+            'isActive' => $account->getIsActive(),
+            'verificationStatus' => $account->getVerificationStatus(),
+            'invitationStatus' => $account->getInvitationStatus(),
         ], $overrides);
     }
 
@@ -490,7 +493,8 @@ class UserClerkRegistrationService
     {
         $account = $this->connection->fetchAssociative(
             'SELECT account_identifier, clerk_user_id, first_name, last_name, email_address, username,
-                    role_designation, status, is_approved, is_verified, is_active
+                    role_designation, status, is_approved, is_verified, is_active,
+                    verification_status, invitation_status
              FROM accounts
              WHERE account_identifier = :accountIdentifier
              LIMIT 1',
@@ -522,6 +526,8 @@ class UserClerkRegistrationService
             'isApproved' => $this->toDatabaseBoolean($account['is_approved'] ?? false),
             'isVerified' => $this->toDatabaseBoolean($account['is_verified'] ?? false),
             'isActive' => $this->toDatabaseBoolean($account['is_active'] ?? true),
+            'verificationStatus' => !empty($account['verification_status']) ? (string)$account['verification_status'] : null,
+            'invitationStatus' => !empty($account['invitation_status']) ? (string)$account['invitation_status'] : null,
         ];
     }
 
@@ -538,6 +544,10 @@ class UserClerkRegistrationService
             'isApproved' => $state['isApproved'],
             'isVerified' => $state['isVerified'] ?? false,
             'isActive' => $state['isActive'] ?? true,
+            'verificationStatus' => ($state['isVerified'] ?? false) ? 'verified' : 'unverified',
+            'invitationStatus' => ($state['status'] ?? '') === 'active'
+                ? 'accepted'
+                : (($state['isVerified'] ?? false) ? 'sent' : 'not_sent'),
         ], $overrides);
     }
 

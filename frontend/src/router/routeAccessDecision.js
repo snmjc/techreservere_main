@@ -13,13 +13,14 @@ export function resolveAccountStatus(authStore) {
   const account = authStore.clerkAccountData || authStore.accountData || {};
   const rawStatus = authStore.clerkAccountStatus ?? account.status ?? account.accountStatus ?? 'pending';
   const normalizedStatus = String(rawStatus || '').trim().toLowerCase();
+  const invitationStatus = String(account.invitationStatus ?? account.invitation_status ?? '').trim().toLowerCase();
   const hasLinkedClerkAccount = Boolean(account.clerkUserId || account.clerk_user_id);
 
   if (account.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
   }
 
-  if (ACTIVE_ACCOUNT_STATUSES.includes(normalizedStatus) && hasLinkedClerkAccount) {
+  if ((ACTIVE_ACCOUNT_STATUSES.includes(normalizedStatus) || invitationStatus === 'accepted') && hasLinkedClerkAccount) {
     return 'active';
   }
 
