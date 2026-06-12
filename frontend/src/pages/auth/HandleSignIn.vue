@@ -75,14 +75,14 @@ async function processSignIn() {
       return;
     }
 
-    const accountStatus = account.status;
+    const accountStatus = resolveAccountStatus(account);
     const userRole = account.roleDesignation;
     console.log('[HandleSignIn] Account status:', accountStatus, 'Role:', userRole);
 
-    if (accountStatus === 'pending') {
+    if (accountStatus === 'pending' || accountStatus === 'verified') {
       console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.requestPending);
       router.push({ name: ROUTE_NAMES.requestPending });
-    } else if (accountStatus === 'active' || accountStatus === 'approved' || accountStatus === 'accepted') {
+    } else if (accountStatus === 'active') {
       if (userRole === 'ROLE_ADMIN') {
         console.log('[HandleSignIn] Redirecting to', ROUTE_NAMES.adminDashboard);
         router.push({ name: ROUTE_NAMES.adminDashboard });
@@ -115,6 +115,26 @@ function goToLogin() {
 onMounted(() => {
   processSignIn();
 });
+
+function resolveAccountStatus(account) {
+  const normalizedStatus = String(account?.status || account?.accountStatus || '').trim().toLowerCase();
+  const invitationStatus = String(account?.invitationStatus || account?.invitation_status || '').trim().toLowerCase();
+  const hasLinkedClerkAccount = Boolean(account?.clerkUserId || account?.clerk_user_id);
+
+  if (account?.isActive === false || normalizedStatus === 'disabled') {
+    return 'disabled';
+  }
+
+  if ((['active', 'approved', 'accepted'].includes(normalizedStatus) || invitationStatus === 'accepted') && hasLinkedClerkAccount) {
+    return 'active';
+  }
+
+  if (normalizedStatus === 'verified' || normalizedStatus === 'invited') {
+    return 'verified';
+  }
+
+  return normalizedStatus || 'pending';
+}
 </script>
 
 <style scoped>

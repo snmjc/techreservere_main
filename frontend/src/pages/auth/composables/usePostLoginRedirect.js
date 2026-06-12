@@ -192,13 +192,14 @@ function buildHeaders(token) {
 
 function resolveBackendAccountStatus(account) {
   const normalizedStatus = String(account?.status || '').toLowerCase();
+  const invitationStatus = String(account?.invitationStatus || account?.invitation_status || '').toLowerCase();
   const hasLinkedClerkAccount = Boolean(account?.clerkUserId || account?.clerk_user_id);
 
   if (account?.isActive === false || normalizedStatus === 'disabled') {
     return 'disabled';
   }
 
-  if (['active', 'approved', 'accepted'].includes(normalizedStatus) && hasLinkedClerkAccount) {
+  if ((['active', 'approved', 'accepted'].includes(normalizedStatus) || invitationStatus === 'accepted') && hasLinkedClerkAccount) {
     return 'active';
   }
 
