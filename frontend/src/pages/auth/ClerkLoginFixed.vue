@@ -34,6 +34,7 @@
 
 <script setup>
 import { onMounted } from 'vue';
+import { resolveClerkPublishableKey } from '@/lib/clerkConfig.js';
 
 onMounted(() => {
   // Initialize Clerk after component is mounted
@@ -41,14 +42,8 @@ onMounted(() => {
 });
 
 function initializeClerk() {
-  // Try to get the publishable key from environment
-  let publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  
-  // Fallback to the test key if the primary one is not set
-  if (!publishableKey || publishableKey === 'your_clerk_publishable_key_here') {
-    publishableKey = 'pk_test_cHJpbWFyeS1yb29zdGVyLTgwLmNsZXJrLmFjY291bnRzLmRldiQ';
-  }
-  
+  const publishableKey = resolveClerkPublishableKey();
+
   if (!publishableKey) {
     console.error('Clerk publishable key is missing');
     return;
