@@ -56,7 +56,9 @@ export function useClerkLoginPage() {
       });
       routeAfterBackendLogin(account);
     } catch (error) {
-      if (error?.errorType === 'LocalPasswordUnavailable' || error?.errorType === 'AuthenticationFailed') {
+      // Only hand off to Clerk when the backend explicitly says the account has no local password.
+      // A normal AuthenticationFailed response should stay a wrong-credentials error.
+      if (error?.errorType === 'LocalPasswordUnavailable') {
         await handleClerkPasswordLogin();
         return;
       }
