@@ -909,10 +909,16 @@ function revokePreviewDocumentUrl() {
 
 async function handleAccountCreated(payload) {
   const accountType = typeof payload === 'string' ? payload : payload?.type;
+  const defaultPassword = typeof payload === 'object' ? payload?.data?.defaultPassword : '';
 
   activeTab.value = accountType || 'admin';
   await loadWishlistAccounts();
   if (accountType === 'admin') {
+    if (defaultPassword) {
+      showToast(`Admin request created. Default password: ${defaultPassword}. Send the Clerk email invitation to continue verification.`);
+      return;
+    }
+
     showToast('Admin request created. Send the Clerk email invitation to continue verification.');
     return;
   }
