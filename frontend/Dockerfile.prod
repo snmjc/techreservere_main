@@ -23,8 +23,8 @@ RUN if echo "$VITE_FRONTEND_URL" | grep -q "techreserve.farahkenawy.codes" \
 RUN if echo "$VITE_FRONTEND_URL" | grep -q "techreserve.farahkenawy.codes"; then \
       encoded_key="${VITE_CLERK_PUBLISHABLE_KEY#pk_live_}"; \
       decoded_domain="$(printf '%s' "$encoded_key" | base64 -d 2>/dev/null || true)"; \
-      if [ "$decoded_domain" != "clerk.farahkenawy.codes$" ]; then \
-        echo "Production builds for techreserve.farahkenawy.codes require a Clerk publishable key for clerk.farahkenawy.codes."; \
+      if [ "$decoded_domain" != "clerk.techreserve.farahkenawy.codes$" ]; then \
+        echo "Production builds for techreserve.farahkenawy.codes require a Clerk publishable key for clerk.techreserve.farahkenawy.codes."; \
         exit 1; \
       fi; \
     fi

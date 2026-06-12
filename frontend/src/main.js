@@ -50,7 +50,7 @@ const currentFrontendHost = typeof window !== 'undefined' ? window.location.host
 const isLiveFrontendHost = LIVE_FRONTEND_HOSTS.has(currentFrontendHost)
 const isDevelopmentClerkKey = PUBLISHABLE_KEY.startsWith('pk_test_')
 const clerkFrontendApiDomain = decodeClerkDomain(PUBLISHABLE_KEY)
-const expectedLiveClerkDomain = 'clerk.farahkenawy.codes'
+const expectedLiveClerkDomain = 'clerk.techreserve.farahkenawy.codes'
 
 if (isLiveFrontendHost && isDevelopmentClerkKey) {
   console.error(
