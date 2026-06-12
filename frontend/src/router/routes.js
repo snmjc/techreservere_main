@@ -121,7 +121,8 @@ export const routeDefinitions = [
     },
   },
   {
-    path: '/dashboard',
+    path: '/borrower/dashboard',
+    alias: ['/dashboard'],
     name: ROUTE_NAMES.dashboard,
     component: () => import('@/pages/borrower/MyReservations.vue'),
     meta: {

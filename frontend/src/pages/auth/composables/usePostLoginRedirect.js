@@ -151,7 +151,7 @@ function routeWithBackendAccount({ authStore, router, token, backendAccount, cle
   } else if (authStore.userRole === 'ROLE_STAFF') {
     router.replace({ name: ROUTE_NAMES.employeeDashboard });
   } else {
-    router.replace({ name: ROUTE_NAMES.borrowerMyReservations });
+    router.replace({ name: ROUTE_NAMES.dashboard });
   }
 }
 

@@ -8,18 +8,8 @@
       {{ invitationFlowError }}
     </p>
 
-    <div v-else-if="hasInvitationTicket && !shouldAutoConsumeInvitationTicket" class="clerk-invitation-widget-shell">
-      <SignUp
-        path="/clerk-login"
-        routing="path"
-        sign-in-url="/clerk-login"
-        force-redirect-url="/auth/post-login"
-        fallback-redirect-url="/auth/post-login"
-      />
-    </div>
-
     <p v-else class="clerk-invitation-error">
-      This invitation link is incomplete. Open the original Clerk invitation email and try again.
+      This invitation is still being prepared. Please reopen the original email link in a moment.
     </p>
   </div>
 
@@ -212,7 +202,7 @@
 </template>
 
 <script setup>
-import { SignUp, useAuth, useUser } from '@clerk/vue';
+import { useAuth, useUser } from '@clerk/vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClerkLoginPage } from './composables/useClerkLoginPage.js';
@@ -270,7 +260,7 @@ const hasInvitationContext = computed(() => {
 
 const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
 const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
-const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
+const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value);
 const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
 const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
 
@@ -351,7 +341,11 @@ watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTick
     });
 
     if (result?.status !== 'complete' || !result?.createdSessionId) {
-      throw new Error('Clerk could not complete this invitation automatically.');
+      throw new Error(
+        invitationStatus.value === 'sign_up'
+          ? 'This invitation still requires Clerk account setup before automatic sign-in can finish.'
+          : 'Clerk could not complete this invitation automatically.'
+      );
     }
 
     persistPendingRememberSession(true);

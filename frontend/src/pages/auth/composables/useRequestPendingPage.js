@@ -103,7 +103,7 @@ function isRejectedAccount(status) {
 function resolveApprovedRouteName(role) {
   return role === 'ROLE_ADMIN' || role === 'ADMIN'
     ? ROUTE_NAMES.adminDashboard
-    : ROUTE_NAMES.borrowerMyReservations;
+    : ROUTE_NAMES.dashboard;
 }
 
 function setStatusMessage(statusMessage, statusMessageType, type, message) {

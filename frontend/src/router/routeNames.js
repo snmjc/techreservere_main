@@ -5,7 +5,6 @@ export const ROUTE_NAMES = Object.freeze({
   acceptInvitation: 'acceptInvitationPage',
   customSignUp: 'customSignUpPage',
   postLogin: 'postLoginPage',
-  handleSignIn: 'handleSignInPage',
   requestPending: 'requestPendingPage',
   accountDeactivated: 'accountDeactivatedPage',
   adminDashboard: 'adminDashboardPage',
