@@ -38,7 +38,7 @@ export function resolveAccountStatus(authStore) {
 export function getDashboardRouteForRole(userRole) {
   if (userRole === 'ROLE_ADMIN') return { name: ROUTE_NAMES.adminDashboard };
   if (userRole === 'ROLE_STAFF') return { name: ROUTE_NAMES.employeeDashboard };
-  return { name: ROUTE_NAMES.borrowerMyReservations };
+  return { name: ROUTE_NAMES.dashboard };
 }
 
 export function evaluatePublicRouteAccess({ toRoute, isSignedIn, accountStatus, userRole }) {

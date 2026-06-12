@@ -58,7 +58,7 @@
 
     <p class="login-form-signup-prompt">
       Don't have an account?
-      <router-link :to="{ name: 'signUpPage' }" class="login-form-signup-link">Sign up</router-link>
+      <router-link :to="{ name: 'customSignUpPage' }" class="login-form-signup-link">Sign up</router-link>
     </p>
   </form>
 </template>
