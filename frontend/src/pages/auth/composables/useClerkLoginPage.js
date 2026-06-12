@@ -56,9 +56,9 @@ export function useClerkLoginPage() {
       });
       routeAfterBackendLogin(account);
     } catch (error) {
-      // Only hand off to Clerk when the backend explicitly says the account has no local password.
-      // A normal AuthenticationFailed response should stay a wrong-credentials error.
-      if (error?.errorType === 'LocalPasswordUnavailable') {
+      // Clerk-backed accounts can appear as invitation-pending before preflight sync
+      // updates the local account row, so allow those cases into the Clerk path too.
+      if (shouldAttemptClerkPasswordLogin(error)) {
         await handleClerkPasswordLogin();
         return;
       }
@@ -360,4 +360,11 @@ function resolveClerkErrorMessage(error) {
 
 function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
+}
+
+function shouldAttemptClerkPasswordLogin(error) {
+  const errorType = String(error?.errorType || '');
+  return errorType === 'LocalPasswordUnavailable'
+    || errorType === 'AccountInvitationPending'
+    || errorType === 'AccountSyncPending';
 }
