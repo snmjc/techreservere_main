@@ -50,7 +50,6 @@ const currentFrontendHost = typeof window !== 'undefined' ? window.location.host
 const isLiveFrontendHost = LIVE_FRONTEND_HOSTS.has(currentFrontendHost)
 const isDevelopmentClerkKey = PUBLISHABLE_KEY.startsWith('pk_test_')
 const clerkFrontendApiDomain = decodeClerkDomain(PUBLISHABLE_KEY)
-const expectedLiveClerkDomain = 'clerk.techreserve.farahkenawy.codes'
 
 if (isLiveFrontendHost && isDevelopmentClerkKey) {
   console.error(
@@ -58,13 +57,10 @@ if (isLiveFrontendHost && isDevelopmentClerkKey) {
   )
 }
 
-const shouldDisableClerkOnLiveHost = isLiveFrontendHost
-  && (isDevelopmentClerkKey || clerkFrontendApiDomain !== expectedLiveClerkDomain)
+const shouldDisableClerkOnLiveHost = isLiveFrontendHost && isDevelopmentClerkKey
 
-if (isLiveFrontendHost && !isDevelopmentClerkKey && clerkFrontendApiDomain !== expectedLiveClerkDomain) {
-  console.error(
-    `Clerk is disabled on ${currentFrontendHost}: expected the publishable key for ${expectedLiveClerkDomain}, received ${clerkFrontendApiDomain || 'an unreadable domain'}.`,
-  )
+if (isLiveFrontendHost && !isDevelopmentClerkKey && !clerkFrontendApiDomain) {
+  console.warn('Unable to decode the Clerk publishable key domain on the live frontend host.')
 }
 
 const techReservePinia = createPinia()
