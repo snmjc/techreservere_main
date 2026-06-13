@@ -40,10 +40,10 @@
       <div class="custom-signup-form-content">
         <div class="custom-signup-card">
           <div class="custom-signup-card-header">
-            <p class="custom-signup-card-kicker">Create Account</p>
-            <h1 class="custom-signup-heading">{{ awaitingVerification ? 'Verify your email' : 'Sign up' }}</h1>
+            <p class="custom-signup-card-kicker">{{ isInvitationMode ? 'Invitation Access' : 'Create Account' }}</p>
+            <h1 class="custom-signup-heading">{{ awaitingVerification ? 'Verify your email' : (isInvitationMode ? 'Accept invitation' : 'Sign up') }}</h1>
             <p class="custom-signup-card-copy">
-              {{ awaitingVerification ? 'Enter the code Clerk sent to complete your request.' : 'Use your official FIT email and institutional details.' }}
+              {{ awaitingVerification ? 'Enter the code Clerk sent to complete your request.' : invitationCopy }}
             </p>
           </div>
 
@@ -77,7 +77,7 @@
                   id="idNumber"
                   v-model="formData.idNumber"
                   type="text"
-                  required
+                  :required="!isInvitationMode"
                 />
               </div>
 
@@ -86,7 +86,7 @@
                 <select
                   id="department"
                   v-model="formData.department"
-                  required
+                  :required="!isInvitationMode"
                   class="custom-signup-select"
                 >
                   <option value="">Select Department</option>
@@ -106,8 +106,9 @@
                   id="fitEmailAddress"
                   v-model="formData.fitEmailAddress"
                   type="email"
-                  required
+                  :required="!isInvitationMode"
                   autocomplete="email"
+                  :readonly="isInvitationMode"
                 />
               </div>
 
@@ -173,15 +174,15 @@
                 </div>
               </div>
 
-              <div class="custom-signup-row custom-signup-row-wide">
+              <div v-if="!isInvitationMode" class="custom-signup-row custom-signup-row-wide">
                 <label for="role">Role</label>
-                <select id="role" v-model="formData.role" class="custom-signup-select">
+                <select id="role" v-model="formData.role" class="custom-signup-select" :disabled="isInvitationMode">
                   <option value="Student">Student</option>
                   <option value="Faculty">Faculty</option>
                 </select>
               </div>
 
-              <div class="custom-signup-role-boundary custom-signup-row-wide">
+              <div v-if="!isInvitationMode" class="custom-signup-role-boundary custom-signup-row-wide">
                 <div class="custom-signup-role-boundary-header">
                   <span class="custom-signup-role-boundary-label">User Verification</span>
                   <strong>{{ formData.role }}</strong>
@@ -251,7 +252,7 @@
               class="custom-signup-submit"
               :disabled="isLoading"
             >
-              {{ isLoading ? 'Creating account...' : 'Create account' }}
+              {{ isLoading ? (isInvitationMode ? 'Accepting invitation...' : 'Creating account...') : (isInvitationMode ? 'Accept invitation' : 'Create account') }}
             </button>
           </form>
 
@@ -321,6 +322,8 @@ import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
     studentSupportingFileInput,
     firstErrorMessage,
     isStudentRole,
+    isInvitationMode,
+    invitationCopy,
     supportingFileAccept,
     openStudentSupportingFile,
   handleStudentSupportingFileChange,
