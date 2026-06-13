@@ -32,7 +32,7 @@ class AccountAcceptanceEmailService
         return true;
     }
 
-    public function sendAcceptedAccountEmail(array $account, string $loginUrl): array
+    public function sendInvitationAcceptanceEmail(array $account, string $acceptUrl): array
     {
         $emailAddress = (string)($account['email_address'] ?? '');
         $roleDesignation = (string)($account['role_designation'] ?? '');
@@ -45,8 +45,8 @@ class AccountAcceptanceEmailService
             $email = (new Email())
                 ->from($_ENV['MAILER_FROM'] ?? 'noreply@techreserve.feutech.edu.ph')
                 ->to($emailAddress)
-                ->subject($this->buildAcceptedAccountSubject($accountType))
-                ->html($this->buildAcceptedAccountEmailHtml($recipientName, $loginUrl, $accountType));
+                ->subject($this->buildInvitationAcceptanceSubject($accountType))
+                ->html($this->buildInvitationAcceptanceEmailHtml($recipientName, $acceptUrl, $accountType));
 
             $this->mailer->send($email);
 
@@ -56,34 +56,34 @@ class AccountAcceptanceEmailService
         }
     }
 
-    private function buildAcceptedAccountSubject(string $accountType): string
+    private function buildInvitationAcceptanceSubject(string $accountType): string
     {
         return match ($accountType) {
-            'Admin' => 'Welcome to TechReserve, Admin! Your Account is Verified and Ready to Use',
-            'Employee' => 'Welcome to TechReserve, Employee! Your Account is Verified and Ready to Use',
-            default => 'Your TechReserve Account is Verified and Ready to Use!',
+            'Admin' => 'TechReserve administrator access is ready',
+            'Employee' => 'TechReserve employee access is ready',
+            default => 'Your TechReserve access is ready',
         };
     }
 
-    private function buildAcceptedAccountEmailHtml(string $recipientName, string $loginUrl, string $accountType): string
+    private function buildInvitationAcceptanceEmailHtml(string $recipientName, string $acceptUrl, string $accountType): string
     {
         $name = htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8');
-        $url = htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8');
+        $url = htmlspecialchars($acceptUrl, ENT_QUOTES, 'UTF-8');
         $isEmployee = $accountType === 'Employee';
         $isAdmin = $accountType === 'Admin';
         $headline = $isAdmin || $isEmployee
-            ? 'Great news! Your account is<br>verified and ready to use.'
-            : 'Great news,<br>your account is<br>verified and ready<br>to use!';
+            ? 'Your account is ready.<br>Open TechReserve now.'
+            : 'Your access is ready.<br>Open TechReserve now.';
         $welcomePill = $isAdmin ? 'WELCOME, ADMIN!' : ($isEmployee ? 'HELLO!' : '');
         $intro = match ($accountType) {
-            'Admin' => 'Your administrator account for TechReserve has been successfully verified.',
-            'Employee' => 'Your employee account for TechReserve has been successfully verified.',
-            default => 'We are happy to inform you that your account in TechReserve has been successfully verified.',
+            'Admin' => 'Your administrator account for TechReserve has been approved.',
+            'Employee' => 'Your employee account for TechReserve has been approved.',
+            default => 'Your TechReserve account has been approved.',
         };
         $body = match ($accountType) {
-            'Admin' => 'You can now log in to the system to manage reservations, monitor resources, generate reports, and configure system settings with ease.',
-            'Employee' => 'You can now log in to the system to view your tasks, manage reservations, and collaborate with your team.',
-            default => 'You can now log in to your account and start reserving equipment or venues with ease.',
+            'Admin' => 'Click the button below to open the system directly. No extra verification is required.',
+            'Employee' => 'Click the button below to open the system directly. No extra verification is required.',
+            default => 'Click the button below to open the system directly. No extra verification is required.',
         };
         $features = match ($accountType) {
             'Admin' => [
@@ -165,7 +165,7 @@ class AccountAcceptanceEmailService
           </tr>
           <tr>
             <td align="center" style="padding:16px 34px 14px;">
-              <a href="{$url}" style="display:inline-block;min-width:210px;background:#007a4d;color:#ffffff;text-decoration:none;text-align:center;padding:13px 22px;border-radius:6px;font-size:14px;font-weight:900;">Log in to TechReserve</a>
+              <a href="{$url}" style="display:inline-block;min-width:210px;background:#007a4d;color:#ffffff;text-decoration:none;text-align:center;padding:13px 22px;border-radius:6px;font-size:14px;font-weight:900;">Accept Invite</a>
             </td>
           </tr>
           <tr>

@@ -87,6 +87,17 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     persistClerkSessionWithPreference(resolvedToken, normalizedAccount, persistent);
   }
 
+  function setLocalAuth(token, account, options = {}) {
+    const persistent = options.rememberSession === true;
+    const normalizedAccount = buildSessionAccount(account);
+    const resolvedToken = normalizeAuthToken(token);
+
+    authToken.value = resolvedToken;
+    accountData.value = normalizedAccount;
+    clerkAccountData.value = null;
+    persistAuthSessionWithPreference(resolvedToken, normalizedAccount, persistent);
+  }
+
   function performLogout() {
     authToken.value = null;
     accountData.value = null;
@@ -102,6 +113,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
     userFullName,
     performLogin,
     setClerkAuth,
+    setLocalAuth,
     performLogout,
     clerkAccountData,
     clerkIsSignedIn,

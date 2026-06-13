@@ -11,7 +11,6 @@ class WishlistAccountApprovalService
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountAcceptanceEmailService $accountAcceptanceEmailService,
-        private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -53,8 +52,7 @@ class WishlistAccountApprovalService
         }
 
         $now = new \DateTimeImmutable();
-        $clerkUserId = $this->findExistingClerkUserId((string)$account['email_address']);
-        $this->approveAccountRow($accountIdentifier, $now, $clerkUserId);
+        $this->approveAccountRow($accountIdentifier, $now, null);
 
         return $this->success([
             'message' => 'Email verified and account approved.',
@@ -225,24 +223,8 @@ class WishlistAccountApprovalService
         $invitationDraft = $this->buildInvitationDraft();
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
 
-        try {
-            $clerkInvitation = $this->accountClerkProvisioningService->sendInvitation($account, $invitationDraft['redirectUrl'], !$useBrandedMailer);
-        } catch (\Throwable $exception) {
-            $this->logger->error('Clerk invitation failed.', [
-                'accountIdentifier' => (int)($account['account_identifier'] ?? 0),
-                'emailAddress' => (string)($account['email_address'] ?? ''),
-                'error' => $exception->getMessage(),
-            ]);
-
-            return $this->error(
-                'ClerkInvitationFailed',
-                'Clerk could not send the invitation: ' . $exception->getMessage(),
-                502
-            );
-        }
-
-        $clerkInvitationUrl = (string)($clerkInvitation['url'] ?? '');
-        $mailerError = $this->sendBrandedEmailIfNeeded($useBrandedMailer, $account, $clerkInvitationUrl);
+        $acceptInvitationUrl = (string)$invitationDraft['acceptUrl'] . rawurlencode((string)$invitationDraft['token']);
+        $mailerError = $this->sendBrandedEmailIfNeeded($useBrandedMailer, $account, $acceptInvitationUrl);
         if ($mailerError !== null) {
             return $mailerError;
         }
@@ -256,32 +238,24 @@ class WishlistAccountApprovalService
         $this->logger->info('Invitation sent and recorded.', [
             'accountIdentifier' => $invitationContext['accountIdentifier'],
             'emailAddress' => (string)$account['email_address'],
-            'clerkInvitationId' => $clerkInvitation['id'] ?? null,
+            'invitationToken' => $invitationDraft['token'],
             'invitedBy' => $invitedBy,
         ]);
 
-        return $this->success($this->buildInvitationSuccessPayload($invitationContext, $clerkInvitation, $clerkInvitationUrl));
+        return $this->success($this->buildInvitationSuccessPayload($invitationContext));
     }
 
-    private function sendBrandedEmailIfNeeded(bool $useBrandedMailer, array $account, string $clerkInvitationUrl): ?array
+    private function sendBrandedEmailIfNeeded(bool $useBrandedMailer, array $account, string $acceptInvitationUrl): ?array
     {
-        if ($useBrandedMailer && $clerkInvitationUrl === '') {
-            return $this->error(
-                'ClerkInvitationMissingUrl',
-                'Clerk created the invitation but did not return an invitation URL.',
-                502
-            );
-        }
-
         if (!$useBrandedMailer) {
             return null;
         }
 
-        $emailResult = $this->accountAcceptanceEmailService->sendAcceptedAccountEmail($account, $clerkInvitationUrl);
+        $emailResult = $this->accountAcceptanceEmailService->sendInvitationAcceptanceEmail($account, $acceptInvitationUrl);
         if (!$emailResult['sent']) {
             return $this->error(
                 'InvitationEmailFailed',
-                'Clerk created the invitation, but the Outlook email could not be sent: ' . $emailResult['error'],
+                'The invitation was created, but the email could not be sent: ' . $emailResult['error'],
                 502
             );
         }
@@ -320,7 +294,7 @@ class WishlistAccountApprovalService
             $this->connection->rollBack();
             return $this->error(
                 'ApproveAccountFailed',
-                'Clerk sent the invitation, but the database could not record it: ' . $exception->getMessage(),
+                'The invitation email was sent, but the database could not record it: ' . $exception->getMessage(),
                 500
             );
         }
@@ -433,17 +407,15 @@ class WishlistAccountApprovalService
             'createdAt' => $createdAt,
             'expiresAt' => $createdAt->modify('+7 days'),
             'token' => bin2hex(random_bytes(24)),
-            'redirectUrl' => $frontendUrl . '/clerk-login',
+            'acceptUrl' => $frontendUrl . '/accept-invitation?token=',
         ];
     }
 
-    private function buildInvitationSuccessPayload(
-        array $context,
-        array $clerkInvitation,
-        string $clerkInvitationUrl
-    ): array {
+    private function buildInvitationSuccessPayload(array $context): array
+    {
         $account = $context['account'];
         $invitationDraft = $context['draft'];
+        $acceptInvitationUrl = $invitationDraft['acceptUrl'] . rawurlencode((string)$invitationDraft['token']);
 
         return [
             'message' => 'Invitation sent successfully.',
@@ -453,14 +425,14 @@ class WishlistAccountApprovalService
                 'role' => (string)$account['role_designation'],
                 'status' => 'invited',
                 'token' => $invitationDraft['token'],
-                'clerkInvitationId' => $clerkInvitation['id'] ?? null,
+                'clerkInvitationId' => null,
                 'sentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
                 'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d\TH:i:sP'),
                 'acceptedAt' => null,
-                'redirectUrl' => $invitationDraft['redirectUrl'],
-                'invitationUrl' => $clerkInvitationUrl,
+                'redirectUrl' => $acceptInvitationUrl,
+                'invitationUrl' => $acceptInvitationUrl,
                 'sentBy' => $context['invitedBy'],
-                'emailSent' => true,
+                'emailSent' => $this->accountAcceptanceEmailService->shouldUseBrandedMailer(),
                 'movesToManageAccounts' => false,
             ],
         ];
@@ -493,15 +465,6 @@ class WishlistAccountApprovalService
             'invitationStatus' => 'accepted',
             'isActive' => true,
         ];
-    }
-
-    private function findExistingClerkUserId(string $emailAddress): ?string
-    {
-        try {
-            return $this->accountClerkProvisioningService->findUserIdByEmail($emailAddress);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     private function normalizeEmailForConfirmation(string $emailAddress): string

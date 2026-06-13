@@ -4,6 +4,42 @@
       <div class="clerk-invitation-spinner" />
     </div>
 
+    <form v-else-if="showInvitationSetupForm" class="clerk-invitation-setup-card" @submit.prevent="completeInvitationSignUp">
+      <p class="clerk-invitation-setup-kicker">Invitation Access</p>
+      <h1 class="clerk-invitation-setup-title">Accept invitation</h1>
+      <p class="clerk-invitation-setup-copy">
+        Finish setting up your account so we can sign you in and send you to the correct dashboard.
+      </p>
+
+      <label class="clerk-invitation-setup-field">
+        <span>First Name</span>
+        <input v-model.trim="invitationFirstName" type="text" autocomplete="given-name" required />
+      </label>
+
+      <label class="clerk-invitation-setup-field">
+        <span>Last Name</span>
+        <input v-model.trim="invitationLastName" type="text" autocomplete="family-name" required />
+      </label>
+
+      <label class="clerk-invitation-setup-field">
+        <span>Password</span>
+        <input v-model="invitationPassword" type="password" autocomplete="new-password" required />
+      </label>
+
+      <label class="clerk-invitation-setup-field">
+        <span>Confirm Password</span>
+        <input v-model="invitationConfirmPassword" type="password" autocomplete="new-password" required />
+      </label>
+
+      <p v-if="invitationSetupError" class="clerk-invitation-error">
+        {{ invitationSetupError }}
+      </p>
+
+      <button type="submit" class="clerk-invitation-setup-submit" :disabled="isCompletingInvitationSignUp">
+        {{ isCompletingInvitationSignUp ? 'Accepting invitation...' : 'Accept invitation' }}
+      </button>
+    </form>
+
     <p v-else-if="invitationFlowError" class="clerk-invitation-error">
       {{ invitationFlowError }}
     </p>
@@ -223,6 +259,12 @@ const isSigningOutExistingSession = ref(false);
 const wasSignedInOnEntry = ref(null);
 const invitationFlowError = ref('');
 const isProcessingInvitationTicket = ref(false);
+const invitationFirstName = ref('');
+const invitationLastName = ref('');
+const invitationPassword = ref('');
+const invitationConfirmPassword = ref('');
+const invitationSetupError = ref('');
+const isCompletingInvitationSignUp = ref(false);
 
 function togglePasswordVisibility() {
   isPasswordVisible.value = !isPasswordVisible.value;
@@ -263,6 +305,7 @@ const invitationStatus = computed(() => String(route.query.__clerk_status || '')
 const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
 const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
 const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
+const showInvitationSetupForm = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_up');
 
 watch([isLoaded, isSignedIn, showInvitationFlow, hasInvitationTicket], async ([loaded, signedIn, invitationFlow, hasTicket]) => {
   if (!invitationFlow || !loaded) {
@@ -362,6 +405,63 @@ watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTick
   }
 }, { immediate: true });
 
+async function completeInvitationSignUp() {
+  invitationSetupError.value = '';
+
+  if (!invitationFirstName.value || !invitationLastName.value) {
+    invitationSetupError.value = 'First name and last name are required.';
+    return;
+  }
+
+  if (invitationPassword.value !== invitationConfirmPassword.value) {
+    invitationSetupError.value = 'Passwords do not match.';
+    return;
+  }
+
+  if (!isStrongPassword(invitationPassword.value)) {
+    invitationSetupError.value = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+    return;
+  }
+
+  isCompletingInvitationSignUp.value = true;
+
+  try {
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signUp || !clerk?.setActive) {
+      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
+    }
+
+    const result = await clerk.client.signUp.create({
+      strategy: 'ticket',
+      ticket: String(route.query.__clerk_ticket || '').trim(),
+      firstName: invitationFirstName.value,
+      lastName: invitationLastName.value,
+      password: invitationPassword.value,
+    });
+
+    if (result?.status !== 'complete' || !result?.createdSessionId) {
+      const missingFieldNames = Array.isArray(result?.missingFields) ? result.missingFields.join(', ') : '';
+      throw new Error(
+        missingFieldNames
+          ? `This invitation still needs: ${missingFieldNames}.`
+          : 'This invitation could not be completed yet.'
+      );
+    }
+
+    persistPendingRememberSession(true);
+    await clerk.setActive({ session: result.createdSessionId });
+    router.replace({ name: ROUTE_NAMES.postLogin });
+  } catch (error) {
+    console.error('[ClerkLogin] Failed to complete sign-up invitation ticket.', error);
+    invitationSetupError.value = error?.errors?.[0]?.longMessage
+      || error?.errors?.[0]?.message
+      || error?.message
+      || 'This invitation could not be completed automatically. Please ask an administrator to resend it.';
+  } finally {
+    isCompletingInvitationSignUp.value = false;
+  }
+}
+
 function waitForClerk(timeoutMs = 4000) {
   if (window.Clerk?.loaded) {
     return Promise.resolve(window.Clerk);
@@ -415,6 +515,94 @@ function waitForClerk(timeoutMs = 4000) {
   display: flex;
   justify-content: center;
   width: 100%;
+}
+
+.clerk-invitation-setup-card {
+  width: min(100%, 440px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.14);
+}
+
+.clerk-invitation-setup-kicker {
+  margin: 0;
+  color: #08784a;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.clerk-invitation-setup-title {
+  margin: 0;
+  color: #111827;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.clerk-invitation-setup-copy {
+  margin: 0 0 0.2rem;
+  color: #4b5563;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.clerk-invitation-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.clerk-invitation-setup-field span {
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.clerk-invitation-setup-field input {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 0.85rem;
+  border: 1px solid #d7ded9;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.clerk-invitation-setup-field input:focus {
+  border-color: #08784a;
+  box-shadow: 0 0 0 3px rgba(8, 120, 74, 0.12);
+  outline: none;
+}
+
+.clerk-invitation-setup-submit {
+  min-height: 42px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: #08784a;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.clerk-invitation-setup-submit:hover:not(:disabled) {
+  background: #05613d;
+}
+
+.clerk-invitation-setup-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .clerk-invitation-error {
