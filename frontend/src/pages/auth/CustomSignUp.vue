@@ -49,24 +49,24 @@
 
           <form v-if="!awaitingVerification" class="custom-signup-form" @submit.prevent="handleSignUp">
             <div class="custom-signup-field-grid">
-              <div class="custom-signup-row">
+              <div v-if="!isInvitationMode" class="custom-signup-row">
                 <label for="firstName">First Name</label>
                 <input
                   id="firstName"
                   v-model="formData.firstName"
                   type="text"
-                  required
+                  :required="!isInvitationMode"
                   autocomplete="given-name"
                 />
               </div>
 
-              <div class="custom-signup-row">
+              <div v-if="!isInvitationMode" class="custom-signup-row">
                 <label for="lastName">Last Name</label>
                 <input
                   id="lastName"
                   v-model="formData.lastName"
                   type="text"
-                  required
+                  :required="!isInvitationMode"
                   autocomplete="family-name"
                 />
               </div>
