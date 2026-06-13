@@ -13,6 +13,10 @@ const rbacAny = (...permissions) => ({ any: permissions });
 const permission = (capability, action, scope = RBAC_SCOPE.ALL) => ({ capability, action, scope });
 
 function hasInvitationContext(toRoute) {
+  if (String(toRoute.query?.token || '').trim() !== '') {
+    return true;
+  }
+
   const queryKeys = Object.keys(toRoute.query || {});
   if (queryKeys.some((key) => /clerk|ticket|invitation|redirect/i.test(key))) {
     return true;
@@ -30,10 +34,7 @@ function redirectInvitationTraffic(toRoute) {
     return true;
   }
 
-  const invitationStatus = getInvitationStatus(toRoute);
-  const targetRouteName = invitationStatus === 'sign_up'
-    ? ROUTE_NAMES.customSignUp
-    : ROUTE_NAMES.clerkLogin;
+  const targetRouteName = ROUTE_NAMES.clerkLogin;
 
   if (toRoute.name === targetRouteName) {
     return true;
@@ -63,7 +64,7 @@ export const routeDefinitions = [
     path: '/accept-invitation/:pathMatch(.*)*',
     alias: ['/accept-invitation', '/accept-invite', '/accept-invite/:pathMatch(.*)*'],
     name: ROUTE_NAMES.acceptInvitation,
-    redirect: redirectInvitationTraffic,
+    component: () => import('@/pages/auth/AcceptInvitation.vue'),
     meta: {
       requiresAuth: false,
       allowedRoles: null,

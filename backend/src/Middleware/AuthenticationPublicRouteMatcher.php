@@ -26,6 +26,7 @@ class AuthenticationPublicRouteMatcher
         '/api/v1/pending-users' => ['POST'],
         '/api/v1/users/register' => ['POST'],
         '/api/v1/users/signup-requests' => ['POST'],
+        '/api/v1/invitations/accept' => ['POST'],
     ];
 
     private const PUBLIC_ROUTE_PREFIXES = [
