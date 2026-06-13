@@ -22,7 +22,7 @@ class WishlistAccountReadService
                     accounts.email_address, accounts.username, accounts.role_designation, accounts.department,
                     accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified,
                     accounts.verification_status, accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at,
-                    accounts.created_timestamp,
+                    accounts.created_timestamp, accounts.updated_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data, accounts.signup_supporting_document_path,
                     staff_info.employee_id_number AS staff_employee_id_number,
@@ -47,7 +47,18 @@ class WishlistAccountReadService
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              WHERE LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('active', 'approved', 'accepted')
                AND LOWER(COALESCE(accounts.invitation_status, 'not_sent')) <> 'accepted'
-             ORDER BY LOWER(accounts.email_address), accounts.created_timestamp DESC"
+             ORDER BY
+                LOWER(accounts.email_address),
+                CASE
+                    WHEN LOWER(COALESCE(accounts.invitation_status, 'not_sent')) = 'sent' THEN 0
+                    WHEN LOWER(COALESCE(accounts.status, 'pending')) = 'invited' THEN 1
+                    WHEN LOWER(COALESCE(accounts.verification_status, 'unverified')) = 'verified' THEN 2
+                    ELSE 3
+                END,
+                latest_invitation.created_at DESC NULLS LAST,
+                accounts.updated_timestamp DESC NULLS LAST,
+                accounts.created_timestamp DESC NULLS LAST,
+                accounts.account_identifier DESC"
         );
 
         return array_map(fn (array $row): array => $this->mapWishlistAccountRow($row), $rows);
