@@ -153,6 +153,16 @@ class UserClerkRegistrationService
 
     private function linkExistingEmailAccount(AccountEntity $account, array $registration): array
     {
+        $this->clerkInvitationSyncService->syncAcceptedInvitationForEmail(
+            $registration['emailAddress'],
+            $registration['clerkUserId']
+        );
+
+        $refreshedSnapshot = $this->loadAccountSnapshot($account->getAccountIdentifier());
+        if ($refreshedSnapshot !== null && $this->canUseExistingClerkAccountSnapshot($refreshedSnapshot)) {
+            return $this->success('Account linked to Clerk successfully.', $this->buildSnapshotAccountPayload($refreshedSnapshot));
+        }
+
         if (!$this->canLinkExistingEmailAccount($account, $registration)) {
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
         }

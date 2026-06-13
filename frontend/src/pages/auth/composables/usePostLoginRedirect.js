@@ -109,7 +109,8 @@ async function ensureBackendAccount(clerkUser, roleDesignation, token) {
 }
 
 async function ensureActiveBackendAccount(clerkUser, roleDesignation, token) {
-  const maxAttempts = 6;
+  const maxAttempts = 20;
+  const retryDelayMs = 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const registration = await ensureBackendAccount(clerkUser, roleDesignation, token);
@@ -128,7 +129,7 @@ async function ensureActiveBackendAccount(clerkUser, roleDesignation, token) {
       return registration;
     }
 
-    await new Promise((resolve) => window.setTimeout(resolve, 800));
+    await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
   }
 
   return ensureBackendAccount(clerkUser, roleDesignation, token);
