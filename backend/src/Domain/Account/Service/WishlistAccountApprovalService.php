@@ -10,7 +10,7 @@ class WishlistAccountApprovalService
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountAcceptanceEmailService $accountAcceptanceEmailService,
+        private readonly AccountClerkProvisioningService $accountClerkProvisioningService,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -220,22 +220,18 @@ class WishlistAccountApprovalService
 
     private function sendAndRecordInvitation(array $account, string $invitedBy): array
     {
-        $invitationDraft = $this->buildInvitationDraft();
-        $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
-        if (!$useBrandedMailer) {
+        $redirectUrl = $this->buildClerkInvitationRedirectUrl();
+        try {
+            $clerkInvitation = $this->accountClerkProvisioningService->sendInvitation($account, $redirectUrl, true);
+        } catch (\Throwable $exception) {
             return $this->error(
-                'InvitationMailerNotConfigured',
-                'Invitation email delivery is not configured. Set MAILER_DSN and MAILER_FROM before sending invites.',
-                503
+                'InvitationEmailFailed',
+                'The Clerk invitation could not be sent: ' . $exception->getMessage(),
+                502
             );
         }
 
-        $acceptInvitationUrl = (string)$invitationDraft['acceptUrl'] . rawurlencode((string)$invitationDraft['token']);
-        $mailerError = $this->sendBrandedEmailIfNeeded($useBrandedMailer, $account, $acceptInvitationUrl);
-        if ($mailerError !== null) {
-            return $mailerError;
-        }
-
+        $invitationDraft = $this->buildInvitationDraft($clerkInvitation, $redirectUrl);
         $invitationContext = $this->buildInvitationContext($account, $invitedBy, $invitationDraft);
         $databaseError = $this->recordInvitation($invitationContext);
         if ($databaseError !== null) {
@@ -250,24 +246,6 @@ class WishlistAccountApprovalService
         ]);
 
         return $this->success($this->buildInvitationSuccessPayload($invitationContext));
-    }
-
-    private function sendBrandedEmailIfNeeded(bool $useBrandedMailer, array $account, string $acceptInvitationUrl): ?array
-    {
-        if (!$useBrandedMailer) {
-            return null;
-        }
-
-        $emailResult = $this->accountAcceptanceEmailService->sendInvitationAcceptanceEmail($account, $acceptInvitationUrl);
-        if (!$emailResult['sent']) {
-            return $this->error(
-                'InvitationEmailFailed',
-                'The invitation was created, but the email could not be sent: ' . $emailResult['error'],
-                502
-            );
-        }
-
-        return null;
     }
 
     private function recordInvitation(array $context): ?array
@@ -405,16 +383,29 @@ class WishlistAccountApprovalService
         );
     }
 
-    private function buildInvitationDraft(): array
+    private function buildInvitationDraft(array $clerkInvitation, string $redirectUrl): array
     {
-        $createdAt = new \DateTimeImmutable();
-        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
+        $createdAt = $this->normalizeClerkDateTime(
+            $clerkInvitation['created_at']
+            ?? $clerkInvitation['createdAt']
+            ?? null
+        ) ?? new \DateTimeImmutable();
+        $expiresAt = $this->normalizeClerkDateTime(
+            $clerkInvitation['expires_at']
+            ?? $clerkInvitation['expiresAt']
+            ?? null
+        ) ?? $createdAt->modify('+7 days');
+        $invitationId = trim((string)($clerkInvitation['id'] ?? ''));
+        $ticket = trim((string)($clerkInvitation['ticket'] ?? ''));
+        $token = $ticket !== '' ? $ticket : ($invitationId !== '' ? $invitationId : bin2hex(random_bytes(24)));
 
         return [
             'createdAt' => $createdAt,
-            'expiresAt' => $createdAt->modify('+7 days'),
-            'token' => bin2hex(random_bytes(24)),
-            'acceptUrl' => $frontendUrl . '/accept-invitation?token=',
+            'expiresAt' => $expiresAt,
+            'token' => $token,
+            'clerkInvitationId' => $invitationId !== '' ? $invitationId : null,
+            'redirectUrl' => $redirectUrl,
+            'invitationUrl' => $this->resolveClerkInvitationUrl($clerkInvitation, $redirectUrl),
         ];
     }
 
@@ -422,7 +413,6 @@ class WishlistAccountApprovalService
     {
         $account = $context['account'];
         $invitationDraft = $context['draft'];
-        $acceptInvitationUrl = $invitationDraft['acceptUrl'] . rawurlencode((string)$invitationDraft['token']);
 
         return [
             'message' => 'Invitation sent successfully.',
@@ -432,17 +422,61 @@ class WishlistAccountApprovalService
                 'role' => (string)$account['role_designation'],
                 'status' => 'invited',
                 'token' => $invitationDraft['token'],
-                'clerkInvitationId' => null,
+                'clerkInvitationId' => $invitationDraft['clerkInvitationId'],
                 'sentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
                 'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d\TH:i:sP'),
                 'acceptedAt' => null,
-                'redirectUrl' => $acceptInvitationUrl,
-                'invitationUrl' => $acceptInvitationUrl,
+                'redirectUrl' => $invitationDraft['redirectUrl'],
+                'invitationUrl' => $invitationDraft['invitationUrl'],
                 'sentBy' => $context['invitedBy'],
-                'emailSent' => $this->accountAcceptanceEmailService->shouldUseBrandedMailer(),
+                'emailSent' => true,
                 'movesToManageAccounts' => false,
             ],
         ];
+    }
+
+    private function buildClerkInvitationRedirectUrl(): string
+    {
+        $frontendUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://techreserve.farahkenawy.codes'), '/');
+        return $frontendUrl . '/clerk-login';
+    }
+
+    private function resolveClerkInvitationUrl(array $clerkInvitation, string $redirectUrl): string
+    {
+        $url = trim((string)($clerkInvitation['url'] ?? $clerkInvitation['invitation_url'] ?? ''));
+        if ($url !== '') {
+            return $url;
+        }
+
+        $ticket = trim((string)($clerkInvitation['ticket'] ?? ''));
+        if ($ticket === '') {
+            return $redirectUrl;
+        }
+
+        $separator = str_contains($redirectUrl, '?') ? '&' : '?';
+        return $redirectUrl . $separator . '__clerk_status=sign_up&__clerk_ticket=' . rawurlencode($ticket);
+    }
+
+    private function normalizeClerkDateTime(mixed $value): ?\DateTimeImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            if (is_numeric($value)) {
+                $timestamp = (int)$value;
+                if ($timestamp > 1000000000000) {
+                    $timestamp = (int)floor($timestamp / 1000);
+                }
+
+                return new \DateTimeImmutable('@' . $timestamp);
+            }
+
+            return new \DateTimeImmutable((string)$value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function buildInvitedAccountPayload(array $account): array
