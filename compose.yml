@@ -44,12 +44,14 @@ services:
       DEFAULT_URI: "${DEFAULT_URI:-http://localhost:8000}"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
       DEV_FRONTEND_URL: "${DEV_FRONTEND_URL:-https://employers-mall-switches-bookstore.trycloudflare.com}"
-      MAILER_DSN: "${MAILER_DSN:-null://null}"
+      MAILER_DSN: "${MAILER_DSN:-smtp://mailer:1025}"
       MAILER_FROM: "${MAILER_FROM:-onboarding@resend.dev}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
     depends_on:
       database:
         condition: service_healthy
+      mailer:
+        condition: service_started
     develop:
       watch:
         - action: sync
@@ -78,6 +80,16 @@ services:
     depends_on:
       database:
         condition: service_healthy
+
+  mailer:
+    image: axllent/mailpit
+    container_name: techreserve_mailer
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
 
   frontend:
     build:

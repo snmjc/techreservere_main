@@ -222,6 +222,13 @@ class WishlistAccountApprovalService
     {
         $invitationDraft = $this->buildInvitationDraft();
         $useBrandedMailer = $this->accountAcceptanceEmailService->shouldUseBrandedMailer();
+        if (!$useBrandedMailer) {
+            return $this->error(
+                'InvitationMailerNotConfigured',
+                'Invitation email delivery is not configured. Set MAILER_DSN and MAILER_FROM before sending invites.',
+                503
+            );
+        }
 
         $acceptInvitationUrl = (string)$invitationDraft['acceptUrl'] . rawurlencode((string)$invitationDraft['token']);
         $mailerError = $this->sendBrandedEmailIfNeeded($useBrandedMailer, $account, $acceptInvitationUrl);
