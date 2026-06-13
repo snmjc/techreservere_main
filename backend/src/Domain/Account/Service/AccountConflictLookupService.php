@@ -15,9 +15,21 @@ class AccountConflictLookupService
     {
         $account = $this->connection->fetchAssociative(
             'SELECT account_identifier, id_number, first_name, last_name, email_address, username, role_designation,
-                    department, status, is_approved, is_active, clerk_user_id, created_timestamp
+                    department, status, is_approved, is_active, invitation_status, clerk_user_id, created_timestamp, updated_timestamp
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
+             ORDER BY
+                CASE
+                    WHEN COALESCE(NULLIF(clerk_user_id, \'\'), \'\') <> \'\' THEN 0
+                    WHEN LOWER(COALESCE(invitation_status, \'not_sent\')) = \'accepted\' THEN 1
+                    WHEN LOWER(COALESCE(status, \'pending\')) IN (\'active\', \'approved\', \'accepted\') THEN 2
+                    WHEN LOWER(COALESCE(invitation_status, \'not_sent\')) = \'sent\' THEN 3
+                    WHEN LOWER(COALESCE(status, \'pending\')) = \'invited\' THEN 4
+                    ELSE 5
+                END,
+                updated_timestamp DESC NULLS LAST,
+                created_timestamp DESC NULLS LAST,
+                account_identifier DESC
              LIMIT 1',
             ['emailAddress' => $emailAddress],
             ['emailAddress' => ParameterType::STRING]
