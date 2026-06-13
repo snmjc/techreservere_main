@@ -21,17 +21,26 @@ function hasInvitationContext(toRoute) {
   return /(__clerk|ticket|invitation)/i.test(String(toRoute.hash || ''));
 }
 
+function getInvitationStatus(toRoute) {
+  return String(toRoute.query?.__clerk_status || '').trim().toLowerCase();
+}
+
 function redirectInvitationTraffic(toRoute) {
   if (!hasInvitationContext(toRoute)) {
     return true;
   }
 
-  if (toRoute.name === ROUTE_NAMES.clerkLogin) {
+  const invitationStatus = getInvitationStatus(toRoute);
+  const targetRouteName = invitationStatus === 'sign_up'
+    ? ROUTE_NAMES.customSignUp
+    : ROUTE_NAMES.clerkLogin;
+
+  if (toRoute.name === targetRouteName) {
     return true;
   }
 
   return {
-    name: ROUTE_NAMES.clerkLogin,
+    name: targetRouteName,
     query: toRoute.query,
     hash: toRoute.hash,
   };
@@ -54,11 +63,7 @@ export const routeDefinitions = [
     path: '/accept-invitation/:pathMatch(.*)*',
     alias: ['/accept-invitation', '/accept-invite', '/accept-invite/:pathMatch(.*)*'],
     name: ROUTE_NAMES.acceptInvitation,
-    redirect: (toRoute) => ({
-      name: ROUTE_NAMES.clerkLogin,
-      query: toRoute.query,
-      hash: toRoute.hash,
-    }),
+    redirect: redirectInvitationTraffic,
     meta: {
       requiresAuth: false,
       allowedRoles: null,
@@ -135,16 +140,7 @@ export const routeDefinitions = [
     path: '/sign-up',
     name: ROUTE_NAMES.customSignUp,
     component: () => import('@/pages/auth/CustomSignUp.vue'),
-    beforeEnter: (toRoute) => {
-      if (hasInvitationContext(toRoute)) {
-        return {
-          name: ROUTE_NAMES.clerkLogin,
-          query: toRoute.query,
-          hash: toRoute.hash,
-        };
-      }
-      return true;
-    },
+    beforeEnter: redirectInvitationTraffic,
     meta: {
       requiresAuth: false,
       allowedRoles: null,

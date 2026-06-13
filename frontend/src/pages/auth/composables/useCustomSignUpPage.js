@@ -1,5 +1,7 @@
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useSignUp } from '@clerk/vue';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   getSupportingFileAcceptValue,
@@ -19,6 +21,8 @@ const DEPARTMENT_OPTIONS = Object.freeze([
 
 export function useCustomSignUpPage() {
   const router = useRouter();
+  const route = useRoute();
+  const { isLoaded: isSignUpLoaded } = useSignUp();
   const formData = ref({
     lastName: '',
     firstName: '',
@@ -45,6 +49,14 @@ export function useCustomSignUpPage() {
   const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
   const isStudentRole = computed(() => formData.value.role === 'Student');
   const supportingFileAccept = getSupportingFileAcceptValue();
+  const invitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim());
+  const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
+  const isInvitationMode = computed(() => invitationTicket.value !== '' && invitationStatus.value === 'sign_up');
+  const invitationCopy = computed(() => (
+    isInvitationMode.value
+      ? 'Finish setting your password so your invited account can be activated immediately.'
+      : 'Use your official FIT email and institutional details.'
+  ));
 
   watch(
     () => formData.value.role,
@@ -54,6 +66,12 @@ export function useCustomSignUpPage() {
       }
     },
   );
+
+  watch(isInvitationMode, (active) => {
+    if (active) {
+      formData.value.role = 'Faculty';
+    }
+  }, { immediate: true });
 
   function openStudentSupportingFile() {
     studentSupportingFileInput.value?.click();
@@ -93,6 +111,11 @@ export function useCustomSignUpPage() {
     successMessage.value = '';
 
     try {
+      if (isInvitationMode.value) {
+        await acceptInvitationSignup();
+        return;
+      }
+
       if (!signupRequestCreated.value) {
         await createSignupRequest();
       }
@@ -110,6 +133,32 @@ export function useCustomSignUpPage() {
 
   async function handleVerifyEmail() {
     errors.value.submit = 'Please use the Clerk invitation email sent by the administrator.';
+  }
+
+  async function acceptInvitationSignup() {
+    if (!isSignUpLoaded.value) {
+      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
+    }
+
+    const clerk = await waitForClerk();
+    if (!clerk?.client?.signUp || !clerk?.setActive) {
+      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
+    }
+
+    const result = await clerk.client.signUp.create({
+      strategy: 'ticket',
+      ticket: invitationTicket.value,
+      firstName: formData.value.firstName.trim(),
+      lastName: formData.value.lastName.trim(),
+      password: formData.value.password,
+    });
+
+    if (result.status !== 'complete' || !result.createdSessionId) {
+      throw new Error('This invitation could not be completed yet. Please check the required details and try again.');
+    }
+
+    await clerk.setActive({ session: result.createdSessionId });
+    router.replace({ name: ROUTE_NAMES.postLogin });
   }
 
   async function createSignupRequest() {
@@ -155,11 +204,15 @@ export function useCustomSignUpPage() {
     errors.value = {};
     validateRequiredName('lastName', 'Last name');
     validateRequiredName('firstName', 'First name');
-    validateRequiredText('idNumber', 'ID number is required.');
-    validateRequiredText('department', 'Department is required.');
+    if (!isInvitationMode.value) {
+      validateRequiredText('idNumber', 'ID number is required.');
+      validateRequiredText('department', 'Department is required.');
+    }
     validateEmail();
     validatePassword();
-    validateStudentProof();
+    if (!isInvitationMode.value) {
+      validateStudentProof();
+    }
 
     if (!formData.value.acceptTerms) {
       errors.value.acceptTerms = 'Please confirm the account purpose policy.';
@@ -184,6 +237,10 @@ export function useCustomSignUpPage() {
   }
 
   function validateEmail() {
+    if (isInvitationMode.value) {
+      return;
+    }
+
     if (!formData.value.fitEmailAddress.trim()) {
       errors.value.fitEmailAddress = 'FIT email address is required.';
     } else if (!isFitEmail(formData.value.fitEmailAddress)) {
@@ -228,6 +285,8 @@ export function useCustomSignUpPage() {
     studentSupportingFileInput,
     firstErrorMessage,
     isStudentRole,
+    isInvitationMode,
+    invitationCopy,
     supportingFileAccept,
     openStudentSupportingFile,
     handleStudentSupportingFileChange,
@@ -247,5 +306,27 @@ function isFitEmail(value) {
 
 function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+}
+
+function waitForClerk(timeoutMs = 4000) {
+  if (window.Clerk?.loaded) {
+    return Promise.resolve(window.Clerk);
+  }
+
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (window.Clerk?.loaded) {
+        window.clearInterval(timer);
+        resolve(window.Clerk);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        window.clearInterval(timer);
+        resolve(window.Clerk || null);
+      }
+    }, 100);
+  });
 }
 

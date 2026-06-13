@@ -260,7 +260,7 @@ const hasInvitationContext = computed(() => {
 
 const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
 const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
-const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value);
+const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
 const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
 const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
 
