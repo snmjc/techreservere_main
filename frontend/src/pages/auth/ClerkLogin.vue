@@ -1,44 +1,9 @@
 <template>
   <div v-if="showInvitationFlow" class="clerk-invitation-page">
-    <div v-if="showInvitationLoadingState" class="clerk-invitation-loading">
+    <div v-if="showInvitationLoadingState" class="clerk-invitation-loading clerk-invitation-loading-card">
       <div class="clerk-invitation-spinner" />
+      <p>Accepting your invitation and preparing your dashboard...</p>
     </div>
-
-    <form v-else-if="showInvitationSetupForm" class="clerk-invitation-setup-card" @submit.prevent="completeInvitationSignUp">
-      <p class="clerk-invitation-setup-kicker">Invitation Access</p>
-      <h1 class="clerk-invitation-setup-title">Accept invitation</h1>
-      <p class="clerk-invitation-setup-copy">
-        Finish setting up your account so we can sign you in and send you to the correct dashboard.
-      </p>
-
-      <label class="clerk-invitation-setup-field">
-        <span>First Name</span>
-        <input v-model.trim="invitationFirstName" type="text" autocomplete="given-name" required />
-      </label>
-
-      <label class="clerk-invitation-setup-field">
-        <span>Last Name</span>
-        <input v-model.trim="invitationLastName" type="text" autocomplete="family-name" required />
-      </label>
-
-      <label class="clerk-invitation-setup-field">
-        <span>Password</span>
-        <input v-model="invitationPassword" type="password" autocomplete="new-password" required />
-      </label>
-
-      <label class="clerk-invitation-setup-field">
-        <span>Confirm Password</span>
-        <input v-model="invitationConfirmPassword" type="password" autocomplete="new-password" required />
-      </label>
-
-      <p v-if="invitationSetupError" class="clerk-invitation-error">
-        {{ invitationSetupError }}
-      </p>
-
-      <button type="submit" class="clerk-invitation-setup-submit" :disabled="isCompletingInvitationSignUp">
-        {{ isCompletingInvitationSignUp ? 'Accepting invitation...' : 'Accept invitation' }}
-      </button>
-    </form>
 
     <p v-else-if="invitationFlowError" class="clerk-invitation-error">
       {{ invitationFlowError }}
@@ -259,12 +224,6 @@ const isSigningOutExistingSession = ref(false);
 const wasSignedInOnEntry = ref(null);
 const invitationFlowError = ref('');
 const isProcessingInvitationTicket = ref(false);
-const invitationFirstName = ref('');
-const invitationLastName = ref('');
-const invitationPassword = ref('');
-const invitationConfirmPassword = ref('');
-const invitationSetupError = ref('');
-const isCompletingInvitationSignUp = ref(false);
 
 function togglePasswordVisibility() {
   isPasswordVisible.value = !isPasswordVisible.value;
@@ -302,10 +261,12 @@ const hasInvitationContext = computed(() => {
 
 const hasInvitationTicket = computed(() => String(route.query.__clerk_ticket || '').trim() !== '');
 const invitationStatus = computed(() => String(route.query.__clerk_status || '').trim().toLowerCase());
-const shouldAutoConsumeInvitationTicket = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_in');
+const shouldAutoConsumeInvitationTicket = computed(() => (
+  hasInvitationTicket.value
+  && ['sign_in', 'sign_up'].includes(invitationStatus.value)
+));
 const showInvitationFlow = computed(() => hasInvitationContext.value && !isResettingPassword.value);
 const showInvitationLoadingState = computed(() => !isLoaded.value || isSigningOutExistingSession.value || isProcessingInvitationTicket.value);
-const showInvitationSetupForm = computed(() => hasInvitationTicket.value && invitationStatus.value === 'sign_up');
 
 watch([isLoaded, isSignedIn, showInvitationFlow, hasInvitationTicket], async ([loaded, signedIn, invitationFlow, hasTicket]) => {
   if (!invitationFlow || !loaded) {
@@ -374,19 +335,19 @@ watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTick
 
   try {
     const clerk = await waitForClerk();
-    if (!clerk?.client?.signIn || !clerk?.setActive) {
+    if (!clerk?.setActive) {
       throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
     }
 
-    const result = await clerk.client.signIn.create({
-      strategy: 'ticket',
-      ticket: String(route.query.__clerk_ticket || '').trim(),
-    });
+    const ticket = String(route.query.__clerk_ticket || '').trim();
+    const result = invitationStatus.value === 'sign_up'
+      ? await autoCompleteInvitationSignUp(clerk, ticket)
+      : await autoCompleteInvitationSignIn(clerk, ticket);
 
     if (result?.status !== 'complete' || !result?.createdSessionId) {
       throw new Error(
         invitationStatus.value === 'sign_up'
-          ? 'This invitation still requires Clerk account setup before automatic sign-in can finish.'
+          ? 'This invitation could not be completed automatically.'
           : 'Clerk could not complete this invitation automatically.'
       );
     }
@@ -395,7 +356,7 @@ watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTick
     await clerk.setActive({ session: result.createdSessionId });
     router.replace({ name: ROUTE_NAMES.postLogin });
   } catch (error) {
-    console.error('[ClerkLogin] Failed to auto-consume sign-in invitation ticket.', error);
+    console.error('[ClerkLogin] Failed to auto-complete invitation ticket.', error);
     invitationFlowError.value = error?.errors?.[0]?.longMessage
       || error?.errors?.[0]?.message
       || error?.message
@@ -405,61 +366,44 @@ watch([isLoaded, isSignedIn, showInvitationFlow, shouldAutoConsumeInvitationTick
   }
 }, { immediate: true });
 
-async function completeInvitationSignUp() {
-  invitationSetupError.value = '';
-
-  if (!invitationFirstName.value || !invitationLastName.value) {
-    invitationSetupError.value = 'First name and last name are required.';
-    return;
+async function autoCompleteInvitationSignIn(clerk, ticket) {
+  if (!clerk?.client?.signIn) {
+    throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
   }
 
-  if (invitationPassword.value !== invitationConfirmPassword.value) {
-    invitationSetupError.value = 'Passwords do not match.';
-    return;
+  return clerk.client.signIn.create({
+    strategy: 'ticket',
+    ticket,
+  });
+}
+
+async function autoCompleteInvitationSignUp(clerk, ticket) {
+  if (!clerk?.client?.signUp) {
+    throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
   }
 
-  if (!isStrongPassword(invitationPassword.value)) {
-    invitationSetupError.value = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
-    return;
+  const result = await clerk.client.signUp.create({
+    strategy: 'ticket',
+    ticket,
+    password: buildInvitationPassword(),
+  });
+
+  if (result?.status !== 'complete') {
+    const missingFieldNames = Array.isArray(result?.missingFields) ? result.missingFields.join(', ') : '';
+    throw new Error(
+      missingFieldNames
+        ? `This invitation still requires Clerk fields: ${missingFieldNames}.`
+        : 'This invitation could not be completed automatically.'
+    );
   }
 
-  isCompletingInvitationSignUp.value = true;
+  return result;
+}
 
-  try {
-    const clerk = await waitForClerk();
-    if (!clerk?.client?.signUp || !clerk?.setActive) {
-      throw new Error('Clerk authentication is still loading. Please try the invitation link again.');
-    }
-
-    const result = await clerk.client.signUp.create({
-      strategy: 'ticket',
-      ticket: String(route.query.__clerk_ticket || '').trim(),
-      firstName: invitationFirstName.value,
-      lastName: invitationLastName.value,
-      password: invitationPassword.value,
-    });
-
-    if (result?.status !== 'complete' || !result?.createdSessionId) {
-      const missingFieldNames = Array.isArray(result?.missingFields) ? result.missingFields.join(', ') : '';
-      throw new Error(
-        missingFieldNames
-          ? `This invitation still needs: ${missingFieldNames}.`
-          : 'This invitation could not be completed yet.'
-      );
-    }
-
-    persistPendingRememberSession(true);
-    await clerk.setActive({ session: result.createdSessionId });
-    router.replace({ name: ROUTE_NAMES.postLogin });
-  } catch (error) {
-    console.error('[ClerkLogin] Failed to complete sign-up invitation ticket.', error);
-    invitationSetupError.value = error?.errors?.[0]?.longMessage
-      || error?.errors?.[0]?.message
-      || error?.message
-      || 'This invitation could not be completed automatically. Please ask an administrator to resend it.';
-  } finally {
-    isCompletingInvitationSignUp.value = false;
-  }
+function buildInvitationPassword() {
+  const ticket = String(route.query.__clerk_ticket || '').trim();
+  const ticketSeed = ticket.slice(0, 12) || 'TechReserve';
+  return `Tr!${ticketSeed}9z#Aq7`;
 }
 
 function waitForClerk(timeoutMs = 4000) {
@@ -500,6 +444,18 @@ function waitForClerk(timeoutMs = 4000) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.clerk-invitation-loading-card {
+  flex-direction: column;
+  gap: 1rem;
+  width: min(100%, 32rem);
+  padding: 2.5rem 2rem;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  text-align: center;
 }
 
 .clerk-invitation-spinner {

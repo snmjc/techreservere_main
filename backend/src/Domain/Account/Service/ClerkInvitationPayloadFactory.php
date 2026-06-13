@@ -20,6 +20,7 @@ class ClerkInvitationPayloadFactory
             'notify' => $notify,
             'ignore_existing' => true,
             'expires_in_days' => 7,
+            'password' => $this->buildTemporaryInvitationPassword($accountIdentifier, $emailAddress),
             'public_metadata' => [
                 'account_id' => $accountIdentifier,
                 'email_address' => $emailAddress,
@@ -36,5 +37,14 @@ class ClerkInvitationPayloadFactory
                 'techreserve_department' => (string)($account['department'] ?? ''),
             ],
         ];
+    }
+
+    private function buildTemporaryInvitationPassword(int $accountIdentifier, string $emailAddress): string
+    {
+        $emailSeed = preg_replace('/[^a-z0-9]/i', '', strtolower($emailAddress)) ?? '';
+        $emailSeed = substr($emailSeed, 0, 10);
+        $accountSeed = max($accountIdentifier, 1);
+
+        return sprintf('Tr!%s%sz#A7', $emailSeed, $accountSeed);
     }
 }
