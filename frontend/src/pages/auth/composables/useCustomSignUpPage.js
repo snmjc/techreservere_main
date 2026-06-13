@@ -148,8 +148,6 @@ export function useCustomSignUpPage() {
     const result = await clerk.client.signUp.create({
       strategy: 'ticket',
       ticket: invitationTicket.value,
-      firstName: formData.value.firstName.trim(),
-      lastName: formData.value.lastName.trim(),
       password: formData.value.password,
     });
 
@@ -202,8 +200,10 @@ export function useCustomSignUpPage() {
 
   function validateForm() {
     errors.value = {};
-    validateRequiredName('lastName', 'Last name');
-    validateRequiredName('firstName', 'First name');
+    if (!isInvitationMode.value) {
+      validateRequiredName('lastName', 'Last name');
+      validateRequiredName('firstName', 'First name');
+    }
     if (!isInvitationMode.value) {
       validateRequiredText('idNumber', 'ID number is required.');
       validateRequiredText('department', 'Department is required.');

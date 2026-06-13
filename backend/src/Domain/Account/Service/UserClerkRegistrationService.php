@@ -26,7 +26,7 @@ class UserClerkRegistrationService
         $registration = $this->normalizeRegistrationRequest($requestBody);
 
         if ($this->hasMissingRequiredRegistrationFields($registration)) {
-            return $this->error('ValidationError', 'clerkUserId, firstName, lastName, and emailAddress are required.', 400);
+            return $this->error('ValidationError', 'clerkUserId and emailAddress are required.', 400);
         }
 
         $existingAccount = $this->accountRepository->findOneByClerkUserId($registration['clerkUserId']);
@@ -45,8 +45,6 @@ class UserClerkRegistrationService
     private function hasMissingRequiredRegistrationFields(array $registration): bool
     {
         return $registration['clerkUserId'] === ''
-            || $registration['firstName'] === ''
-            || $registration['lastName'] === ''
             || $registration['emailAddress'] === '';
     }
 
@@ -214,6 +212,9 @@ class UserClerkRegistrationService
 
     private function updateExistingEmailAccount(AccountEntity $account, array $registration, array $nextState, string $updatedAt): void
     {
+        $resolvedFirstName = $registration['firstName'] !== '' ? $registration['firstName'] : $account->getFirstName();
+        $resolvedLastName = $registration['lastName'] !== '' ? $registration['lastName'] : $account->getLastName();
+
         $this->connection->executeStatement(
             "UPDATE accounts
              SET last_name = :lastName,
@@ -236,16 +237,23 @@ class UserClerkRegistrationService
                  END,
                  updated_timestamp = :updatedTimestamp
              WHERE account_identifier = :accountIdentifier",
-            $this->buildExistingEmailUpdateParameters($account, $registration, $nextState, $updatedAt),
+            $this->buildExistingEmailUpdateParameters($account, $registration, $nextState, $updatedAt, $resolvedFirstName, $resolvedLastName),
             $this->existingEmailUpdateTypes($registration, $nextState)
         );
     }
 
-    private function buildExistingEmailUpdateParameters(AccountEntity $account, array $registration, array $nextState, string $updatedAt): array
+    private function buildExistingEmailUpdateParameters(
+        AccountEntity $account,
+        array $registration,
+        array $nextState,
+        string $updatedAt,
+        string $resolvedFirstName,
+        string $resolvedLastName
+    ): array
     {
         return [
-            'lastName' => $registration['lastName'],
-            'firstName' => $registration['firstName'],
+            'lastName' => $resolvedLastName,
+            'firstName' => $resolvedFirstName,
             'username' => $registration['username'],
             'roleDesignation' => $nextState['role'],
             'idNumber' => $registration['idNumber'] ?: null,
