@@ -52,6 +52,10 @@ services:
         resource: '../src/Domain/Dashboard/Controller/'
         tags: ['controller.service_arguments']
 
+    App\Domain\Analytics\Controller\:
+        resource: '../src/Domain/Analytics/Controller/'
+        tags: ['controller.service_arguments']
+
     App\Domain\AuditLog\Controller\:
         resource: '../src/Domain/AuditLog/Controller/'
         tags: ['controller.service_arguments']
