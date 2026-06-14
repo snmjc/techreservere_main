@@ -17,6 +17,30 @@ class ReservationRepository extends ServiceEntityRepository
     public function findAllReservations(): array { return $this->findAll(); }
 
     /** @return ReservationEntity[] */
+    public function findBySubmissionDateRange(\DateTimeInterface $startDate, \DateTimeInterface $endDate): array
+    {
+        return $this->createQueryBuilder('rsrv')
+            ->where('rsrv.submissionTimestamp BETWEEN :startDate AND :endDate')
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('rsrv.submissionTimestamp', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return ReservationEntity[] */
+    public function findByEventDateRange(\DateTimeInterface $startDate, \DateTimeInterface $endDate): array
+    {
+        return $this->createQueryBuilder('rsrv')
+            ->where('rsrv.eventDateTime BETWEEN :startDate AND :endDate')
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('rsrv.eventDateTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return ReservationEntity[] */
     public function findByBorrowerAccountId(int $borrowerAccountId): array { return $this->findBy(['borrowerAccountId' => $borrowerAccountId]); }
 
     /** @return ReservationEntity[] */

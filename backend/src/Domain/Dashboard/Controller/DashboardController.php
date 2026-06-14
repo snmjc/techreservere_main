@@ -8,6 +8,7 @@ use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/v1/dashboard')]
@@ -35,6 +36,16 @@ class DashboardController extends AbstractController
         return $this->createSuccessResponse($summaryData);
     }
 
+    #[Route('/overview', name: 'dashboard_overview', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getDashboardOverview(Request $request): JsonResponse
+    {
+        [$startDate, $endDate] = $this->resolveDateRange($request, 14);
+        $overviewData = $this->dashboardAggregationService->getAdminDashboardOverview($startDate, $endDate);
+
+        return $this->createSuccessResponse($overviewData);
+    }
+
     // ===== AI GENERATED: getBorrowerDashboardSummary =====
     // Purpose: Return dashboard metrics for the authenticated borrower only
     // Inputs: none (uses authenticated user from token)
@@ -42,11 +53,39 @@ class DashboardController extends AbstractController
 
     #[Route('/borrower/summary', name: 'borrower_dashboard_summary', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_BORROWER])]
-    public function getBorrowerDashboardSummary(\Symfony\Component\HttpFoundation\Request $request): JsonResponse
+    public function getBorrowerDashboardSummary(Request $request): JsonResponse
     {
         $identity = $request->attributes->get('authenticatedIdentity');
         $borrowerAccountId = $identity['accountIdentifier'] ?? 0;
         $summaryData = $this->dashboardAggregationService->getBorrowerDashboardSummary($borrowerAccountId);
         return $this->createSuccessResponse($summaryData);
+    }
+
+    /**
+     * @return array{0:\DateTimeImmutable,1:\DateTimeImmutable}
+     */
+    private function resolveDateRange(Request $request, int $defaultDays): array
+    {
+        $endDate = $this->parseDate($request->query->get('endDate')) ?? new \DateTimeImmutable('today');
+        $startDate = $this->parseDate($request->query->get('startDate')) ?? $endDate->modify(sprintf('-%d days', max(0, $defaultDays - 1)));
+
+        if ($startDate > $endDate) {
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        return [$startDate, $endDate];
+    }
+
+    private function parseDate(?string $value): ?\DateTimeImmutable
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable(trim($value));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
