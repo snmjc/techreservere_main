@@ -304,9 +304,15 @@
   gap: 12px;
 }
 
+.admin-past-records-borrower > div {
+  min-width: 0;
+  flex: 1;
+}
+
 .admin-past-records-borrower img {
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(13, 125, 87, 0.12);
@@ -315,6 +321,7 @@
 .admin-past-records-borrower strong,
 .admin-past-records-borrower span {
   display: block;
+  overflow-wrap: anywhere;
 }
 
 .admin-past-records-borrower span {
@@ -363,17 +370,6 @@
 .admin-past-records-status-pill--cancelled {
   background: rgba(245, 158, 11, 0.18);
   color: #b45309;
-}
-
-.admin-past-records-view-button {
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid rgba(24, 47, 84, 0.12);
-  border-radius: 12px;
-  background: #fff;
-  color: #102144;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .admin-past-records-empty-state {
@@ -604,7 +600,4 @@
     border-bottom: 0;
   }
 
-  .admin-past-records-table td:last-child {
-    padding-bottom: 4px;
-  }
 }

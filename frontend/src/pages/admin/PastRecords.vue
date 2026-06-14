@@ -100,12 +100,11 @@
                   <th>Requested</th>
                   <th>Needed</th>
                   <th>Status</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="filteredRecordList.length === 0">
-                  <td colspan="9" class="admin-past-records-empty-state">No past records match the current filters.</td>
+                  <td colspan="8" class="admin-past-records-empty-state">No past records match the current filters.</td>
                 </tr>
                 <tr
                   v-for="record in filteredRecordList"
@@ -144,11 +143,6 @@
                     >
                       {{ record.recordStatus }}
                     </span>
-                  </td>
-                  <td>
-                    <button type="button" class="admin-past-records-view-button" @click.stop="selectRecord(record)">
-                      View
-                    </button>
                   </td>
                 </tr>
               </tbody>
