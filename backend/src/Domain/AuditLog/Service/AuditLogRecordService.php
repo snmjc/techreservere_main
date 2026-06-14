@@ -2,16 +2,13 @@
 
 namespace App\Domain\AuditLog\Service;
 
-use App\Domain\AuditLog\Entity\AuditLogEntity;
-use App\Domain\AuditLog\Repository\AuditLogRepository;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 
 class AuditLogRecordService
 {
-    private AuditLogRepository $auditLogRepository;
-
-    public function __construct(AuditLogRepository $auditLogRepository)
+    public function __construct(private readonly Connection $connection)
     {
-        $this->auditLogRepository = $auditLogRepository;
     }
 
     // ===== AI GENERATED: recordAuditLog =====
@@ -24,14 +21,25 @@ class AuditLogRecordService
 
     public function recordAuditLog(?int $performedByAccountId, string $actionPerformed, string $targetEntityType, ?int $targetEntityIdentifier = null, ?array $changeDetails = null): void
     {
-        $entity = new AuditLogEntity();
-        $entity->setPerformedByAccountId($performedByAccountId);
-        $entity->setActionPerformed($actionPerformed);
-        $entity->setTargetEntityType($targetEntityType);
-        $entity->setTargetEntityIdentifier($targetEntityIdentifier);
-        $entity->setChangeDetails($changeDetails);
-
-        $this->auditLogRepository->persistAuditLog($entity);
+        $this->connection->insert(
+            'audit_logs',
+            [
+                'performed_by_account_id' => $performedByAccountId,
+                'action_performed' => $actionPerformed,
+                'target_entity_type' => $targetEntityType,
+                'target_entity_identifier' => $targetEntityIdentifier,
+                'change_details' => $changeDetails === null ? null : json_encode($changeDetails, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'occurred_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ],
+            [
+                'performed_by_account_id' => $performedByAccountId === null ? ParameterType::NULL : ParameterType::INTEGER,
+                'action_performed' => ParameterType::STRING,
+                'target_entity_type' => ParameterType::STRING,
+                'target_entity_identifier' => $targetEntityIdentifier === null ? ParameterType::NULL : ParameterType::INTEGER,
+                'change_details' => $changeDetails === null ? ParameterType::NULL : ParameterType::STRING,
+                'occurred_timestamp' => ParameterType::STRING,
+            ]
+        );
     }
 
     // ===== AI GENERATED: getAllAuditLogs =====
@@ -41,19 +49,30 @@ class AuditLogRecordService
 
     public function getAllAuditLogs(): array
     {
-        $entities = $this->auditLogRepository->findAllAuditLogs();
-        $results = [];
-        foreach ($entities as $entity) {
-            $results[] = [
-                'auditLogIdentifier' => $entity->getAuditLogIdentifier(),
-                'performedByAccountId' => $entity->getPerformedByAccountId(),
-                'actionPerformed' => $entity->getActionPerformed(),
-                'targetEntityType' => $entity->getTargetEntityType(),
-                'targetEntityIdentifier' => $entity->getTargetEntityIdentifier(),
-                'changeDetails' => $entity->getChangeDetails(),
-                'occurredTimestamp' => $entity->getOccurredTimestamp()->format(\DateTime::ATOM),
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT audit_log_identifier, performed_by_account_id, action_performed, target_entity_type, target_entity_identifier, change_details, occurred_timestamp
+             FROM audit_logs
+             ORDER BY occurred_timestamp DESC, audit_log_identifier DESC'
+        );
+
+        return array_map(function (array $row): array {
+            $changeDetails = $row['change_details'];
+            if (is_string($changeDetails) && $changeDetails !== '') {
+                $decoded = json_decode($changeDetails, true);
+                $changeDetails = is_array($decoded) ? $decoded : $changeDetails;
+            }
+
+            return [
+                'auditLogIdentifier' => isset($row['audit_log_identifier']) ? (int)$row['audit_log_identifier'] : null,
+                'performedByAccountId' => isset($row['performed_by_account_id']) ? (int)$row['performed_by_account_id'] : null,
+                'actionPerformed' => (string)($row['action_performed'] ?? ''),
+                'targetEntityType' => (string)($row['target_entity_type'] ?? ''),
+                'targetEntityIdentifier' => isset($row['target_entity_identifier']) ? (int)$row['target_entity_identifier'] : null,
+                'changeDetails' => $changeDetails,
+                'occurredTimestamp' => !empty($row['occurred_timestamp'])
+                    ? (new \DateTimeImmutable((string)$row['occurred_timestamp']))->format(\DateTimeInterface::ATOM)
+                    : null,
             ];
-        }
-        return $results;
+        }, $rows);
     }
 }
