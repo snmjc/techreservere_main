@@ -98,15 +98,14 @@
                   <th>Requested</th>
                   <th>Needed</th>
                   <th>Status</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="loading">
-                  <td colspan="8" class="past-records-empty-state">Loading archived reservations...</td>
+                  <td colspan="7" class="past-records-empty-state">Loading archived reservations...</td>
                 </tr>
                 <tr v-else-if="filteredRecordList.length === 0">
-                  <td colspan="8" class="past-records-empty-state">No past records match the current filters.</td>
+                  <td colspan="7" class="past-records-empty-state">No past records match the current filters.</td>
                 </tr>
                 <tr
                   v-for="record in filteredRecordList"
@@ -138,9 +137,6 @@
                     <span class="past-records-status-pill" :class="`past-records-status-pill--${getStatusTone(record.recordStatus)}`">
                       {{ record.recordStatus }}
                     </span>
-                  </td>
-                  <td>
-                    <button type="button" class="past-records-view-button" @click.stop="selectRecord(record)">View</button>
                   </td>
                 </tr>
               </tbody>
