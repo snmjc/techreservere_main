@@ -105,7 +105,7 @@ class AccountController extends AbstractController
     public function updateAdminAccountDetails(int $accountIdentifier, Request $request): JsonResponse
     {
         return $this->serviceResultResponse(
-            $this->workflowService->updateAdminAccountDetails($accountIdentifier, $this->jsonBody($request))
+            $this->workflowService->updateAdminAccountDetails($accountIdentifier, $request, $this->jsonBody($request))
         );
     }
 

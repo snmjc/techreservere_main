@@ -10,11 +10,21 @@ function buildHeaders(token, includeJson = false) {
 }
 
 async function parseResponse(response) {
-  const result = await response.json().catch(() => ({}));
+  const rawText = await response.text();
+  let result = {};
+  try {
+    result = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    result = {};
+  }
   if (!response.ok) {
+    const fallbackError = rawText
+      ? `Request failed with HTTP ${response.status}: ${rawText.slice(0, 180)}`
+      : `Request failed with HTTP ${response.status}.`;
+
     return {
       success: false,
-      error: result.errorMessage || result.message || 'Request failed.',
+      error: result.errorMessage || result.message || fallbackError,
     };
   }
   return {
