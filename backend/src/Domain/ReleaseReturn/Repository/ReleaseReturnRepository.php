@@ -22,6 +22,18 @@ class ReleaseReturnRepository extends ServiceEntityRepository
     /** @return ReleaseReturnEntity[] */
     public function findAllReleaseReturns(): array { return $this->findAll(); }
 
+    /** @return ReleaseReturnEntity[] */
+    public function findByProcessedDateRange(\DateTimeInterface $startDate, \DateTimeInterface $endDate): array
+    {
+        return $this->createQueryBuilder('releaseReturn')
+            ->where('releaseReturn.processedTimestamp BETWEEN :startDate AND :endDate')
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('releaseReturn.processedTimestamp', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function persistReleaseReturn(ReleaseReturnEntity $entity): void
     {
         $em = $this->getEntityManager();

@@ -66,10 +66,48 @@
   font-weight: 700;
 }
 
+.admin-dashboard-date-select {
+  min-height: 32px;
+  padding: 0 0.55rem;
+  color: var(--tr-ink);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.admin-dashboard-date-select:focus {
+  outline: none;
+}
+
+.admin-dashboard-date-label {
+  color: var(--tr-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .admin-dashboard-date-chip svg {
   width: 17px;
   height: 17px;
   color: var(--tr-green-700);
+}
+
+.admin-dashboard-inline-message {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  color: var(--tr-muted);
+  background: #f8fbf9;
+  border: 1px dashed var(--tr-border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-dashboard-inline-message.is-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-style: solid;
+  border-color: #fecaca;
 }
 
 .admin-dashboard-stat-cards-row {

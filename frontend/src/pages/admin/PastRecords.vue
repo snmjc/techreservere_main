@@ -1,139 +1,249 @@
-<!-- ===== AI GENERATED: AdminPastRecordsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="admin-past-records-page-heading">Past Records</h2>
+    <section class="admin-past-records-page">
+      <header class="admin-past-records-hero">
+        <div class="admin-past-records-hero-copy">
+          <p class="admin-past-records-kicker">Archive Overview</p>
+          <h1>Past Reservation Records</h1>
+          <p>Review completed, rejected, and cancelled reservations with a cleaner at-a-glance workflow.</p>
+        </div>
+        <div class="admin-past-records-hero-badge">
+          <strong>{{ filteredRecordList.length }}</strong>
+          <span>Visible records</span>
+        </div>
+      </header>
 
-    <!-- Tabs: All / Completed / Rejected / Cancelled -->
-    <div class="admin-past-records-tabs-row">
-      <button
-        class="admin-past-records-tab-button"
-        :class="{ 'admin-past-records-tab-button--active': activeRecordTab === 'all' }"
-        @click="activeRecordTab = 'all'"
-      >
-        All
-      </button>
-      <button
-        class="admin-past-records-tab-button"
-        :class="{ 'admin-past-records-tab-button--active': activeRecordTab === 'completed' }"
-        @click="activeRecordTab = 'completed'"
-      >
-        Completed
-      </button>
-      <button
-        class="admin-past-records-tab-button"
-        :class="{ 'admin-past-records-tab-button--active': activeRecordTab === 'rejected' }"
-        @click="activeRecordTab = 'rejected'"
-      >
-        Rejected
-      </button>
-      <button
-        class="admin-past-records-tab-button"
-        :class="{ 'admin-past-records-tab-button--active': activeRecordTab === 'cancelled' }"
-        @click="activeRecordTab = 'cancelled'"
-      >
-        Cancelled
-      </button>
-    </div>
+      <section class="admin-past-records-stats">
+        <article
+          v-for="card in summaryCards"
+          :key="card.label"
+          class="admin-past-records-stat-card"
+          :class="`admin-past-records-stat-card--${card.tone}`"
+        >
+          <span class="admin-past-records-stat-icon">{{ card.icon }}</span>
+          <div>
+            <p>{{ card.label }}</p>
+            <strong>{{ card.value }}</strong>
+            <small>{{ card.caption }}</small>
+          </div>
+        </article>
+      </section>
 
-    <!-- Toolbar -->
-    <div class="admin-past-records-toolbar">
-      <div class="admin-past-records-search-group">
-        <label class="admin-past-records-search-label" for="adminPastRecordsSearch">Search:</label>
-        <input
-          id="adminPastRecordsSearch"
-          v-model="searchQueryText"
-          type="text"
-          class="admin-past-records-search-input"
-          placeholder="Name"
-        />
+      <section class="admin-past-records-shell">
+        <div class="admin-past-records-main">
+          <div class="admin-past-records-toolbar">
+            <label class="admin-past-records-search-field">
+              <span>Search</span>
+              <input
+                v-model.trim="searchQueryText"
+                type="search"
+                placeholder="Search by ID, borrower, facility, or type"
+              />
+            </label>
+
+            <div class="admin-past-records-toolbar-controls">
+              <label>
+                <span>Sort by</span>
+                <select v-model="sortByValue">
+                  <option value="requestedDate">Requested date</option>
+                  <option value="borrower">Borrower</option>
+                  <option value="facility">Facility</option>
+                  <option value="status">Status</option>
+                </select>
+              </label>
+              <label>
+                <span>Showing</span>
+                <select v-model="showingFilterValue">
+                  <option value="all">All</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </label>
+              <button
+                class="admin-past-records-sort-toggle"
+                type="button"
+                :title="sortOrderAscending ? 'Sort descending' : 'Sort ascending'"
+                @click="sortOrderAscending = !sortOrderAscending"
+              >
+                {{ sortOrderAscending ? 'Asc' : 'Desc' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-past-records-filter-strip">
+            <button
+              v-for="tab in recordTabs"
+              :key="tab.value"
+              type="button"
+              class="admin-past-records-filter-pill"
+              :class="{ 'admin-past-records-filter-pill--active': activeRecordTab === tab.value }"
+              @click="activeRecordTab = tab.value"
+            >
+              {{ tab.label }}
+              <span>{{ tab.count }}</span>
+            </button>
+          </div>
+
+          <div class="admin-past-records-table-card">
+            <table class="admin-past-records-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Borrower</th>
+                  <th>Facility</th>
+                  <th>Type</th>
+                  <th>Qty</th>
+                  <th>Requested</th>
+                  <th>Needed</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="filteredRecordList.length === 0">
+                  <td colspan="9" class="admin-past-records-empty-state">No past records match the current filters.</td>
+                </tr>
+                <tr
+                  v-for="record in filteredRecordList"
+                  v-else
+                  :key="record.requestIdentifier"
+                  class="admin-past-records-row"
+                  :class="{ 'admin-past-records-row--active': selectedRecord?.requestIdentifier === record.requestIdentifier }"
+                  @click="selectRecord(record)"
+                >
+                  <td class="admin-past-records-id">{{ record.requestIdentifier }}</td>
+                  <td>
+                    <div class="admin-past-records-borrower">
+                      <img :src="record.borrowerAvatar" :alt="record.requesterFullName" />
+                      <div>
+                        <strong>{{ record.requesterFullName }}</strong>
+                        <span>{{ record.requesterRole }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ record.facilityName }}</td>
+                  <td>
+                    <span
+                      class="admin-past-records-type-pill"
+                      :class="`admin-past-records-type-pill--${getTypeTone(record.requestType)}`"
+                    >
+                      {{ record.requestType }}
+                    </span>
+                  </td>
+                  <td>{{ record.requestQuantity }}</td>
+                  <td>{{ formatDate(record.requestedDate) }}</td>
+                  <td>{{ formatDate(record.neededDate) }}</td>
+                  <td>
+                    <span
+                      class="admin-past-records-status-pill"
+                      :class="`admin-past-records-status-pill--${getStatusTone(record.recordStatus)}`"
+                    >
+                      {{ record.recordStatus }}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="admin-past-records-view-button" @click.stop="selectRecord(record)">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="admin-past-records-table-footer">
+              <span>Showing {{ filteredRecordList.length }} of {{ mockPastRecords.length }} records</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="admin-past-records-detail-card" v-if="selectedRecord">
+          <div class="admin-past-records-detail-head">
+            <div>
+              <p>Reservation Details</p>
+              <h2>{{ selectedRecord.requestIdentifier }}</h2>
+            </div>
+            <span
+              class="admin-past-records-status-pill"
+              :class="`admin-past-records-status-pill--${getStatusTone(selectedRecord.recordStatus)}`"
+            >
+              {{ selectedRecord.recordStatus }}
+            </span>
+          </div>
+
+          <div class="admin-past-records-detail-grid">
+            <div>
+              <span>Borrower</span>
+              <strong>{{ selectedRecord.requesterFullName }}</strong>
+              <small>{{ selectedRecord.requesterRole }}</small>
+            </div>
+            <div>
+              <span>Facility</span>
+              <strong>{{ selectedRecord.facilityName }}</strong>
+              <small>{{ selectedRecord.requestType }}</small>
+            </div>
+            <div>
+              <span>Quantity</span>
+              <strong>{{ selectedRecord.requestQuantity }}</strong>
+              <small>Requested units</small>
+            </div>
+            <div>
+              <span>Date Processed</span>
+              <strong>{{ formatDate(selectedRecord.dateProcessed) }}</strong>
+              <small>{{ selectedRecord.recordStatus }} by admin</small>
+            </div>
+          </div>
+
+          <div class="admin-past-records-detail-section">
+            <h3>Reservation Information</h3>
+            <dl>
+              <div>
+                <dt>Requested Date</dt>
+                <dd>{{ formatDate(selectedRecord.requestedDate) }}</dd>
+              </div>
+              <div>
+                <dt>Needed Date</dt>
+                <dd>{{ formatDate(selectedRecord.neededDate) }}</dd>
+              </div>
+              <div>
+                <dt>Purpose</dt>
+                <dd>{{ selectedRecord.requestPurpose }}</dd>
+              </div>
+              <div>
+                <dt>Remarks</dt>
+                <dd>{{ selectedRecord.remarks }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="admin-past-records-detail-section">
+            <h3>Timeline</h3>
+            <ul class="admin-past-records-timeline">
+              <li v-for="entry in buildTimeline(selectedRecord)" :key="entry.label">
+                <span class="admin-past-records-timeline-dot" />
+                <div>
+                  <strong>{{ entry.label }}</strong>
+                  <small>{{ entry.date }}</small>
+                  <p>{{ entry.note }}</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+
+      <div class="admin-past-records-page-footer">
+        &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
-      <div class="admin-past-records-showing-group">
-        <label class="admin-past-records-showing-label" for="adminPastRecordsShowing">Showing:</label>
-        <select id="adminPastRecordsShowing" v-model="showingFilterValue" class="admin-past-records-showing-select">
-          <option value="all">All</option>
-        </select>
-        <button class="admin-past-records-sort-button" @click="sortOrderAscending = !sortOrderAscending" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="admin-past-records-table-wrapper">
-      <table class="admin-past-records-table">
-        <thead>
-          <tr class="admin-past-records-table-header-row">
-            <th class="admin-past-records-table-header-cell">ID</th>
-            <th class="admin-past-records-table-header-cell">Name</th>
-            <th class="admin-past-records-table-header-cell">Role</th>
-            <th class="admin-past-records-table-header-cell">Schedule</th>
-            <th class="admin-past-records-table-header-cell">Facility</th>
-            <th class="admin-past-records-table-header-cell">Quantity</th>
-            <th class="admin-past-records-table-header-cell">Type</th>
-            <th class="admin-past-records-table-header-cell">Purpose</th>
-            <th class="admin-past-records-table-header-cell">Date Processed</th>
-            <th class="admin-past-records-table-header-cell">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="record in filteredRecordList"
-            :key="record.requestIdentifier"
-            class="admin-past-records-table-body-row"
-          >
-            <td class="admin-past-records-table-cell admin-past-records-table-cell--id">{{ record.requestIdentifier }}</td>
-            <td class="admin-past-records-table-cell">{{ record.requesterFullName }}</td>
-            <td class="admin-past-records-table-cell">{{ record.requesterRole }}</td>
-            <td class="admin-past-records-table-cell">
-              <div class="admin-past-records-schedule">
-                <span class="admin-past-records-schedule-label">Requested:</span>
-                <span>{{ record.requestedDate }}</span>
-              </div>
-              <div class="admin-past-records-schedule">
-                <span class="admin-past-records-schedule-label">{{ record.recordStatus === 'Rejected' ? 'Needed:' : 'Needed:' }}</span>
-                <span>{{ record.neededDate }}</span>
-              </div>
-            </td>
-            <td class="admin-past-records-table-cell">
-              <div class="admin-past-records-facility">
-                <img
-                  :src="record.facilityImage"
-                  :alt="record.facilityName"
-                  class="admin-past-records-facility-img"
-                />
-                <span>{{ record.facilityName }}</span>
-              </div>
-            </td>
-            <td class="admin-past-records-table-cell">{{ record.requestQuantity }}</td>
-            <td class="admin-past-records-table-cell">{{ record.requestType }}</td>
-            <td class="admin-past-records-table-cell">{{ record.requestPurpose }}</td>
-            <td class="admin-past-records-table-cell">{{ record.dateProcessed }}</td>
-            <td class="admin-past-records-table-cell">
-              <span class="admin-past-records-status-badge" :class="getStatusBadgeClass(record.recordStatus)">{{ record.recordStatus }}</span>
-            </td>
-          </tr>
-          <tr v-if="filteredRecordList.length === 0">
-            <td colspan="10" class="admin-past-records-table-cell admin-past-records-table-empty-row">No past records found.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Footer -->
-    <div class="admin-past-records-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+    </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
@@ -145,218 +255,273 @@ const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const sortOrderAscending = ref(true);
+const sortOrderAscending = ref(false);
+const sortByValue = ref('requestedDate');
+const selectedRecord = ref(null);
 
-// Mock past records data
 const mockPastRecords = ref([
   {
     requestIdentifier: 'RES-001',
     requesterFullName: 'Maria Santos',
     requesterRole: 'Faculty',
+    borrowerAvatar: createTextPlaceholderDataUrl('MS'),
     requestedDate: '2026-04-15',
     neededDate: '2026-05-10',
     facilityName: '18F Roofdeck',
-    facilityImage: createTextPlaceholderDataUrl('Roofdeck'),
     requestQuantity: 150,
     requestType: 'Venue',
     requestPurpose: 'Graduation Ceremony',
     dateProcessed: '2026-05-10',
     recordStatus: 'Completed',
+    remarks: 'Reservation finished successfully without incident.',
   },
   {
     requestIdentifier: 'RES-002',
     requesterFullName: 'Juan Dela Cruz',
     requesterRole: 'Staff',
+    borrowerAvatar: createTextPlaceholderDataUrl('JD'),
     requestedDate: '2026-04-20',
     neededDate: '2026-05-05',
     facilityName: 'Chairs',
-    facilityImage: createTextPlaceholderDataUrl('Chairs'),
     requestQuantity: 200,
     requestType: 'Equipment',
     requestPurpose: 'Conference Setup',
     dateProcessed: '2026-05-05',
     recordStatus: 'Completed',
+    remarks: 'Equipment released and returned complete.',
   },
   {
     requestIdentifier: 'RES-003',
     requesterFullName: 'Ana Garcia',
     requesterRole: 'Student',
+    borrowerAvatar: createTextPlaceholderDataUrl('AG'),
     requestedDate: '2026-04-10',
     neededDate: '2026-04-25',
     facilityName: 'F407',
-    facilityImage: createTextPlaceholderDataUrl('F407'),
     requestQuantity: 50,
     requestType: 'Venue',
     requestPurpose: 'Club Meeting',
     dateProcessed: '2026-04-25',
     recordStatus: 'Rejected',
+    remarks: 'Request conflicted with a higher-priority venue booking.',
   },
   {
     requestIdentifier: 'RES-004',
     requesterFullName: 'Pedro Reyes',
     requesterRole: 'Faculty',
+    borrowerAvatar: createTextPlaceholderDataUrl('PR'),
     requestedDate: '2026-04-12',
     neededDate: '2026-05-01',
-    facilityName: 'Microphone & Podium',
-    facilityImage: createTextPlaceholderDataUrl('Microphone'),
+    facilityName: 'Microphone and Podium',
     requestQuantity: 5,
     requestType: 'Equipment',
     requestPurpose: 'Seminar',
     dateProcessed: '2026-05-01',
     recordStatus: 'Completed',
+    remarks: 'Audio support completed on schedule.',
   },
   {
     requestIdentifier: 'RES-005',
     requesterFullName: 'Rosa Mendoza',
     requesterRole: 'Student',
+    borrowerAvatar: createTextPlaceholderDataUrl('RM'),
     requestedDate: '2026-04-18',
     neededDate: '2026-05-08',
-    facilityName: 'F503 & Tables',
-    facilityImage: createTextPlaceholderDataUrl('F503'),
+    facilityName: 'F503 and Tables',
     requestQuantity: 80,
-    requestType: 'Venue and Equipment',
+    requestType: 'Venue + Equipment',
     requestPurpose: 'Workshop',
     dateProcessed: '2026-05-08',
     recordStatus: 'Completed',
+    remarks: 'Venue handoff and equipment return both completed.',
   },
   {
     requestIdentifier: 'RES-006',
     requesterFullName: 'Carlos Lopez',
     requesterRole: 'Staff',
+    borrowerAvatar: createTextPlaceholderDataUrl('CL'),
     requestedDate: '2026-04-22',
     neededDate: '2026-05-02',
     facilityName: 'LED Video Wall',
-    facilityImage: createTextPlaceholderDataUrl('LED'),
     requestQuantity: 1,
     requestType: 'Equipment',
     requestPurpose: 'Presentation',
     dateProcessed: '2026-05-02',
     recordStatus: 'Cancelled',
+    remarks: 'Requester cancelled before preparation was completed.',
   },
   {
     requestIdentifier: 'RES-007',
     requesterFullName: 'Lisa Wong',
     requesterRole: 'Faculty',
+    borrowerAvatar: createTextPlaceholderDataUrl('LW'),
     requestedDate: '2026-04-08',
     neededDate: '2026-04-28',
     facilityName: 'F608',
-    facilityImage: createTextPlaceholderDataUrl('F608'),
     requestQuantity: 60,
     requestType: 'Venue',
     requestPurpose: 'Exam',
     dateProcessed: '2026-04-28',
     recordStatus: 'Rejected',
+    remarks: 'Room capacity did not meet the request requirements.',
   },
   {
     requestIdentifier: 'RES-008',
     requesterFullName: 'Miguel Torres',
     requesterRole: 'Student',
+    borrowerAvatar: createTextPlaceholderDataUrl('MT'),
     requestedDate: '2026-04-25',
     neededDate: '2026-05-09',
-    facilityName: 'Stage & Sound System',
-    facilityImage: createTextPlaceholderDataUrl('Stage'),
+    facilityName: 'Stage and Sound System',
     requestQuantity: 1,
     requestType: 'Equipment',
     requestPurpose: 'Concert',
     dateProcessed: '2026-05-09',
     recordStatus: 'Completed',
-  },
-  {
-    requestIdentifier: 'RES-009',
-    requesterFullName: 'Sofia Gutierrez',
-    requesterRole: 'Staff',
-    requestedDate: '2026-04-16',
-    neededDate: '2026-05-03',
-    facilityName: 'F704',
-    facilityImage: createTextPlaceholderDataUrl('F704'),
-    requestQuantity: 40,
-    requestType: 'Venue',
-    requestPurpose: 'Training',
-    dateProcessed: '2026-05-03',
-    recordStatus: 'Completed',
-  },
-  {
-    requestIdentifier: 'RES-010',
-    requesterFullName: 'Antonio Morales',
-    requesterRole: 'Faculty',
-    requestedDate: '2026-04-19',
-    neededDate: '2026-05-06',
-    facilityName: 'Chairs & Tables',
-    facilityImage: createTextPlaceholderDataUrl('Furniture'),
-    requestQuantity: 120,
-    requestType: 'Equipment',
-    requestPurpose: 'Banquet',
-    dateProcessed: '2026-05-06',
-    recordStatus: 'Cancelled',
+    remarks: 'Sound check and deployment completed successfully.',
   },
 ]);
 
 onMounted(async () => {
   try {
     await requestStore.fetchReservations();
-    const list = requestStore.pastRecordsList || [];
-    console.log('Admin Past Records - Count:', list.length);
   } catch (error) {
     console.error('Error fetching past records:', error);
   }
 });
 
-/**
- * @function filteredRecordList
- * @description Filters past records by active tab, search query, and applies sorting.
- * @returns {Array<Object>}
- */
-const filteredRecordList = computed(() => {
-  let recordsFiltered = mockPastRecords.value;
+const summaryCards = computed(() => {
+  const total = mockPastRecords.value.length || 1;
+  const completed = mockPastRecords.value.filter((record) => record.recordStatus === 'Completed').length;
+  const rejected = mockPastRecords.value.filter((record) => record.recordStatus === 'Rejected').length;
+  const cancelled = mockPastRecords.value.filter((record) => record.recordStatus === 'Cancelled').length;
 
-  // Filter by tab status
+  return [
+    { label: 'Total Records', value: mockPastRecords.value.length, caption: 'All archived reservations', icon: '▦', tone: 'total' },
+    { label: 'Completed', value: completed, caption: `${Math.round((completed / total) * 100)}% of all records`, icon: '✓', tone: 'completed' },
+    { label: 'Rejected', value: rejected, caption: `${Math.round((rejected / total) * 100)}% of all records`, icon: '×', tone: 'rejected' },
+    { label: 'Cancelled', value: cancelled, caption: `${Math.round((cancelled / total) * 100)}% of all records`, icon: '!', tone: 'cancelled' },
+  ];
+});
+
+const recordTabs = computed(() => [
+  { label: 'All', value: 'all', count: mockPastRecords.value.length },
+  { label: 'Completed', value: 'completed', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Completed').length },
+  { label: 'Rejected', value: 'rejected', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Rejected').length },
+  { label: 'Cancelled', value: 'cancelled', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Cancelled').length },
+]);
+
+const filteredRecordList = computed(() => {
+  let recordsFiltered = [...mockPastRecords.value];
+
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {
       completed: 'Completed',
       rejected: 'Rejected',
       cancelled: 'Cancelled',
     };
-    recordsFiltered = recordsFiltered.filter(
-      (record) => record.recordStatus === tabStatusMap[activeRecordTab.value]
-    );
+    recordsFiltered = recordsFiltered.filter((record) => record.recordStatus === tabStatusMap[activeRecordTab.value]);
   }
 
-  // Filter by search query
-  const queryLower = searchQueryText.value.toLowerCase().trim();
+  const queryLower = searchQueryText.value.toLowerCase();
   if (queryLower) {
-    recordsFiltered = recordsFiltered.filter(
-      (record) =>
-        record.requesterFullName?.toLowerCase().includes(queryLower) ||
-        record.requestIdentifier?.toString().includes(queryLower) ||
-        record.facilityName?.toLowerCase().includes(queryLower)
+    recordsFiltered = recordsFiltered.filter((record) =>
+      [
+        record.requestIdentifier,
+        record.requesterFullName,
+        record.requesterRole,
+        record.facilityName,
+        record.requestType,
+        record.requestPurpose,
+      ].some((value) => String(value).toLowerCase().includes(queryLower))
     );
   }
 
-  // Apply sorting by name
-  recordsFiltered.sort((a, b) => {
-    const nameA = a.requesterFullName.toLowerCase();
-    const nameB = b.requesterFullName.toLowerCase();
-    if (sortOrderAscending.value) {
-      return nameA.localeCompare(nameB);
-    } else {
-      return nameB.localeCompare(nameA);
-    }
+  recordsFiltered.sort((first, second) => {
+    const firstValue = resolveSortValue(first, sortByValue.value);
+    const secondValue = resolveSortValue(second, sortByValue.value);
+
+    if (firstValue < secondValue) return sortOrderAscending.value ? -1 : 1;
+    if (firstValue > secondValue) return sortOrderAscending.value ? 1 : -1;
+    return String(first.requestIdentifier).localeCompare(String(second.requestIdentifier));
   });
+
+  if (showingFilterValue.value !== 'all') {
+    recordsFiltered = recordsFiltered.slice(0, Number(showingFilterValue.value));
+  }
 
   return recordsFiltered;
 });
 
-/**
- * @function getStatusBadgeClass
- * @description Returns CSS class for status badge.
- * @param {string} recordStatus
- * @returns {string}
- */
-function getStatusBadgeClass(recordStatus) {
-  const statusLower = recordStatus.toLowerCase();
-  if (statusLower === 'completed') return 'admin-past-records-status-badge--completed';
-  if (statusLower === 'rejected') return 'admin-past-records-status-badge--rejected';
-  if (statusLower === 'cancelled') return 'admin-past-records-status-badge--cancelled';
-  return '';
+watch(
+  filteredRecordList,
+  (records) => {
+    if (records.length === 0) {
+      selectedRecord.value = null;
+      return;
+    }
+
+    if (!selectedRecord.value) {
+      selectedRecord.value = records[0];
+      return;
+    }
+
+    const matched = records.find((record) => record.requestIdentifier === selectedRecord.value.requestIdentifier);
+    selectedRecord.value = matched || records[0];
+  },
+  { immediate: true }
+);
+
+function resolveSortValue(record, sortKey) {
+  if (sortKey === 'borrower') return record.requesterFullName.toLowerCase();
+  if (sortKey === 'facility') return record.facilityName.toLowerCase();
+  if (sortKey === 'status') return record.recordStatus.toLowerCase();
+  return new Date(record.requestedDate).getTime();
+}
+
+function selectRecord(record) {
+  selectedRecord.value = record;
+}
+
+function getStatusTone(status) {
+  const normalized = String(status).toLowerCase();
+  if (normalized === 'completed') return 'completed';
+  if (normalized === 'rejected') return 'rejected';
+  return 'cancelled';
+}
+
+function getTypeTone(type) {
+  const normalized = String(type).toLowerCase();
+  if (normalized.includes('venue') && normalized.includes('equipment')) return 'mixed';
+  if (normalized.includes('equipment')) return 'equipment';
+  return 'venue';
+}
+
+function formatDate(value) {
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function buildTimeline(record) {
+  return [
+    {
+      label: 'Request Submitted',
+      date: formatDate(record.requestedDate),
+      note: `${record.requesterFullName} submitted the reservation request.`,
+    },
+    {
+      label: 'Needed Schedule',
+      date: formatDate(record.neededDate),
+      note: `${record.facilityName} was reserved for the requested schedule.`,
+    },
+    {
+      label: record.recordStatus,
+      date: formatDate(record.dateProcessed),
+      note: record.remarks,
+    },
+  ];
 }
 </script>

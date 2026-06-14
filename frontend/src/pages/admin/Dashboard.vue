@@ -1,4 +1,3 @@
-<!-- ===== AI GENERATED: FOAdministratorDashboardPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
     :role-label="'ADMINISTRATOR'"
@@ -9,18 +8,30 @@
         <div>
           <p class="admin-dashboard-kicker">FO administrator dashboard</p>
           <h1>Admin Dashboard</h1>
-          <p class="admin-dashboard-subtitle">Static operational monitoring for requests, resource usage, readiness, and system activity.</p>
+          <p class="admin-dashboard-subtitle">Live operational monitoring for requests, resource usage, readiness, and system activity.</p>
         </div>
-        <div class="admin-dashboard-date-chip">
+
+        <label class="admin-dashboard-date-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2" />
             <path d="M16 2v4" />
             <path d="M8 2v4" />
             <path d="M3 10h18" />
           </svg>
-          {{ dashboardDateRange }}
-        </div>
+          <select v-model="selectedRangeKey" class="admin-dashboard-date-select">
+            <option
+              v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
+              :key="preset.key"
+              :value="preset.key"
+            >
+              {{ preset.label }}
+            </option>
+          </select>
+          <span class="admin-dashboard-date-label">{{ activeRangeLabel }}</span>
+        </label>
       </div>
+
+      <p v-if="dashboardError" class="admin-dashboard-inline-message is-error">{{ dashboardError }}</p>
 
       <section class="admin-dashboard-section">
         <div class="admin-dashboard-section-heading">
@@ -54,43 +65,52 @@
           <div class="admin-dashboard-panel-heading">
             <div>
               <h2>Resource Utilization</h2>
-              <p>Mock utilization across major facilities and equipment groups.</p>
+              <p>Reservation demand and equipment load across the selected period.</p>
             </div>
-            <span class="admin-dashboard-panel-badge">Static Data</span>
+            <span class="admin-dashboard-panel-badge">{{ activeRangeLabel }}</span>
           </div>
 
-          <div class="admin-dashboard-chart">
-            <svg viewBox="0 0 720 260" role="img" aria-label="Resource utilization graph">
+          <div v-if="isDashboardLoading" class="admin-dashboard-inline-message">Loading dashboard data...</div>
+          <div v-else-if="resourceSeries.length === 0" class="admin-dashboard-inline-message">No demand data is available for the selected range.</div>
+          <div v-else class="admin-dashboard-chart">
+            <svg :viewBox="`0 0 ${resourceChart.width} ${resourceChart.height}`" role="img" aria-label="Resource utilization graph">
               <g class="admin-dashboard-chart-grid">
-                <path d="M52 32H684" />
-                <path d="M52 82H684" />
-                <path d="M52 132H684" />
-                <path d="M52 182H684" />
-                <path d="M52 232H684" />
+                <path
+                  v-for="line in resourceChart.yAxisLabels"
+                  :key="`grid-y-${line.value}`"
+                  :d="`M52 ${line.y - 4}H696`"
+                />
               </g>
               <g class="admin-dashboard-chart-labels">
-                <text x="34" y="36">100</text>
-                <text x="40" y="86">75</text>
-                <text x="40" y="136">50</text>
-                <text x="40" y="186">25</text>
-                <text x="44" y="236">0</text>
+                <text
+                  v-for="line in resourceChart.yAxisLabels"
+                  :key="`label-y-${line.value}`"
+                  :x="line.x"
+                  :y="line.y"
+                >
+                  {{ line.value }}
+                </text>
               </g>
-              <path class="admin-dashboard-chart-area" d="M58 190L120 155L182 166L244 110L306 134L368 88L430 118L492 76L554 104L616 92L684 66L684 232L58 232Z" />
-              <polyline class="admin-dashboard-chart-line" points="58,190 120,155 182,166 244,110 306,134 368,88 430,118 492,76 554,104 616,92 684,66" />
+              <path class="admin-dashboard-chart-area" :d="resourceChart.areaPath" />
+              <polyline class="admin-dashboard-chart-line" :points="resourceChart.polylinePoints" />
               <g class="admin-dashboard-chart-points">
-                <circle cx="58" cy="190" r="4" />
-                <circle cx="244" cy="110" r="4" />
-                <circle cx="368" cy="88" r="4" />
-                <circle cx="492" cy="76" r="4" />
-                <circle cx="684" cy="66" r="4" />
+                <circle
+                  v-for="(point, index) in resourceChart.pointMarkers"
+                  :key="`resource-point-${index}`"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="4"
+                />
               </g>
               <g class="admin-dashboard-chart-months">
-                <text x="52" y="254">Mon</text>
-                <text x="176" y="254">Tue</text>
-                <text x="300" y="254">Wed</text>
-                <text x="424" y="254">Thu</text>
-                <text x="548" y="254">Fri</text>
-                <text x="660" y="254">Sat</text>
+                <text
+                  v-for="(label, index) in resourceChart.xAxisLabels"
+                  :key="`x-label-${index}`"
+                  :x="label.x"
+                  :y="label.y"
+                >
+                  {{ label.label }}
+                </text>
               </g>
             </svg>
           </div>
@@ -100,7 +120,7 @@
           <div class="admin-dashboard-panel-heading">
             <div>
               <h2>Grouped Data</h2>
-              <p>Operational statistics for the current period.</p>
+              <p>Operational statistics derived from the selected period.</p>
             </div>
           </div>
 
@@ -124,11 +144,12 @@
         <div class="admin-dashboard-panel-heading">
           <div>
             <h2>Facility Status Overview</h2>
-            <p>Static readiness and availability by facility type.</p>
+            <p>Venue usage grouped by inferred facility type from current venue names.</p>
           </div>
         </div>
 
-        <div class="admin-dashboard-facility-grid">
+        <div v-if="facilityStatus.length === 0" class="admin-dashboard-inline-message">No facility records are available yet.</div>
+        <div v-else class="admin-dashboard-facility-grid">
           <article
             v-for="facility in facilityStatus"
             :key="facility.name"
@@ -141,7 +162,7 @@
             <div class="admin-dashboard-facility-bar">
               <i :style="{ width: `${facility.percent}%` }"></i>
             </div>
-            <p>{{ facility.status }}</p>
+            <p>{{ facility.statusLabel }}</p>
           </article>
         </div>
       </section>
@@ -151,13 +172,13 @@
           <div class="admin-dashboard-panel-heading">
             <div>
               <h2>Readiness Risk Alerts</h2>
-              <p>Flag-based monitoring for equipment and facility readiness.</p>
+              <p>Inventory and release monitoring derived from live operational records.</p>
             </div>
           </div>
 
           <div class="admin-dashboard-risk-alert-list">
             <article
-              v-for="alert in readinessRiskAlerts"
+              v-for="alert in readinessAlerts"
               :key="alert.title"
               class="admin-dashboard-risk-alert"
             >
@@ -166,7 +187,7 @@
                 <strong>{{ alert.title }}</strong>
                 <p>{{ alert.detail }}</p>
               </div>
-              <span class="admin-dashboard-risk-count">{{ alert.count }}</span>
+              <span class="admin-dashboard-risk-count">{{ formatCount(alert.count) }}</span>
             </article>
           </div>
         </section>
@@ -175,7 +196,7 @@
           <div class="admin-dashboard-panel-heading">
             <div>
               <h2>System Activity Overview</h2>
-              <p>Mock activity summary for the current operating day.</p>
+              <p>Live activity summary for requests, approvals, and release / return throughput.</p>
             </div>
           </div>
 
@@ -189,7 +210,7 @@
                 <strong>{{ activity.label }}</strong>
                 <span>{{ activity.meta }}</span>
               </div>
-              <b>{{ activity.value }}</b>
+              <b>{{ formatCount(activity.value) }}</b>
             </article>
           </div>
         </section>
@@ -199,178 +220,136 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import { apiUrl } from '@/shared/utils/apiBase.js';
-import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
+import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
+import {
+  ADMIN_ANALYTICS_RANGE_PRESETS,
+  buildLineChartModel,
+  formatDateRangeLabel,
+  formatLeadTimeHours,
+  formatMetricNumber,
+  resolveAdminAnalyticsDateRange,
+} from './adminAnalyticsHelpers.js';
 
 const router = useRouter();
-const authStore = useAuthenticationStore();
 
-const emptyDashboardSummary = {
-  totalAccounts: 0,
-  totalEquipment: 0,
-  totalReservations: 0,
-  pendingReservations: 0,
-  approvedReservations: 0,
-  activeReservations: 0,
-  completedReservations: 0,
-  activeEquipmentCount: 0,
-  activeFacilityUsageCount: 0,
-  overdueEquipment: 0,
-  equipmentUtilizationRate: 0,
-};
+const selectedRangeKey = ref('14d');
+const isDashboardLoading = ref(true);
+const dashboardError = ref('');
+const dashboardOverview = ref(createEmptyOverview());
 
-const dashboardSummary = ref({ ...emptyDashboardSummary });
-const isDashboardSummaryLoading = ref(true);
+const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
+const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
+const resourceSeries = computed(() => dashboardOverview.value.resourceUtilization || []);
+const resourceChart = computed(() => buildLineChartModel(
+  resourceSeries.value.map((item) => ({ label: item.label, value: item.demand })),
+  { width: 720, height: 260, maxXAxisLabels: 6 }
+));
 
-const dashboardDateRange = computed(() => {
-  const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const today = new Date();
-  const start = new Date(today);
-  start.setDate(today.getDate() - 14);
-  return `${formatter.format(start)} - ${formatter.format(today)}`;
+const totalOverviewCards = computed(() => {
+  const summary = dashboardOverview.value.summary || {};
+  return [
+    {
+      label: 'Total Users',
+      value: metricValue(summary.totalAccounts),
+      meta: 'Connected user accounts',
+      className: 'admin-dashboard-stat-card--users',
+      routeName: 'adminManageAccountsPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    },
+    {
+      label: 'Pending Requests',
+      value: metricValue(summary.pendingReservations),
+      meta: 'Awaiting admin review',
+      className: 'admin-dashboard-stat-card--pending',
+      routeName: 'adminPendingRequestsPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    },
+    {
+      label: 'Approved Requests',
+      value: metricValue(summary.approvedReservations),
+      meta: 'Ready for release',
+      className: 'admin-dashboard-stat-card--approved',
+      routeName: 'adminApprovedRequestsPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
+    },
+    {
+      label: 'Active Equipment / Facilities',
+      value: isDashboardLoading.value
+        ? '...'
+        : `${formatCount(summary.activeEquipmentCount)} / ${formatCount(summary.activeFacilityCount)}`,
+      meta: 'Deployed items / booked facilities',
+      className: 'admin-dashboard-stat-card--deployed',
+      routeName: 'adminActiveReservationsPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M8 21h8"/><path d="M12 16v5"/></svg>',
+    },
+    {
+      label: 'Overdue Equipment',
+      value: metricValue(summary.overdueEquipmentCount),
+      meta: 'Released reservations not yet returned past scheduled event time',
+      className: 'admin-dashboard-stat-card--overdue',
+      routeName: 'adminPastRecordsPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    },
+  ];
 });
 
-const totalOverviewCards = computed(() => [
-  {
-    label: 'Total Users',
-    value: formatMetricValue(dashboardSummary.value.totalAccounts),
-    meta: 'Connected user accounts',
-    className: 'admin-dashboard-stat-card--users',
-    routeName: 'adminManageAccountsPage',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  },
-  {
-    label: 'Pending Requests',
-    value: formatMetricValue(dashboardSummary.value.pendingReservations),
-    meta: 'Awaiting admin review',
-    className: 'admin-dashboard-stat-card--pending',
-    routeName: 'adminPendingRequestsPage',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-  },
-  {
-    label: 'Approved Requests',
-    value: formatMetricValue(dashboardSummary.value.approvedReservations),
-    meta: 'Ready for release',
-    className: 'admin-dashboard-stat-card--approved',
-    routeName: 'adminApprovedRequestsPage',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
-  },
-  {
-    label: 'Active Equipment / Facilities',
-    value: isDashboardSummaryLoading.value
-      ? '...'
-      : `${formatCount(dashboardSummary.value.activeEquipmentCount)} / ${formatCount(dashboardSummary.value.activeFacilityUsageCount)}`,
-    meta: 'Deployed items / booked facilities',
-    className: 'admin-dashboard-stat-card--deployed',
-    routeName: 'adminActiveReservationsPage',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M8 21h8"/><path d="M12 16v5"/></svg>',
-  },
-  {
-    label: 'Overdue Equipment',
-    value: formatMetricValue(dashboardSummary.value.overdueEquipment),
-    meta: 'Past expected return',
-    className: 'admin-dashboard-stat-card--overdue',
-    routeName: 'adminPastRecordsPage',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
-  },
-]);
+const groupedStats = computed(() => {
+  const grouped = dashboardOverview.value.groupedStats || {};
+  return [
+    {
+      label: 'Overall Equipment Utilization',
+      value: `${formatMetricNumber(grouped.equipmentUtilizationRate, 1)}%`,
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-3"/></svg>',
+    },
+    {
+      label: 'Active Users',
+      value: metricValue(grouped.activeUsers),
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    },
+    {
+      label: 'Active Facility Usage',
+      value: `${formatMetricNumber(grouped.facilityUtilizationRate, 1)}%`,
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg>',
+    },
+    {
+      label: 'Average Lead Time',
+      value: formatLeadTimeHours(grouped.averageLeadTimeHours),
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>',
+    },
+  ];
+});
 
-const groupedStats = computed(() => [
-  {
-    label: 'Overall Equipment Utilization',
-    value: isDashboardSummaryLoading.value ? '...' : `${dashboardSummary.value.equipmentUtilizationRate}%`,
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-3"/></svg>',
-  },
-  {
-    label: 'Active Users',
-    value: formatMetricValue(dashboardSummary.value.totalAccounts),
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  },
-  {
-    label: 'Active Facility Usage',
-    value: '64.3%',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg>',
-  },
-  {
-    label: 'Average Session Time',
-    value: '1.2 hrs',
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>',
-  },
-]);
-
-const facilityStatus = [
-  { name: 'Classrooms', occupied: 17, total: 30, percent: 57, status: 'Moderate usage' },
-  { name: 'Multipurpose Room', occupied: 1, total: 1, percent: 100, status: 'Currently occupied' },
-  { name: 'Laboratories', occupied: 8, total: 12, percent: 67, status: 'Moderate usage' },
-  { name: 'Audio Visual Room', occupied: 0, total: 1, percent: 0, status: 'Currently available' },
-];
-
-const readinessRiskAlerts = [
-  {
-    severity: 'High',
-    count: '7',
-    className: 'is-high',
-    title: 'Equipment below readiness threshold',
-    detail: 'Projectors and portable speakers need inspection before the next release window.',
-  },
-  {
-    severity: 'Medium',
-    count: '12',
-    className: 'is-medium',
-    title: 'Limited reserve stock',
-    detail: 'Demand is close to available backup units for high-use multimedia equipment.',
-  },
-  {
-    severity: 'Low',
-    count: '28',
-    className: 'is-low',
-    title: 'Routine facility checks queued',
-    detail: 'Facility rooms remain usable while scheduled readiness checks are pending.',
-  },
-];
-
-const systemActivityOverview = [
-  { label: 'New requests today', value: '24', meta: '12 facility requests, 12 equipment requests' },
-  { label: 'Approvals processed', value: '18', meta: 'Average turnaround time is 1.2 hours' },
-  { label: 'Equipment releases / returns', value: '11', meta: '7 released, 4 returned' },
-  { label: 'Readiness alerts generated', value: '3', meta: 'Based on overdue, stock, and inspection flags' },
-];
+const facilityStatus = computed(() => dashboardOverview.value.facilityStatus || []);
+const readinessAlerts = computed(() => dashboardOverview.value.readinessAlerts || []);
+const systemActivityOverview = computed(() => dashboardOverview.value.systemActivity || []);
 
 onMounted(() => {
-  loadDashboardSummary();
+  loadDashboardOverview();
 });
 
-async function loadDashboardSummary() {
-  isDashboardSummaryLoading.value = true;
+watch(selectedRangeKey, () => {
+  loadDashboardOverview();
+});
+
+async function loadDashboardOverview() {
+  isDashboardLoading.value = true;
+  dashboardError.value = '';
+
   try {
-    const response = await fetch(apiUrl('/api/v1/dashboard/summary'), {
-      method: 'GET',
-      cache: 'no-store',
-      headers: buildDashboardHeaders(),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) return;
-
-    dashboardSummary.value = {
-      ...emptyDashboardSummary,
-      ...(result.data || result),
-    };
+    dashboardOverview.value = createEmptyOverview();
+    dashboardOverview.value = await adminAnalyticsApi.getDashboardOverview(activeRange.value);
   } catch (error) {
-    dashboardSummary.value = { ...emptyDashboardSummary };
+    dashboardOverview.value = createEmptyOverview();
+    dashboardError.value = resolveDashboardError(error);
   } finally {
-    isDashboardSummaryLoading.value = false;
+    isDashboardLoading.value = false;
   }
-}
-
-function buildDashboardHeaders() {
-  return buildAuthorizationHeaders(authStore.authToken);
 }
 
 function navigateToMetricPage(routeName) {
@@ -378,13 +357,40 @@ function navigateToMetricPage(routeName) {
   router.push({ name: routeName });
 }
 
-function formatCount(value) {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return String(value ?? 0);
-  return new Intl.NumberFormat('en-US').format(numberValue);
+function createEmptyOverview() {
+  return {
+    summary: {
+      totalAccounts: 0,
+      pendingReservations: 0,
+      approvedReservations: 0,
+      activeEquipmentCount: 0,
+      activeFacilityCount: 0,
+      overdueEquipmentCount: 0,
+    },
+    resourceUtilization: [],
+    groupedStats: {
+      equipmentUtilizationRate: 0,
+      activeUsers: 0,
+      facilityUtilizationRate: 0,
+      averageLeadTimeHours: 0,
+    },
+    facilityStatus: [],
+    readinessAlerts: [],
+    systemActivity: [],
+  };
 }
 
-function formatMetricValue(value) {
-  return isDashboardSummaryLoading.value ? '...' : formatCount(value);
+function metricValue(value) {
+  return isDashboardLoading.value ? '...' : formatCount(value);
+}
+
+function formatCount(value) {
+  return formatMetricNumber(value, 0);
+}
+
+function resolveDashboardError(error) {
+  return error?.response?.data?.errorMessage
+    || error?.message
+    || 'Unable to load dashboard analytics right now.';
 }
 </script>

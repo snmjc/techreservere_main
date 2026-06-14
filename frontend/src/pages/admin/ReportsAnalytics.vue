@@ -4,194 +4,220 @@
     :navigation-items="adminNavigationItems"
   >
     <section class="reports-analytics-page">
-      <header class="reports-analytics-header">
-        <div>
-          <p class="reports-analytics-kicker">Analytics Dashboard</p>
-          <h1>Reports &amp; Analytics</h1>
-        </div>
-
-        <label class="reports-analytics-date-range">
-          <span>Date Range:</span>
-          <select>
-            <option>May 1 - May 16, 2026</option>
-            <option>Last 30 days</option>
-            <option>This semester</option>
-          </select>
-        </label>
-      </header>
-
-      <div class="reports-model-grid">
-        <article
-          v-for="model in modelCards"
-          :key="model.title"
-          class="reports-model-card"
-          :class="`reports-model-card--${model.tone}`"
-        >
-          <p>{{ model.number }}. {{ model.title }}</p>
-          <h2>{{ model.subtitle }}</h2>
-          <span>{{ model.description }}</span>
-          <svg v-if="model.tone === 'blue'" viewBox="0 0 120 52" aria-hidden="true">
-            <polyline points="5,42 18,35 29,38 41,23 53,29 65,18 76,22 88,10 99,35 114,31" />
-          </svg>
-          <svg v-else-if="model.tone === 'green'" viewBox="0 0 80 70" aria-hidden="true">
-            <circle cx="38" cy="13" r="4" /><circle cx="22" cy="31" r="4" /><circle cx="53" cy="31" r="4" /><circle cx="14" cy="52" r="4" /><circle cx="40" cy="55" r="4" /><circle cx="65" cy="52" r="4" />
-            <path d="M38 17 22 27M38 17l15 10M22 35l-8 13M53 35l12 13M22 35l18 16M53 35 40 51" />
-          </svg>
-          <svg v-else viewBox="0 0 82 64" aria-hidden="true">
-            <circle cx="13" cy="46" r="4" /><circle cx="35" cy="34" r="4" /><circle cx="60" cy="18" r="4" /><circle cx="68" cy="49" r="4" />
-            <path d="M17 44 31 36M39 32l17-11M62 22l5 23M38 36l26 11" />
-          </svg>
-        </article>
-      </div>
-
-      <section class="reports-panel reports-forecast-panel">
-        <div class="reports-panel-heading">
+      <div ref="reportSurfaceRef" class="reports-export-surface">
+        <header class="reports-analytics-header">
           <div>
-            <h2>Demand Forecasting (SARIMA Model)</h2>
-            <p>Forecasted equipment demand</p>
+            <p class="reports-analytics-kicker">Analytics Dashboard</p>
+            <h1>Reports &amp; Analytics</h1>
           </div>
+
+          <label class="reports-analytics-date-range">
+            <span>Date Range:</span>
+            <select v-model="selectedRangeKey">
+              <option
+                v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
+                :key="preset.key"
+                :value="preset.key"
+              >
+                {{ preset.label }}
+              </option>
+            </select>
+            <small>{{ activeRangeLabel }}</small>
+          </label>
+        </header>
+
+        <p v-if="reportsError" class="reports-inline-message is-error">{{ reportsError }}</p>
+        <p v-else-if="isReportsLoading" class="reports-inline-message">Loading analytics report...</p>
+
+        <div class="reports-model-grid">
+          <article
+            v-for="model in modelCards"
+            :key="model.title"
+            class="reports-model-card"
+            :class="`reports-model-card--${model.tone}`"
+          >
+            <p>{{ model.number }}. {{ model.title }}</p>
+            <h2>{{ model.subtitle }}</h2>
+            <span>{{ model.description }}</span>
+            <svg v-if="model.tone === 'blue'" viewBox="0 0 120 52" aria-hidden="true">
+              <polyline points="5,42 18,35 29,38 41,23 53,29 65,18 76,22 88,10 99,35 114,31" />
+            </svg>
+            <svg v-else-if="model.tone === 'green'" viewBox="0 0 80 70" aria-hidden="true">
+              <circle cx="38" cy="13" r="4" /><circle cx="22" cy="31" r="4" /><circle cx="53" cy="31" r="4" /><circle cx="14" cy="52" r="4" /><circle cx="40" cy="55" r="4" /><circle cx="65" cy="52" r="4" />
+              <path d="M38 17 22 27M38 17l15 10M22 35l-8 13M53 35l12 13M22 35l18 16M53 35 40 51" />
+            </svg>
+            <svg v-else viewBox="0 0 82 64" aria-hidden="true">
+              <circle cx="13" cy="46" r="4" /><circle cx="35" cy="34" r="4" /><circle cx="60" cy="18" r="4" /><circle cx="68" cy="49" r="4" />
+              <path d="M17 44 31 36M39 32l17-11M62 22l5 23M38 36l26 11" />
+            </svg>
+          </article>
         </div>
 
-        <div class="reports-forecast-layout">
-          <div class="reports-chart-card">
-            <div class="reports-chart-legend">
-              <span><i class="legend-dot legend-dot--actual"></i>Actual Demand</span>
-              <span><i class="legend-dot legend-dot--forecast"></i>Forecasted Demand</span>
+        <section class="reports-panel reports-forecast-panel">
+          <div class="reports-panel-heading">
+            <div>
+              <h2>Demand Forecasting (Operational Trend Model)</h2>
+              <p>Forecasted equipment demand based on recent reservation volume.</p>
             </div>
-            <svg class="reports-line-chart" viewBox="0 0 760 260" role="img" aria-label="Demand forecasting line chart">
-              <g class="reports-grid-lines">
-                <path d="M52 30H730M52 80H730M52 130H730M52 180H730M52 230H730" />
-                <path d="M52 30V230M166 30V230M280 30V230M394 30V230M508 30V230M622 30V230M730 30V230" />
-              </g>
-              <g class="reports-axis-labels">
-                <text x="18" y="235">0</text>
-                <text x="12" y="184">100</text>
-                <text x="12" y="134">200</text>
-                <text x="12" y="84">300</text>
-                <text x="12" y="34">400</text>
-                <text x="48" y="252">May 1</text>
-                <text x="155" y="252">May 4</text>
-                <text x="270" y="252">May 7</text>
-                <text x="382" y="252">May 10</text>
-                <text x="496" y="252">May 13</text>
-                <text x="610" y="252">May 16</text>
-              </g>
-              <polyline class="reports-line reports-line--actual" points="55,205 92,180 130,165 166,178 204,154 242,120 280,185 318,160 356,155 394,110 432,138 470,130 508,148" />
-              <polyline class="reports-line reports-line--forecast" points="55,230 92,205 130,180 166,160 204,170 242,180 280,165 318,188 356,170 394,150 432,112 470,136 508,128 546,96 584,72 622,118 660,90 698,82 730,76" />
-            </svg>
           </div>
 
-          <aside class="reports-insights-card">
-            <h3>Forecast Insights</h3>
+          <div class="reports-forecast-layout">
+            <div class="reports-chart-card">
+              <div class="reports-chart-legend">
+                <span><i class="legend-dot legend-dot--actual"></i>Actual Demand</span>
+                <span><i class="legend-dot legend-dot--forecast"></i>Forecasted Demand</span>
+              </div>
+              <div v-if="forecastSeries.length === 0" class="reports-inline-message">No reservation demand data is available for this range.</div>
+              <svg v-else class="reports-line-chart" :viewBox="`0 0 ${forecastChart.width} ${forecastChart.height}`" role="img" aria-label="Demand forecasting line chart">
+                <g class="reports-grid-lines">
+                  <path
+                    v-for="(line, index) in forecastChart.gridLinesY"
+                    :key="`grid-y-${index}`"
+                    :d="`M52 ${line.y}H730`"
+                  />
+                  <path
+                    v-for="(line, index) in forecastChart.gridLinesX"
+                    :key="`grid-x-${index}`"
+                    :d="`M${line.x} 30V230`"
+                  />
+                </g>
+                <g class="reports-axis-labels">
+                  <text
+                    v-for="(label, index) in forecastChart.yAxisLabels"
+                    :key="`label-y-${index}`"
+                    :x="label.x"
+                    :y="label.y"
+                  >
+                    {{ label.value }}
+                  </text>
+                  <text
+                    v-for="(label, index) in forecastChart.xAxisLabels"
+                    :key="`label-x-${index}`"
+                    :x="label.x"
+                    :y="label.y"
+                  >
+                    {{ label.label }}
+                  </text>
+                </g>
+                <polyline class="reports-line reports-line--actual" :points="forecastChart.actualPolylinePoints" />
+                <polyline class="reports-line reports-line--forecast" :points="forecastChart.forecastPolylinePoints" />
+              </svg>
+            </div>
+
+            <aside class="reports-insights-card">
+              <h3>Forecast Insights</h3>
+              <dl>
+                <div>
+                  <dt>Forecasted Peak</dt>
+                  <dd>{{ peakDateLabel }}<br><strong>{{ formatMetricNumber(forecastData.peakValue, 1) }} requests</strong></dd>
+                </div>
+                <div>
+                  <dt>Expected Growth</dt>
+                  <dd><strong :class="{ positive: Number(forecastData.growthPercent || 0) >= 0 }">{{ formatMetricDelta(forecastData.growthPercent, 1) }}</strong><br>from previous period</dd>
+                </div>
+                <div>
+                  <dt>Generated At</dt>
+                  <dd><strong>{{ reportGeneratedAt }}</strong></dd>
+                </div>
+              </dl>
+            </aside>
+          </div>
+        </section>
+
+        <div class="reports-two-column">
+          <section class="reports-panel">
+            <h2>Readiness Risk Detection (Operational Risk Bands)</h2>
+            <p>Risk level distribution across tracked equipment inventory.</p>
+            <div class="reports-risk-layout">
+              <div class="reports-donut" :style="riskDonutStyle" aria-label="Risk level distribution">
+                <span>{{ safeRateLabel }}</span>
+              </div>
+              <ul class="reports-risk-list">
+                <li v-for="risk in riskBands" :key="risk.label">
+                  <i :style="{ background: risk.color }"></i>
+                  <span>{{ risk.label }}</span>
+                  <strong>{{ risk.count }} equipment</strong>
+                </li>
+              </ul>
+              <div class="reports-top-risk-card">
+                <h3>Top Risk Factors</h3>
+                <ol>
+                  <li v-for="factor in topRiskFactors" :key="factor">{{ factor }}</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section class="reports-panel">
+            <h2>Resource Allocation Optimization (Operational Efficiency)</h2>
+            <p>Efficiency indicators derived from request throughput and inventory usage.</p>
+            <div class="reports-optimization-list">
+              <article v-for="metric in optimizationMetrics" :key="metric.label">
+                <span :class="`reports-metric-icon reports-metric-icon--${metric.tone}`">{{ metric.icon }}</span>
+                <div>
+                  <strong>{{ metric.label }}</strong>
+                  <small>{{ metric.note }}</small>
+                </div>
+                <em :class="{ negative: Number(metric.value || 0) < 0 }">{{ formatMetricDelta(metric.value, 1) }}</em>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <div class="reports-bottom-grid">
+          <section class="reports-panel">
+            <h2>Equipment Utilization Overview</h2>
+            <div v-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+            <div v-else class="reports-bar-chart">
+              <div v-for="item in utilizationItems" :key="item.label">
+                <span>{{ formatMetricNumber(item.value, 0) }}%</span>
+                <i :style="{ height: `${Math.max(12, Number(item.value || 0))}%` }"></i>
+                <small>{{ item.label }}</small>
+              </div>
+            </div>
+          </section>
+
+          <section class="reports-panel">
+            <h2>Top Frequently Used Equipment</h2>
+            <table class="reports-equipment-table">
+              <thead>
+                <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
+              </thead>
+              <tbody>
+                <tr v-if="topEquipment.length === 0">
+                  <td colspan="3">No equipment requests were recorded in the selected range.</td>
+                </tr>
+                <tr v-for="item in topEquipment" :key="item.name">
+                  <td>{{ item.name }}</td>
+                  <td>{{ formatMetricNumber(item.count, 0) }}</td>
+                  <td>{{ formatMetricNumber(item.rate, 1) }}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="reports-panel reports-summary-panel">
+            <h2>System Summary</h2>
             <dl>
-              <div>
-                <dt>Forecasted Peak</dt>
-                <dd>May 20, 2026<br><strong>362 requests</strong></dd>
-              </div>
-              <div>
-                <dt>Expected Growth</dt>
-                <dd><strong class="positive">+18.6%</strong><br>from previous period</dd>
-              </div>
-              <div>
-                <dt>Model Accuracy (MAPE)</dt>
-                <dd><strong>12.45%</strong></dd>
+              <div v-for="item in summaryItems" :key="item.label">
+                <dt>{{ item.label }}</dt>
+                <dd>{{ item.value }}</dd>
               </div>
             </dl>
-          </aside>
+          </section>
         </div>
-      </section>
-
-      <div class="reports-two-column">
-        <section class="reports-panel">
-          <h2>Readiness Risk Detection (Random Forest)</h2>
-          <p>Risk level distribution</p>
-          <div class="reports-risk-layout">
-            <div class="reports-donut" aria-label="Risk level distribution">
-              <span>72%</span>
-            </div>
-            <ul class="reports-risk-list">
-              <li v-for="risk in riskLevels" :key="risk.label">
-                <i :style="{ background: risk.color }"></i>
-                <span>{{ risk.label }}</span>
-                <strong>{{ risk.value }}</strong>
-              </li>
-            </ul>
-            <div class="reports-top-risk-card">
-              <h3>Top Risk Factors</h3>
-              <ol>
-                <li>High usage frequency</li>
-                <li>Past delay incidents</li>
-                <li>Preparation time</li>
-                <li>Maintenance history</li>
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        <section class="reports-panel">
-          <h2>Resource Allocation Optimization (BILP)</h2>
-          <p>Optimization performance</p>
-          <div class="reports-optimization-list">
-            <article v-for="metric in optimizationMetrics" :key="metric.label">
-              <span :class="`reports-metric-icon reports-metric-icon--${metric.tone}`">{{ metric.icon }}</span>
-              <div>
-                <strong>{{ metric.label }}</strong>
-                <small>{{ metric.note }}</small>
-              </div>
-              <em :class="{ negative: metric.value.startsWith('-') }">{{ metric.value }}</em>
-            </article>
-          </div>
-        </section>
-      </div>
-
-      <div class="reports-bottom-grid">
-        <section class="reports-panel">
-          <h2>Equipment Utilization Overview</h2>
-          <div class="reports-bar-chart">
-            <div v-for="item in utilizationItems" :key="item.label">
-              <span>{{ item.value }}%</span>
-              <i :style="{ height: `${item.value}%` }"></i>
-              <small>{{ item.label }}</small>
-            </div>
-          </div>
-        </section>
-
-        <section class="reports-panel">
-          <h2>Top Frequently Used Equipment</h2>
-          <table class="reports-equipment-table">
-            <thead>
-              <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in topEquipment" :key="item.name">
-                <td>{{ item.name }}</td>
-                <td>{{ item.count }}</td>
-                <td>{{ item.rate }}%</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-
-        <section class="reports-panel reports-summary-panel">
-          <h2>System Summary</h2>
-          <dl>
-            <div v-for="item in summaryItems" :key="item.label">
-              <dt>{{ item.label }}</dt>
-              <dd>{{ item.value }}</dd>
-            </div>
-          </dl>
-        </section>
       </div>
 
       <div class="reports-actions">
-        <button class="reports-generate-button" type="button">
+        <p v-if="pdfError" class="reports-inline-message is-error">{{ pdfError }}</p>
+        <button class="reports-generate-button" type="button" :disabled="isExporting || isReportsLoading" @click="handleGeneratePdf">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
             <path d="M14 2v6h6" />
             <path d="M9 15h6" />
             <path d="M9 18h6" />
           </svg>
-          Generate PDF Report
+          {{ isExporting ? 'Generating PDF...' : 'Generate PDF Report' }}
         </button>
       </div>
     </section>
@@ -199,70 +225,201 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
+import {
+  ADMIN_ANALYTICS_RANGE_PRESETS,
+  buildDualLineChartModel,
+  buildRiskDonutStyle,
+  formatDateRangeLabel,
+  formatMetricDelta,
+  formatMetricNumber,
+  parseDateOnly,
+  resolveAdminAnalyticsDateRange,
+} from './adminAnalyticsHelpers.js';
+
+const selectedRangeKey = ref('30d');
+const isReportsLoading = ref(true);
+const isExporting = ref(false);
+const reportsError = ref('');
+const pdfError = ref('');
+const reportSurfaceRef = ref(null);
+const reportsAnalytics = ref(createEmptyReport());
+
+const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
+const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
 
 const modelCards = [
   {
     number: 1,
-    title: 'SARIMA (Seasonal ARIMA)',
-    subtitle: 'Demand Forecasting',
-    description: 'Forecasts equipment demand patterns using time series modeling.',
+    title: 'Demand Trend Projection',
+    subtitle: 'Operational Forecasting',
+    description: 'Projects upcoming equipment demand from live reservation activity in the selected period.',
     tone: 'blue',
   },
   {
     number: 2,
-    title: 'Random Forest Classifier',
-    subtitle: 'Readiness Risk Detection',
-    description: 'Identifies equipment readiness risks based on historical and operational data.',
+    title: 'Readiness Risk Bands',
+    subtitle: 'Inventory Monitoring',
+    description: 'Highlights equipment pressure using stock levels, overdue linkage, and recent usage frequency.',
     tone: 'green',
   },
   {
     number: 3,
-    title: 'Binary Integer Linear Programming (BILP)',
-    subtitle: 'Resource Allocation Optimization',
-    description: 'Optimizes allocation of equipment and venues while satisfying constraints.',
+    title: 'Allocation Efficiency',
+    subtitle: 'Operational Optimization',
+    description: 'Tracks fulfillment, utilization, and pending-request pressure for current admin operations.',
     tone: 'orange',
   },
 ];
 
-const riskLevels = [
-  { label: 'High Risk', value: '18 equipment', color: '#ef4444' },
-  { label: 'Medium Risk', value: '25 equipment', color: '#f59e0b' },
-  { label: 'Low Risk', value: '28 equipment', color: '#facc15' },
-  { label: 'Very Low Risk', value: '92 equipment', color: '#16a34a' },
-];
+const forecastData = computed(() => reportsAnalytics.value.forecast || {});
+const forecastSeries = computed(() => (forecastData.value.actualSeries || []).map((item) => ({
+  ...item,
+  label: formatShortDate(item.label),
+})));
+const forecastProjectionSeries = computed(() => (forecastData.value.forecastSeries || []).map((item) => ({
+  ...item,
+  label: formatShortDate(item.label),
+})));
+const forecastChart = computed(() => buildDualLineChartModel(forecastSeries.value, forecastProjectionSeries.value, { width: 760, height: 260 }));
+const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
+const riskBands = computed(() => reportsAnalytics.value.riskDistribution?.bands || []);
+const topRiskFactors = computed(() => reportsAnalytics.value.riskDistribution?.topRiskFactors || []);
+const riskDonutStyle = computed(() => buildRiskDonutStyle(riskBands.value));
+const safeRateLabel = computed(() => `${formatMetricNumber(reportsAnalytics.value.riskDistribution?.safeRate || 0, 0)}%`);
+const optimizationMetrics = computed(() => reportsAnalytics.value.optimizationMetrics || []);
+const utilizationItems = computed(() => reportsAnalytics.value.utilizationByCategory || []);
+const topEquipment = computed(() => reportsAnalytics.value.topEquipment || []);
+const reportGeneratedAt = computed(() => reportsAnalytics.value.summary?.generatedAt || 'N/A');
+const summaryItems = computed(() => [
+  { label: 'Total Equipment', value: formatMetricNumber(reportsAnalytics.value.summary?.totalEquipment || 0, 0) },
+  { label: 'Active Reservations', value: formatMetricNumber(reportsAnalytics.value.summary?.activeReservations || 0, 0) },
+  { label: 'Pending Requests', value: formatMetricNumber(reportsAnalytics.value.summary?.pendingRequests || 0, 0) },
+  { label: 'Completed This Period', value: formatMetricNumber(reportsAnalytics.value.summary?.completedThisPeriod || 0, 0) },
+  { label: 'Generated At', value: reportGeneratedAt.value },
+]);
 
-const optimizationMetrics = [
-  { label: 'Conflict Reduction', note: 'vs. previous period', value: '+36%', icon: 'CR', tone: 'tree' },
-  { label: 'Equipment Utilization', note: 'vs. previous period', value: '+24%', icon: 'EU', tone: 'box' },
-  { label: 'Constraint Satisfaction', note: 'requirements met', value: '98.5%', icon: 'CS', tone: 'check' },
-  { label: 'Unassigned Requests', note: 'vs. previous period', value: '-12%', icon: 'UR', tone: 'alert' },
-];
+onMounted(() => {
+  loadReportsAnalytics();
+});
 
-const utilizationItems = [
-  { label: 'Audio', value: 68 },
-  { label: 'Visual', value: 74 },
-  { label: 'Computing', value: 82 },
-  { label: 'Furniture', value: 61 },
-  { label: 'Others', value: 70 },
-];
+watch(selectedRangeKey, () => {
+  loadReportsAnalytics();
+});
 
-const topEquipment = [
-  { name: 'Multimedia Projector', count: 128, rate: 85 },
-  { name: 'Laptop (Dell)', count: 112, rate: 78 },
-  { name: 'Wireless Microphone', count: 97, rate: 72 },
-  { name: 'Portable Speaker', count: 85, rate: 68 },
-  { name: 'DSLR Camera', count: 74, rate: 66 },
-];
+async function loadReportsAnalytics() {
+  isReportsLoading.value = true;
+  reportsError.value = '';
+  pdfError.value = '';
 
-const summaryItems = [
-  { label: 'Total Equipment', value: '186' },
-  { label: 'Active Reservations', value: '42' },
-  { label: 'Pending Requests', value: '9' },
-  { label: 'Completed This Period', value: '117' },
-  { label: 'Generated At', value: 'May 16, 2026 10:30 AM' },
-];
+  try {
+    reportsAnalytics.value = createEmptyReport();
+    reportsAnalytics.value = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+  } catch (error) {
+    reportsAnalytics.value = createEmptyReport();
+    reportsError.value = resolveReportsError(error);
+  } finally {
+    isReportsLoading.value = false;
+  }
+}
+
+async function handleGeneratePdf() {
+  if (!reportSurfaceRef.value || isExporting.value) {
+    return;
+  }
+
+  isExporting.value = true;
+  pdfError.value = '';
+
+  try {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+    const canvas = await html2canvas(reportSurfaceRef.value, {
+      backgroundColor: '#f5faf7',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: reportSurfaceRef.value.scrollWidth,
+    });
+
+    const imageData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageWidth = pageWidth;
+    const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    let remainingHeight = imageHeight;
+    let position = 0;
+
+    pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
+    remainingHeight -= pageHeight;
+
+    while (remainingHeight > 0) {
+      position = remainingHeight - imageHeight;
+      pdf.addPage();
+      pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
+      remainingHeight -= pageHeight;
+    }
+
+    pdf.save(`techreserve-analytics-${activeRange.value.startDateIso}-to-${activeRange.value.endDateIso}.pdf`);
+  } catch (error) {
+    pdfError.value = error?.message || 'Unable to generate the PDF report right now.';
+  } finally {
+    isExporting.value = false;
+  }
+}
+
+function createEmptyReport() {
+  return {
+    forecast: {
+      actualSeries: [],
+      forecastSeries: [],
+      peakDate: null,
+      peakValue: 0,
+      growthPercent: 0,
+    },
+    riskDistribution: {
+      bands: [],
+      topRiskFactors: [],
+      safeRate: 0,
+    },
+    optimizationMetrics: [],
+    utilizationByCategory: [],
+    topEquipment: [],
+    summary: {
+      totalEquipment: 0,
+      activeReservations: 0,
+      pendingRequests: 0,
+      completedThisPeriod: 0,
+      generatedAt: 'N/A',
+    },
+  };
+}
+
+function resolveReportsError(error) {
+  return error?.response?.data?.errorMessage
+    || error?.message
+    || 'Unable to load analytics data right now.';
+}
+
+function formatShortDate(value) {
+  if (!value) return '';
+  const date = parseDateOnly(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+}
+
+function formatLongDate(value) {
+  if (!value) return 'No forecast peak yet';
+  const date = parseDateOnly(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
 </script>

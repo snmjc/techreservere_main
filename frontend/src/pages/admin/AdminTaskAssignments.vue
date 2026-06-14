@@ -853,9 +853,10 @@ function resetDeleteForm() {
 
 <style scoped>
 .admin-task-assignments-page {
-  width: min(1180px, calc(100vw - 2rem));
-  margin: 0 auto;
-  padding: 6rem 0 2.5rem;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0;
+  padding: 0.4rem 0 2rem;
   color: #14261f;
 }
 
@@ -864,11 +865,18 @@ function resetDeleteForm() {
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.35rem;
+  margin-bottom: 1.15rem;
+  padding: 1.4rem 1.5rem;
+  background:
+    radial-gradient(circle at top right, rgba(21, 153, 87, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 248, 246, 0.98));
+  border: 1px solid #dfe7e1;
+  border-radius: 24px;
+  box-shadow: 0 20px 38px rgba(15, 23, 42, 0.08);
 }
 
 .admin-task-assignments-header-copy {
-  max-width: 720px;
+  max-width: 760px;
 }
 
 .admin-task-assignments-kicker {
@@ -901,6 +909,7 @@ function resetDeleteForm() {
 .admin-task-assignments-modal-actions {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .admin-task-assignments-primary,
@@ -1015,6 +1024,7 @@ button:disabled {
 }
 
 .admin-task-assignments-panel {
+  width: 100%;
   padding: 1.1rem;
   background:
     radial-gradient(circle at top right, rgba(21, 153, 87, 0.08), transparent 28%),
@@ -1029,6 +1039,7 @@ button:disabled {
   grid-template-columns: minmax(260px, 1.5fr) repeat(4, minmax(130px, 0.7fr));
   gap: 0.8rem;
   margin-bottom: 1rem;
+  align-items: end;
 }
 
 .admin-task-assignments-filters label,
@@ -1459,8 +1470,8 @@ button:disabled {
 
 @media (max-width: 760px) {
   .admin-task-assignments-page {
-    width: min(100%, calc(100vw - 1rem));
-    padding-top: 5.4rem;
+    max-width: 100%;
+    padding-top: 0.2rem;
   }
 
   .admin-task-assignments-header,
