@@ -21,9 +21,11 @@ class AdminSecurityConfirmationService
             return sprintf('Please type the responsible admin email before %s the account.', $actionName);
         }
 
-        $confirmedAdmin = $this->fetchActiveAdmin($authenticatedAdminId, false);
-        $responsibleAdminEmail = $this->accountSettingsValidationService->normalizeEmailForConfirmation((string)($confirmedAdmin['email_address'] ?? ''));
-        if (!$confirmedAdmin || $normalizedConfirmedAdminEmail !== $responsibleAdminEmail) {
+        $confirmedAdmin = $this->fetchActivePrivilegedAccount($authenticatedAdminId, false);
+        if (
+            !$confirmedAdmin
+            || $normalizedConfirmedAdminEmail !== $this->normalizeEmailAddress((string)($confirmedAdmin['email_address'] ?? ''))
+        ) {
             return sprintf('Please type your exact admin email before %s this account.', $actionName);
         }
 
@@ -41,7 +43,7 @@ class AdminSecurityConfirmationService
             return sprintf('Please type the responsible admin password before %s the account.', $actionName);
         }
 
-        $confirmedAdmin = $this->fetchActiveAdmin($authenticatedAdminId, true);
+        $confirmedAdmin = $this->fetchActivePrivilegedAccount($authenticatedAdminId, true);
         $passwordHash = (string)($confirmedAdmin['password_hash'] ?? '');
         if ($passwordHash === '' || !password_verify($confirmedAdminPassword, $passwordHash)) {
             return sprintf('Please type your exact admin password before %s this account.', $actionName);
@@ -50,7 +52,7 @@ class AdminSecurityConfirmationService
         return null;
     }
 
-    private function fetchActiveAdmin(int $accountIdentifier, bool $includePasswordHash): array|false
+    private function fetchActivePrivilegedAccount(int $accountIdentifier, bool $includePasswordHash): array|false
     {
         $fields = $includePasswordHash ? 'email_address, password_hash' : 'email_address';
 
@@ -58,11 +60,16 @@ class AdminSecurityConfirmationService
             "SELECT {$fields}
              FROM accounts
              WHERE account_identifier = :accountIdentifier
-               AND role_designation IN ('ROLE_ADMIN', 'ADMIN')
+               AND role_designation IN ('ROLE_ADMIN', 'ADMIN', 'ROLE_DEVELOPER', 'DEVELOPER')
                AND COALESCE(is_active, TRUE) = TRUE
              LIMIT 1",
             ['accountIdentifier' => $accountIdentifier],
             ['accountIdentifier' => ParameterType::INTEGER]
         );
+    }
+
+    private function normalizeEmailAddress(string $emailAddress): string
+    {
+        return $this->accountSettingsValidationService->normalizeEmailForConfirmation($emailAddress);
     }
 }
