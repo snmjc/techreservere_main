@@ -338,9 +338,9 @@ class AccountRepository extends ServiceEntityRepository
                  SET is_active = FALSE,
                      status = :status,
                      updated_timestamp = :updatedTimestamp
-                 WHERE account_identifier = :accountIdentifier",
+                WHERE account_identifier = :accountIdentifier",
                 [
-                    'status' => 'inactive',
+                    'status' => 'disabled',
                     'updatedTimestamp' => $this->now(),
                     'accountIdentifier' => (int)$existing['account_identifier'],
                 ],
