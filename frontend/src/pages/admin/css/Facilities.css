@@ -1,7 +1,8 @@
 .facilities-page {
-  width: min(1440px, calc(100vw - 1.5rem));
-  margin: 0 auto;
-  padding: 3.9rem 0 3rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 120px);
   color: #1d2e25;
 }
 
@@ -1047,8 +1048,7 @@
 
 @media (max-width: 760px) {
   .facilities-page {
-    width: min(100%, calc(100vw - 1rem));
-    padding-top: 4.1rem;
+    min-height: calc(100vh - 120px);
   }
 
   .facilities-hero,
