@@ -63,12 +63,12 @@ export function formatLeadTimeHours(value) {
 
 export function buildLineChartModel(series = [], options = {}) {
   const width = options.width || 720;
-  const height = options.height || 260;
+  const height = options.height || 280;
   const padding = {
-    top: options.paddingTop ?? 30,
-    right: options.paddingRight ?? 24,
-    bottom: options.paddingBottom ?? 30,
-    left: options.paddingLeft ?? 52,
+    top: options.paddingTop ?? 24,
+    right: options.paddingRight ?? 18,
+    bottom: options.paddingBottom ?? 40,
+    left: options.paddingLeft ?? 56,
   };
   const values = series.map((item) => Number(item?.value ?? item?.demand ?? 0));
   const maxValue = Math.max(options.minMaxValue || 0, ...values, 1);
@@ -84,6 +84,11 @@ export function buildLineChartModel(series = [], options = {}) {
       yAxisLabels: buildYAxisLabels(maxValue),
       xAxisLabels: [],
       pointMarkers: [],
+      gridLinesY: [],
+      chartBounds: {
+        left: padding.left,
+        right: width - padding.right,
+      },
     };
   }
 
@@ -103,6 +108,7 @@ export function buildLineChartModel(series = [], options = {}) {
     x: padding.left - 12,
     y: padding.top + ((plotHeight / Math.max(1, items.length - 1)) * index) + 4,
   }));
+  const gridLinesY = buildGridLinePositions(padding.top, plotHeight, Math.max(1, yAxisLabels.length - 1));
   const pointMarkers = points.filter((_, index) => (
     index === 0 || index === points.length - 1 || index % Math.max(1, Math.ceil(points.length / 4)) === 0
   ));
@@ -115,6 +121,11 @@ export function buildLineChartModel(series = [], options = {}) {
     yAxisLabels,
     xAxisLabels,
     pointMarkers,
+    gridLinesY,
+    chartBounds: {
+      left: padding.left,
+      right: width - padding.right,
+    },
   };
 }
 
@@ -183,14 +194,23 @@ export function buildRiskDonutStyle(bands = []) {
 function sampleAxisLabels(points, maxLabels, yPosition, precomputed = false) {
   if (points.length === 0) return [];
   const step = Math.max(1, Math.ceil(points.length / maxLabels));
-
-  return points
+  const labels = points
     .filter((_, index) => index === 0 || index === points.length - 1 || index % step === 0)
     .map((point) => ({
       x: precomputed ? point.x : point.x,
       y: yPosition,
       label: precomputed ? point.label : point.label,
     }));
+
+  if (labels.length >= 2) {
+    const previousLabel = labels[labels.length - 2];
+    const lastLabel = labels[labels.length - 1];
+    if (Math.abs(lastLabel.x - previousLabel.x) < 44) {
+      labels.splice(labels.length - 2, 1);
+    }
+  }
+
+  return labels;
 }
 
 function buildYAxisLabels(maxValue) {

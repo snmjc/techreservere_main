@@ -40,6 +40,10 @@ domain_dashboard_controllers:
     resource: "../src/Domain/Dashboard/Controller/"
     type: attribute
 
+domain_analytics_controllers:
+    resource: "../src/Domain/Analytics/Controller/"
+    type: attribute
+
 domain_audit_log_controllers:
     resource: "../src/Domain/AuditLog/Controller/"
     type: attribute
