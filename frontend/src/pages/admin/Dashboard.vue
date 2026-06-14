@@ -76,9 +76,9 @@
             <svg :viewBox="`0 0 ${resourceChart.width} ${resourceChart.height}`" role="img" aria-label="Resource utilization graph">
               <g class="admin-dashboard-chart-grid">
                 <path
-                  v-for="line in resourceChart.yAxisLabels"
-                  :key="`grid-y-${line.value}`"
-                  :d="`M52 ${line.y - 4}H696`"
+                  v-for="(line, index) in resourceChart.gridLinesY"
+                  :key="`grid-y-${index}`"
+                  :d="`M${resourceChart.chartBounds.left} ${line.y}H${resourceChart.chartBounds.right}`"
                 />
               </g>
               <g class="admin-dashboard-chart-labels">
@@ -248,7 +248,7 @@ const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.s
 const resourceSeries = computed(() => dashboardOverview.value.resourceUtilization || []);
 const resourceChart = computed(() => buildLineChartModel(
   resourceSeries.value.map((item) => ({ label: item.label, value: item.demand })),
-  { width: 720, height: 260, maxXAxisLabels: 6 }
+  { width: 860, height: 300, maxXAxisLabels: 7 }
 ));
 
 const totalOverviewCards = computed(() => {
