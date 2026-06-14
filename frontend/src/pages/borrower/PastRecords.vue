@@ -148,75 +148,93 @@
           </div>
         </div>
 
-        <aside class="past-records-detail-card" v-if="selectedRecord">
-          <div class="past-records-detail-head">
-            <div>
-              <p>Selected Record</p>
-              <h2>{{ selectedRecord.requestIdentifier }}</h2>
+        <aside
+          class="past-records-detail-card"
+          :class="{ 'past-records-detail-card--placeholder': !selectedRecord }"
+        >
+          <template v-if="selectedRecord">
+            <div class="past-records-detail-topbar">
+              <div>
+                <p>Reservation Details</p>
+                <h2>Reservation Details</h2>
+              </div>
+              <button class="past-records-detail-close" type="button" @click="selectedRecord = null">x</button>
             </div>
-            <span class="past-records-status-pill" :class="`past-records-status-pill--${getStatusTone(selectedRecord.recordStatus)}`">
-              {{ selectedRecord.recordStatus }}
-            </span>
-          </div>
 
-          <div class="past-records-detail-grid">
-            <div>
-              <span>Facility</span>
-              <strong>{{ selectedRecord.facilityName }}</strong>
-              <small>{{ selectedRecord.requestType }}</small>
+            <div class="past-records-detail-statusbar">
+              <span class="past-records-status-pill" :class="`past-records-status-pill--${getStatusTone(selectedRecord.recordStatus)}`">
+                {{ selectedRecord.recordStatus }}
+              </span>
+              <strong>{{ selectedRecord.requestIdentifier }}</strong>
             </div>
-            <div>
-              <span>Quantity</span>
-              <strong>{{ selectedRecord.requestQuantity }}</strong>
-              <small>Requested units</small>
-            </div>
-            <div>
-              <span>Requested</span>
-              <strong>{{ formatDate(selectedRecord.requestedDate) }}</strong>
-              <small>Submission date</small>
-            </div>
-            <div>
-              <span>Needed</span>
-              <strong>{{ formatDate(selectedRecord.neededDate) }}</strong>
-              <small>Event schedule</small>
-            </div>
-          </div>
 
-          <div class="past-records-detail-section">
-            <h3>Reservation Information</h3>
-            <dl>
-              <div>
-                <dt>Requester</dt>
-                <dd>{{ selectedRecord.requesterFullName }}</dd>
-              </div>
-              <div>
-                <dt>Role</dt>
-                <dd>{{ selectedRecord.requesterRole }}</dd>
-              </div>
-              <div>
-                <dt>Purpose</dt>
-                <dd>{{ selectedRecord.requestPurpose }}</dd>
-              </div>
-              <div>
-                <dt>Remarks</dt>
-                <dd>{{ selectedRecord.remarks }}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div class="past-records-detail-section">
-            <h3>Timeline</h3>
-            <ul class="past-records-timeline">
-              <li v-for="entry in buildTimeline(selectedRecord)" :key="entry.label">
-                <span class="past-records-timeline-dot" />
-                <div>
-                  <strong>{{ entry.label }}</strong>
-                  <small>{{ entry.date }}</small>
-                  <p>{{ entry.note }}</p>
+            <div class="past-records-detail-section">
+              <h3>Reservation Information</h3>
+              <dl class="past-records-detail-list">
+                <div class="past-records-detail-item">
+                  <dt>Borrower</dt>
+                  <dd>{{ selectedRecord.requesterFullName }}</dd>
                 </div>
-              </li>
-            </ul>
-          </div>
+                <div class="past-records-detail-item">
+                  <dt>Facility</dt>
+                  <dd>{{ selectedRecord.facilityName }}</dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Type</dt>
+                  <dd>
+                    <span class="past-records-type-pill" :class="`past-records-type-pill--${getTypeTone(selectedRecord.requestType)}`">
+                      {{ selectedRecord.requestType }}
+                    </span>
+                  </dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Quantity</dt>
+                  <dd>{{ selectedRecord.requestQuantity }}</dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Requested Date</dt>
+                  <dd>{{ formatDateTime(selectedRecord.requestedDate) }}</dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Needed Date</dt>
+                  <dd>{{ formatDateTime(selectedRecord.neededDate) }}</dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Status</dt>
+                  <dd>{{ selectedRecord.recordStatus }}</dd>
+                </div>
+                <div class="past-records-detail-item">
+                  <dt>Remarks</dt>
+                  <dd>{{ selectedRecord.remarks }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="past-records-detail-section">
+              <h3>Timeline</h3>
+              <ul class="past-records-timeline">
+                <li v-for="entry in buildTimeline(selectedRecord)" :key="entry.label">
+                  <span class="past-records-timeline-dot" />
+                  <div>
+                    <strong>{{ entry.label }}</strong>
+                    <small>{{ entry.date }}</small>
+                    <p>{{ entry.note }}</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <button class="past-records-detail-download" type="button" @click="downloadSelectedRecord">
+              Download Details (PDF)
+            </button>
+          </template>
+          <template v-else>
+            <div class="past-records-detail-empty">
+              <p>Reservation Details</p>
+              <h2>Select a record</h2>
+              <span>Click any reservation from your archive to open the full details and timeline here.</span>
+            </div>
+          </template>
         </aside>
       </section>
 
@@ -445,12 +463,11 @@ watch(
     }
 
     if (!selectedRecord.value) {
-      selectedRecord.value = records[0];
       return;
     }
 
     const matched = records.find((record) => record.requestIdentifier === selectedRecord.value.requestIdentifier);
-    selectedRecord.value = matched || records[0];
+    selectedRecord.value = matched || null;
   },
   { immediate: true }
 );
@@ -487,6 +504,16 @@ function formatDate(value) {
   });
 }
 
+function formatDateTime(value) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function buildTimeline(record) {
   return [
     {
@@ -505,5 +532,59 @@ function buildTimeline(record) {
       note: record.remarks,
     },
   ];
+}
+
+function downloadSelectedRecord() {
+  if (!selectedRecord.value || typeof window === 'undefined') return;
+
+  const record = selectedRecord.value;
+  const timelineMarkup = buildTimeline(record)
+    .map(
+      (entry) => `
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:700; color:#111827;">${escapeHtml(entry.label)}</div>
+          <div style="font-size:12px; color:#6b7280; margin:4px 0;">${escapeHtml(entry.date)}</div>
+          <div style="font-size:14px; color:#1f2937; line-height:1.5;">${escapeHtml(entry.note)}</div>
+        </div>
+      `
+    )
+    .join('');
+
+  const printWindow = window.open('', '_blank', 'width=900,height=720');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>${escapeHtml(record.requestIdentifier)} Details</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; padding: 32px; color: #0f172a;">
+        <h1 style="margin: 0 0 8px;">Reservation Details</h1>
+        <p style="margin: 0 0 24px; color: #475569;">${escapeHtml(record.requestIdentifier)} - ${escapeHtml(record.recordStatus)}</p>
+        <h2 style="font-size: 18px;">Reservation Information</h2>
+        <p><strong>Borrower:</strong> ${escapeHtml(record.requesterFullName)}</p>
+        <p><strong>Facility:</strong> ${escapeHtml(record.facilityName)}</p>
+        <p><strong>Type:</strong> ${escapeHtml(record.requestType)}</p>
+        <p><strong>Quantity:</strong> ${escapeHtml(String(record.requestQuantity))}</p>
+        <p><strong>Requested Date:</strong> ${escapeHtml(formatDateTime(record.requestedDate))}</p>
+        <p><strong>Needed Date:</strong> ${escapeHtml(formatDateTime(record.neededDate))}</p>
+        <p><strong>Remarks:</strong> ${escapeHtml(record.remarks)}</p>
+        <h2 style="font-size: 18px; margin-top: 28px;">Timeline</h2>
+        ${timelineMarkup}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 </script>

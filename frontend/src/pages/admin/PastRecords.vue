@@ -154,78 +154,105 @@
           </div>
         </div>
 
-        <aside class="admin-past-records-detail-card" v-if="selectedRecord">
-          <div class="admin-past-records-detail-head">
-            <div>
-              <p>Reservation Details</p>
-              <h2>{{ selectedRecord.requestIdentifier }}</h2>
+        <aside
+          class="admin-past-records-detail-card"
+          :class="{ 'admin-past-records-detail-card--placeholder': !selectedRecord }"
+        >
+          <template v-if="selectedRecord">
+            <div class="admin-past-records-detail-topbar">
+              <div>
+                <p>Reservation Details</p>
+                <h2>Reservation Details</h2>
+              </div>
+              <button class="admin-past-records-detail-close" type="button" @click="selectedRecord = null">x</button>
             </div>
-            <span
-              class="admin-past-records-status-pill"
-              :class="`admin-past-records-status-pill--${getStatusTone(selectedRecord.recordStatus)}`"
-            >
-              {{ selectedRecord.recordStatus }}
-            </span>
-          </div>
 
-          <div class="admin-past-records-detail-grid">
-            <div>
-              <span>Borrower</span>
-              <strong>{{ selectedRecord.requesterFullName }}</strong>
-              <small>{{ selectedRecord.requesterRole }}</small>
+            <div class="admin-past-records-detail-statusbar">
+              <span
+                class="admin-past-records-status-pill"
+                :class="`admin-past-records-status-pill--${getStatusTone(selectedRecord.recordStatus)}`"
+              >
+                {{ selectedRecord.recordStatus }}
+              </span>
+              <strong>{{ selectedRecord.requestIdentifier }}</strong>
             </div>
-            <div>
-              <span>Facility</span>
-              <strong>{{ selectedRecord.facilityName }}</strong>
-              <small>{{ selectedRecord.requestType }}</small>
-            </div>
-            <div>
-              <span>Quantity</span>
-              <strong>{{ selectedRecord.requestQuantity }}</strong>
-              <small>Requested units</small>
-            </div>
-            <div>
-              <span>Date Processed</span>
-              <strong>{{ formatDate(selectedRecord.dateProcessed) }}</strong>
-              <small>{{ selectedRecord.recordStatus }} by admin</small>
-            </div>
-          </div>
 
-          <div class="admin-past-records-detail-section">
-            <h3>Reservation Information</h3>
-            <dl>
-              <div>
-                <dt>Requested Date</dt>
-                <dd>{{ formatDate(selectedRecord.requestedDate) }}</dd>
-              </div>
-              <div>
-                <dt>Needed Date</dt>
-                <dd>{{ formatDate(selectedRecord.neededDate) }}</dd>
-              </div>
-              <div>
-                <dt>Purpose</dt>
-                <dd>{{ selectedRecord.requestPurpose }}</dd>
-              </div>
-              <div>
-                <dt>Remarks</dt>
-                <dd>{{ selectedRecord.remarks }}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div class="admin-past-records-detail-section">
-            <h3>Timeline</h3>
-            <ul class="admin-past-records-timeline">
-              <li v-for="entry in buildTimeline(selectedRecord)" :key="entry.label">
-                <span class="admin-past-records-timeline-dot" />
-                <div>
-                  <strong>{{ entry.label }}</strong>
-                  <small>{{ entry.date }}</small>
-                  <p>{{ entry.note }}</p>
+            <div class="admin-past-records-detail-section">
+              <h3>Reservation Information</h3>
+              <dl class="admin-past-records-detail-list">
+                <div class="admin-past-records-detail-item">
+                  <dt>Borrower</dt>
+                  <dd class="admin-past-records-detail-borrower">
+                    <img :src="selectedRecord.borrowerAvatar" :alt="selectedRecord.requesterFullName" />
+                    <span>
+                      <strong>{{ selectedRecord.requesterFullName }}</strong>
+                      <small>{{ selectedRecord.requesterRole }}</small>
+                    </span>
+                  </dd>
                 </div>
-              </li>
-            </ul>
-          </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Facility</dt>
+                  <dd>{{ selectedRecord.facilityName }}</dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Type</dt>
+                  <dd>
+                    <span
+                      class="admin-past-records-type-pill"
+                      :class="`admin-past-records-type-pill--${getTypeTone(selectedRecord.requestType)}`"
+                    >
+                      {{ selectedRecord.requestType }}
+                    </span>
+                  </dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Quantity</dt>
+                  <dd>{{ selectedRecord.requestQuantity }}</dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Requested Date</dt>
+                  <dd>{{ formatDateTime(selectedRecord.requestedDate) }}</dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Needed Date</dt>
+                  <dd>{{ formatDateTime(selectedRecord.neededDate) }}</dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Status</dt>
+                  <dd>{{ selectedRecord.recordStatus }}</dd>
+                </div>
+                <div class="admin-past-records-detail-item">
+                  <dt>Remarks</dt>
+                  <dd>{{ selectedRecord.remarks }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="admin-past-records-detail-section">
+              <h3>Timeline</h3>
+              <ul class="admin-past-records-timeline">
+                <li v-for="entry in buildTimeline(selectedRecord)" :key="entry.label">
+                  <span class="admin-past-records-timeline-dot" />
+                  <div>
+                    <strong>{{ entry.label }}</strong>
+                    <small>{{ entry.date }}</small>
+                    <p>{{ entry.note }}</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <button class="admin-past-records-detail-download" type="button" @click="downloadSelectedRecord">
+              Download Details (PDF)
+            </button>
+          </template>
+          <template v-else>
+            <div class="admin-past-records-detail-empty">
+              <p>Reservation Details</p>
+              <h2>Select a record</h2>
+              <span>Choose any reservation from the list to open its full details, timeline, and export action here.</span>
+            </div>
+          </template>
         </aside>
       </section>
 
@@ -456,12 +483,11 @@ watch(
     }
 
     if (!selectedRecord.value) {
-      selectedRecord.value = records[0];
       return;
     }
 
     const matched = records.find((record) => record.requestIdentifier === selectedRecord.value.requestIdentifier);
-    selectedRecord.value = matched || records[0];
+    selectedRecord.value = matched || null;
   },
   { immediate: true }
 );
@@ -499,6 +525,16 @@ function formatDate(value) {
   });
 }
 
+function formatDateTime(value) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function buildTimeline(record) {
   return [
     {
@@ -517,5 +553,59 @@ function buildTimeline(record) {
       note: record.remarks,
     },
   ];
+}
+
+function downloadSelectedRecord() {
+  if (!selectedRecord.value || typeof window === 'undefined') return;
+
+  const record = selectedRecord.value;
+  const timelineMarkup = buildTimeline(record)
+    .map(
+      (entry) => `
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:700; color:#111827;">${escapeHtml(entry.label)}</div>
+          <div style="font-size:12px; color:#6b7280; margin:4px 0;">${escapeHtml(entry.date)}</div>
+          <div style="font-size:14px; color:#1f2937; line-height:1.5;">${escapeHtml(entry.note)}</div>
+        </div>
+      `
+    )
+    .join('');
+
+  const printWindow = window.open('', '_blank', 'width=900,height=720');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>${escapeHtml(record.requestIdentifier)} Details</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; padding: 32px; color: #0f172a;">
+        <h1 style="margin: 0 0 8px;">Reservation Details</h1>
+        <p style="margin: 0 0 24px; color: #475569;">${escapeHtml(record.requestIdentifier)} - ${escapeHtml(record.recordStatus)}</p>
+        <h2 style="font-size: 18px;">Reservation Information</h2>
+        <p><strong>Borrower:</strong> ${escapeHtml(record.requesterFullName)} (${escapeHtml(record.requesterRole)})</p>
+        <p><strong>Facility:</strong> ${escapeHtml(record.facilityName)}</p>
+        <p><strong>Type:</strong> ${escapeHtml(record.requestType)}</p>
+        <p><strong>Quantity:</strong> ${escapeHtml(String(record.requestQuantity))}</p>
+        <p><strong>Requested Date:</strong> ${escapeHtml(formatDateTime(record.requestedDate))}</p>
+        <p><strong>Needed Date:</strong> ${escapeHtml(formatDateTime(record.neededDate))}</p>
+        <p><strong>Remarks:</strong> ${escapeHtml(record.remarks)}</p>
+        <h2 style="font-size: 18px; margin-top: 28px;">Timeline</h2>
+        ${timelineMarkup}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 </script>
