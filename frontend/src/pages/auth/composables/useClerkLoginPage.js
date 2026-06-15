@@ -51,6 +51,19 @@ export function useClerkLoginPage() {
     isSubmitting.value = true;
 
     try {
+      if (shouldPreferClerkOnCurrentHost()) {
+        await handlePreferredClerkLogin();
+        return;
+      }
+
+      await handleBackendLogin();
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  async function handleBackendLogin() {
+    try {
       const account = await authStore.performLogin(emailAddress.value, passwordText.value, {
         rememberSession: rememberMeChecked.value,
       });
@@ -71,12 +84,22 @@ export function useClerkLoginPage() {
 
       loginError.value = error?.message || 'Invalid email address or password.';
     } finally {
-      isSubmitting.value = false;
     }
   }
 
-  async function handleClerkPasswordLogin() {
+  async function handlePreferredClerkLogin() {
     const preflight = await verifyClerkLoginAccess(emailAddress.value);
+
+    if (preflight.success) {
+      await handleClerkPasswordLogin(preflight);
+      return;
+    }
+
+    await handleBackendLogin();
+  }
+
+  async function handleClerkPasswordLogin(preflightResult = null) {
+    const preflight = preflightResult ?? await verifyClerkLoginAccess(emailAddress.value);
     if (!preflight.success) {
       loginError.value = preflight.error || 'Please wait for an administrator invitation before signing in.';
       return;
@@ -367,4 +390,16 @@ function shouldAttemptClerkPasswordLogin(error) {
   return errorType === 'LocalPasswordUnavailable'
     || errorType === 'AccountInvitationPending'
     || errorType === 'AccountSyncPending';
+}
+
+function shouldPreferClerkOnCurrentHost() {
+  const configuredKey = String(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '').trim();
+  const isDevelopmentClerkKey = configuredKey.startsWith('pk_test_');
+
+  if (!isDevelopmentClerkKey || typeof window === 'undefined') {
+    return false;
+  }
+
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1';
 }
