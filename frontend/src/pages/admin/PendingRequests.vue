@@ -4,55 +4,63 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="pending-requests-page-heading">Pending Requests</h2>
+    <section class="admin-ops-page pending-requests-page">
+      <header class="admin-ops-header">
+        <div class="admin-ops-header-copy">
+          <p class="admin-ops-kicker">Reservation Workflow</p>
+          <h1>Pending Requests</h1>
+          <p>Review incoming reservation requests, inspect the request details, and approve or reject them from one consistent queue.</p>
+        </div>
+      </header>
 
-    <!-- Toolbar: Search + Showing -->
-    <div class="pending-requests-toolbar">
-      <div class="pending-requests-search-group">
-        <label class="pending-requests-search-label" for="requestSearchInput">Search:</label>
-        <input
-          id="requestSearchInput"
-          v-model="searchQueryText"
-          type="text"
-          class="pending-requests-search-input"
-          placeholder="Name"
+      <div class="admin-ops-filter-card">
+        <div class="admin-ops-toolbar pending-requests-toolbar">
+          <label class="admin-ops-field">
+            <span>Search</span>
+            <input
+              id="requestSearchInput"
+              v-model="searchQueryText"
+              type="text"
+              class="pending-requests-search-input"
+              placeholder="Requester name or request ID"
+            />
+          </label>
+          <label class="admin-ops-field">
+            <span>Showing</span>
+            <select
+              id="requestShowingSelect"
+              v-model="showingFilterValue"
+              class="pending-requests-showing-select"
+            >
+              <option value="all">All</option>
+              <option value="venue">Venue</option>
+              <option value="equipment">Equipment</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <button class="admin-ops-sort-button pending-requests-sort-button" aria-label="Sort">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <polyline points="19 12 12 19 5 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-ops-table-card">
+        <RequestPendingTableComponent
+          :request-list="pendingRequestsList"
+          :search-query-text="searchQueryText"
+          @view-request-details="handleViewRequestDetails"
+          @approve-request-record="handleApproveRequest"
+          @reject-request-record="handleRejectRequest"
         />
       </div>
-      <div class="pending-requests-showing-group">
-        <label class="pending-requests-showing-label" for="requestShowingSelect">Showing:</label>
-        <select
-          id="requestShowingSelect"
-          v-model="showingFilterValue"
-          class="pending-requests-showing-select"
-        >
-          <option value="all">All</option>
-          <option value="venue">Venue</option>
-          <option value="equipment">Equipment</option>
-          <option value="both">Both</option>
-        </select>
-        <button class="pending-requests-sort-button" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <polyline points="19 12 12 19 5 12"/>
-          </svg>
-        </button>
+
+      <div class="admin-ops-page-footer pending-requests-page-footer">
+        &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
-    </div>
-
-    <!-- Pending Requests Table -->
-    <RequestPendingTableComponent
-      :request-list="pendingRequestsList"
-      :search-query-text="searchQueryText"
-      @view-request-details="handleViewRequestDetails"
-      @approve-request-record="handleApproveRequest"
-      @reject-request-record="handleRejectRequest"
-    />
-
-    <!-- Footer -->
-    <div class="pending-requests-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+    </section>
 
     <div v-if="approveRequestRecord" class="pending-request-action-overlay" @click.self="closeApproveModal">
       <section class="pending-request-action-card">

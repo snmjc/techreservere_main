@@ -10,6 +10,7 @@
 
       <header class="manage-accounts-header">
         <div>
+          <p class="manage-accounts-kicker">Account Administration</p>
           <h1>{{ pageTitle }}</h1>
           <p>{{ pageDescription }}</p>
         </div>
@@ -59,48 +60,50 @@
         </button>
       </nav>
 
-      <div class="manage-accounts-toolbar">
-        <label>
-          <span>Search:</span>
-          <input v-model="searchQueryText" type="search" placeholder="Name" />
-        </label>
+      <div class="manage-accounts-toolbar-card">
+        <div class="manage-accounts-toolbar">
+          <label>
+            <span>Search</span>
+            <input v-model="searchQueryText" type="search" placeholder="Name, ID number, or role" />
+          </label>
 
-        <label>
-          <span>Sort by:</span>
-          <select v-model="sortMode">
-            <option value="created">Chronological</option>
-            <option value="name">Name</option>
-            <option value="role">Role</option>
-            <option value="status">Account status</option>
-          </select>
-        </label>
+          <label>
+            <span>Sort by</span>
+            <select v-model="sortMode">
+              <option value="created">Chronological</option>
+              <option value="name">Name</option>
+              <option value="role">Role</option>
+              <option value="status">Account status</option>
+            </select>
+          </label>
 
-        <label>
-          <span>Status:</span>
-          <select v-model="showingFilterValue">
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="verified">Verified</option>
-            <option value="pending">Pending</option>
-            <option value="disabled">Disabled</option>
-          </select>
-        </label>
+          <label>
+            <span>Status</span>
+            <select v-model="showingFilterValue">
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="verified">Verified</option>
+              <option value="pending">Pending</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </label>
 
-        <label v-if="activeAccountTab === 'user'">
-          <span>User role:</span>
-          <select v-model="userRoleFilter">
-            <option value="all">All</option>
-            <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
-          </select>
-        </label>
+          <label v-if="activeAccountTab === 'user'">
+            <span>User role</span>
+            <select v-model="userRoleFilter">
+              <option value="all">All</option>
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+            </select>
+          </label>
 
-        <button class="manage-accounts-sort-button" type="button" aria-label="Toggle sort order" @click="handleToggleSortOrder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <polyline points="19 12 12 19 5 12" />
-          </svg>
-        </button>
+          <button class="manage-accounts-sort-button" type="button" aria-label="Toggle sort order" @click="handleToggleSortOrder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <polyline points="19 12 12 19 5 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="manage-accounts-table-wrap">

@@ -4,55 +4,63 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="approved-requests-page-heading">Approved Requests</h2>
+    <section class="admin-ops-page approved-requests-page">
+      <header class="admin-ops-header">
+        <div class="admin-ops-header-copy">
+          <p class="admin-ops-kicker">Release Workflow</p>
+          <h1>Approved Requests</h1>
+          <p>Monitor approved reservations, review workflow details, and move requests forward to deployment or cancellation.</p>
+        </div>
+      </header>
 
-    <!-- Toolbar: Search + Showing -->
-    <div class="approved-requests-toolbar">
-      <div class="approved-requests-search-group">
-        <label class="approved-requests-search-label" for="approvedSearchInput">Search:</label>
-        <input
-          id="approvedSearchInput"
-          v-model="searchQueryText"
-          type="text"
-          class="approved-requests-search-input"
-          placeholder="Name"
+      <div class="admin-ops-filter-card">
+        <div class="admin-ops-toolbar approved-requests-toolbar">
+          <label class="admin-ops-field">
+            <span>Search</span>
+            <input
+              id="approvedSearchInput"
+              v-model="searchQueryText"
+              type="text"
+              class="approved-requests-search-input"
+              placeholder="Requester name or request ID"
+            />
+          </label>
+          <label class="admin-ops-field">
+            <span>Showing</span>
+            <select
+              id="approvedShowingSelect"
+              v-model="showingFilterValue"
+              class="approved-requests-showing-select"
+            >
+              <option value="all">All</option>
+              <option value="venue">Venue</option>
+              <option value="equipment">Equipment</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <button class="admin-ops-sort-button approved-requests-sort-button" aria-label="Sort">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <polyline points="19 12 12 19 5 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-ops-table-card">
+        <RequestApprovedTableComponent
+          :request-list="approvedRequestsList"
+          :search-query-text="searchQueryText"
+          @view-workflow-details="handleViewWorkflowDetails"
+          @deploy-release-record="handleDeployRelease"
+          @cancel-request-record="handleCancelRequest"
         />
       </div>
-      <div class="approved-requests-showing-group">
-        <label class="approved-requests-showing-label" for="approvedShowingSelect">Showing:</label>
-        <select
-          id="approvedShowingSelect"
-          v-model="showingFilterValue"
-          class="approved-requests-showing-select"
-        >
-          <option value="all">All</option>
-          <option value="venue">Venue</option>
-          <option value="equipment">Equipment</option>
-          <option value="both">Both</option>
-        </select>
-        <button class="approved-requests-sort-button" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <polyline points="19 12 12 19 5 12"/>
-          </svg>
-        </button>
+
+      <div class="admin-ops-page-footer approved-requests-page-footer">
+        &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
-    </div>
-
-    <!-- Approved Requests Table -->
-    <RequestApprovedTableComponent
-      :request-list="approvedRequestsList"
-      :search-query-text="searchQueryText"
-      @view-workflow-details="handleViewWorkflowDetails"
-      @deploy-release-record="handleDeployRelease"
-      @cancel-request-record="handleCancelRequest"
-    />
-
-    <!-- Footer -->
-    <div class="approved-requests-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+    </section>
 
     <!-- Workflow Modal -->
     <RequestWorkflowModalComponent

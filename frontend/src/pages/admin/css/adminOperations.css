@@ -1,0 +1,326 @@
+.admin-ops-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: calc(100vh - 120px);
+  color: #17211d;
+}
+
+.admin-ops-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-ops-header-copy {
+  min-width: 0;
+}
+
+.admin-ops-kicker {
+  margin: 0 0 0.35rem;
+  color: #0d7d57;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.admin-ops-header h1 {
+  margin: 0;
+  color: #132238;
+  font-size: clamp(1.8rem, 3vw, 2.45rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.admin-ops-header p {
+  margin: 0.45rem 0 0;
+  color: #60706a;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.admin-ops-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.admin-ops-button,
+.admin-ops-sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.48rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.admin-ops-button svg,
+.admin-ops-sort-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.admin-ops-button--secondary,
+.admin-ops-sort-button {
+  color: #0d7d57;
+  background: #ffffff;
+  border: 1px solid #d7e4de;
+  box-shadow: 0 8px 22px rgba(20, 51, 41, 0.06);
+}
+
+.admin-ops-button--primary {
+  color: #ffffff;
+  background: linear-gradient(180deg, #0d9a56, #0c8048);
+  border: 1px solid #0c8048;
+  box-shadow: 0 12px 24px rgba(15, 157, 88, 0.18);
+}
+
+.admin-ops-button:disabled,
+.admin-ops-sort-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.admin-ops-error {
+  padding: 0.85rem 1rem;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-ops-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid #dbe6e0;
+}
+
+.admin-ops-tab {
+  min-height: 40px;
+  padding: 0 0.35rem;
+  color: #64746d;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-ops-tab span {
+  color: inherit;
+  font-weight: 800;
+}
+
+.admin-ops-tab--active {
+  color: #0d7d57;
+  border-bottom-color: #0d7d57;
+}
+
+.admin-ops-filter-card,
+.admin-ops-table-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #dce7e1;
+  border-radius: 16px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+}
+
+.admin-ops-filter-card {
+  padding: 1rem;
+}
+
+.admin-ops-table-card {
+  overflow: hidden;
+}
+
+.admin-ops-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(180px, 0.34fr)) auto;
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.admin-ops-toolbar--with-extra {
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(170px, 0.32fr)) auto;
+}
+
+.admin-ops-field {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.admin-ops-field span {
+  color: #66756f;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-ops-field input,
+.admin-ops-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 0.8rem;
+  color: #17211d;
+  background: #ffffff;
+  border: 1px solid #d8e3dd;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.admin-ops-field input:focus,
+.admin-ops-field select:focus {
+  border-color: #0d7d57;
+  box-shadow: 0 0 0 3px rgba(13, 125, 87, 0.12);
+}
+
+.admin-ops-page-footer {
+  margin-top: auto;
+  padding-top: 1.4rem;
+  text-align: center;
+  color: #7a8882;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-ops-table-card .request-pending-table,
+.admin-ops-table-card .request-approved-table,
+.admin-ops-table-card .reservation-active-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.admin-ops-table-card .request-pending-table-header-row,
+.admin-ops-table-card .request-approved-table-header-row,
+.admin-ops-table-card .reservation-active-table-header-row {
+  background: #24332e;
+}
+
+.admin-ops-table-card .request-pending-table-header-cell,
+.admin-ops-table-card .request-approved-table-header-cell,
+.admin-ops-table-card .reservation-active-table-header-cell {
+  padding: 0.92rem 1rem;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-align: left;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-ops-table-card .request-pending-table-cell,
+.admin-ops-table-card .request-approved-table-cell,
+.admin-ops-table-card .reservation-active-table-cell {
+  padding: 0.95rem 1rem;
+  color: #24332e;
+  border-bottom: 1px solid #edf2ef;
+  font-size: 0.84rem;
+  vertical-align: middle;
+}
+
+.admin-ops-table-card .request-pending-table-body-row:hover,
+.admin-ops-table-card .request-approved-table-body-row:hover,
+.admin-ops-table-card .reservation-active-table-body-row:hover {
+  background: #f8fbfa;
+}
+
+.admin-ops-table-card .request-pending-type-badge,
+.admin-ops-table-card .request-approved-type-badge,
+.admin-ops-table-card .reservation-active-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.admin-ops-table-card .request-pending-actions-group,
+.admin-ops-table-card .request-approved-actions-group,
+.admin-ops-table-card .reservation-active-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-ops-table-card .request-pending-action-icon,
+.admin-ops-table-card .request-approved-action-icon,
+.admin-ops-table-card .reservation-active-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 0;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+
+.admin-ops-table-card .request-pending-table-empty-row,
+.admin-ops-table-card .request-approved-table-empty-row,
+.admin-ops-table-card .reservation-active-table-empty-row {
+  padding: 2.4rem 1rem;
+  color: #7a8882;
+  font-size: 0.84rem;
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .admin-ops-button:hover,
+  .admin-ops-sort-button:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 980px) {
+  .admin-ops-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-ops-toolbar,
+  .admin-ops-toolbar--with-extra {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .admin-ops-toolbar,
+  .admin-ops-toolbar--with-extra {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-ops-page-footer {
+    padding-top: 1rem;
+  }
+}
