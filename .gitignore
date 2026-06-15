@@ -2,4 +2,5 @@
 .env
 .env.*
 !example.env
+!.env.dev.example
 node_modules

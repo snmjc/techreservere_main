@@ -71,11 +71,16 @@ techReserveApplication.use(techReservePinia)
 techReserveApplication.use(applicationRouter)
 
 if (!shouldDisableClerkOnLiveHost) {
-  techReserveApplication.use(clerkPlugin, {
+  const clerkPluginOptions = {
     publishableKey: PUBLISHABLE_KEY,
-    proxyUrl: ACTIVE_CLERK_PROXY_URL,
     ...resolveClerkRedirectOptions(),
-  })
+  }
+
+  if (isLiveFrontendHost && !isDevelopmentClerkKey) {
+    clerkPluginOptions.proxyUrl = ACTIVE_CLERK_PROXY_URL
+  }
+
+  techReserveApplication.use(clerkPlugin, clerkPluginOptions)
 }
 
 techReserveApplication.mount('#app')
