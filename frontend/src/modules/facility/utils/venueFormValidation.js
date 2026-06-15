@@ -1,5 +1,6 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
 const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 
 const VENUE_FORM_VALIDATORS = [
   {
@@ -98,7 +99,7 @@ export function resolveVenuePhoto(record) {
       <rect x="54" y="48" width="372" height="224" rx="24" fill="#ffffff" stroke="#b7d4c0" stroke-width="6"/>
       <rect x="98" y="100" width="284" height="114" rx="16" fill="#e7f5ea"/>
       <path d="M118 214l74-60 50 38 60-74 76 96H118z" fill="#bfe1c8"/>
-      <text x="240" y="286" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#386641">No Venue Photo</text>
+      <text x="240" y="286" text-anchor="middle" font-family="${APP_FONT_STACK}" font-size="28" font-weight="700" fill="#386641">No Venue Photo</text>
     </svg>
   `)}`;
 }

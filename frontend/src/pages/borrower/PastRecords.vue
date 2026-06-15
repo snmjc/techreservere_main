@@ -253,6 +253,7 @@ import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
+const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const authStore = useAuthenticationStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
@@ -558,7 +559,7 @@ function downloadSelectedRecord() {
       <head>
         <title>${escapeHtml(record.requestIdentifier)} Details</title>
       </head>
-      <body style="font-family: Arial, sans-serif; padding: 32px; color: #0f172a;">
+      <body style="font-family: ${APP_FONT_STACK}; padding: 32px; color: #0f172a;">
         <h1 style="margin: 0 0 8px;">Reservation Details</h1>
         <p style="margin: 0 0 24px; color: #475569;">${escapeHtml(record.requestIdentifier)} - ${escapeHtml(record.recordStatus)}</p>
         <h2 style="font-size: 18px;">Reservation Information</h2>
