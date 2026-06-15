@@ -4,6 +4,7 @@
   flex-direction: column;
   min-height: calc(100vh - 120px);
   color: #1d2e25;
+  gap: 1.25rem;
 }
 
 .facilities-hero {
@@ -11,8 +12,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
-  padding: 0.35rem 0 0.3rem;
+  padding: 1.45rem 1.55rem;
+  background:
+    radial-gradient(circle at top right, rgba(191, 242, 212, 0.48), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(243, 251, 247, 0.94));
+  border: 1px solid #d9ebe1;
+  border-radius: 24px;
+  box-shadow: 0 18px 36px rgba(16, 24, 40, 0.06);
 }
 
 .facilities-hero h1 {
@@ -33,9 +39,9 @@
 }
 
 .facilities-hero p {
-  margin: 0.5rem 0 0;
+  margin: 0.55rem 0 0;
   color: #60706a;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 650;
   line-height: 1.6;
 }
@@ -56,10 +62,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  min-height: 46px;
+  min-height: 42px;
   padding: 0 1.2rem;
-  border-radius: 12px;
-  font-size: 0.88rem;
+  border-radius: 14px;
+  font-size: 0.84rem;
   font-weight: 850;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
@@ -130,11 +136,13 @@
   display: grid;
   grid-template-columns: minmax(320px, 1.6fr) repeat(3, minmax(170px, 0.8fr)) auto;
   gap: 0.95rem;
-  padding: 1rem;
-  background: #ffffff;
+  padding: 1.15rem;
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.28), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
   border: 1px solid #e0e8e3;
-  border-radius: 16px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
 }
 
 .facilities-filter-bar--equipment {
@@ -165,13 +173,13 @@
 .facilities-inline-filter select,
 .facilities-page-size select {
   width: 100%;
-  min-height: 52px;
-  padding: 0.75rem 0.9rem;
+  min-height: 46px;
+  padding: 0.75rem 0.95rem;
   color: #1d2d25;
-  background: #fbfcfb;
+  background: #ffffff;
   border: 1px solid #d9e2dc;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  border-radius: 14px;
+  font-size: 0.86rem;
 }
 
 .facilities-search input {
@@ -207,10 +215,12 @@
 
 .facilities-table-card,
 .facilities-legend-card {
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.2), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
   border: 1px solid #e0e8e3;
-  border-radius: 16px;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
 }
 
 .facilities-table-wrap {
@@ -227,12 +237,13 @@
 
 .facilities-table thead th {
   padding: 1.05rem 1rem;
-  color: #ffffff;
-  background: linear-gradient(180deg, #0d7a45, #096639);
-  font-size: 0.82rem;
+  color: #315447;
+  background: #eff5f1;
+  font-size: 0.76rem;
   font-weight: 900;
   text-align: left;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .facilities-table-head-label {
@@ -258,8 +269,8 @@
   padding: 1rem;
   color: #2c3b33;
   border-bottom: 1px solid #e7efe9;
-  background: #ffffff;
-  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.86rem;
 }
 
 .facilities-table tbody tr {
