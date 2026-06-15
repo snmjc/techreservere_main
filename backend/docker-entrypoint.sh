@@ -18,8 +18,8 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-techreserve_pass}
 CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
 CLERK_API_BASE_URL=${CLERK_API_BASE_URL:-https://api.clerk.com}
 CLERK_JWT_ISSUER=${CLERK_JWT_ISSUER:-}
-DEFAULT_URI=${DEFAULT_URI:-https://techreserve.farahkenawy.codes}
-FRONTEND_URL=${FRONTEND_URL:-https://techreserve.farahkenawy.codes}
+DEFAULT_URI=${DEFAULT_URI:-http://localhost:8000}
+FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
 EOF
   fi
 fi
