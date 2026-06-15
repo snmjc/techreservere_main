@@ -90,9 +90,22 @@ export function useClerkLoginPage() {
   async function handlePreferredClerkLogin() {
     if (shouldBypassClerkPreflightOnCurrentHost()) {
       try {
-        await handleClerkPasswordLogin(null, { skipPreflight: true });
+        const account = await authStore.performLogin(emailAddress.value, passwordText.value, {
+          rememberSession: rememberMeChecked.value,
+        });
+        routeAfterBackendLogin(account);
         return;
       } catch (error) {
+        if (shouldAttemptClerkPasswordLogin(error)) {
+          try {
+            await handleClerkPasswordLogin(null, { skipPreflight: true });
+            return;
+          } catch (clerkError) {
+            loginError.value = resolveClerkErrorMessage(clerkError);
+            return;
+          }
+        }
+
         loginError.value = resolveClerkErrorMessage(error);
         return;
       }
