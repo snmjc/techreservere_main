@@ -6,8 +6,9 @@
     <section class="facilities-page">
       <header class="facilities-hero">
         <div>
+          <p class="facilities-kicker">Facility administration</p>
           <h1>Manage Facilities</h1>
-          <p>Dashboard <span>/</span> Manage Facilities</p>
+          <p>Review venue and equipment availability, keep facility records organized, and manage inventory from one place.</p>
         </div>
 
         <div class="facilities-hero-actions">
