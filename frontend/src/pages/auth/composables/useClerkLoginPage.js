@@ -88,52 +88,75 @@ export function useClerkLoginPage() {
   }
 
   async function handlePreferredClerkLogin() {
+    if (shouldBypassClerkPreflightOnCurrentHost()) {
+      try {
+        await handleClerkPasswordLogin(null, { skipPreflight: true });
+        return;
+      } catch (error) {
+        if (!shouldFallbackToBackendAfterClerkFailure(error)) {
+          loginError.value = resolveClerkErrorMessage(error);
+          return;
+        }
+      }
+    }
+
     const preflight = await verifyClerkLoginAccess(emailAddress.value);
 
     if (preflight.success) {
-      await handleClerkPasswordLogin(preflight);
+      try {
+        await handleClerkPasswordLogin(preflight);
+        return;
+      } catch (error) {
+        if (!shouldFallbackToBackendAfterClerkFailure(error)) {
+          loginError.value = resolveClerkErrorMessage(error);
+          return;
+        }
+      }
+    }
+
+    if (preflight.errorType && preflight.errorType !== 'AccountPendingInvitation') {
+      loginError.value = preflight.error || 'Please wait for an administrator invitation before signing in.';
       return;
     }
 
     await handleBackendLogin();
   }
 
-  async function handleClerkPasswordLogin(preflightResult = null) {
-    const preflight = preflightResult ?? await verifyClerkLoginAccess(emailAddress.value);
-    if (!preflight.success) {
-      loginError.value = preflight.error || 'Please wait for an administrator invitation before signing in.';
-      return;
+  async function handleClerkPasswordLogin(preflightResult = null, options = {}) {
+    const skipPreflight = options.skipPreflight === true;
+    const preflight = skipPreflight
+      ? { success: true }
+      : (preflightResult ?? await verifyClerkLoginAccess(emailAddress.value));
+
+    if (!skipPreflight && !preflight.success) {
+      throw Object.assign(new Error(preflight.error || 'Please wait for an administrator invitation before signing in.'), {
+        preflight,
+      });
     }
 
     const clerk = await waitForClerk();
 
     if (!clerk?.client?.signIn || !clerk?.setActive) {
-      loginError.value = 'Clerk authentication is still loading. Please try again.';
-      return;
+      throw new Error('Clerk authentication is still loading. Please try again.');
     }
 
-    try {
-      const clerkSignIn = await clerk.client.signIn.create({
-        identifier: emailAddress.value,
-      });
+    const clerkSignIn = await clerk.client.signIn.create({
+      identifier: emailAddress.value,
+    });
 
-      const completedSignIn = await clerkSignIn.attemptFirstFactor({
-        strategy: 'password',
-        password: passwordText.value,
-      });
+    const completedSignIn = await clerkSignIn.attemptFirstFactor({
+      strategy: 'password',
+      password: passwordText.value,
+    });
 
-      if (completedSignIn.status !== 'complete' || !completedSignIn.createdSessionId) {
-        loginError.value = 'This account needs additional Clerk verification before sign-in can continue.';
-        return;
-      }
-
-      rememberLoginEmailPreference();
-      persistPendingRememberSession(rememberMeChecked.value);
-      await clerk.setActive({ session: completedSignIn.createdSessionId });
-      router.replace({ name: ROUTE_NAMES.postLogin });
-    } catch (error) {
-      loginError.value = resolveClerkErrorMessage(error);
+    if (completedSignIn.status !== 'complete' || !completedSignIn.createdSessionId) {
+      throw new Error('This account needs additional Clerk verification before sign-in can continue.');
     }
+
+    rememberLoginEmailPreference();
+    persistPendingRememberSession(rememberMeChecked.value);
+    await clerk.setActive({ session: completedSignIn.createdSessionId });
+    router.replace({ name: ROUTE_NAMES.postLogin });
   }
 
   function routeAfterBackendLogin(account) {
@@ -402,4 +425,23 @@ function shouldPreferClerkOnCurrentHost() {
 
   const host = window.location.hostname;
   return host === 'localhost' || host === '127.0.0.1';
+}
+
+function shouldBypassClerkPreflightOnCurrentHost() {
+  return shouldPreferClerkOnCurrentHost();
+}
+
+function shouldFallbackToBackendAfterClerkFailure(error) {
+  const clerkError = error?.errors?.[0];
+  const clerkCode = String(clerkError?.code || '').trim().toLowerCase();
+  const message = String(clerkError?.longMessage || clerkError?.message || error?.message || '').toLowerCase();
+
+  if (clerkCode === 'form_identifier_not_found') {
+    return true;
+  }
+
+  return message.includes('identifier not found')
+    || message.includes('couldn\'t find your account')
+    || message.includes('cannot find')
+    || message.includes('no account found');
 }
