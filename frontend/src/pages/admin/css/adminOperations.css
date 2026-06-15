@@ -1,7 +1,7 @@
 .admin-ops-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
   min-height: calc(100vh - 120px);
   color: #17211d;
 }
@@ -11,6 +11,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding: 1.45rem 1.55rem;
+  background:
+    radial-gradient(circle at top right, rgba(191, 242, 212, 0.48), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(243, 251, 247, 0.94));
+  border: 1px solid #d9ebe1;
+  border-radius: 24px;
+  box-shadow: 0 18px 36px rgba(16, 24, 40, 0.06);
 }
 
 .admin-ops-header-copy {
@@ -35,9 +42,9 @@
 }
 
 .admin-ops-header p {
-  margin: 0.45rem 0 0;
+  margin: 0.55rem 0 0;
   color: #60706a;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   line-height: 1.6;
 }
 
@@ -56,10 +63,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.48rem;
-  min-height: 40px;
-  padding: 0 0.95rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
+  min-height: 42px;
+  padding: 0 1.1rem;
+  border-radius: 14px;
+  font-size: 0.84rem;
   font-weight: 850;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
@@ -75,8 +82,8 @@
 .admin-ops-sort-button {
   color: #0d7d57;
   background: #ffffff;
-  border: 1px solid #d7e4de;
-  box-shadow: 0 8px 22px rgba(20, 51, 41, 0.06);
+  border: 1px solid #d5e7dd;
+  box-shadow: 0 12px 24px rgba(20, 51, 41, 0.08);
 }
 
 .admin-ops-button--primary {
@@ -107,7 +114,7 @@
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  padding-bottom: 0.15rem;
+  padding: 0 0.15rem 0.2rem;
   border-bottom: 1px solid #dbe6e0;
 }
 
@@ -135,14 +142,16 @@
 
 .admin-ops-filter-card,
 .admin-ops-table-card {
-  background: rgba(255, 255, 255, 0.94);
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.28), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
   border: 1px solid #dce7e1;
-  border-radius: 16px;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
 }
 
 .admin-ops-filter-card {
-  padding: 1rem;
+  padding: 1.15rem;
 }
 
 .admin-ops-table-card {
@@ -176,13 +185,13 @@
 .admin-ops-field input,
 .admin-ops-field select {
   width: 100%;
-  min-height: 42px;
-  padding: 0 0.8rem;
+  min-height: 46px;
+  padding: 0 0.9rem;
   color: #17211d;
   background: #ffffff;
   border: 1px solid #d8e3dd;
-  border-radius: 10px;
-  font-size: 0.84rem;
+  border-radius: 14px;
+  font-size: 0.86rem;
   font-weight: 700;
   outline: none;
 }
@@ -209,21 +218,21 @@
   width: 100%;
   min-width: 980px;
   border-collapse: collapse;
-  background: #ffffff;
+  background: transparent;
 }
 
 .admin-ops-table-card .request-pending-table-header-row,
 .admin-ops-table-card .request-approved-table-header-row,
 .admin-ops-table-card .reservation-active-table-header-row {
-  background: #24332e;
+  background: #eff5f1;
 }
 
 .admin-ops-table-card .request-pending-table-header-cell,
 .admin-ops-table-card .request-approved-table-header-cell,
 .admin-ops-table-card .reservation-active-table-header-cell {
-  padding: 0.92rem 1rem;
-  color: #ffffff;
-  font-size: 0.76rem;
+  padding: 1rem 1rem;
+  color: #315447;
+  font-size: 0.75rem;
   font-weight: 850;
   text-align: left;
   white-space: nowrap;
@@ -234,11 +243,12 @@
 .admin-ops-table-card .request-pending-table-cell,
 .admin-ops-table-card .request-approved-table-cell,
 .admin-ops-table-card .reservation-active-table-cell {
-  padding: 0.95rem 1rem;
+  padding: 1rem 1rem;
   color: #24332e;
   border-bottom: 1px solid #edf2ef;
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   vertical-align: middle;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .admin-ops-table-card .request-pending-table-body-row:hover,
@@ -277,7 +287,7 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 0;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
