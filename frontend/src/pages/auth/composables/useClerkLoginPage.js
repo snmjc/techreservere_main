@@ -93,10 +93,8 @@ export function useClerkLoginPage() {
         await handleClerkPasswordLogin(null, { skipPreflight: true });
         return;
       } catch (error) {
-        if (!shouldFallbackToBackendAfterClerkFailure(error)) {
-          loginError.value = resolveClerkErrorMessage(error);
-          return;
-        }
+        loginError.value = resolveClerkErrorMessage(error);
+        return;
       }
     }
 
