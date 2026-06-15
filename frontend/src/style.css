@@ -3,6 +3,11 @@
 
 :root {
   --tr-font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --tr-weight-heading-1: 800;
+  --tr-weight-heading-2: 700;
+  --tr-weight-heading-3: 650;
+  --tr-weight-strong: 600;
+  --tr-weight-label: 600;
   font-family: var(--tr-font-sans);
   line-height: 1.5;
   font-weight: 400;
@@ -38,6 +43,66 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+#app :where(h1) {
+  font-weight: var(--tr-weight-heading-1) !important;
+}
+
+#app :where(h2) {
+  font-weight: var(--tr-weight-heading-2) !important;
+}
+
+#app :where(h3, h4) {
+  font-weight: var(--tr-weight-heading-3) !important;
+}
+
+#app :where(h5, h6) {
+  font-weight: var(--tr-weight-strong) !important;
+}
+
+#app :where(strong, b, th, button, label, dt) {
+  font-weight: var(--tr-weight-strong) !important;
+}
+
+#app :where(
+  .admin-sidebar-brand-university,
+  .admin-sidebar-brand-title,
+  .admin-sidebar-role-badge,
+  .admin-sidebar-help-title,
+  .admin-topbar-user-text,
+  .admin-ops-kicker,
+  .admin-dashboard-kicker,
+  .reports-analytics-kicker,
+  .admin-past-records-kicker,
+  .past-records-kicker,
+  .facilities-kicker,
+  .manage-accounts-kicker,
+  .admin-wishlist-kicker,
+  .request-pending-kicker,
+  .custom-signup-kicker,
+  .clerk-login-kicker,
+  .account-deactivated-kicker,
+  .admin-ops-field span,
+  .admin-dashboard-stat-card-label,
+  .admin-dashboard-panel-badge,
+  .manage-accounts-toolbar span,
+  .admin-wishlist-search span,
+  .admin-wishlist-select span,
+  .admin-wishlist-form-grid label span,
+  .admin-past-records-search-field span,
+  .admin-past-records-toolbar label span,
+  .past-records-search-field span,
+  .past-records-toolbar label span,
+  .facilities-filter-bar span,
+  .facilities-inline-filter span,
+  .facilities-page-size span,
+  .reports-analytics-date-range,
+  .reports-model-card p,
+  .reports-insights-card dt,
+  .reports-summary-panel dt
+) {
+  font-weight: var(--tr-weight-label) !important;
 }
 
 /* FEU Tech Official Seal - Black and White Filter */
