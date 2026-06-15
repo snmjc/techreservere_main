@@ -1,3 +1,5 @@
+@import './adminOperations.css';
+
 /* ===== AI GENERATED: AdminPendingRequestsPage Styles ===== */
 /* Purpose: Styles for admin pending requests page and request table component */
 /* Scope: AdminPendingRequestsPage.vue, RequestPendingTableComponent.vue */
@@ -7,10 +9,7 @@
 /* ========================================= */
 
 .pending-requests-page-heading {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1a6e3a;
-  margin-bottom: 1.25rem;
+  display: none;
 }
 
 /* ========================================= */
@@ -18,11 +17,7 @@
 /* ========================================= */
 
 .pending-requests-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+  margin: 0;
 }
 
 .pending-requests-search-group {
@@ -80,17 +75,8 @@
 }
 
 .pending-requests-sort-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  background: none;
-  border: 1px solid #cccccc;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #555555;
-  transition: background-color 0.15s ease;
+  width: 40px;
+  height: 40px;
 }
 
 .pending-requests-sort-button:hover {
@@ -108,15 +94,10 @@
 
 .request-pending-table {
   width: 100%;
-  border-collapse: collapse;
-  background-color: #ffffff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .request-pending-table-header-row {
-  background-color: #3a3a4a;
+  background-color: #24332e;
 }
 
 .request-pending-table-header-cell {
@@ -197,13 +178,6 @@
 /* ========================================= */
 
 .request-pending-type-badge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #ffffff;
-  border-radius: 4px;
-  text-align: center;
   white-space: nowrap;
 }
 
@@ -287,12 +261,6 @@
 
 .pending-requests-page-footer {
   margin-top: auto;
-  padding-top: 2rem;
-  text-align: center;
-  font-size: 0.7rem;
-  color: #888888;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 .pending-request-details-overlay {

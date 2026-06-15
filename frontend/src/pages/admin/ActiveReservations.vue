@@ -4,55 +4,63 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <!-- Page Heading -->
-    <h2 class="active-reservations-page-heading">Active Reservations</h2>
+    <section class="admin-ops-page active-reservations-page">
+      <header class="admin-ops-header">
+        <div class="admin-ops-header-copy">
+          <p class="admin-ops-kicker">Deployment Tracking</p>
+          <h1>Active Reservations</h1>
+          <p>Track reservations currently in use, open deployment details, confirm returns, and flag issues when needed.</p>
+        </div>
+      </header>
 
-    <!-- Toolbar: Search + Showing -->
-    <div class="active-reservations-toolbar">
-      <div class="active-reservations-search-group">
-        <label class="active-reservations-search-label" for="activeResSearchInput">Search:</label>
-        <input
-          id="activeResSearchInput"
-          v-model="searchQueryText"
-          type="text"
-          class="active-reservations-search-input"
-          placeholder="Name"
+      <div class="admin-ops-filter-card">
+        <div class="admin-ops-toolbar active-reservations-toolbar">
+          <label class="admin-ops-field">
+            <span>Search</span>
+            <input
+              id="activeResSearchInput"
+              v-model="searchQueryText"
+              type="text"
+              class="active-reservations-search-input"
+              placeholder="Requester name or request ID"
+            />
+          </label>
+          <label class="admin-ops-field">
+            <span>Showing</span>
+            <select
+              id="activeResShowingSelect"
+              v-model="showingFilterValue"
+              class="active-reservations-showing-select"
+            >
+              <option value="all">All</option>
+              <option value="venue">Venue</option>
+              <option value="equipment">Equipment</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <button class="admin-ops-sort-button active-reservations-sort-button" aria-label="Sort">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <polyline points="19 12 12 19 5 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-ops-table-card">
+        <ReservationActiveTableComponent
+          :reservation-list="activeReservationsList"
+          :search-query-text="searchQueryText"
+          @view-deployment-details="handleViewDeploymentDetails"
+          @return-confirmation="handleReturnConfirmation"
+          @report-reservation="handleReportReservation"
         />
       </div>
-      <div class="active-reservations-showing-group">
-        <label class="active-reservations-showing-label" for="activeResShowingSelect">Showing:</label>
-        <select
-          id="activeResShowingSelect"
-          v-model="showingFilterValue"
-          class="active-reservations-showing-select"
-        >
-          <option value="all">All</option>
-          <option value="venue">Venue</option>
-          <option value="equipment">Equipment</option>
-          <option value="both">Both</option>
-        </select>
-        <button class="active-reservations-sort-button" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <polyline points="19 12 12 19 5 12"/>
-          </svg>
-        </button>
+
+      <div class="admin-ops-page-footer active-reservations-page-footer">
+        &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
-    </div>
-
-    <!-- Active Reservations Table -->
-    <ReservationActiveTableComponent
-      :reservation-list="activeReservationsList"
-      :search-query-text="searchQueryText"
-      @view-deployment-details="handleViewDeploymentDetails"
-      @return-confirmation="handleReturnConfirmation"
-      @report-reservation="handleReportReservation"
-    />
-
-    <!-- Footer -->
-    <div class="active-reservations-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+    </section>
 
     <!-- Process Deployment Modal -->
     <ReservationDeploymentModalComponent
