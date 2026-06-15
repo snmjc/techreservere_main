@@ -51,7 +51,7 @@ async function handleLogout() {
   padding: 1.5rem;
   background: #f3f6f4;
   color: #101827;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: inherit;
 }
 
 .account-deactivated-card {

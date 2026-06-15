@@ -370,6 +370,7 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
+const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const requestStore = useRequestStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
@@ -519,7 +520,7 @@ function buildFacilityPlaceholder(facilityName) {
       <rect x="8" y="30" width="72" height="18" rx="4" fill="#d9e2e8"/>
       <rect x="14" y="14" width="26" height="12" rx="3" fill="#f8fbfd"/>
       <rect x="46" y="14" width="28" height="12" rx="3" fill="#f8fbfd"/>
-      <text x="44" y="51" text-anchor="middle" font-size="7" font-family="Arial, sans-serif" fill="#536772">${label}</text>
+      <text x="44" y="51" text-anchor="middle" font-size="7" font-family="${APP_FONT_STACK}" fill="#536772">${label}</text>
     </svg>
   `;
 

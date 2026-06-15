@@ -1,17 +1,15 @@
 .admin-past-records-page {
-  --admin-records-ink: #1d2940;
-  --admin-records-muted: #63708a;
-  --admin-records-line: rgba(24, 47, 84, 0.1);
-  --admin-records-panel: rgba(255, 255, 255, 0.9);
-  --admin-records-shadow: 0 20px 50px rgba(16, 33, 63, 0.12);
+  --admin-records-ink: #17211d;
+  --admin-records-muted: #60706a;
+  --admin-records-line: #dce7e1;
+  --admin-records-panel: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
+  --admin-records-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
   min-height: 100%;
   color: var(--admin-records-ink);
-  background:
-    radial-gradient(circle at top left, rgba(18, 186, 120, 0.12), transparent 28%),
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 26%),
-    linear-gradient(180deg, #f7fafc 0%, #eef4f7 100%);
-  border-radius: 28px;
-  padding: 28px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  font-family: inherit;
 }
 
 .admin-past-records-hero,
@@ -20,8 +18,9 @@
 .admin-past-records-detail-card,
 .admin-past-records-toolbar,
 .admin-past-records-filter-strip {
-  background: var(--admin-records-panel);
-  backdrop-filter: blur(16px);
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.18), transparent 28%),
+    var(--admin-records-panel);
   border: 1px solid var(--admin-records-line);
   box-shadow: var(--admin-records-shadow);
 }
@@ -32,37 +31,39 @@
   align-items: flex-end;
   gap: 24px;
   border-radius: 24px;
-  padding: 28px;
+  padding: 1.45rem 1.55rem;
 }
 
 .admin-past-records-kicker {
-  margin: 0 0 8px;
+  margin: 0 0 0.35rem;
   color: #0d7d57;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .admin-past-records-hero h1 {
   margin: 0;
-  font-size: clamp(2rem, 2.8vw, 2.8rem);
+  color: #132238;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
   line-height: 1.05;
+  font-weight: 900;
 }
 
 .admin-past-records-hero-copy p:last-child {
-  margin: 12px 0 0;
+  margin: 0.55rem 0 0;
   max-width: 760px;
   color: var(--admin-records-muted);
-  font-size: 0.98rem;
-  line-height: 1.7;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .admin-past-records-hero-badge {
   min-width: 170px;
   padding: 18px 20px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #132238, #1c3f2f);
   color: #f8fbff;
 }
 
@@ -110,13 +111,16 @@
 
 .admin-past-records-stat-card p {
   color: var(--admin-records-muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .admin-past-records-stat-card strong {
   display: block;
   margin-top: 8px;
+  color: #132238;
   font-size: 1.9rem;
+  font-weight: 900;
 }
 
 .admin-past-records-stat-card small {
@@ -189,11 +193,14 @@
 .admin-past-records-search-field input,
 .admin-past-records-toolbar select {
   height: 46px;
-  border: 1px solid rgba(24, 47, 84, 0.14);
+  border: 1px solid #d8e3dd;
   border-radius: 14px;
   padding: 0 14px;
   background: #fff;
   color: var(--admin-records-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .admin-past-records-toolbar-controls {
@@ -205,11 +212,12 @@
 .admin-past-records-sort-toggle {
   height: 46px;
   padding: 0 16px;
-  border: 0;
+  border: 1px solid #1c3f2f;
   border-radius: 14px;
-  background: #102144;
+  background: linear-gradient(180deg, #0d9a56, #0c8048);
   color: #fff;
-  font-weight: 700;
+  font: inherit;
+  font-weight: 850;
   cursor: pointer;
 }
 
@@ -270,12 +278,13 @@
 .admin-past-records-table thead th {
   padding: 18px 16px;
   text-align: left;
-  color: var(--admin-records-muted);
+  color: #315447;
   font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 850;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--admin-records-line);
+  background: #eff5f1;
 }
 
 .admin-past-records-row {
@@ -290,9 +299,10 @@
 
 .admin-past-records-table td {
   padding: 16px;
-  border-bottom: 1px solid rgba(24, 47, 84, 0.08);
+  border-bottom: 1px solid rgba(220, 231, 225, 0.9);
   vertical-align: middle;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .admin-past-records-id {
@@ -431,16 +441,19 @@
 .admin-past-records-detail-topbar h2,
 .admin-past-records-detail-empty h2 {
   margin: 8px 0 0;
-  font-size: 1.7rem;
+  color: #132238;
+  font-size: 1.65rem;
+  font-weight: 900;
 }
 
 .admin-past-records-detail-close {
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(24, 47, 84, 0.12);
+  border: 1px solid #d8e3dd;
   border-radius: 50%;
   background: #fff;
   color: var(--admin-records-ink);
+  font: inherit;
   font-size: 1rem;
   font-weight: 800;
   cursor: pointer;
@@ -459,7 +472,7 @@
 
 .admin-past-records-detail-section,
 .admin-past-records-detail-empty {
-  border: 1px solid rgba(24, 47, 84, 0.08);
+  border: 1px solid rgba(220, 231, 225, 0.9);
   border-radius: 18px;
   padding: 18px;
   background: rgba(255, 255, 255, 0.84);
@@ -482,7 +495,9 @@
 
 .admin-past-records-detail-section h3 {
   margin: 0 0 14px;
-  font-size: 0.96rem;
+  color: #132238;
+  font-size: 0.98rem;
+  font-weight: 850;
 }
 
 .admin-past-records-detail-section dl,
@@ -607,11 +622,12 @@
   margin-top: 18px;
   width: 100%;
   min-height: 50px;
-  border: 1px solid rgba(13, 125, 87, 0.3);
+  border: 1px solid #0c8048;
   border-radius: 14px;
-  background: linear-gradient(135deg, #f8fffb, #eefcf5);
-  color: #0d7d57;
-  font-weight: 800;
+  background: linear-gradient(180deg, #0d9a56, #0c8048);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 850;
   cursor: pointer;
 }
 

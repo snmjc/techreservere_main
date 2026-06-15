@@ -2,7 +2,8 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --tr-font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--tr-font-sans);
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -22,10 +23,21 @@
 body {
   min-width: 320px;
   min-height: 100vh;
+  font-family: var(--tr-font-sans);
+  color: #17211d;
+  background: #f5f8f6;
 }
 
 #app {
   min-height: 100vh;
+  font-family: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 /* FEU Tech Official Seal - Black and White Filter */

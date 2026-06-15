@@ -1,3 +1,5 @@
+const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+
 const EQUIPMENT_PLACEHOLDER_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
     <defs>
@@ -10,7 +12,7 @@ const EQUIPMENT_PLACEHOLDER_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponen
     <rect x="66" y="56" width="348" height="208" rx="24" fill="#ffffff" stroke="#b7d4c0" stroke-width="6"/>
     <circle cx="168" cy="138" r="28" fill="#d3ead8"/>
     <path d="M114 228l68-62 46 44 58-70 80 88H114z" fill="#bfe1c8"/>
-    <text x="240" y="286" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#386641">No Photo</text>
+    <text x="240" y="286" text-anchor="middle" font-family="${APP_FONT_STACK}" font-size="28" font-weight="700" fill="#386641">No Photo</text>
   </svg>
 `)}`;
 

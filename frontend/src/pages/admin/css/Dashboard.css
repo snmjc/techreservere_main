@@ -4,6 +4,9 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-height: calc(100vh - 120px);
+  color: #17211d;
+  font-family: inherit;
 }
 
 .admin-dashboard-header {
@@ -11,6 +14,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding: 1.45rem 1.55rem;
+  background:
+    radial-gradient(circle at top right, rgba(191, 242, 212, 0.48), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(243, 251, 247, 0.94));
+  border: 1px solid #d9ebe1;
+  border-radius: 24px;
+  box-shadow: 0 18px 36px rgba(16, 24, 40, 0.06);
 }
 
 .admin-dashboard-section {
@@ -21,7 +31,7 @@
 
 .admin-dashboard-section-heading h2 {
   margin: 0;
-  color: var(--tr-ink);
+  color: #132238;
   font-size: 1rem;
   font-weight: 850;
   letter-spacing: 0;
@@ -38,16 +48,18 @@
 
 .admin-dashboard-header h1 {
   margin: 0;
-  color: var(--tr-ink);
-  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  color: #132238;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
   line-height: 1.05;
   letter-spacing: 0;
+  font-weight: 900;
 }
 
 .admin-dashboard-subtitle {
-  margin: 0.45rem 0 0;
-  color: var(--tr-muted);
-  font-size: 0.96rem;
+  margin: 0.55rem 0 0;
+  color: #60706a;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .admin-dashboard-date-chip {
@@ -56,14 +68,14 @@
   gap: 0.55rem;
   flex-shrink: 0;
   min-height: 42px;
-  padding: 0 0.85rem;
+  padding: 0 1rem;
   color: var(--tr-ink);
   background: #ffffff;
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(20, 51, 41, 0.06);
+  border: 1px solid #d5e7dd;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(20, 51, 41, 0.08);
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .admin-dashboard-date-select {
@@ -74,6 +86,7 @@
   border: 0;
   font-size: 0.8rem;
   font-weight: 800;
+  font-family: inherit;
 }
 
 .admin-dashboard-date-select:focus {
@@ -122,10 +135,12 @@
   gap: 1rem;
   min-height: 128px;
   padding: 1.2rem;
-  background: #ffffff;
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
-  box-shadow: var(--tr-shadow);
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
+  border: 1px solid #dce7e1;
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
@@ -227,10 +242,12 @@
 .admin-dashboard-panel {
   min-width: 0;
   padding: 1.15rem;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
-  box-shadow: var(--tr-shadow);
+  background:
+    radial-gradient(circle at top right, rgba(207, 245, 220, 0.22), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
+  border: 1px solid #dce7e1;
+  border-radius: 22px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
 }
 
 .admin-dashboard-panel-heading {
@@ -243,7 +260,7 @@
 
 .admin-dashboard-panel-heading h2 {
   margin: 0;
-  color: var(--tr-ink);
+  color: #132238;
   font-size: 1rem;
   line-height: 1.2;
   font-weight: 850;
@@ -251,9 +268,10 @@
 }
 
 .admin-dashboard-panel-heading p {
-  margin: 0.25rem 0 0;
-  color: var(--tr-muted);
-  font-size: 0.78rem;
+  margin: 0.3rem 0 0;
+  color: #60706a;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .admin-dashboard-panel-badge {
@@ -322,9 +340,9 @@
   gap: 0.85rem;
   min-height: 76px;
   padding: 0.9rem;
-  background: var(--tr-page);
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
+  background: rgba(246, 250, 248, 0.92);
+  border: 1px solid #dce7e1;
+  border-radius: 16px;
 }
 
 .admin-dashboard-grouped-icon {
@@ -368,9 +386,9 @@
 .admin-dashboard-facility-card {
   min-width: 0;
   padding: 1rem;
-  background: var(--tr-page);
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
+  background: rgba(246, 250, 248, 0.92);
+  border: 1px solid #dce7e1;
+  border-radius: 18px;
 }
 
 .admin-dashboard-facility-card-header {
@@ -421,9 +439,9 @@
   gap: 0.85rem;
   min-height: 86px;
   padding: 0.95rem;
-  background: var(--tr-page);
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
+  background: rgba(246, 250, 248, 0.92);
+  border: 1px solid #dce7e1;
+  border-radius: 18px;
 }
 
 .admin-dashboard-risk-alert strong,
@@ -488,9 +506,9 @@
   gap: 1rem;
   min-height: 72px;
   padding: 0.9rem 1rem;
-  background: var(--tr-page);
-  border: 1px solid var(--tr-border);
-  border-radius: 8px;
+  background: rgba(246, 250, 248, 0.92);
+  border: 1px solid #dce7e1;
+  border-radius: 18px;
 }
 
 .admin-dashboard-activity-item span {

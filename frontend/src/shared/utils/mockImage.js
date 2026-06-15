@@ -1,3 +1,5 @@
+const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+
 export function createTextPlaceholderDataUrl(label, options = {}) {
   const text = String(label || 'Preview').trim() || 'Preview';
   const width = Number(options.width) || 160;
@@ -23,7 +25,7 @@ export function createTextPlaceholderDataUrl(label, options = {}) {
         y="50%"
         dominant-baseline="middle"
         text-anchor="middle"
-        font-family="Arial, sans-serif"
+        font-family="${APP_FONT_STACK}"
         font-size="${fontSize}"
         font-weight="700"
         fill="${textColor}"

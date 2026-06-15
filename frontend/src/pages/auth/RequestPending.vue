@@ -116,7 +116,7 @@ const {
   width: 100%;
   overflow: hidden;
   background: #f4f6f3;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: inherit;
 }
 
 .request-pending-branding-panel {
