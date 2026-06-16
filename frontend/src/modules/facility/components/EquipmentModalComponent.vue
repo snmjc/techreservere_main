@@ -344,8 +344,10 @@ function resetPhotoInput() {
 }
 
 .equipment-modal-card {
-  width: min(640px, 100%);
-  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  width: min(600px, 100%);
+  max-height: min(88vh, 760px);
   overflow: auto;
   background: #ffffff;
   border: 1px solid #dde6e0;
@@ -363,11 +365,19 @@ function resetPhotoInput() {
 }
 
 .equipment-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
   border-bottom: 1px solid #e6ede8;
 }
 
 .equipment-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   justify-content: flex-end;
+  background: #ffffff;
   border-top: 1px solid #e6ede8;
 }
 
@@ -397,13 +407,14 @@ function resetPhotoInput() {
 }
 
 .equipment-modal-body {
+  overflow: auto;
   padding: 0.95rem 1.1rem 1.1rem;
 }
 
 .equipment-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.95rem 0.9rem;
+  gap: 0.75rem 0.85rem;
 }
 
 .equipment-modal-field {
@@ -430,8 +441,8 @@ function resetPhotoInput() {
 .equipment-modal-field select,
 .equipment-modal-field textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 0.68rem 0.78rem;
+  min-height: 38px;
+  padding: 0.58rem 0.72rem;
   color: #22362c;
   background: #ffffff;
   border: 1px solid #d8e1db;
@@ -441,7 +452,7 @@ function resetPhotoInput() {
 }
 
 .equipment-modal-field textarea {
-  min-height: 80px;
+  min-height: 72px;
   resize: vertical;
 }
 
@@ -471,6 +482,10 @@ function resetPhotoInput() {
 
 .equipment-modal-photo-preview {
   overflow: hidden;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  max-height: 170px;
   border: 1px solid #d8e1db;
   border-radius: 12px;
   background: #f4f8f5;
@@ -479,8 +494,9 @@ function resetPhotoInput() {
 .equipment-modal-photo-preview img {
   display: block;
   width: 100%;
-  max-height: 220px;
-  object-fit: cover;
+  max-width: 280px;
+  height: 160px;
+  object-fit: contain;
 }
 
 .equipment-modal-error {
