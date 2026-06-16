@@ -94,7 +94,7 @@ function buildVenueListQueryParams(options) {
 }
 
 function buildVenueMutationPayload(venueData = {}) {
-  return {
+  const payload = {
     venueName: String(venueData.venueName || '').trim(),
     venueLocation: String(venueData.venueLocation || '').trim(),
     floorLevel: String(venueData.floorLevel || '').trim(),
@@ -103,8 +103,14 @@ function buildVenueMutationPayload(venueData = {}) {
     operationalStatus: String(venueData.operationalStatus || '').trim(),
     availabilityStatus: String(venueData.availabilityStatus || '').trim(),
     description: String(venueData.description || '').trim(),
-    imageUrl: normalizeOptionalImageUrl(venueData.imageUrl),
   };
+
+  const normalizedImageUrl = normalizeOptionalImageUrl(venueData.imageUrl);
+  if (normalizedImageUrl !== null) {
+    payload.imageUrl = normalizedImageUrl;
+  }
+
+  return payload;
 }
 
 function normalizeOptionalImageUrl(value) {

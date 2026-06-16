@@ -110,7 +110,8 @@ class VenueController extends AbstractController
                 $body['operationalStatus'] ?? null,
                 $body['availabilityStatus'] ?? null,
                 $body['description'] ?? null,
-                $body['imageUrl'] ?? null
+                $body['imageUrl'] ?? null,
+                array_key_exists('imageUrl', $body)
             );
 
             return $this->createSuccessResponse($dto->toResponseArray());
