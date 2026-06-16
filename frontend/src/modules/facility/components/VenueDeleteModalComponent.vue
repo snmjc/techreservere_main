@@ -1,6 +1,6 @@
 <template>
   <div v-if="show && venue" class="manage-facilities-modal-overlay" @click.self="!isDeleting && emit('close')">
-    <section class="manage-facilities-delete-modal manage-facilities-equipment-details-modal manage-facilities-venue-details-modal">
+    <section class="manage-facilities-delete-modal manage-facilities-equipment-details-modal manage-facilities-venue-details-modal manage-facilities-venue-dialog manage-facilities-venue-delete-dialog">
       <button
         class="manage-facilities-modal-close"
         type="button"
@@ -14,37 +14,46 @@
         </svg>
       </button>
 
-      <div class="manage-facilities-modal-heading">
-        <h2>Delete Venue</h2>
-        <p>This action permanently removes the selected venue from TechReserve.</p>
+      <div class="manage-facilities-venue-delete-alert">
+        <span class="manage-facilities-venue-delete-alert-icon">!</span>
       </div>
 
-      <div class="manage-facilities-equipment-details-layout">
-        <div class="manage-facilities-equipment-photo-card">
-          <img
-            :src="resolveVenuePhoto(venue)"
-            :alt="`${formatVenueText(venue?.venueName)} photo`"
-            class="manage-facilities-equipment-photo"
-          />
-        </div>
+      <div class="manage-facilities-modal-heading manage-facilities-modal-heading--centered">
+        <h2>Are you sure you want to delete this venue?</h2>
+        <p>This action cannot be undone.</p>
+      </div>
 
-        <dl class="manage-facilities-equipment-details-grid">
-          <div><dt>Venue Name</dt><dd>{{ formatVenueText(venue?.venueName) }}</dd></div>
-          <div><dt>Location</dt><dd>{{ formatVenueText(venue?.venueLocation) }}</dd></div>
-          <div><dt>Capacity</dt><dd>{{ formatVenueCapacity(venue?.capacityLimit) }}</dd></div>
-          <div><dt>Availability Date</dt><dd>{{ formatDisplayDate(venue?.availabilityDate) }}</dd></div>
-          <div><dt>Operational Status</dt><dd>{{ formatVenueText(venue?.operationalStatus) }}</dd></div>
-          <div><dt>Availability</dt><dd>{{ formatVenueText(venue?.availabilityStatus) }}</dd></div>
-          <div><dt>Floor Level</dt><dd>{{ formatVenueText(venue?.floorLevel) }}</dd></div>
-          <div class="manage-facilities-equipment-details-grid__full">
-            <dt>Description</dt>
-            <dd>{{ formatVenueText(venue?.description) }}</dd>
+      <div class="manage-facilities-venue-delete-summary-card">
+        <div class="manage-facilities-venue-delete-summary-grid">
+          <div>
+            <span>Venue Name</span>
+            <strong>{{ formatVenueText(venue?.venueName) }}</strong>
           </div>
-        </dl>
+          <div>
+            <span>Floor</span>
+            <strong>{{ formatVenueText(venue?.floorLevel) }}</strong>
+          </div>
+          <div>
+            <span>Location</span>
+            <strong>{{ formatVenueText(venue?.venueLocation) }}</strong>
+          </div>
+          <div>
+            <span>Capacity</span>
+            <strong>{{ formatVenueCapacity(venue?.capacityLimit) }}</strong>
+          </div>
+          <div>
+            <span>Availability Date</span>
+            <strong>{{ formatDisplayDate(venue?.availabilityDate) }}</strong>
+          </div>
+          <div>
+            <span>Status</span>
+            <strong>{{ formatVenueText(venue?.availabilityStatus || venue?.operationalStatus) }}</strong>
+          </div>
+        </div>
       </div>
 
       <label class="manage-facilities-confirm-field">
-        <span>Type your admin email to confirm deletion:</span>
+        <span>Admin email confirmation</span>
         <input
           :value="confirmEmail"
           type="email"
@@ -55,7 +64,7 @@
       </label>
 
       <label class="manage-facilities-confirm-field">
-        <span>Type your admin password to confirm deletion:</span>
+        <span>Admin password confirmation</span>
         <input
           :value="confirmPassword"
           type="password"
@@ -89,7 +98,6 @@ import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 import {
   formatVenueCapacity,
   formatVenueText,
-  resolveVenuePhoto,
 } from '@/modules/facility/utils/venueFormValidation.js';
 
 defineProps({
