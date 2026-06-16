@@ -17,6 +17,7 @@ class ReservationCreateRequestDTO
     public array $requestedEquipmentList;
     public int $requestedQuantity;
     public string $eventDateTime;
+    public string $endDateTime;
     public string $purposeDescription;
     public string $activityType;
     public ?array $supportingDocuments;
@@ -27,6 +28,7 @@ class ReservationCreateRequestDTO
         array $requestedEquipmentList,
         int $requestedQuantity,
         string $eventDateTime,
+        string $endDateTime,
         string $purposeDescription,
         string $activityType,
         ?array $supportingDocuments = null
@@ -36,6 +38,7 @@ class ReservationCreateRequestDTO
         $this->requestedEquipmentList = $requestedEquipmentList;
         $this->requestedQuantity = $requestedQuantity;
         $this->eventDateTime = $eventDateTime;
+        $this->endDateTime = $endDateTime;
         $this->purposeDescription = $purposeDescription;
         $this->activityType = $activityType;
         $this->supportingDocuments = $supportingDocuments;

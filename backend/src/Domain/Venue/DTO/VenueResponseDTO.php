@@ -20,8 +20,9 @@ class VenueResponseDTO
     public ?string $description;
     public ?string $imageUrl;
     public string $createdTimestamp;
+    public array $reservationTimeRanges;
 
-    public function __construct(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, string $operationalStatus, string $availabilityStatus, ?string $description, ?string $imageUrl, string $createdTimestamp)
+    public function __construct(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, string $operationalStatus, string $availabilityStatus, ?string $description, ?string $imageUrl, string $createdTimestamp, array $reservationTimeRanges = [])
     {
         $this->venueIdentifier = $venueIdentifier;
         $this->venueName = $venueName;
@@ -34,6 +35,7 @@ class VenueResponseDTO
         $this->description = $description;
         $this->imageUrl = $imageUrl;
         $this->createdTimestamp = $createdTimestamp;
+        $this->reservationTimeRanges = $reservationTimeRanges;
     }
 
     public function toResponseArray(): array
@@ -50,6 +52,7 @@ class VenueResponseDTO
             'description' => $this->description,
             'imageUrl' => $this->imageUrl,
             'createdTimestamp' => $this->createdTimestamp,
+            'reservationTimeRanges' => $this->reservationTimeRanges,
         ];
     }
 }

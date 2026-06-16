@@ -34,6 +34,13 @@
             <option value="available">Available Only</option>
             <option value="unavailable">Unavailable Only</option>
           </select>
+          <label for="venueDate" class="view-facilities-filter-label">Date:</label>
+          <input
+            id="venueDate"
+            v-model="selectedVenueDate"
+            type="date"
+            class="view-facilities-filter-select view-facilities-filter-select--date"
+          />
           <button class="view-facilities-sort-button" @click="venueSortOrder = venueSortOrder === 'asc' ? 'desc' : 'asc'" :title="venueSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'">
             <svg v-if="venueSortOrder === 'asc'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -81,6 +88,13 @@
               }"
               @click="handleViewVenueDetails(venue)"
             >
+              <div class="view-facilities-venue-media">
+                <img
+                  :src="resolveVenuePhoto(venue)"
+                  :alt="`${venue.venueName} photo`"
+                  class="view-facilities-venue-image"
+                />
+              </div>
               <div class="view-facilities-venue-card-header">
                 <h4 class="view-facilities-venue-name">{{ venue.venueName }}</h4>
                 <div class="view-facilities-venue-status">
@@ -93,6 +107,7 @@
                 <p class="view-facilities-venue-detail"><strong>Location:</strong> {{ venue.venueLocation || 'N/A' }}</p>
                 <p class="view-facilities-venue-detail"><strong>Capacity:</strong> {{ venue.capacityLimit || 'N/A' }}</p>
                 <p class="view-facilities-venue-detail"><strong>Availability Date:</strong> {{ formatDisplayDate(venue.availabilityDate) }}</p>
+                <p class="view-facilities-venue-detail"><strong>Operational Status:</strong> {{ venue.operationalStatus || 'N/A' }}</p>
               </div>
               <span class="view-facilities-venue-link">View Details</span>
             </button>
@@ -159,15 +174,23 @@
           }"
           @click="handleViewEquipmentDetails(equipment)"
         >
+          <div class="view-facilities-equipment-media">
+            <img
+              :src="resolveEquipmentPhoto(equipment)"
+              :alt="`${equipment.equipmentName} photo`"
+              class="view-facilities-equipment-image"
+            />
+          </div>
           <div class="view-facilities-equipment-chip-header">
             <span class="view-facilities-equipment-chip-name">{{ equipment.equipmentName }}</span>
             <span class="view-facilities-status-badge" :class="equipment.equipmentState === 'Available' ? 'available' : 'unavailable'">
-              {{ equipment.equipmentState }}
+              {{ formatEquipmentStatus(equipment) }}
             </span>
           </div>
-          <p class="view-facilities-equipment-detail"><strong>Category:</strong> {{ equipment.categoryName }}</p>
-          <p class="view-facilities-equipment-detail"><strong>Available:</strong> {{ equipment.availableQuantity }} / {{ equipment.totalQuantity }}</p>
-          <p class="view-facilities-equipment-detail"><strong>Description:</strong> {{ equipment.scheduleDescription || 'N/A' }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Category:</strong> {{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Brand:</strong> {{ equipment.equipmentBrand || 'N/A' }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Available Quantity:</strong> {{ equipment.availableQuantity }}</p>
+          <p class="view-facilities-equipment-detail"><strong>Description:</strong> {{ equipment.description || equipment.scheduleDescription || 'N/A' }}</p>
           <span class="view-facilities-equipment-link">View Details</span>
         </button>
       </div>
@@ -194,13 +217,14 @@
       :error-message="viewEquipmentLoading ? 'Loading equipment details...' : viewEquipmentError"
       title="View Equipment Details"
       subtitle="Equipment information from the TechReserve equipment database."
+      :show-admin-fields="false"
       @close="closeEquipmentDetails"
     />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewFacilities.css';
@@ -209,11 +233,14 @@ import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
 import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
+import { formatEquipmentStatus, resolveEquipmentPhoto } from '@/modules/facility/utils/equipmentPresentation.js';
+import { resolveVenuePhoto } from '@/modules/facility/utils/venueFormValidation.js';
 import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 
 const activeFacilityTab = ref('venue');
 const venueFilterValue = ref('all');
 const venueSortOrder = ref('asc');
+const selectedVenueDate = ref(getTodayDateInputValue());
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentSearchQuery = ref('');
@@ -270,11 +297,17 @@ onMounted(() => {
   fetchEquipment();
 });
 
+watch(selectedVenueDate, () => {
+  fetchVenues();
+});
+
 async function fetchVenues() {
   try {
     venueLoading.value = true;
     venueError.value = '';
-    const response = await venueApi.listVenues();
+    const response = await venueApi.listVenues({
+      selectedDate: selectedVenueDate.value,
+    });
     const venuePayload = response?.data?.venues || response?.venues || [];
     venueList.value = Array.isArray(venuePayload)
       ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
@@ -402,5 +435,13 @@ function compareByName(leftName, rightName, sortDirection) {
   return sortDirection === 'asc'
     ? normalizedLeft.localeCompare(normalizedRight)
     : normalizedRight.localeCompare(normalizedLeft);
+}
+
+function getTodayDateInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 </script>

@@ -101,6 +101,10 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
+.view-facilities-filter-select--date {
+  min-width: 170px;
+}
+
 .view-facilities-sort-button {
   display: flex;
   align-items: center;
@@ -169,8 +173,8 @@
 }
 
 .view-facilities-equipment-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
 
@@ -228,6 +232,18 @@
 .view-facilities-venue-card--unavailable {
   background-color: #fef2f2;
   border-left-color: #ef4444;
+}
+
+.view-facilities-venue-media {
+  height: 170px;
+  background: linear-gradient(135deg, #f7faf8 0%, #eef7f1 100%);
+}
+
+.view-facilities-venue-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .view-facilities-venue-card-header {
@@ -292,40 +308,83 @@
 /* ===== Equipment Chip ===== */
 
 .view-facilities-equipment-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.5rem;
-  border-radius: 9999px;
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  border-radius: 1rem;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 2px solid transparent;
+  border: 1px solid #dbe5df;
+  overflow: hidden;
 }
 
 .view-facilities-equipment-chip--available {
-  background-color: #10b981;
-  color: white;
+  background-color: #ffffff;
+  color: #1f2937;
 }
 
 .view-facilities-equipment-chip--available:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
 }
 
 .view-facilities-equipment-chip--unavailable {
-  background-color: #ef4444;
-  color: white;
+  background-color: #ffffff;
+  color: #1f2937;
 }
 
 .view-facilities-equipment-chip--unavailable:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.12);
+}
+
+.view-facilities-equipment-media {
+  height: 160px;
+  background: linear-gradient(135deg, #f7faf8 0%, #eef7f1 100%);
+}
+
+.view-facilities-equipment-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-facilities-equipment-chip-header,
+.view-facilities-equipment-detail,
+.view-facilities-equipment-link {
+  padding-inline: 1rem;
+}
+
+.view-facilities-equipment-chip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.view-facilities-equipment-detail {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.view-facilities-equipment-link {
+  padding-bottom: 1rem;
+  color: #047857;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .view-facilities-equipment-chip-name {
-  white-space: nowrap;
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 /* ===== Empty State ===== */

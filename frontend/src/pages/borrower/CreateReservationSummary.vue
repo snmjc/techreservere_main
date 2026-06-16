@@ -155,6 +155,7 @@ async function handleSubmitReservationRequest() {
     submissionError.value = '';
 
     const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
+    const endDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
     const activityTimeRange = `${reservationFormStore.activityTimeFrom || '00:00'}-${reservationFormStore.activityTimeTo || '00:00'}`;
 
     const reservationData = {
@@ -166,6 +167,7 @@ async function handleSubmitReservationRequest() {
       })),
       requestedQuantity: reservationFormStore.participantCount || 0,
       eventDateTime: eventDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString(),
       activityTimeRange,
       purposeDescription: reservationFormStore.purposeText || 'Reservation',
       activityType: reservationFormStore.activityNameTitle || 'Activity',

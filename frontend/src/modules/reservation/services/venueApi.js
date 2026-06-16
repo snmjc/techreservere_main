@@ -7,11 +7,12 @@ import {
 } from '@/shared/utils/authToken.js';
 
 const venueApi = {
-  async listVenues() {
+  async listVenues(options = {}) {
     const authToken = getStoredAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/venues'), {
-        headers: buildAuthorizationHeaders(authToken)
+        headers: buildAuthorizationHeaders(authToken),
+        params: buildVenueListQueryParams(options),
       });
       return response.data;
     } catch (error) {
@@ -73,6 +74,24 @@ const venueApi = {
     }
   }
 };
+
+function buildVenueListQueryParams(options) {
+  const params = {};
+
+  if (options.selectedDate) {
+    params.selectedDate = options.selectedDate;
+  }
+
+  if (options.startTime) {
+    params.startTime = options.startTime;
+  }
+
+  if (options.endTime) {
+    params.endTime = options.endTime;
+  }
+
+  return params;
+}
 
 export default venueApi;
 

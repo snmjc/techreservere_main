@@ -103,6 +103,8 @@ class ReservationReviewService
             requestedEquipmentList: $entity->getRequestedEquipmentList(),
             requestedQuantity: $entity->getRequestedQuantity(),
             eventDateTime: $entity->getEventDateTime()->format(\DateTime::ATOM),
+            endDateTime: ($entity->getEndDateTime() ?? $entity->getEventDateTime())->format(\DateTime::ATOM),
+            activityTimeRange: $this->buildActivityTimeRange($entity),
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
             currentStatus: $entity->getCurrentStatus(),
@@ -111,5 +113,13 @@ class ReservationReviewService
             supportingDocuments: $entity->getSupportingDocuments(),
             submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM)
         );
+    }
+
+    private function buildActivityTimeRange(ReservationEntity $entity): string
+    {
+        $startDateTime = $entity->getEventDateTime();
+        $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
+
+        return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
     }
 }

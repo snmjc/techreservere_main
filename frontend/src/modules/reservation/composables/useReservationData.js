@@ -31,21 +31,25 @@ export function useReservationData() {
     }
   }
 
-  async function fetchVenues() {
+  async function fetchVenues(options = {}) {
     try {
       isLoading.value = true;
       error.value = null;
-      const response = await venueApi.listVenues();
+      const response = await venueApi.listVenues(options);
       const venues = response?.data?.venues || response?.venues || [];
       if (Array.isArray(venues)) {
         venueList.value = venues.map(venue => ({
           venueIdentifier: venue.venueIdentifier,
           venueName: venue.venueName,
           venueLocation: venue.venueLocation,
+          floorLevel: venue.floorLevel,
           capacityLimit: venue.capacityLimit,
           availabilityDate: venue.availabilityDate,
           availabilityStatus: venue.availabilityStatus,
           operationalStatus: venue.operationalStatus || 'Active',
+          description: venue.description || '',
+          imageUrl: venue.imageUrl || '',
+          reservationTimeRanges: venue.reservationTimeRanges || [],
           venueState: venue.availabilityStatus === 'Available' ? 'Available' : 'Unavailable',
         }));
       }
@@ -57,8 +61,8 @@ export function useReservationData() {
     }
   }
 
-  async function loadAllData() {
-    await Promise.all([fetchEquipment(), fetchVenues()]);
+  async function loadAllData(options = {}) {
+    await Promise.all([fetchEquipment(), fetchVenues(options)]);
   }
 
   return {

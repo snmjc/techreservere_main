@@ -36,6 +36,9 @@ class ReservationEntity
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $eventDateTime;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $endDateTime = null;
+
     #[ORM\Column(type: Types::STRING, length: 200)]
     private string $purposeDescription = '';
 
@@ -88,6 +91,8 @@ class ReservationEntity
     public function setRequestedQuantity(int $requestedQuantity): self { $this->requestedQuantity = $requestedQuantity; return $this; }
     public function getEventDateTime(): \DateTimeInterface { return $this->eventDateTime; }
     public function setEventDateTime(\DateTimeInterface $eventDateTime): self { $this->eventDateTime = $eventDateTime; return $this; }
+    public function getEndDateTime(): ?\DateTimeInterface { return $this->endDateTime; }
+    public function setEndDateTime(?\DateTimeInterface $endDateTime): self { $this->endDateTime = $endDateTime; return $this; }
     public function getPurposeDescription(): string { return $this->purposeDescription; }
     public function setPurposeDescription(string $purposeDescription): self { $this->purposeDescription = $purposeDescription; return $this; }
     public function getActivityType(): string { return $this->activityType; }

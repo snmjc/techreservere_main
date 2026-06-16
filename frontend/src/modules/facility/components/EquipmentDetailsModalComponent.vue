@@ -30,6 +30,8 @@
           <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(equipment?.equipmentBrand) }}</dd></div>
           <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(equipment?.availableQuantity) }}</dd></div>
           <div><dt>Operational Status / Status</dt><dd>{{ formatEquipmentStatus(equipment) }}</dd></div>
+          <div v-if="showAdminFields"><dt>Barcode</dt><dd>{{ formatEquipmentText(equipment?.barcode) }}</dd></div>
+          <div v-if="showAdminFields"><dt>Asset ID</dt><dd>{{ formatEquipmentText(equipment?.assetId || equipment?.serialNumber) }}</dd></div>
           <div class="equipment-details-modal-grid__full">
             <dt>Description</dt>
             <dd>{{ formatEquipmentText(equipment?.description || equipment?.scheduleDescription) }}</dd>
@@ -90,6 +92,10 @@ defineProps({
   secondaryActionLabel: {
     type: String,
     default: '',
+  },
+  showAdminFields: {
+    type: Boolean,
+    default: false,
   },
 });
 

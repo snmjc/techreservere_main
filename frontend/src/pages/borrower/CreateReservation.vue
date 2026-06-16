@@ -48,10 +48,58 @@
 
               <div class="borrower-reservation-field borrower-reservation-field--full">
                 <label>Activity Time <em>*</em></label>
-                <div class="reservation-details-time-row">
-                  <input v-model="formState.activityTimeFrom" type="time" />
-                  <span>-</span>
-                  <input v-model="formState.activityTimeTo" type="time" />
+                <div class="reservation-time-picker">
+                  <div class="reservation-time-picker__summary">
+                    <div class="reservation-time-picker__summary-card">
+                      <span>Start Time</span>
+                      <strong>{{ selectedStartTimeLabel }}</strong>
+                    </div>
+                    <div class="reservation-time-picker__summary-card">
+                      <span>End Time</span>
+                      <strong>{{ selectedEndTimeLabel }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="reservation-time-picker__panels">
+                    <div class="reservation-time-picker__panel">
+                      <div class="reservation-time-picker__panel-head">
+                        <h3>Choose Start Time</h3>
+                        <p>Select from 7:00 AM to 6:30 PM.</p>
+                      </div>
+                      <div class="reservation-time-picker__slot-grid">
+                        <button
+                          v-for="slot in startTimeSlots"
+                          :key="`start-${slot.value}`"
+                          type="button"
+                          class="reservation-time-picker__slot"
+                          :class="{ 'is-selected': formState.activityTimeFrom === slot.value }"
+                          @click="selectStartTime(slot.value)"
+                        >
+                          {{ slot.label }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="reservation-time-picker__panel">
+                      <div class="reservation-time-picker__panel-head">
+                        <h3>Choose End Time</h3>
+                        <p>Select a time later than the chosen start time.</p>
+                      </div>
+                      <div class="reservation-time-picker__slot-grid">
+                        <button
+                          v-for="slot in endTimeSlots"
+                          :key="`end-${slot.value}`"
+                          type="button"
+                          class="reservation-time-picker__slot"
+                          :class="{ 'is-selected': formState.activityTimeTo === slot.value }"
+                          :disabled="slot.disabled"
+                          @click="selectEndTime(slot.value)"
+                        >
+                          {{ slot.label }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -92,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -123,6 +171,9 @@ const purposeOptions = [
   'Others: Specify',
 ];
 
+const allHalfHourSlots = buildHalfHourSlots('07:00', '19:00');
+const startTimeSlots = allHalfHourSlots.slice(0, -1);
+
 const formState = ref({
   requestDate: reservationFormStore.requestDate || todayIsoDate,
   activityDate: reservationFormStore.activityDate || '',
@@ -134,9 +185,33 @@ const formState = ref({
   reservationType: reservationFormStore.reservationType || 'Venue',
 });
 
+const endTimeSlots = computed(() => allHalfHourSlots.map((slot) => ({
+  ...slot,
+  disabled: !formState.value.activityTimeFrom || slot.value <= formState.value.activityTimeFrom,
+})));
+
+const selectedStartTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeFrom, 'Choose a start time'));
+const selectedEndTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeTo, 'Choose an end time'));
+
 function getTodayISODate() {
   const today = new Date();
   return today.toISOString().split('T')[0];
+}
+
+function selectStartTime(timeValue) {
+  formState.value.activityTimeFrom = timeValue;
+
+  if (formState.value.activityTimeTo && formState.value.activityTimeTo <= timeValue) {
+    formState.value.activityTimeTo = '';
+  }
+}
+
+function selectEndTime(timeValue) {
+  if (!formState.value.activityTimeFrom || timeValue <= formState.value.activityTimeFrom) {
+    return;
+  }
+
+  formState.value.activityTimeTo = timeValue;
 }
 
 function handleNextPage() {
@@ -168,5 +243,49 @@ function handleNextPage() {
   reservationFormStore.reservationType = formState.value.reservationType;
 
   router.push({ name: 'borrowerCreateReservationVenuePage' });
+}
+
+function buildHalfHourSlots(startTime, endTime) {
+  const slots = [];
+  let minutes = parseTimeToMinutes(startTime);
+  const lastMinutes = parseTimeToMinutes(endTime);
+
+  while (minutes <= lastMinutes) {
+    const value = formatMinutesAsValue(minutes);
+    slots.push({
+      value,
+      label: formatMinutesAsLabel(minutes),
+    });
+    minutes += 30;
+  }
+
+  return slots;
+}
+
+function parseTimeToMinutes(timeValue) {
+  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  return (hours * 60) + minutes;
+}
+
+function formatMinutesAsValue(totalMinutes) {
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const minutes = String(totalMinutes % 60).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function formatMinutesAsLabel(totalMinutes) {
+  const hours24 = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const suffix = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+function formatSelectedSlotLabel(timeValue, fallbackLabel) {
+  if (!timeValue) {
+    return fallbackLabel;
+  }
+
+  return formatMinutesAsLabel(parseTimeToMinutes(timeValue));
 }
 </script>
