@@ -24,15 +24,15 @@
           </label>
 
           <label class="equipment-modal-field">
-            <span>Category / Type <em>*</em></span>
+            <span>Equipment Type/Category <em>*</em></span>
             <select v-model="formData.equipmentCategory">
-              <option value="">Select category / type</option>
+              <option value="">Select equipment type/category</option>
               <option v-for="option in categoryOptions" :key="option" :value="option">{{ option }}</option>
             </select>
           </label>
 
           <label class="equipment-modal-field">
-            <span>Brand <em>*</em></span>
+            <span>Equipment Brand <em>*</em></span>
             <input
               v-model.trim="formData.equipmentBrand"
               type="text"
@@ -89,17 +89,17 @@
               v-model.trim="formData.assetId"
               type="text"
               maxlength="13"
-              placeholder="Enter asset ID"
+              placeholder="F123-456-789"
             />
             <small>Use the format F123-456-789.</small>
           </label>
 
           <label class="equipment-modal-field equipment-modal-field--full">
-            <span>Photo (.jpg only)</span>
+            <span>Photo of Equipment (.jpg only)</span>
             <input
               ref="photoInputRef"
               type="file"
-              accept=".jpg,.jpeg,image/jpeg"
+              accept=".jpg,image/jpeg"
               @change="handlePhotoFileChange"
             />
             <small>Optional. JPG files only.</small>
