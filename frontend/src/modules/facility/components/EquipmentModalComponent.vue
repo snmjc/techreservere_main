@@ -123,7 +123,7 @@
         <button class="equipment-modal-button equipment-modal-button--cancel" type="button" :disabled="isSaving" @click="handleCancel">
           Cancel
         </button>
-        <button class="equipment-modal-button equipment-modal-button--save" type="button" :disabled="isSaving || !isFormReady" @click="handleSave">
+        <button class="equipment-modal-button equipment-modal-button--save" type="button" :disabled="isSaving" @click="handleSave">
           {{ isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add Equipment') }}
         </button>
       </footer>
@@ -180,7 +180,6 @@ const categoryOptions = computed(() => {
   return [...new Set([...defaultCategories, currentCategory].filter(Boolean))];
 });
 
-const isFormReady = computed(() => validateEquipmentForm(formData.value) === '');
 const photoPreviewSource = computed(() => {
   if (formData.value.photoData) {
     return formData.value.photoData;
