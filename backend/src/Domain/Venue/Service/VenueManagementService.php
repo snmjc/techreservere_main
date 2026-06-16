@@ -92,7 +92,7 @@ class VenueManagementService
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
 
-    public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
+    public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl, bool $replaceImage = false): VenueResponseDTO
     {
         $this->ensureVenueSchemaReady();
         $entity = $this->venueRepository->find($venueIdentifier);
@@ -122,7 +122,9 @@ class VenueManagementService
         $entity->setOperationalStatus($resolvedOperationalStatus);
         $entity->setAvailabilityStatus($resolvedAvailabilityStatus);
         $entity->setDescription($normalizedDescription);
-        $entity->setImageUrl($normalizedImageUrl);
+        if ($replaceImage) {
+            $entity->setImageUrl($normalizedImageUrl);
+        }
         $this->venueRepository->persistVenue($entity);
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
@@ -265,18 +267,8 @@ class VenueManagementService
 
         return array_map(function (VenueEntity $entity) use ($availabilityWindow, $reservationMap): VenueResponseDTO {
             $reservationRows = $reservationMap[$entity->getVenueIdentifier()] ?? [];
-            $manualAvailabilityStatus = $entity->getAvailabilityStatus();
-            $baseAvailabilityStatus = $manualAvailabilityStatus;
+            $availabilityStatus = $entity->getAvailabilityStatus();
 
-            if ($manualAvailabilityStatus !== 'Unavailable' && $availabilityWindow !== null) {
-                $baseAvailabilityStatus = $this->resolveAvailabilityStatusForSelectedDate(
-                    $entity->getOperationalStatus(),
-                    $entity->getAvailabilityDate(),
-                    $availabilityWindow['selectedDate']
-                );
-            }
-
-            $availabilityStatus = $baseAvailabilityStatus;
             if ($availabilityStatus === 'Available' && $reservationRows !== []) {
                 $availabilityStatus = 'Unavailable';
             }
@@ -366,22 +358,6 @@ class VenueManagementService
         $endDateTime = $reservation->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s - %s', $startDateTime->format('g:i A'), $endDateTime->format('g:i A'));
-    }
-
-    private function resolveAvailabilityStatusForSelectedDate(string $operationalStatus, ?\DateTimeInterface $availabilityDate, \DateTimeInterface $selectedDate): string
-    {
-        if ($operationalStatus !== 'Active') {
-            return 'Unavailable';
-        }
-
-        if ($availabilityDate === null) {
-            return 'Unavailable';
-        }
-
-        $selectedDay = \DateTimeImmutable::createFromInterface($selectedDate)->setTime(0, 0);
-        $availableOn = \DateTimeImmutable::createFromInterface($availabilityDate)->setTime(0, 0);
-
-        return $availableOn > $selectedDay ? 'Unavailable' : 'Available';
     }
 
     private function isValidJpgImagePayload(string $imageUrl): bool
