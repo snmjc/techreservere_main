@@ -14,6 +14,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/v1/venues')]
@@ -65,7 +66,7 @@ class VenueController extends AbstractController
     public function createVenue(Request $request): JsonResponse
     {
         try {
-            $body = json_decode($request->getContent(), true) ?? [];
+            $body = $this->decodeRequestBody($request);
             $dto = $this->venueManagementService->createVenue(
                 $body['venueName'] ?? '',
                 $body['venueLocation'] ?? null,
@@ -78,12 +79,14 @@ class VenueController extends AbstractController
             );
 
             return $this->createSuccessResponse($dto->toResponseArray(), 201);
+        } catch (\JsonException) {
+            return $this->createErrorResponse('VenueInvalidPayload', 'Venue request body must be valid JSON.', Response::HTTP_BAD_REQUEST);
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('VenueValidationFailed', $exception->getMessage(), 422);
         } catch (UniqueConstraintViolationException $exception) {
             return $this->createErrorResponse('VenueConflict', 'Venue name already exists.', 409);
         } catch (\Throwable $exception) {
-            error_log('Venue create failed: ' . $exception->getMessage());
+            $this->logVenueFailure('create', $request, $exception);
             return $this->createErrorResponse('VenueCreateFailed', 'Unable to create venue at this time.', 500);
         }
     }
@@ -93,7 +96,7 @@ class VenueController extends AbstractController
     public function updateVenue(int $venueIdentifier, Request $request): JsonResponse
     {
         try {
-            $body = json_decode($request->getContent(), true) ?? [];
+            $body = $this->decodeRequestBody($request);
             $dto = $this->venueManagementService->updateVenue(
                 $venueIdentifier,
                 $body['venueName'] ?? '',
@@ -107,6 +110,8 @@ class VenueController extends AbstractController
             );
 
             return $this->createSuccessResponse($dto->toResponseArray());
+        } catch (\JsonException) {
+            return $this->createErrorResponse('VenueInvalidPayload', 'Venue request body must be valid JSON.', Response::HTTP_BAD_REQUEST);
         } catch (DomainNotFoundException $exception) {
             return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
         } catch (DomainValidationException $exception) {
@@ -114,7 +119,7 @@ class VenueController extends AbstractController
         } catch (UniqueConstraintViolationException $exception) {
             return $this->createErrorResponse('VenueConflict', 'Venue name already exists.', 409);
         } catch (\Throwable $exception) {
-            error_log('Venue update failed: ' . $exception->getMessage());
+            $this->logVenueFailure('update', $request, $exception);
             return $this->createErrorResponse('VenueUpdateFailed', 'Unable to update venue at this time.', 500);
         }
     }
@@ -142,5 +147,37 @@ class VenueController extends AbstractController
         } catch (DomainNotFoundException $exception) {
             return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
         }
+    }
+
+    private function decodeRequestBody(Request $request): array
+    {
+        $rawBody = trim((string) $request->getContent());
+        if ($rawBody === '') {
+            return [];
+        }
+
+        return json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    private function logVenueFailure(string $action, Request $request, \Throwable $exception): void
+    {
+        $rawBody = (string) $request->getContent();
+        $decodedBody = json_decode($rawBody, true);
+        $payload = is_array($decodedBody) ? $decodedBody : [];
+        $imageValue = (string) ($payload['imageUrl'] ?? $payload['photoData'] ?? '');
+
+        error_log(sprintf(
+            'Venue %s failed: %s | context=%s',
+            $action,
+            $exception->getMessage(),
+            json_encode([
+                'contentLength' => strlen($rawBody),
+                'venueName' => $payload['venueName'] ?? null,
+                'hasImage' => $imageValue !== '',
+                'imageLength' => strlen($imageValue),
+                'operationalStatus' => $payload['operationalStatus'] ?? null,
+                'availabilityDate' => $payload['availabilityDate'] ?? null,
+            ], JSON_UNESCAPED_SLASHES)
+        ));
     }
 }
