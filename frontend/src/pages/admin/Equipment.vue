@@ -221,7 +221,7 @@
             <button
               type="button"
               class="equipment-modal__primary"
-              :disabled="isSaving || !isFormReady"
+              :disabled="isSaving"
               @click="submitForm"
             >
               {{ isSaving ? (formMode === 'create' ? 'Creating...' : 'Saving...') : (formMode === 'create' ? 'Create Equipment' : 'Save Changes') }}
@@ -393,19 +393,19 @@ function closeFormModal() {
 }
 
 async function submitForm() {
-  if (!isFormReady.value || isSaving.value) {
+  if (isSaving.value) {
+    return;
+  }
+
+  const validationMessage = validateEquipmentForm(form.value);
+  if (validationMessage) {
+    formError.value = validationMessage;
     return;
   }
 
   try {
     isSaving.value = true;
     formError.value = '';
-
-    const validationMessage = validateEquipmentForm(form.value);
-    if (validationMessage) {
-      formError.value = validationMessage;
-      return;
-    }
 
     const payload = normalizeEquipmentForm(form.value);
 
