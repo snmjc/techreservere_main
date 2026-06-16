@@ -35,6 +35,7 @@ class VenueCreateSmokeTestCommand extends Command
                 10,
                 date('Y-m-d'),
                 'Active',
+                'Available',
                 'Temporary smoke test venue.',
                 null
             );

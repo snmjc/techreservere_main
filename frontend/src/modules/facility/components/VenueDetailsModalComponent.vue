@@ -102,7 +102,30 @@
               </svg>
             </span>
             <div>
-              <p>Status</p>
+              <p>Operational Status</p>
+              <strong>
+                <span
+                  class="manage-facilities-venue-status-badge"
+                  :class="String(venue?.operationalStatus || '').trim() === 'Active'
+                    ? 'manage-facilities-venue-status-badge--available'
+                    : 'manage-facilities-venue-status-badge--unavailable'"
+                >
+                  {{ formatVenueText(venue?.operationalStatus) }}
+                </span>
+              </strong>
+            </div>
+          </article>
+
+          <article class="manage-facilities-venue-detail-row">
+            <span class="manage-facilities-venue-detail-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 12h18" />
+                <path d="M12 3v18" />
+                <circle cx="12" cy="12" r="9" />
+              </svg>
+            </span>
+            <div>
+              <p>Availability</p>
               <strong>
                 <span
                   class="manage-facilities-venue-status-badge"
@@ -110,7 +133,7 @@
                     ? 'manage-facilities-venue-status-badge--available'
                     : 'manage-facilities-venue-status-badge--unavailable'"
                 >
-                  {{ formatVenueText(venue?.availabilityStatus || venue?.operationalStatus) }}
+                  {{ formatVenueText(venue?.availabilityStatus) }}
                 </span>
               </strong>
             </div>

@@ -26,7 +26,7 @@
           <div class="facility-venue-card-header">
             <div>
               <span class="facility-venue-card-name">{{ venueRecord.venueName }}</span>
-              <span class="facility-venue-card-status">{{ venueRecord.operationalStatus || 'N/A' }}</span>
+              <span class="facility-venue-card-status">{{ venueRecord.availabilityStatus || 'N/A' }}</span>
             </div>
             <div class="facility-venue-card-actions">
               <button
@@ -69,7 +69,8 @@
             <span class="facility-venue-card-detail">{{ venueRecord.venueLocation || 'N/A' }}</span>
             <span class="facility-venue-card-detail">Capacity: {{ venueRecord.capacityLimit || 'N/A' }}</span>
             <span class="facility-venue-card-detail">Available: {{ venueRecord.availabilityDate || 'N/A' }}</span>
-            <span class="facility-venue-card-detail">Status: {{ venueRecord.venueAvailable ? 'Available' : 'Unavailable' }}</span>
+            <span class="facility-venue-card-detail">Operational: {{ venueRecord.operationalStatus || 'N/A' }}</span>
+            <span class="facility-venue-card-detail">Availability: {{ venueRecord.availabilityStatus || (venueRecord.venueAvailable ? 'Available' : 'Unavailable') }}</span>
           </div>
         </article>
       </div>

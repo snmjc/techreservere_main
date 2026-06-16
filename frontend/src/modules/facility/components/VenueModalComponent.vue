@@ -48,10 +48,18 @@
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Status <em>*</em></span>
+            <span class="venue-modal-label">Operational Status <em>*</em></span>
             <select v-model="formData.operationalStatus" class="venue-modal-input">
               <option value="">Select status</option>
               <option v-for="status in venueOperationalStatuses" :key="status" :value="status">{{ status }}</option>
+            </select>
+          </label>
+
+          <label class="venue-modal-form-group">
+            <span class="venue-modal-label">Room Availability <em>*</em></span>
+            <select v-model="formData.availabilityStatus" class="venue-modal-input">
+              <option value="">Select availability</option>
+              <option v-for="status in venueAvailabilityStatuses" :key="status" :value="status">{{ status }}</option>
             </select>
           </label>
 
@@ -94,6 +102,7 @@ import {
   sanitizeVenuePayload,
   validateVenueForm,
   validateVenuePhotoFile,
+  venueAvailabilityStatuses,
   venueOperationalStatuses,
 } from '@/modules/facility/utils/venueFormValidation.js';
 
@@ -224,6 +233,7 @@ function hydrateFromVenue(venueRecord) {
         capacityLimit: Number(venueRecord.capacityLimit ?? 0) || 1,
         availabilityDate: venueRecord.availabilityDate || '',
         operationalStatus: venueRecord.operationalStatus || 'Active',
+        availabilityStatus: venueRecord.availabilityStatus || 'Available',
         description: venueRecord.description || '',
         photoData: String(venueRecord.photoData || '').trim() || String(venueRecord.imageUrl || '').trim() || null,
       }
@@ -240,6 +250,7 @@ function createEmptyForm() {
     capacityLimit: 1,
     availabilityDate: '',
     operationalStatus: 'Active',
+    availabilityStatus: 'Available',
     description: '',
     photoData: null,
   };

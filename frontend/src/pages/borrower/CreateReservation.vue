@@ -32,8 +32,13 @@
               </div>
 
               <div class="borrower-reservation-field">
-                <label for="activityDate">Activity Date <em>*</em></label>
-                <input id="activityDate" v-model="formState.activityDate" type="date" :min="formState.requestDate || todayIsoDate" />
+                <label for="activityDate">Activity Start Date <em>*</em></label>
+                <input id="activityDate" v-model="formState.activityDate" type="date" :min="formState.requestDate || todayIsoDate" @change="handleActivityDateChange" />
+              </div>
+
+              <div class="borrower-reservation-field">
+                <label for="activityEndDate">Activity End Date <em>*</em></label>
+                <input id="activityEndDate" v-model="formState.activityEndDate" type="date" :min="formState.activityDate || formState.requestDate || todayIsoDate" @change="handleActivityEndDateChange" />
               </div>
 
               <div class="borrower-reservation-field">
@@ -60,43 +65,146 @@
                     </div>
                   </div>
 
-                  <div class="reservation-time-picker__panels">
-                    <div class="reservation-time-picker__panel">
-                      <div class="reservation-time-picker__panel-head">
-                        <h3>Choose Start Time</h3>
-                        <p>Select from 7:00 AM to 6:30 PM.</p>
-                      </div>
-                      <div class="reservation-time-picker__slot-grid">
-                        <button
-                          v-for="slot in startTimeSlots"
-                          :key="`start-${slot.value}`"
-                          type="button"
-                          class="reservation-time-picker__slot"
-                          :class="{ 'is-selected': formState.activityTimeFrom === slot.value }"
-                          @click="selectStartTime(slot.value)"
-                        >
-                          {{ slot.label }}
-                        </button>
+                  <div class="reservation-time-picker__trigger-grid">
+                    <div ref="startPickerRef" class="reservation-time-picker__trigger-wrap">
+                      <button
+                        type="button"
+                        class="reservation-time-picker__trigger"
+                        :class="{ 'is-open': openTimePicker === 'start' }"
+                        @click="toggleTimePicker('start')"
+                      >
+                        <span>Start Time</span>
+                        <strong>{{ selectedStartTimeLabel }}</strong>
+                      </button>
+
+                      <div v-if="openTimePicker === 'start'" class="reservation-time-picker__popover">
+                        <div class="reservation-time-picker__popover-head">
+                          <h3>Choose Start Time</h3>
+                          <p>Select only :00 or :30.</p>
+                        </div>
+                        <div class="reservation-time-picker__popover-preview">{{ formatDraftLabel(startTimeDraft) }}</div>
+                        <div class="reservation-time-picker__picker-grid">
+                          <div class="reservation-time-picker__picker-column">
+                            <span>Hour</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="hour in timePickerHours"
+                                :key="`start-hour-${hour}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': startTimeDraft.hour === hour }"
+                                @click="startTimeDraft.hour = hour"
+                              >
+                                {{ String(hour).padStart(2, '0') }}
+                              </button>
+                            </div>
+                          </div>
+                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
+                            <span>Minute</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="minute in timePickerMinutes"
+                                :key="`start-minute-${minute}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': startTimeDraft.minute === minute }"
+                                @click="startTimeDraft.minute = minute"
+                              >
+                                {{ minute }}
+                              </button>
+                            </div>
+                          </div>
+                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
+                            <span>Period</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="period in timePickerPeriods"
+                                :key="`start-period-${period}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': startTimeDraft.period === period }"
+                                @click="startTimeDraft.period = period"
+                              >
+                                {{ period }}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="reservation-time-picker__popover-actions">
+                          <button type="button" class="reservation-time-picker__popover-button reservation-time-picker__popover-button--ghost" @click="closeTimePicker">Cancel</button>
+                          <button type="button" class="reservation-time-picker__popover-button reservation-time-picker__popover-button--primary" @click="applyTimeSelection('start')">Confirm</button>
+                        </div>
                       </div>
                     </div>
 
-                    <div class="reservation-time-picker__panel">
-                      <div class="reservation-time-picker__panel-head">
-                        <h3>Choose End Time</h3>
-                        <p>Select a time later than the chosen start time.</p>
-                      </div>
-                      <div class="reservation-time-picker__slot-grid">
-                        <button
-                          v-for="slot in endTimeSlots"
-                          :key="`end-${slot.value}`"
-                          type="button"
-                          class="reservation-time-picker__slot"
-                          :class="{ 'is-selected': formState.activityTimeTo === slot.value }"
-                          :disabled="slot.disabled"
-                          @click="selectEndTime(slot.value)"
-                        >
-                          {{ slot.label }}
-                        </button>
+                    <div ref="endPickerRef" class="reservation-time-picker__trigger-wrap">
+                      <button
+                        type="button"
+                        class="reservation-time-picker__trigger"
+                        :class="{ 'is-open': openTimePicker === 'end' }"
+                        @click="toggleTimePicker('end')"
+                      >
+                        <span>End Time</span>
+                        <strong>{{ selectedEndTimeLabel }}</strong>
+                      </button>
+
+                      <div v-if="openTimePicker === 'end'" class="reservation-time-picker__popover">
+                        <div class="reservation-time-picker__popover-head">
+                          <h3>Choose End Time</h3>
+                          <p>Select a time later than the chosen start time.</p>
+                        </div>
+                        <div class="reservation-time-picker__popover-preview">{{ formatDraftLabel(endTimeDraft) }}</div>
+                        <div class="reservation-time-picker__picker-grid">
+                          <div class="reservation-time-picker__picker-column">
+                            <span>Hour</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="hour in timePickerHours"
+                                :key="`end-hour-${hour}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': endTimeDraft.hour === hour }"
+                                @click="endTimeDraft.hour = hour"
+                              >
+                                {{ String(hour).padStart(2, '0') }}
+                              </button>
+                            </div>
+                          </div>
+                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
+                            <span>Minute</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="minute in timePickerMinutes"
+                                :key="`end-minute-${minute}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': endTimeDraft.minute === minute }"
+                                @click="endTimeDraft.minute = minute"
+                              >
+                                {{ minute }}
+                              </button>
+                            </div>
+                          </div>
+                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
+                            <span>Period</span>
+                            <div class="reservation-time-picker__picker-options">
+                              <button
+                                v-for="period in timePickerPeriods"
+                                :key="`end-period-${period}`"
+                                type="button"
+                                class="reservation-time-picker__picker-option"
+                                :class="{ 'is-selected': endTimeDraft.period === period }"
+                                @click="endTimeDraft.period = period"
+                              >
+                                {{ period }}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="reservation-time-picker__popover-actions">
+                          <button type="button" class="reservation-time-picker__popover-button reservation-time-picker__popover-button--ghost" @click="closeTimePicker">Cancel</button>
+                          <button type="button" class="reservation-time-picker__popover-button reservation-time-picker__popover-button--primary" @click="applyTimeSelection('end')">Confirm</button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -140,7 +248,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -171,12 +279,17 @@ const purposeOptions = [
   'Others: Specify',
 ];
 
-const allHalfHourSlots = buildHalfHourSlots('07:00', '19:00');
-const startTimeSlots = allHalfHourSlots.slice(0, -1);
+const timePickerHours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const timePickerMinutes = ['00', '30'];
+const timePickerPeriods = ['AM', 'PM'];
+const startPickerRef = ref(null);
+const endPickerRef = ref(null);
+const openTimePicker = ref('');
 
 const formState = ref({
   requestDate: reservationFormStore.requestDate || todayIsoDate,
   activityDate: reservationFormStore.activityDate || '',
+  activityEndDate: reservationFormStore.activityEndDate || reservationFormStore.activityDate || '',
   activityTimeFrom: reservationFormStore.activityTimeFrom || '',
   activityTimeTo: reservationFormStore.activityTimeTo || '',
   activityNameTitle: reservationFormStore.activityNameTitle || '',
@@ -185,39 +298,139 @@ const formState = ref({
   reservationType: reservationFormStore.reservationType || 'Venue',
 });
 
-const endTimeSlots = computed(() => allHalfHourSlots.map((slot) => ({
-  ...slot,
-  disabled: !formState.value.activityTimeFrom || slot.value <= formState.value.activityTimeFrom,
-})));
-
 const selectedStartTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeFrom, 'Choose a start time'));
 const selectedEndTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeTo, 'Choose an end time'));
+const startTimeDraft = ref(createTimeDraft(formState.value.activityTimeFrom || '07:00'));
+const endTimeDraft = ref(createTimeDraft(formState.value.activityTimeTo || '07:30'));
+
+onMounted(() => {
+  document.addEventListener('mousedown', handleGlobalPointerDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleGlobalPointerDown);
+});
 
 function getTodayISODate() {
   const today = new Date();
   return today.toISOString().split('T')[0];
 }
 
-function selectStartTime(timeValue) {
-  formState.value.activityTimeFrom = timeValue;
+function createTimeDraft(timeValue) {
+  const normalizedValue = String(timeValue || '').trim();
+  if (normalizedValue === '') {
+    return { hour: 7, minute: '00', period: 'AM' };
+  }
 
-  if (formState.value.activityTimeTo && formState.value.activityTimeTo <= timeValue) {
+  const [rawHours = '07', rawMinutes = '00'] = normalizedValue.split(':');
+  const hours24 = Number(rawHours);
+  const minute = rawMinutes === '30' ? '30' : '00';
+  const period = hours24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+
+  return { hour: hour12, minute, period };
+}
+
+function toggleTimePicker(type) {
+  if (openTimePicker.value === type) {
+    closeTimePicker();
+    return;
+  }
+
+  if (type === 'start') {
+    startTimeDraft.value = createTimeDraft(formState.value.activityTimeFrom || '07:00');
+  } else {
+    endTimeDraft.value = createTimeDraft(formState.value.activityTimeTo || '07:30');
+  }
+
+  openTimePicker.value = type;
+}
+
+function closeTimePicker() {
+  openTimePicker.value = '';
+}
+
+function applyTimeSelection(type) {
+  const timeValue = formatDraftAsValue(type === 'start' ? startTimeDraft.value : endTimeDraft.value);
+
+  if (type === 'start') {
+    formState.value.activityTimeFrom = timeValue;
+    if (
+      formState.value.activityDate === formState.value.activityEndDate &&
+      formState.value.activityTimeTo &&
+      formState.value.activityTimeTo <= timeValue
+    ) {
+      formState.value.activityTimeTo = '';
+    }
+  } else {
+    formState.value.activityTimeTo = timeValue;
+  }
+
+  closeTimePicker();
+}
+
+function formatDraftAsValue(draft) {
+  const hours24 = convertDraftHourTo24(draft.hour, draft.period);
+  return `${String(hours24).padStart(2, '0')}:${draft.minute}`;
+}
+
+function convertDraftHourTo24(hour, period) {
+  const normalizedHour = Number(hour);
+  if (period === 'AM') {
+    return normalizedHour === 12 ? 0 : normalizedHour;
+  }
+
+  return normalizedHour === 12 ? 12 : normalizedHour + 12;
+}
+
+function formatDraftLabel(draft) {
+  return `${draft.hour}:${draft.minute} ${draft.period}`;
+}
+
+function handleGlobalPointerDown(event) {
+  const target = event.target;
+  if (openTimePicker.value === 'start' && startPickerRef.value?.contains(target)) {
+    return;
+  }
+
+  if (openTimePicker.value === 'end' && endPickerRef.value?.contains(target)) {
+    return;
+  }
+
+  closeTimePicker();
+}
+
+function handleActivityDateChange() {
+  if (!formState.value.activityEndDate || formState.value.activityEndDate < formState.value.activityDate) {
+    formState.value.activityEndDate = formState.value.activityDate;
+  }
+
+  if (
+    formState.value.activityDate === formState.value.activityEndDate &&
+    formState.value.activityTimeFrom &&
+    formState.value.activityTimeTo &&
+    formState.value.activityTimeTo <= formState.value.activityTimeFrom
+  ) {
     formState.value.activityTimeTo = '';
   }
 }
 
-function selectEndTime(timeValue) {
-  if (!formState.value.activityTimeFrom || timeValue <= formState.value.activityTimeFrom) {
-    return;
+function handleActivityEndDateChange() {
+  if (
+    formState.value.activityDate === formState.value.activityEndDate &&
+    formState.value.activityTimeFrom &&
+    formState.value.activityTimeTo &&
+    formState.value.activityTimeTo <= formState.value.activityTimeFrom
+  ) {
+    formState.value.activityTimeTo = '';
   }
-
-  formState.value.activityTimeTo = timeValue;
 }
 
 function handleNextPage() {
   if (
     !formState.value.requestDate ||
     !formState.value.activityDate ||
+    !formState.value.activityEndDate ||
     !formState.value.activityTimeFrom ||
     !formState.value.activityTimeTo ||
     !formState.value.activityNameTitle.trim() ||
@@ -228,13 +441,17 @@ function handleNextPage() {
     return;
   }
 
-  if (formState.value.activityTimeFrom >= formState.value.activityTimeTo) {
-    alert('End time must be after start time.');
+  const startDateTime = new Date(`${formState.value.activityDate}T${formState.value.activityTimeFrom}`);
+  const endDateTime = new Date(`${formState.value.activityEndDate}T${formState.value.activityTimeTo}`);
+
+  if (endDateTime <= startDateTime) {
+    alert('End date and time must be later than the start date and time.');
     return;
   }
 
   reservationFormStore.requestDate = formState.value.requestDate;
   reservationFormStore.activityDate = formState.value.activityDate;
+  reservationFormStore.activityEndDate = formState.value.activityEndDate;
   reservationFormStore.activityTimeFrom = formState.value.activityTimeFrom;
   reservationFormStore.activityTimeTo = formState.value.activityTimeTo;
   reservationFormStore.activityNameTitle = formState.value.activityNameTitle.trim();
@@ -244,24 +461,6 @@ function handleNextPage() {
 
   router.push({ name: 'borrowerCreateReservationVenuePage' });
 }
-
-function buildHalfHourSlots(startTime, endTime) {
-  const slots = [];
-  let minutes = parseTimeToMinutes(startTime);
-  const lastMinutes = parseTimeToMinutes(endTime);
-
-  while (minutes <= lastMinutes) {
-    const value = formatMinutesAsValue(minutes);
-    slots.push({
-      value,
-      label: formatMinutesAsLabel(minutes),
-    });
-    minutes += 30;
-  }
-
-  return slots;
-}
-
 function parseTimeToMinutes(timeValue) {
   const [hours, minutes] = String(timeValue).split(':').map(Number);
   return (hours * 60) + minutes;

@@ -163,9 +163,18 @@
                           </td>
                           <td>
                             <div class="reservation-equipment-action">
-                              <button type="button" @click="decrementEquipment(equipment)" :disabled="getEquipmentSelectedQuantity(equipment) === 0">-</button>
-                              <span>{{ getEquipmentSelectedQuantity(equipment) }}</span>
-                              <button type="button" @click="incrementEquipment(equipment)" :disabled="getEquipmentSelectedQuantity(equipment) >= equipment.availableQuantity">+</button>
+                              <input
+                                :value="getEquipmentSelectedQuantity(equipment)"
+                                type="text"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                class="reservation-equipment-quantity-input"
+                                :aria-label="`Quantity for ${equipment.equipmentName}`"
+                                :disabled="equipment.availableQuantity <= 0"
+                                @input="handleEquipmentQuantityInput(equipment, $event)"
+                                @keydown="handleEquipmentQuantityKeydown"
+                                @paste="handleEquipmentQuantityPaste(equipment, $event)"
+                              />
                             </div>
                           </td>
                         </tr>
@@ -318,10 +327,20 @@ function getEquipmentSelectedQuantity(equipment) {
   return selectedEquipmentItems.value.find((item) => item.equipmentIdentifier === equipment.equipmentIdentifier)?.selectedQuantity || 0;
 }
 
-function incrementEquipment(equipment) {
+function setEquipmentQuantity(equipment, nextQuantity) {
+  const normalizedQuantity = Math.min(
+    Math.max(Number.isFinite(nextQuantity) ? Math.trunc(nextQuantity) : 0, 0),
+    Math.max(Number(equipment.availableQuantity || 0), 0)
+  );
   const existingItem = selectedEquipmentItems.value.find((item) => item.equipmentIdentifier === equipment.equipmentIdentifier);
+
+  if (normalizedQuantity <= 0) {
+    selectedEquipmentItems.value = selectedEquipmentItems.value.filter((item) => item.equipmentIdentifier !== equipment.equipmentIdentifier);
+    return;
+  }
+
   if (existingItem) {
-    if (existingItem.selectedQuantity < equipment.availableQuantity) existingItem.selectedQuantity += 1;
+    existingItem.selectedQuantity = normalizedQuantity;
     return;
   }
 
@@ -329,17 +348,35 @@ function incrementEquipment(equipment) {
     equipmentIdentifier: equipment.equipmentIdentifier,
     equipmentName: equipment.equipmentName,
     equipmentCategory: equipment.equipmentCategory,
-    selectedQuantity: 1,
+    selectedQuantity: normalizedQuantity,
   });
 }
 
-function decrementEquipment(equipment) {
-  const existingItem = selectedEquipmentItems.value.find((item) => item.equipmentIdentifier === equipment.equipmentIdentifier);
-  if (!existingItem) return;
-  existingItem.selectedQuantity -= 1;
-  if (existingItem.selectedQuantity <= 0) {
-    selectedEquipmentItems.value = selectedEquipmentItems.value.filter((item) => item.equipmentIdentifier !== equipment.equipmentIdentifier);
+function handleEquipmentQuantityInput(equipment, event) {
+  const rawValue = String(event?.target?.value || '');
+  const digitsOnly = rawValue.replace(/\D/g, '');
+  event.target.value = digitsOnly;
+  setEquipmentQuantity(equipment, digitsOnly === '' ? 0 : Number(digitsOnly));
+}
+
+function handleEquipmentQuantityKeydown(event) {
+  const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+  if (allowedKeys.includes(event.key) || ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x'].includes(event.key.toLowerCase()))) {
+    return;
   }
+
+  if (!/^\d$/.test(event.key)) {
+    event.preventDefault();
+  }
+}
+
+function handleEquipmentQuantityPaste(equipment, event) {
+  event.preventDefault();
+  const pastedText = String(event.clipboardData?.getData('text') || '');
+  const digitsOnly = pastedText.replace(/\D/g, '');
+  const inputElement = event.target;
+  inputElement.value = digitsOnly;
+  setEquipmentQuantity(equipment, digitsOnly === '' ? 0 : Number(digitsOnly));
 }
 
 function resetVenueFilters() {

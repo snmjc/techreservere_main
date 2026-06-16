@@ -533,9 +533,10 @@
   inset: 0;
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
   background: rgba(15, 23, 42, 0.45);
 }
 
@@ -658,6 +659,10 @@
   justify-content: flex-end;
   gap: 0.7rem;
   margin-top: 1rem;
+  padding-top: 1rem;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
 }
 
 .manage-facilities-cancel-button,
@@ -696,6 +701,8 @@
 .manage-facilities-equipment-details-modal {
   position: relative;
   width: min(900px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
   padding: 1.5rem;
   background: #ffffff;
   border: 1px solid #dbe4de;
@@ -704,7 +711,7 @@
 }
 
 .manage-facilities-venue-details-modal {
-  width: min(700px, 100%);
+  width: min(640px, 100%);
 }
 
 .manage-facilities-equipment-details-layout {
@@ -765,12 +772,12 @@
 }
 
 .manage-facilities-venue-dialog {
-  padding-top: 1.75rem;
+  padding-top: 1.6rem;
 }
 
 .manage-facilities-venue-details-sheet {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .manage-facilities-venue-photo-banner {
@@ -781,23 +788,23 @@
 }
 
 .manage-facilities-venue-photo-banner .manage-facilities-equipment-photo {
-  max-height: 220px;
+  max-height: 160px;
 }
 
 .manage-facilities-venue-details-list {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.65rem;
 }
 
 .manage-facilities-venue-detail-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 0.85rem;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 0.75rem;
   align-items: start;
-  padding: 0.9rem 1rem;
+  padding: 0.8rem 0.9rem;
   background: #f9fbfa;
   border: 1px solid #e7eeea;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .manage-facilities-venue-detail-row--full {
@@ -807,16 +814,16 @@
 .manage-facilities-venue-detail-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   color: #345f47;
   background: #ecf7f0;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .manage-facilities-venue-detail-icon svg {
-  width: 19px;
-  height: 19px;
+  width: 17px;
+  height: 17px;
 }
 
 .manage-facilities-venue-detail-row p {
@@ -828,7 +835,7 @@
 
 .manage-facilities-venue-detail-row strong {
   color: #111827;
-  font-size: 0.96rem;
+  font-size: 0.92rem;
   font-weight: 700;
 }
 
@@ -930,6 +937,10 @@
 
   .manage-facilities-page-heading {
     font-size: 1.25rem;
+  }
+
+  .manage-facilities-modal-overlay {
+    padding: 0.75rem;
   }
 
   .manage-facilities-equipment-details-layout,

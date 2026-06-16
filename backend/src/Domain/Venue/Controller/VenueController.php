@@ -76,6 +76,7 @@ class VenueController extends AbstractController
                 isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
                 $body['availabilityDate'] ?? null,
                 $body['operationalStatus'] ?? null,
+                $body['availabilityStatus'] ?? null,
                 $body['description'] ?? null,
                 $body['imageUrl'] ?? null
             );
@@ -107,6 +108,7 @@ class VenueController extends AbstractController
                 isset($body['capacityLimit']) ? (int)$body['capacityLimit'] : null,
                 $body['availabilityDate'] ?? null,
                 $body['operationalStatus'] ?? null,
+                $body['availabilityStatus'] ?? null,
                 $body['description'] ?? null,
                 $body['imageUrl'] ?? null
             );
@@ -182,6 +184,7 @@ class VenueController extends AbstractController
                 'hasImage' => $imageValue !== '',
                 'imageLength' => strlen($imageValue),
                 'operationalStatus' => $payload['operationalStatus'] ?? null,
+                'availabilityStatus' => $payload['availabilityStatus'] ?? null,
                 'availabilityDate' => $payload['availabilityDate'] ?? null,
             ], JSON_UNESCAPED_SLASHES)
         ));

@@ -14,6 +14,7 @@ use Doctrine\DBAL\Connection;
 class VenueManagementService
 {
     private const ALLOWED_OPERATIONAL_STATUSES = ['Active', 'Inactive', 'Maintenance'];
+    private const ALLOWED_AVAILABILITY_STATUSES = ['Available', 'Unavailable'];
     private const MAX_IMAGE_URL_LENGTH = 1_600_000;
 
     private VenueRepository $venueRepository;
@@ -60,16 +61,17 @@ class VenueManagementService
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
 
-    public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
+    public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
         $this->ensureVenueSchemaReady();
-        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
+        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $resolvedAvailabilityStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
             venueName: $venueName,
             venueLocation: $venueLocation,
             floorLevel: $floorLevel,
             capacityLimit: $capacityLimit,
             availabilityDate: $availabilityDate,
             operationalStatus: $operationalStatus,
+            availabilityStatus: $availabilityStatus,
             description: $description,
             imageUrl: $imageUrl
         );
@@ -83,14 +85,14 @@ class VenueManagementService
         $entity->setCapacityLimit($normalizedCapacity);
         $entity->setAvailabilityDate($resolvedAvailabilityDate);
         $entity->setOperationalStatus($resolvedOperationalStatus);
-        $entity->setAvailabilityStatus($this->resolveAvailabilityStatus($resolvedOperationalStatus, $resolvedAvailabilityDate));
+        $entity->setAvailabilityStatus($resolvedAvailabilityStatus);
         $entity->setDescription($normalizedDescription);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
 
-    public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
+    public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
         $this->ensureVenueSchemaReady();
         $entity = $this->venueRepository->find($venueIdentifier);
@@ -98,13 +100,14 @@ class VenueManagementService
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
         }
 
-        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
+        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $resolvedAvailabilityStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
             venueName: $venueName,
             venueLocation: $venueLocation,
             floorLevel: $floorLevel,
             capacityLimit: $capacityLimit,
             availabilityDate: $availabilityDate,
             operationalStatus: $operationalStatus,
+            availabilityStatus: $availabilityStatus,
             description: $description,
             imageUrl: $imageUrl
         );
@@ -117,7 +120,7 @@ class VenueManagementService
         $entity->setCapacityLimit($normalizedCapacity);
         $entity->setAvailabilityDate($resolvedAvailabilityDate);
         $entity->setOperationalStatus($resolvedOperationalStatus);
-        $entity->setAvailabilityStatus($this->resolveAvailabilityStatus($resolvedOperationalStatus, $resolvedAvailabilityDate));
+        $entity->setAvailabilityStatus($resolvedAvailabilityStatus);
         $entity->setDescription($normalizedDescription);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
@@ -159,6 +162,7 @@ class VenueManagementService
         ?int $capacityLimit,
         ?string $availabilityDate,
         ?string $operationalStatus,
+        ?string $availabilityStatus,
         ?string $description,
         ?string $imageUrl
     ): array {
@@ -168,6 +172,7 @@ class VenueManagementService
         $normalizedDescription = trim((string)($description ?? ''));
         $normalizedImageUrl = trim((string)($imageUrl ?? ''));
         $resolvedOperationalStatus = trim((string)($operationalStatus ?? ''));
+        $resolvedAvailabilityStatus = trim((string)($availabilityStatus ?? ''));
 
         if (mb_strlen($normalizedVenueName) < 2) {
             throw new DomainValidationException('Venue name must be at least 2 characters.');
@@ -199,6 +204,10 @@ class VenueManagementService
             throw new DomainValidationException('Operational status is required.');
         }
 
+        if (!in_array($resolvedAvailabilityStatus, self::ALLOWED_AVAILABILITY_STATUSES, true)) {
+            throw new DomainValidationException('Room availability is required.');
+        }
+
         if ($normalizedImageUrl !== '' && !$this->isValidJpgImagePayload($normalizedImageUrl)) {
             throw new DomainValidationException('Venue photo must be a .jpg image only.');
         }
@@ -214,6 +223,7 @@ class VenueManagementService
             $capacityLimit,
             $resolvedAvailabilityDate,
             $resolvedOperationalStatus,
+            $resolvedAvailabilityStatus,
             $normalizedDescription === '' ? null : $normalizedDescription,
             $normalizedImageUrl === '' ? null : $normalizedImageUrl,
         ];
@@ -255,9 +265,10 @@ class VenueManagementService
 
         return array_map(function (VenueEntity $entity) use ($availabilityWindow, $reservationMap): VenueResponseDTO {
             $reservationRows = $reservationMap[$entity->getVenueIdentifier()] ?? [];
-            $baseAvailabilityStatus = $entity->getAvailabilityStatus();
+            $manualAvailabilityStatus = $entity->getAvailabilityStatus();
+            $baseAvailabilityStatus = $manualAvailabilityStatus;
 
-            if ($availabilityWindow !== null) {
+            if ($manualAvailabilityStatus !== 'Unavailable' && $availabilityWindow !== null) {
                 $baseAvailabilityStatus = $this->resolveAvailabilityStatusForSelectedDate(
                     $entity->getOperationalStatus(),
                     $entity->getAvailabilityDate(),

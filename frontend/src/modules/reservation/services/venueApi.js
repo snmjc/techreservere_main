@@ -101,6 +101,7 @@ function buildVenueMutationPayload(venueData = {}) {
     capacityLimit: Number(venueData.capacityLimit ?? 0),
     availabilityDate: String(venueData.availabilityDate || '').trim(),
     operationalStatus: String(venueData.operationalStatus || '').trim(),
+    availabilityStatus: String(venueData.availabilityStatus || '').trim(),
     description: String(venueData.description || '').trim(),
     imageUrl: normalizeOptionalImageUrl(venueData.imageUrl),
   };
