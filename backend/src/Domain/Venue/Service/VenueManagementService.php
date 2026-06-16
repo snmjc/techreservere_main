@@ -75,7 +75,7 @@ class VenueManagementService
         $entity->setDescription($description);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
-        return $this->transformEntityToDTO($entity);
+        return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
 
     public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
@@ -106,7 +106,7 @@ class VenueManagementService
         $entity->setDescription($description);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
-        return $this->transformEntityToDTO($entity);
+        return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
     }
 
     public function deleteVenue(int $venueIdentifier): void
