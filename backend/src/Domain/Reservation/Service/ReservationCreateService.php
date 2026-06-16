@@ -7,12 +7,14 @@ use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Shared\Exceptions\DomainValidationException;
+use Doctrine\DBAL\Connection;
 
 class ReservationCreateService
 {
     private ReservationRepository $reservationRepository;
+    private bool $reservationSchemaEnsured = false;
 
-    public function __construct(ReservationRepository $reservationRepository)
+    public function __construct(ReservationRepository $reservationRepository, private readonly Connection $connection)
     {
         $this->reservationRepository = $reservationRepository;
     }
@@ -29,6 +31,8 @@ class ReservationCreateService
 
     public function createReservation(int $borrowerAccountId, ReservationCreateRequestDTO $requestDTO): ReservationResponseDTO
     {
+        $this->ensureReservationSchemaReady();
+
         if (empty($requestDTO->organizationName)) {
             throw new DomainValidationException('Organization name is required.');
         }
@@ -44,8 +48,8 @@ class ReservationCreateService
         }
 
         try {
-            $eventDateTime = new \DateTimeImmutable($requestDTO->eventDateTime);
-            $endDateTime = new \DateTimeImmutable($requestDTO->endDateTime);
+            $eventDateTime = new \DateTime($requestDTO->eventDateTime);
+            $endDateTime = new \DateTime($requestDTO->endDateTime);
         } catch (\Throwable) {
             throw new DomainValidationException('Reservation time range is invalid.');
         }
@@ -104,5 +108,23 @@ class ReservationCreateService
         $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
+    }
+
+    private function ensureReservationSchemaReady(): void
+    {
+        if ($this->reservationSchemaEnsured) {
+            return;
+        }
+
+        $schemaManager = $this->connection->createSchemaManager();
+        if (!$schemaManager->tablesExist(['reservations'])) {
+            $this->reservationSchemaEnsured = true;
+            return;
+        }
+
+        $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS end_date_time TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->connection->executeStatement("UPDATE reservations SET end_date_time = event_date_time + INTERVAL '30 minutes' WHERE end_date_time IS NULL");
+
+        $this->reservationSchemaEnsured = true;
     }
 }

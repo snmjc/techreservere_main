@@ -38,34 +38,43 @@ class ReservationController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function createReservation(Request $request): JsonResponse
     {
-        $identity = $request->attributes->get('authenticatedIdentity', []);
-        $requestBody = json_decode($request->getContent(), true) ?? [];
+        try {
+            $identity = $request->attributes->get('authenticatedIdentity', []);
+            $requestBody = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
 
-        error_log('Reservation Creation - Identity: ' . json_encode($identity));
-        error_log('Reservation Creation - Request Body: ' . json_encode($requestBody));
+            error_log('Reservation Creation - Identity: ' . json_encode($identity));
+            error_log('Reservation Creation - Request Body: ' . json_encode($requestBody));
 
-        $createDTO = new ReservationCreateRequestDTO(
-            organizationName: $requestBody['organizationName'] ?? '',
-            venueIdentifier: $requestBody['venueIdentifier'] ?? null,
-            requestedEquipmentList: $requestBody['requestedEquipmentList'] ?? [],
-            requestedQuantity: (int)($requestBody['requestedQuantity'] ?? 0),
-            eventDateTime: $requestBody['eventDateTime'] ?? '',
-            endDateTime: $requestBody['endDateTime'] ?? '',
-            purposeDescription: $requestBody['purposeDescription'] ?? '',
-            activityType: $requestBody['activityType'] ?? '',
-            supportingDocuments: $requestBody['supportingDocuments'] ?? null
-        );
+            $createDTO = new ReservationCreateRequestDTO(
+                organizationName: $requestBody['organizationName'] ?? '',
+                venueIdentifier: $requestBody['venueIdentifier'] ?? null,
+                requestedEquipmentList: $requestBody['requestedEquipmentList'] ?? [],
+                requestedQuantity: (int)($requestBody['requestedQuantity'] ?? 0),
+                eventDateTime: $requestBody['eventDateTime'] ?? '',
+                endDateTime: $requestBody['endDateTime'] ?? '',
+                purposeDescription: $requestBody['purposeDescription'] ?? '',
+                activityType: $requestBody['activityType'] ?? '',
+                supportingDocuments: $requestBody['supportingDocuments'] ?? null
+            );
 
-        $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
-        if ($borrowerAccountId <= 0) {
-            return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+            $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
+            if ($borrowerAccountId <= 0) {
+                return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+            }
+            error_log('Reservation Creation - Borrower Account ID: ' . $borrowerAccountId);
+
+            $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
+            error_log('Reservation Creation - Created Reservation ID: ' . $responseDTO->reservationIdentifier);
+
+            return $this->createSuccessResponse($responseDTO->toResponseArray(), 201);
+        } catch (\JsonException) {
+            return $this->createErrorResponse('ReservationInvalidPayload', 'Reservation request body must be valid JSON.', 400);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('ReservationValidationFailed', $exception->getMessage(), 422);
+        } catch (\Throwable $exception) {
+            error_log('Reservation Creation - Error: ' . $exception->getMessage());
+            return $this->createErrorResponse('ReservationCreateFailed', 'Unable to submit reservation at this time.', 500);
         }
-        error_log('Reservation Creation - Borrower Account ID: ' . $borrowerAccountId);
-        
-        $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
-        error_log('Reservation Creation - Created Reservation ID: ' . $responseDTO->reservationIdentifier);
-
-        return $this->createSuccessResponse($responseDTO->toResponseArray(), 201);
     }
 
     // ===== AI GENERATED: listReservations =====
