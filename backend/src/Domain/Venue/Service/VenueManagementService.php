@@ -9,6 +9,7 @@ use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
+use Doctrine\DBAL\Connection;
 
 class VenueManagementService
 {
@@ -16,8 +17,13 @@ class VenueManagementService
 
     private VenueRepository $venueRepository;
     private ReservationRepository $reservationRepository;
+    private bool $venueSchemaEnsured = false;
 
-    public function __construct(VenueRepository $venueRepository, ReservationRepository $reservationRepository)
+    public function __construct(
+        VenueRepository $venueRepository,
+        ReservationRepository $reservationRepository,
+        private readonly Connection $connection
+    )
     {
         $this->venueRepository = $venueRepository;
         $this->reservationRepository = $reservationRepository;
@@ -26,6 +32,7 @@ class VenueManagementService
     /** @return VenueResponseDTO[] */
     public function getAllVenues(?string $selectedDate = null, ?string $startTime = null, ?string $endTime = null): array
     {
+        $this->ensureVenueSchemaReady();
         $entities = $this->venueRepository->findAllVenues();
         return $this->transformEntitiesToDTOs($entities, $selectedDate, $startTime, $endTime);
     }
@@ -43,6 +50,7 @@ class VenueManagementService
 
     public function getVenueById(int $venueIdentifier): VenueResponseDTO
     {
+        $this->ensureVenueSchemaReady();
         $entity = $this->venueRepository->find($venueIdentifier);
         if ($entity === null) {
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
@@ -53,6 +61,7 @@ class VenueManagementService
 
     public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
+        $this->ensureVenueSchemaReady();
         [$normalizedVenueName, $normalizedVenueLocation, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
             venueName: $venueName,
             venueLocation: $venueLocation,
@@ -80,6 +89,7 @@ class VenueManagementService
 
     public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
+        $this->ensureVenueSchemaReady();
         $entity = $this->venueRepository->find($venueIdentifier);
         if ($entity === null) {
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
@@ -111,6 +121,7 @@ class VenueManagementService
 
     public function deleteVenue(int $venueIdentifier): void
     {
+        $this->ensureVenueSchemaReady();
         $entity = $this->venueRepository->find($venueIdentifier);
         if ($entity === null) {
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
@@ -351,5 +362,27 @@ class VenueManagementService
 
         $normalizedImageUrl = strtolower($imageUrl);
         return str_ends_with($normalizedImageUrl, '.jpg') || str_ends_with($normalizedImageUrl, '.jpeg');
+    }
+
+    private function ensureVenueSchemaReady(): void
+    {
+        if ($this->venueSchemaEnsured) {
+            return;
+        }
+
+        $schemaManager = $this->connection->createSchemaManager();
+        if (!$schemaManager->tablesExist(['venues'])) {
+            $this->venueSchemaEnsured = true;
+            return;
+        }
+
+        $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS availability_date DATE DEFAULT CURRENT_DATE");
+        $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS operational_status VARCHAR(50) DEFAULT 'Active'");
+        $this->connection->executeStatement("ALTER TABLE venues ALTER COLUMN image_url TYPE TEXT");
+        $this->connection->executeStatement("UPDATE venues SET availability_date = CURRENT_DATE WHERE availability_date IS NULL");
+        $this->connection->executeStatement("UPDATE venues SET operational_status = 'Active' WHERE operational_status IS NULL OR operational_status = ''");
+        $this->connection->executeStatement("UPDATE venues SET availability_status = 'Available' WHERE availability_status IS NULL OR availability_status = ''");
+
+        $this->venueSchemaEnsured = true;
     }
 }
