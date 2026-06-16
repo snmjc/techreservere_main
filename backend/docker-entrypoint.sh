@@ -34,6 +34,17 @@ fi
 php bin/console cache:clear --no-warmup --env=prod 2>/dev/null || true
 php bin/console cache:warmup --env=prod 2>/dev/null || true
 
+# Optionally run database migrations on container boot, including production.
+# In production, fail fast if migrations cannot be applied so the app never runs
+# against a stale schema.
+if [ "${RUN_MIGRATIONS_ON_BOOT:-0}" = "1" ]; then
+  if [ "${APP_ENV:-dev}" = "prod" ]; then
+    php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+  else
+    php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration 2>/dev/null || true
+  fi
+fi
+
 # In dev containers, ensure the database schema is up to date.
 # This avoids 500s like "relation \"reservations\" does not exist" when migrations haven't been applied yet.
 if [ "${APP_ENV:-dev}" != "prod" ]; then
