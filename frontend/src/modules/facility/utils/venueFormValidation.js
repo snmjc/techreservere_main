@@ -20,6 +20,10 @@ const VENUE_FORM_VALIDATORS = [
     message: 'Location must be at least 2 characters.',
   },
   {
+    isInvalid: (form) => form.floorLevel === '',
+    message: 'Floor level is required.',
+  },
+  {
     isInvalid: (form) => !Number.isInteger(form.capacityLimit) || form.capacityLimit <= 0,
     message: 'Capacity must be a whole number greater than zero.',
   },

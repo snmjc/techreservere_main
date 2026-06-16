@@ -32,6 +32,7 @@ services:
       APP_ENV: dev
       APP_DEBUG: "1"
       POSTGRES_HOST: database
+      MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
     depends_on:
       database:
         condition: service_healthy

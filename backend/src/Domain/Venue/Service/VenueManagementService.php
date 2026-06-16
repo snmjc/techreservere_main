@@ -63,12 +63,14 @@ class VenueManagementService
     public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
     {
         $this->ensureVenueSchemaReady();
-        [$normalizedVenueName, $normalizedVenueLocation, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
+        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
             venueName: $venueName,
             venueLocation: $venueLocation,
+            floorLevel: $floorLevel,
             capacityLimit: $capacityLimit,
             availabilityDate: $availabilityDate,
             operationalStatus: $operationalStatus,
+            description: $description,
             imageUrl: $imageUrl
         );
 
@@ -77,12 +79,12 @@ class VenueManagementService
         $entity = new VenueEntity();
         $entity->setVenueName($normalizedVenueName);
         $entity->setVenueLocation($normalizedVenueLocation);
-        $entity->setFloorLevel($floorLevel);
+        $entity->setFloorLevel($normalizedFloorLevel);
         $entity->setCapacityLimit($normalizedCapacity);
         $entity->setAvailabilityDate($resolvedAvailabilityDate);
         $entity->setOperationalStatus($resolvedOperationalStatus);
         $entity->setAvailabilityStatus($this->resolveAvailabilityStatus($resolvedOperationalStatus, $resolvedAvailabilityDate));
-        $entity->setDescription($description);
+        $entity->setDescription($normalizedDescription);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
@@ -96,12 +98,14 @@ class VenueManagementService
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
         }
 
-        [$normalizedVenueName, $normalizedVenueLocation, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
+        [$normalizedVenueName, $normalizedVenueLocation, $normalizedFloorLevel, $normalizedCapacity, $resolvedAvailabilityDate, $resolvedOperationalStatus, $normalizedDescription, $normalizedImageUrl] = $this->validateAndNormalizeVenuePayload(
             venueName: $venueName,
             venueLocation: $venueLocation,
+            floorLevel: $floorLevel,
             capacityLimit: $capacityLimit,
             availabilityDate: $availabilityDate,
             operationalStatus: $operationalStatus,
+            description: $description,
             imageUrl: $imageUrl
         );
 
@@ -109,12 +113,12 @@ class VenueManagementService
 
         $entity->setVenueName($normalizedVenueName);
         $entity->setVenueLocation($normalizedVenueLocation);
-        $entity->setFloorLevel($floorLevel);
+        $entity->setFloorLevel($normalizedFloorLevel);
         $entity->setCapacityLimit($normalizedCapacity);
         $entity->setAvailabilityDate($resolvedAvailabilityDate);
         $entity->setOperationalStatus($resolvedOperationalStatus);
         $entity->setAvailabilityStatus($this->resolveAvailabilityStatus($resolvedOperationalStatus, $resolvedAvailabilityDate));
-        $entity->setDescription($description);
+        $entity->setDescription($normalizedDescription);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
         return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
@@ -151,13 +155,17 @@ class VenueManagementService
     private function validateAndNormalizeVenuePayload(
         string $venueName,
         ?string $venueLocation,
+        ?string $floorLevel,
         ?int $capacityLimit,
         ?string $availabilityDate,
         ?string $operationalStatus,
+        ?string $description,
         ?string $imageUrl
     ): array {
         $normalizedVenueName = trim($venueName);
         $normalizedVenueLocation = trim((string)($venueLocation ?? ''));
+        $normalizedFloorLevel = trim((string)($floorLevel ?? ''));
+        $normalizedDescription = trim((string)($description ?? ''));
         $normalizedImageUrl = trim((string)($imageUrl ?? ''));
         $resolvedOperationalStatus = trim((string)($operationalStatus ?? ''));
 
@@ -169,6 +177,10 @@ class VenueManagementService
             throw new DomainValidationException('Location must be at least 2 characters.');
         }
 
+        if ($normalizedFloorLevel === '') {
+            throw new DomainValidationException('Floor level is required.');
+        }
+
         if ($capacityLimit === null || $capacityLimit <= 0) {
             throw new DomainValidationException('Capacity must be a whole number greater than zero.');
         }
@@ -178,7 +190,7 @@ class VenueManagementService
         }
 
         try {
-            $resolvedAvailabilityDate = new \DateTimeImmutable(trim($availabilityDate));
+            $resolvedAvailabilityDate = new \DateTime(trim($availabilityDate));
         } catch (\Throwable) {
             throw new DomainValidationException('Availability date is invalid.');
         }
@@ -198,9 +210,11 @@ class VenueManagementService
         return [
             $normalizedVenueName,
             $normalizedVenueLocation,
+            $normalizedFloorLevel,
             $capacityLimit,
             $resolvedAvailabilityDate,
             $resolvedOperationalStatus,
+            $normalizedDescription === '' ? null : $normalizedDescription,
             $normalizedImageUrl === '' ? null : $normalizedImageUrl,
         ];
     }
@@ -381,12 +395,27 @@ class VenueManagementService
             return;
         }
 
+        $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS floor_level VARCHAR(50) DEFAULT NULL");
+        $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL");
         $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS availability_date DATE DEFAULT CURRENT_DATE");
         $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS operational_status VARCHAR(50) DEFAULT 'Active'");
+        $this->connection->executeStatement("ALTER TABLE venues ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL");
         $this->connection->executeStatement("ALTER TABLE venues ALTER COLUMN image_url TYPE TEXT");
         $this->connection->executeStatement("UPDATE venues SET availability_date = CURRENT_DATE WHERE availability_date IS NULL");
         $this->connection->executeStatement("UPDATE venues SET operational_status = 'Active' WHERE operational_status IS NULL OR operational_status = ''");
         $this->connection->executeStatement("UPDATE venues SET availability_status = 'Available' WHERE availability_status IS NULL OR availability_status = ''");
+        $duplicateVenueNameCount = (int) $this->connection->fetchOne(
+            "SELECT COUNT(*) FROM (
+                SELECT LOWER(venue_name)
+                FROM venues
+                GROUP BY LOWER(venue_name)
+                HAVING COUNT(*) > 1
+            ) duplicate_venue_names"
+        );
+
+        if ($duplicateVenueNameCount === 0) {
+            $this->connection->executeStatement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_venues_lower_venue_name ON venues (LOWER(venue_name))");
+        }
 
         $this->venueSchemaEnsured = true;
     }

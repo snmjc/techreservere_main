@@ -17,35 +17,38 @@
       <div class="venue-modal-body">
         <div class="venue-modal-grid">
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Venue Name</span>
-            <input v-model.trim="formData.venueName" type="text" class="venue-modal-input" placeholder="Venue name" maxlength="150" />
+            <span class="venue-modal-label">Venue Name <em>*</em></span>
+            <input v-model.trim="formData.venueName" type="text" class="venue-modal-input" placeholder="Enter venue name" maxlength="150" />
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Location</span>
-            <input v-model.trim="formData.venueLocation" type="text" class="venue-modal-input" placeholder="Location" maxlength="150" />
-          </label>
-
-          <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Floor Level</span>
+            <span class="venue-modal-label">Floor <em>*</em></span>
             <select v-model="formData.floorLevel" class="venue-modal-input">
-              <option value="">Select floor level</option>
+              <option value="">Select floor</option>
               <option v-for="floor in floorOptions" :key="floor" :value="floor">{{ floor }}</option>
             </select>
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Capacity</span>
-            <input v-model.number="formData.capacityLimit" type="number" min="1" step="1" class="venue-modal-input" placeholder="Capacity" />
+            <span class="venue-modal-label">Location <em>*</em></span>
+            <input v-model.trim="formData.venueLocation" type="text" class="venue-modal-input" placeholder="Enter location" maxlength="150" />
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Availability Date</span>
+            <span class="venue-modal-label">Capacity <em>*</em></span>
+            <div class="venue-modal-input-group">
+              <input v-model.number="formData.capacityLimit" type="number" min="1" step="1" class="venue-modal-input" placeholder="Enter capacity" />
+              <span class="venue-modal-input-suffix">People</span>
+            </div>
+          </label>
+
+          <label class="venue-modal-form-group">
+            <span class="venue-modal-label">Availability Date <em>*</em></span>
             <input v-model="formData.availabilityDate" type="date" class="venue-modal-input" />
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Operational Status</span>
+            <span class="venue-modal-label">Status <em>*</em></span>
             <select v-model="formData.operationalStatus" class="venue-modal-input">
               <option value="">Select status</option>
               <option v-for="status in venueOperationalStatuses" :key="status" :value="status">{{ status }}</option>
@@ -53,7 +56,7 @@
           </label>
 
           <label class="venue-modal-form-group venue-modal-form-group--full">
-            <span class="venue-modal-label">Photo of Venue</span>
+            <span class="venue-modal-label">Venue Photo</span>
             <input ref="photoInputRef" type="file" class="venue-modal-input venue-modal-file-input" accept=".jpg,image/jpeg" @change="handlePhotoChange" />
             <small class="venue-modal-hint">Optional. JPG only.</small>
           </label>
@@ -64,7 +67,7 @@
 
           <label class="venue-modal-form-group venue-modal-form-group--full">
             <span class="venue-modal-label">Description</span>
-            <textarea v-model.trim="formData.description" class="venue-modal-input venue-modal-textarea" rows="4" placeholder="Venue description"></textarea>
+            <textarea v-model.trim="formData.description" class="venue-modal-input venue-modal-textarea" rows="4" placeholder="Enter venue description..."></textarea>
           </label>
         </div>
 
@@ -287,13 +290,13 @@ function resolveVenueSaveError(error) {
 }
 
 .venue-modal-content {
-  width: min(760px, 100%);
+  width: min(820px, 100%);
   max-height: 90vh;
   overflow: auto;
   background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 18px;
-  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
+  border: 1px solid #dbe4de;
+  border-radius: 20px;
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.18);
 }
 
 .venue-modal-header,
@@ -306,12 +309,12 @@ function resolveVenueSaveError(error) {
 }
 
 .venue-modal-header {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #edf1ee;
 }
 
 .venue-modal-footer {
   justify-content: flex-end;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #edf1ee;
 }
 
 .venue-modal-eyebrow {
@@ -326,19 +329,19 @@ function resolveVenueSaveError(error) {
 .venue-modal-header h3 {
   margin: 0;
   color: #111827;
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .venue-modal-close-button {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  color: #6b7280;
+  width: 36px;
+  height: 36px;
+  color: #4b5563;
   background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border: 1px solid #dbe4de;
+  border-radius: 10px;
   cursor: pointer;
 }
 
@@ -349,7 +352,7 @@ function resolveVenueSaveError(error) {
 .venue-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1.1rem 1rem;
 }
 
 .venue-modal-form-group {
@@ -368,13 +371,18 @@ function resolveVenueSaveError(error) {
   font-weight: 700;
 }
 
+.venue-modal-label em {
+  color: #dc2626;
+  font-style: normal;
+}
+
 .venue-modal-input {
-  min-height: 44px;
+  min-height: 46px;
   width: 100%;
-  padding: 0.7rem 0.8rem;
+  padding: 0.74rem 0.88rem;
   color: #111827;
   background: #ffffff;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d7dfda;
   border-radius: 10px;
   font: inherit;
 }
@@ -383,6 +391,32 @@ function resolveVenueSaveError(error) {
   outline: none;
   border-color: #1a6e3a;
   box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.12);
+}
+
+.venue-modal-input-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.venue-modal-input-group .venue-modal-input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.venue-modal-input-suffix {
+  display: inline-flex;
+  align-items: center;
+  min-width: 78px;
+  padding: 0 0.9rem;
+  color: #6b7280;
+  background: #f7faf8;
+  border: 1px solid #d7dfda;
+  border-left: none;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .venue-modal-textarea {
@@ -400,9 +434,9 @@ function resolveVenueSaveError(error) {
 }
 
 .venue-modal-photo-preview {
-  padding: 0.75rem;
+  padding: 0.8rem;
   background: #f7faf8;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e7eeea;
   border-radius: 14px;
 }
 
@@ -426,17 +460,17 @@ function resolveVenueSaveError(error) {
 
 .venue-modal-button {
   min-height: 44px;
-  padding: 0 1rem;
+  padding: 0 1.1rem;
   border-radius: 10px;
   border: 1px solid transparent;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .venue-modal-button--cancel {
   color: #374151;
   background: #ffffff;
-  border-color: #d1d5db;
+  border-color: #d7dfda;
 }
 
 .venue-modal-button--save {
