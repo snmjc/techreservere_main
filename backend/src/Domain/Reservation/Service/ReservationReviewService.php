@@ -49,7 +49,11 @@ class ReservationReviewService
             throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
         }
 
-        if ($resolvedRole !== RoleConstants::ROLE_ADMIN && $entity->getBorrowerAccountId() !== $accountIdentifier) {
+        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+            return $this->transformEntityToDTO($entity);
+        }
+
+        if ($resolvedRole !== RoleConstants::ROLE_BORROWER || $entity->getBorrowerAccountId() !== $accountIdentifier) {
             throw new DomainValidationException('You are not allowed to access this reservation.');
         }
 

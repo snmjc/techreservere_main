@@ -1,4 +1,4 @@
-name: "TechReserve"
+name: "techreserve"
 
 services:
   database:
@@ -7,7 +7,7 @@ services:
     env_file:
       - .env.dev
     ports:
-      - "49674:5432"
+      - "${POSTGRES_EXTERNAL_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -23,23 +23,34 @@ services:
     env_file:
       - .env.dev
     volumes:
-      - ./backend:/app
       - backend_var:/app/var
       - backend_vendor:/app/vendor
     ports:
-      - "8000:8000"
+      - "${BACKEND_EXTERNAL_PORT:-8000}:8000"
     environment:
       APP_ENV: dev
       APP_DEBUG: "1"
       POSTGRES_HOST: database
+      MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
+      RUN_MIGRATIONS_ON_BOOT: "${RUN_MIGRATIONS_ON_BOOT:-1}"
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r '$$socket = @fsockopen(\"127.0.0.1\", 8000); if (!$$socket) exit(1); fclose($$socket);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     develop:
       watch:
         - action: sync
           path: ./backend
           target: /app
+          ignore:
+            - var/
+            - vendor/
+            - config/reference.php
         - action: sync+restart
           path: ./backend/composer.json
           target: /app/composer.json
@@ -55,7 +66,7 @@ services:
     environment:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "5050:80"
+      - "${PGADMIN_EXTERNAL_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -66,7 +77,7 @@ services:
     build:
       context: ./frontend
     container_name: techreserve_frontend
-    command: sh -c "npm install && npm run build && npm run preview -- --host 0.0.0.0 --port 5173"
+    command: sh -c "if [ ! -d node_modules/.package-lock.json ] || [ package.json -nt node_modules/.package-lock.json ]; then npm install; fi && npm run dev -- --host 0.0.0.0 --port 5173"
     env_file:
       - .env.dev
     volumes:
@@ -77,9 +88,10 @@ services:
       CHOKIDAR_INTERVAL: "100"
       VITE_API_PROXY_TARGET: "http://backend:8000"
     ports:
-      - "5173:5173"
+      - "${FRONTEND_EXTERNAL_PORT:-5173}:5173"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     develop:
       watch:
         - action: sync

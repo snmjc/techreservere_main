@@ -98,7 +98,10 @@
       </table>
 
       <!-- No Results Message -->
-      <div v-if="filteredLogs.length === 0" class="logs-no-results">
+      <div v-if="isLoading" class="logs-no-results">
+        Loading completed reservation logs...
+      </div>
+      <div v-else-if="filteredLogs.length === 0" class="logs-no-results">
         No completed reservation logs found matching your search.
       </div>
     </div>
@@ -111,165 +114,43 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
-import { createTextPlaceholderDataUrl } from '@/shared/utils/mockImage.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { filterLogsBySearch, mapRequestRecordToLog, sortLogs } from './borrowerReservationLogUtils.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const searchQuery = ref('');
 const sortBy = ref('date');
 const sortOrder = ref('asc');
+const isLoading = ref(false);
 
-const mockLogs = ref([
-  {
-    id: 1,
-    reservationId: 'RES-2026-101',
-    name: 'Alice Thompson',
-    role: 'Faculty',
-    date: '2026-04-10 9:00 AM',
-    facility: 'Lecture Hall A',
-    facilityImage: createTextPlaceholderDataUrl('Lecture', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Lecture - Introduction to Computer Science',
-    status: 'Completed',
-    completed: '2026-04-10 11:30 AM'
-  },
-  {
-    id: 2,
-    reservationId: 'RES-2026-102',
-    name: 'Brian Martinez',
-    role: 'Student',
-    date: '2026-04-12 2:00 PM',
-    facility: 'Conference Room B',
-    facilityImage: createTextPlaceholderDataUrl('Conference', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Team Meeting - Project Kickoff',
-    status: 'Completed',
-    completed: '2026-04-12 4:30 PM'
-  },
-  {
-    id: 3,
-    reservationId: 'RES-2026-103',
-    name: 'Catherine Lee',
-    role: 'Faculty',
-    date: '2026-04-15 10:00 AM',
-    facility: 'Seminar Room',
-    facilityImage: createTextPlaceholderDataUrl('Seminar', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Workshop - Professional Development',
-    status: 'Completed',
-    completed: '2026-04-15 1:00 PM'
-  },
-  {
-    id: 4,
-    reservationId: 'RES-2026-104',
-    name: 'Daniel Wilson',
-    role: 'Student',
-    date: '2026-04-18 3:00 PM',
-    facility: 'Training Room A',
-    facilityImage: createTextPlaceholderDataUrl('Training', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Training - New Software Implementation',
-    status: 'Completed',
-    completed: '2026-04-18 5:30 PM'
-  },
-  {
-    id: 5,
-    reservationId: 'RES-2026-105',
-    name: 'Emma Davis',
-    role: 'Faculty',
-    date: '2026-04-20 11:00 AM',
-    facility: 'Board Room',
-    facilityImage: createTextPlaceholderDataUrl('Board Room', { width: 100, height: 50, fontSize: 13 }),
-    type: 'Venue',
-    purpose: 'Board Meeting - Quarterly Review',
-    status: 'Completed',
-    completed: '2026-04-20 1:30 PM'
-  },
-  {
-    id: 6,
-    reservationId: 'RES-2026-106',
-    name: 'Frank Johnson',
-    role: 'Student',
-    date: '2026-04-22 2:00 PM',
-    facility: 'Meeting Room C',
-    facilityImage: createTextPlaceholderDataUrl('Meeting', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Client Presentation - Sales Pitch',
-    status: 'Completed',
-    completed: '2026-04-22 4:00 PM'
-  },
-  {
-    id: 7,
-    reservationId: 'RES-2026-107',
-    name: 'Grace Anderson',
-    role: 'Faculty',
-    date: '2026-04-25 9:30 AM',
-    facility: 'Discussion Room',
-    facilityImage: createTextPlaceholderDataUrl('Discussion', { width: 100, height: 50, fontSize: 13 }),
-    type: 'Venue',
-    purpose: 'Focus Group - User Research',
-    status: 'Completed',
-    completed: '2026-04-25 12:00 PM'
-  },
-  {
-    id: 8,
-    reservationId: 'RES-2026-108',
-    name: 'Henry Brown',
-    role: 'Student',
-    date: '2026-04-28 1:00 PM',
-    facility: 'Outdoor Pavilion',
-    facilityImage: createTextPlaceholderDataUrl('Pavilion', { width: 100, height: 50, fontSize: 14 }),
-    type: 'Venue',
-    purpose: 'Team Building - Company Picnic',
-    status: 'Completed',
-    completed: '2026-04-28 5:00 PM'
+onMounted(async () => {
+  isLoading.value = true;
+
+  try {
+    await requestStore.fetchReservations();
+  } catch (error) {
+    console.error('Error fetching completed reservation logs:', error);
+  } finally {
+    isLoading.value = false;
   }
-]);
+});
+
+const completedLogs = computed(() =>
+  (requestStore.pastRecordsList || [])
+    .filter((record) => record.recordStatus === 'Completed')
+    .map((record) => mapRequestRecordToLog(record, 'Completed'))
+);
 
 const filteredLogs = computed(() => {
-  let logs = [...mockLogs.value];
-
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    logs = logs.filter(log =>
-      log.reservationId.toLowerCase().includes(query) ||
-      log.name.toLowerCase().includes(query)
-    );
-  }
-
-  // Apply sorting
-  logs.sort((a, b) => {
-    let compareA, compareB;
-
-    if (sortBy.value === 'date') {
-      compareA = new Date(a.date);
-      compareB = new Date(b.date);
-    } else if (sortBy.value === 'name') {
-      compareA = a.name.toLowerCase();
-      compareB = b.name.toLowerCase();
-    } else if (sortBy.value === 'facility') {
-      compareA = a.facility.toLowerCase();
-      compareB = b.facility.toLowerCase();
-    }
-
-    if (typeof compareA === 'string' && typeof compareB === 'string') {
-      return sortOrder.value === 'asc'
-        ? compareA.localeCompare(compareB)
-        : compareB.localeCompare(compareA);
-    } else {
-      return sortOrder.value === 'asc'
-        ? compareA - compareB
-        : compareB - compareA;
-    }
-  });
-
-  return logs;
+  const logs = filterLogsBySearch(completedLogs.value, searchQuery.value);
+  return sortLogs(logs, sortBy.value, sortOrder.value);
 });
 
 function handleGoBack() {

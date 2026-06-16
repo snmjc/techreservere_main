@@ -43,7 +43,10 @@
       </div>
 
       <!-- No Results Message -->
-      <div v-if="filteredLogs.length === 0" class="logs-no-results">
+      <div v-if="isLoading" class="logs-no-results">
+        Loading active reservation logs...
+      </div>
+      <div v-else-if="filteredLogs.length === 0" class="logs-no-results">
         No active reservation logs found matching your search.
       </div>
     </div>
@@ -56,109 +59,38 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { filterLogsBySearch, mapRequestRecordToLog } from './borrowerReservationLogUtils.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const searchQuery = ref('');
+const isLoading = ref(false);
 
-const mockLogs = ref([
-  {
-    id: 1,
-    reservationId: 'RES-2026-001',
-    name: 'John Smith',
-    date: '2026-05-15 10:00 AM',
-    facility: 'Main Auditorium',
-    purpose: 'Student Presentation - Engineering Capstone Project',
-    status: 'Active',
-    activity: 'Reservation approved and deployed for use'
-  },
-  {
-    id: 2,
-    reservationId: 'RES-2026-003',
-    name: 'Robert Johnson',
-    date: '2026-05-17 3:30 PM',
-    facility: 'Projector HD',
-    purpose: 'Class Project - Research Presentation',
-    status: 'Active',
-    activity: 'Equipment checked out and ready for deployment'
-  },
-  {
-    id: 3,
-    reservationId: 'RES-2026-005',
-    name: 'Michael Chen',
-    date: '2026-05-19 1:00 PM',
-    facility: 'Wireless Microphone System',
-    purpose: 'Event Coverage - Student Organization Summit',
-    status: 'Active',
-    activity: 'Equipment deployed to event location'
-  },
-  {
-    id: 4,
-    reservationId: 'RES-2026-007',
-    name: 'David Martinez',
-    date: '2026-05-21 4:00 PM',
-    facility: 'Interactive Whiteboard System',
-    purpose: 'Study Group - Mathematics Tutoring',
-    status: 'Active',
-    activity: 'Equipment setup completed and operational'
-  },
-  {
-    id: 5,
-    reservationId: 'RES-2026-009',
-    name: 'Christopher Lee',
-    date: '2026-05-23 10:30 AM',
-    facility: '4K Projector System',
-    purpose: 'Video Production - Documentary Screening',
-    status: 'Active',
-    activity: 'Projector configured and tested for screening'
-  },
-  {
-    id: 6,
-    reservationId: 'RES-2026-011',
-    name: 'Kevin Thompson',
-    date: '2026-05-25 3:00 PM',
-    facility: 'LED Display Screen',
-    purpose: 'Event Setup - Career Fair Display',
-    status: 'Active',
-    activity: 'Display screens installed and operational'
-  },
-  {
-    id: 7,
-    reservationId: 'RES-2026-013',
-    name: 'James Wilson',
-    date: '2026-05-27 2:00 PM',
-    facility: 'Portable Sound System',
-    purpose: 'Club Event - Music Performance',
-    status: 'Active',
-    activity: 'Sound system deployed to event venue'
-  },
-  {
-    id: 8,
-    reservationId: 'RES-2026-015',
-    name: 'Daniel Rodriguez',
-    date: '2026-05-29 4:30 PM',
-    facility: 'Document Camera System',
-    purpose: 'Presentation - Art Exhibition Documentation',
-    status: 'Active',
-    activity: 'Camera system ready for documentation'
+onMounted(async () => {
+  isLoading.value = true;
+
+  try {
+    await requestStore.fetchReservations();
+  } catch (error) {
+    console.error('Error fetching active reservation logs:', error);
+  } finally {
+    isLoading.value = false;
   }
-]);
+});
+
+const activeLogs = computed(() =>
+  (requestStore.activeReservationsList || []).map((record) => mapRequestRecordToLog(record, 'Active'))
+);
 
 const filteredLogs = computed(() => {
-  if (!searchQuery.value) {
-    return mockLogs.value;
-  }
-
-  const query = searchQuery.value.toLowerCase();
-  return mockLogs.value.filter(log =>
-    log.reservationId.toLowerCase().includes(query) ||
-    log.name.toLowerCase().includes(query)
-  );
+  return filterLogsBySearch(activeLogs.value, searchQuery.value);
 });
 
 function handleGoBack() {
