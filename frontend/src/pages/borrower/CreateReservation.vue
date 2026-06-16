@@ -54,17 +54,6 @@
               <div class="borrower-reservation-field borrower-reservation-field--full">
                 <label>Activity Time <em>*</em></label>
                 <div class="reservation-time-picker">
-                  <div class="reservation-time-picker__summary">
-                    <div class="reservation-time-picker__summary-card">
-                      <span>Start Time</span>
-                      <strong>{{ selectedStartTimeLabel }}</strong>
-                    </div>
-                    <div class="reservation-time-picker__summary-card">
-                      <span>End Time</span>
-                      <strong>{{ selectedEndTimeLabel }}</strong>
-                    </div>
-                  </div>
-
                   <div class="reservation-time-picker__trigger-grid">
                     <div ref="startPickerRef" class="reservation-time-picker__trigger-wrap">
                       <button
