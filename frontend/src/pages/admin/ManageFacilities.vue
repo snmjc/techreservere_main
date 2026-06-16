@@ -282,7 +282,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ManageFacilities.css';
@@ -309,6 +310,8 @@ import {
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
 const authStore = useAuthenticationStore();
+const route = useRoute();
+const router = useRouter();
 const activeFacilityTab = ref('venue');
 const availabilityFilter = ref('all');
 const showingFilterValue = ref('all');
@@ -413,6 +416,7 @@ function handleFacilityTabChange(tabName) {
   activeFacilityTab.value = tabName;
   availabilityFilter.value = 'all';
   searchQuery.value = '';
+  updateFacilityTabQuery(tabName);
 }
 
 function handleEditFacility() {
@@ -506,7 +510,9 @@ async function fetchVenues() {
   try {
     loading.value = true;
     venueError.value = '';
-    const response = await venueApi.listVenues();
+    const response = await venueApi.listVenues({
+      selectedDate: selectedVenueCalendarDate.value,
+    });
     const venuePayload = response?.data?.venues || response?.venues || [];
     venuesList.value = Array.isArray(venuePayload)
       ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
@@ -634,8 +640,22 @@ async function confirmDeleteVenue() {
 }
 
 onMounted(() => {
+  syncActiveFacilityTabFromRoute(route.query.tab);
   fetchVenues();
   fetchEquipment();
+});
+
+watch(
+  () => route.query.tab,
+  (tabValue) => {
+    syncActiveFacilityTabFromRoute(tabValue);
+  }
+);
+
+watch(selectedVenueCalendarDate, () => {
+  if (activeFacilityTab.value === 'venue') {
+    fetchVenues();
+  }
 });
 
 function handleEditEquipment(equipmentRecord) {
@@ -813,6 +833,7 @@ function normalizeVenueRecord(venue) {
     description: venue.description || '',
     imageUrl: venue.imageUrl || '',
     photoData: venue.imageUrl || '',
+    reservationTimeRanges: Array.isArray(venue.reservationTimeRanges) ? venue.reservationTimeRanges : [],
   };
 }
 
@@ -842,5 +863,24 @@ function getTodayDateInputValue() {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function syncActiveFacilityTabFromRoute(tabValue) {
+  const normalizedTab = String(tabValue || '').trim().toLowerCase();
+  if (normalizedTab === 'equipment' || normalizedTab === 'venue') {
+    activeFacilityTab.value = normalizedTab;
+  }
+}
+
+function updateFacilityTabQuery(tabName) {
+  const nextQuery = { ...route.query };
+
+  if (tabName === 'equipment') {
+    nextQuery.tab = 'equipment';
+  } else {
+    delete nextQuery.tab;
+  }
+
+  router.replace({ query: nextQuery });
 }
 </script>

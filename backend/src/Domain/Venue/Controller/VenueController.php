@@ -35,9 +35,12 @@ class VenueController extends AbstractController
     public function listVenues(Request $request): JsonResponse
     {
         $role = $request->attributes->get('resolvedRole', '');
+        $selectedDate = $request->query->get('selectedDate');
+        $startTime = $request->query->get('startTime');
+        $endTime = $request->query->get('endTime');
         $dtos = ($role === RoleConstants::ROLE_BORROWER)
-            ? $this->venueManagementService->getAvailableVenues()
-            : $this->venueManagementService->getAllVenues();
+            ? $this->venueManagementService->getAvailableVenues($selectedDate, $startTime, $endTime)
+            : $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime);
 
         $responseList = array_map(fn($dto) => $dto->toResponseArray(), $dtos);
         return $this->createSuccessResponse(['venues' => $responseList]);

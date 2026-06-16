@@ -35,11 +35,13 @@
         <p>Capacity: {{ row.capacity }}</p>
         <p>Operational: {{ row.operationalStatus }}</p>
         <p>Open from: {{ row.availableDate }}</p>
+        <p v-if="row.reservationSummary.length">Booked slots: {{ row.reservationSummary.join(', ') }}</p>
+        <p v-else>No booked slots for the selected date.</p>
       </article>
     </div>
 
     <p class="venue-availability-calendar__note">
-      Venue availability is currently calculated from the venue record's availability date and operational status.
+      Venue availability is calculated from the venue record status plus overlapping reservations for the selected date.
     </p>
   </section>
 </template>
@@ -77,6 +79,7 @@ const rows = computed(() => props.venues.map((venueRecord) => {
     capacity: formatVenueCapacity(venueRecord.capacityLimit),
     operationalStatus: formatVenueText(venueRecord.operationalStatus),
     availableDate: formatDisplayDate(venueRecord.availabilityDate),
+    reservationSummary: Array.isArray(venueRecord.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [],
     availabilityStatus,
     availabilityClass: availabilityStatus === 'Available'
       ? 'venue-availability-calendar__card--available'

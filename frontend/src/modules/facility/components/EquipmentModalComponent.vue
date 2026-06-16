@@ -84,15 +84,36 @@
           </label>
 
           <label class="equipment-modal-field">
-            <span>Serial Number <em>*</em></span>
+            <span>Asset ID <em>*</em></span>
             <input
               v-model.trim="formData.assetId"
               type="text"
-              maxlength="120"
-              placeholder="Enter serial number"
+              maxlength="13"
+              placeholder="Enter asset ID"
             />
-            <small>Manufacturer serial number.</small>
+            <small>Use the format F123-456-789.</small>
           </label>
+
+          <label class="equipment-modal-field equipment-modal-field--full">
+            <span>Photo (.jpg only)</span>
+            <input
+              ref="photoInputRef"
+              type="file"
+              accept=".jpg,.jpeg,image/jpeg"
+              @change="handlePhotoFileChange"
+            />
+            <small>Optional. JPG files only.</small>
+          </label>
+
+          <div class="equipment-modal-field equipment-modal-field--full">
+            <span>Photo Preview</span>
+            <div class="equipment-modal-photo-preview">
+              <img
+                :src="photoPreviewSource"
+                :alt="`${formData.equipmentName || 'Equipment'} photo preview`"
+              />
+            </div>
+          </div>
         </div>
 
         <p v-if="errorMessage" class="equipment-modal-error">{{ errorMessage }}</p>
@@ -113,9 +134,15 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
-import { normalizeEquipmentForm, validateEquipmentForm } from '@/modules/facility/utils/equipmentFormValidation.js';
+import {
+  normalizeEquipmentForm,
+  readPhotoFileAsDataUrl,
+  validateEquipmentForm,
+  validateEquipmentPhotoFile,
+} from '@/modules/facility/utils/equipmentFormValidation.js';
+import { resolveEquipmentPhoto } from '@/modules/facility/utils/equipmentPresentation.js';
 
-const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance'];
+const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
 const defaultCategories = [
   'Audio / Microphone',
   'Audio',
@@ -145,6 +172,7 @@ const emit = defineEmits(['close', 'saved']);
 const isSaving = ref(false);
 const errorMessage = ref('');
 const formData = ref(createEmptyForm());
+const photoInputRef = ref(null);
 const isEditMode = computed(() => Boolean(props.equipment?.equipmentIdentifier));
 
 const categoryOptions = computed(() => {
@@ -153,6 +181,13 @@ const categoryOptions = computed(() => {
 });
 
 const isFormReady = computed(() => validateEquipmentForm(formData.value) === '');
+const photoPreviewSource = computed(() => {
+  if (formData.value.photoData) {
+    return formData.value.photoData;
+  }
+
+  return resolveEquipmentPhoto(props.equipment || formData.value);
+});
 
 watch(
   () => props.show,
@@ -211,6 +246,36 @@ async function handleSave() {
   }
 }
 
+async function handlePhotoFileChange(event) {
+  const [selectedFile] = Array.from(event?.target?.files || []);
+  const photoValidationMessage = validateEquipmentPhotoFile(selectedFile);
+  if (photoValidationMessage) {
+    errorMessage.value = photoValidationMessage;
+    resetPhotoInput();
+    return;
+  }
+
+  if (!selectedFile) {
+    formData.value = {
+      ...formData.value,
+      photoData: null,
+    };
+    return;
+  }
+
+  try {
+    errorMessage.value = '';
+    const encodedPhoto = await readPhotoFileAsDataUrl(selectedFile);
+    formData.value = {
+      ...formData.value,
+      photoData: encodedPhoto,
+    };
+  } catch (error) {
+    errorMessage.value = error?.message || 'Unable to read the selected equipment photo.';
+    resetPhotoInput();
+  }
+}
+
 function hydrateFromEquipment(equipmentRecord) {
   errorMessage.value = '';
   formData.value = equipmentRecord
@@ -223,9 +288,11 @@ function hydrateFromEquipment(equipmentRecord) {
         description: equipmentRecord.description || equipmentRecord.scheduleDescription || '',
         barcode: equipmentRecord.barcode || '',
         assetId: equipmentRecord.assetId || equipmentRecord.serialNumber || '',
-        photoData: null,
+        photoData: equipmentRecord.photoData || null,
       }
     : createEmptyForm();
+
+  resetPhotoInput();
 }
 
 function createEmptyForm() {
@@ -245,6 +312,7 @@ function createEmptyForm() {
 function resetFormState() {
   formData.value = createEmptyForm();
   errorMessage.value = '';
+  resetPhotoInput();
 }
 
 function normalizeStatusValue(statusValue) {
@@ -255,6 +323,12 @@ function normalizeStatusValue(statusValue) {
       : statusValue === 'Inactive'
         ? 'Unavailable'
         : (statusValue || 'Available');
+}
+
+function resetPhotoInput() {
+  if (photoInputRef.value) {
+    photoInputRef.value.value = '';
+  }
 }
 </script>
 
@@ -394,6 +468,20 @@ function normalizeStatusValue(statusValue) {
   color: #8a9a90;
   font-size: 0.61rem;
   font-weight: 700;
+}
+
+.equipment-modal-photo-preview {
+  overflow: hidden;
+  border: 1px solid #d8e1db;
+  border-radius: 12px;
+  background: #f4f8f5;
+}
+
+.equipment-modal-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
 }
 
 .equipment-modal-error {

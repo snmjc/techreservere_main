@@ -41,6 +41,27 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /** @return ReservationEntity[] */
+    public function findVenueReservationsOverlappingRange(array $venueIdentifiers, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd): array
+    {
+        if ($venueIdentifiers === []) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('rsrv')
+            ->where('rsrv.venueIdentifier IN (:venueIdentifiers)')
+            ->andWhere('rsrv.currentStatus NOT IN (:excludedStatuses)')
+            ->andWhere('rsrv.eventDateTime < :rangeEnd')
+            ->andWhere('(rsrv.endDateTime IS NULL AND rsrv.eventDateTime >= :rangeStart) OR (rsrv.endDateTime IS NOT NULL AND rsrv.endDateTime > :rangeStart)')
+            ->setParameter('venueIdentifiers', $venueIdentifiers)
+            ->setParameter('excludedStatuses', ['Rejected', 'Cancelled', 'Request Revision'])
+            ->setParameter('rangeStart', $rangeStart)
+            ->setParameter('rangeEnd', $rangeEnd)
+            ->orderBy('rsrv.eventDateTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return ReservationEntity[] */
     public function findByBorrowerAccountId(int $borrowerAccountId): array { return $this->findBy(['borrowerAccountId' => $borrowerAccountId]); }
 
     /** @return ReservationEntity[] */

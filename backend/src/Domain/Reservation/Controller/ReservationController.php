@@ -50,6 +50,7 @@ class ReservationController extends AbstractController
             requestedEquipmentList: $requestBody['requestedEquipmentList'] ?? [],
             requestedQuantity: (int)($requestBody['requestedQuantity'] ?? 0),
             eventDateTime: $requestBody['eventDateTime'] ?? '',
+            endDateTime: $requestBody['endDateTime'] ?? '',
             purposeDescription: $requestBody['purposeDescription'] ?? '',
             activityType: $requestBody['activityType'] ?? '',
             supportingDocuments: $requestBody['supportingDocuments'] ?? null

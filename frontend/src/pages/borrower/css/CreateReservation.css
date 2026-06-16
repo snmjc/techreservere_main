@@ -10,3 +10,120 @@
   font-size: 0.9rem;
   font-weight: 700;
 }
+
+.reservation-time-picker {
+  display: grid;
+  gap: 1rem;
+}
+
+.reservation-time-picker__summary {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reservation-time-picker__summary-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.95rem 1rem;
+  background: linear-gradient(135deg, #f7fbf8 0%, #eef7f1 100%);
+  border: 1px solid #d9e7de;
+  border-radius: 16px;
+}
+
+.reservation-time-picker__summary-card span {
+  color: #5d7267;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reservation-time-picker__summary-card strong {
+  color: #173122;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reservation-time-picker__panels {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reservation-time-picker__panel {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #d9e7de;
+  border-radius: 18px;
+}
+
+.reservation-time-picker__panel-head h3 {
+  margin: 0 0 0.2rem;
+  color: #173122;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reservation-time-picker__panel-head p {
+  margin: 0;
+  color: #667a6f;
+  font-size: 0.88rem;
+}
+
+.reservation-time-picker__slot-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 320px;
+  padding-right: 0.2rem;
+  overflow-y: auto;
+}
+
+.reservation-time-picker__slot {
+  min-height: 46px;
+  padding: 0.75rem 0.65rem;
+  color: #173122;
+  background: #ffffff;
+  border: 1px solid #d3e3d8;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.reservation-time-picker__slot:hover:not(:disabled) {
+  border-color: #14804a;
+  box-shadow: 0 8px 18px rgba(20, 128, 74, 0.12);
+  transform: translateY(-1px);
+}
+
+.reservation-time-picker__slot.is-selected {
+  color: #ffffff;
+  background: linear-gradient(135deg, #14804a 0%, #0e6f40 100%);
+  border-color: #14804a;
+  box-shadow: 0 12px 20px rgba(20, 128, 74, 0.18);
+}
+
+.reservation-time-picker__slot:disabled {
+  color: #9aaca1;
+  background: #f5f7f6;
+  border-color: #e4ebe7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .reservation-time-picker__summary,
+  .reservation-time-picker__panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .reservation-time-picker__slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

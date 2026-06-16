@@ -220,7 +220,7 @@ import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
-const { equipmentList, loadAllData } = useReservationData();
+const { equipmentList, venueList, loadAllData } = useReservationData();
 
 const activeTab = ref(reservationFormStore.reservationType === 'Equipment' ? 'equipment' : 'venue');
 const venueSearchQuery = ref('');
@@ -233,19 +233,6 @@ const equipmentStatusFilter = ref('all');
 const selectedVenueRecord = ref(reservationFormStore.selectedVenueRecord);
 const selectedEquipmentItems = ref(buildInitialEquipmentSelection());
 
-const defaultVenueRecords = [
-  { venueIdentifier: 1, venueName: '18F Roofdeck', floorLabel: '18th Floor', venueType: 'Open Space', capacityLimit: 150, venueAvailable: true },
-  { venueIdentifier: 2, venueName: '17F MPR', floorLabel: '17th Floor', venueType: 'Multipurpose Room', capacityLimit: 200, venueAvailable: true },
-  { venueIdentifier: 3, venueName: 'Basketball without Aircon', floorLabel: '17th Floor', venueType: 'Sports Facility', capacityLimit: 50, venueAvailable: true },
-  { venueIdentifier: 4, venueName: 'Basketball gym with Aircon', floorLabel: '17th Floor', venueType: 'Sports Facility', capacityLimit: 50, venueAvailable: false },
-  { venueIdentifier: 5, venueName: 'Basketball gym with Aircon and Green Matting', floorLabel: '17th Floor', venueType: 'Sports Facility', capacityLimit: 50, venueAvailable: true },
-  { venueIdentifier: 6, venueName: 'F1603 Audio Visual Room', floorLabel: '16th Floor', venueType: 'Audio Visual Room', capacityLimit: 40, venueAvailable: false },
-  { venueIdentifier: 7, venueName: 'F1604 Case Room', floorLabel: '16th Floor', venueType: 'Case Room', capacityLimit: 40, venueAvailable: true },
-  { venueIdentifier: 8, venueName: 'F1502 Multipurpose Room', floorLabel: '15th Floor', venueType: 'Multipurpose Room', capacityLimit: 100, venueAvailable: true },
-  { venueIdentifier: 9, venueName: 'F1503 Multipurpose Room', floorLabel: '15th Floor', venueType: 'Multipurpose Room', capacityLimit: 100, venueAvailable: true },
-  { venueIdentifier: 10, venueName: 'F1504 Multipurpose Room', floorLabel: '15th Floor', venueType: 'Multipurpose Room', capacityLimit: 100, venueAvailable: true },
-];
-
 const fallbackEquipment = [
   { equipmentIdentifier: 1, equipmentName: 'Wireless Microphone', equipmentCategory: 'Audio', equipmentBrand: 'Shure', availableQuantity: 10 },
   { equipmentIdentifier: 2, equipmentName: 'Portable Speaker', equipmentCategory: 'Audio', equipmentBrand: 'JBL', availableQuantity: 4 },
@@ -256,7 +243,11 @@ const fallbackEquipment = [
 ];
 
 onMounted(async () => {
-  await loadAllData();
+  await loadAllData({
+    selectedDate: reservationFormStore.activityDate,
+    startTime: reservationFormStore.activityTimeFrom,
+    endTime: reservationFormStore.activityTimeTo,
+  });
 });
 
 const showVenueSection = computed(() => ['Venue', 'Both'].includes(reservationFormStore.reservationType));
@@ -264,11 +255,18 @@ const showEquipmentSection = computed(() => ['Equipment', 'Both'].includes(reser
 const isVenueTab = computed(() => showVenueSection.value && (!showEquipmentSection.value || activeTab.value === 'venue'));
 const isEquipmentTab = computed(() => showEquipmentSection.value && (!showVenueSection.value || activeTab.value === 'equipment'));
 
-const venueFloorOptions = computed(() => [...new Set(defaultVenueRecords.map((venue) => venue.floorLabel))]);
+const normalizedVenueRecords = computed(() => venueList.value.map((venue) => ({
+  ...venue,
+  floorLabel: String(venue.floorLevel || 'No Floor'),
+  venueType: inferVenueType(venue),
+  venueAvailable: venue.availabilityStatus === 'Available',
+})));
+
+const venueFloorOptions = computed(() => [...new Set(normalizedVenueRecords.value.map((venue) => venue.floorLabel))]);
 
 const filteredVenues = computed(() => {
   const query = venueSearchQuery.value.toLowerCase();
-  return [...defaultVenueRecords]
+  return [...normalizedVenueRecords.value]
     .filter((venue) => {
       if (venueFloorFilter.value !== 'all' && venue.floorLabel !== venueFloorFilter.value) return false;
       if (venueStatusFilter.value === 'available' && !venue.venueAvailable) return false;
@@ -376,5 +374,13 @@ function navigateToNextPage() {
   reservationFormStore.selectedVenueRecord = selectedVenueRecord.value;
   reservationFormStore.selectedEquipmentItems = selectedEquipmentItems.value.filter((item) => item.selectedQuantity > 0);
   router.push({ name: 'borrowerCreateReservationAdditionalPage' });
+}
+
+function inferVenueType(venue) {
+  const normalizedName = String(venue?.venueName || '').toLowerCase();
+  if (normalizedName.includes('gym')) return 'Sports Facility';
+  if (normalizedName.includes('audio visual')) return 'Audio Visual Room';
+  if (normalizedName.includes('room')) return 'Venue';
+  return 'Venue';
 }
 </script>

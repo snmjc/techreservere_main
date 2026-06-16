@@ -1,5 +1,6 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
 const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+const ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
 
 const EQUIPMENT_FORM_VALIDATORS = [
   {
@@ -35,6 +36,10 @@ const EQUIPMENT_FORM_VALIDATORS = [
     message: 'Asset ID is required.',
   },
   {
+    isInvalid: (form) => ASSET_ID_PATTERN.test(form.assetId) !== true,
+    message: 'Asset ID must follow the format F123-456-789.',
+  },
+  {
     isInvalid: (form) => Boolean(form.photoData) && JPG_DATA_URL_PATTERN.test(form.photoData) !== true,
     message: 'Equipment photo must be a valid JPG image.',
   },
@@ -42,6 +47,8 @@ const EQUIPMENT_FORM_VALIDATORS = [
 
 export function normalizeEquipmentForm(form) {
   const assetId = String(form?.assetId ?? form?.serialNumber ?? '').trim();
+
+  const normalizedAssetId = assetId.toUpperCase();
 
   return {
     equipmentName: String(form?.equipmentName || '').trim(),
@@ -51,8 +58,8 @@ export function normalizeEquipmentForm(form) {
     operationalStatus: String(form?.operationalStatus || '').trim(),
     description: String(form?.description || '').trim(),
     barcode: String(form?.barcode || '').trim(),
-    assetId,
-    serialNumber: assetId,
+    assetId: normalizedAssetId,
+    serialNumber: normalizedAssetId,
     photoData: normalizeOptionalPhotoData(form?.photoData),
   };
 }

@@ -39,6 +39,20 @@ class ReservationCreateService
         if (empty($requestDTO->eventDateTime)) {
             throw new DomainValidationException('Event date and time is required.');
         }
+        if (empty($requestDTO->endDateTime)) {
+            throw new DomainValidationException('Reservation end time is required.');
+        }
+
+        try {
+            $eventDateTime = new \DateTimeImmutable($requestDTO->eventDateTime);
+            $endDateTime = new \DateTimeImmutable($requestDTO->endDateTime);
+        } catch (\Throwable) {
+            throw new DomainValidationException('Reservation time range is invalid.');
+        }
+
+        if ($endDateTime <= $eventDateTime) {
+            throw new DomainValidationException('Reservation end time must be after the start time.');
+        }
 
         $reservationCode = $this->reservationRepository->generateReservationCode();
 
@@ -49,7 +63,8 @@ class ReservationCreateService
         $entity->setVenueIdentifier($requestDTO->venueIdentifier);
         $entity->setRequestedEquipmentList($requestDTO->requestedEquipmentList);
         $entity->setRequestedQuantity($requestDTO->requestedQuantity);
-        $entity->setEventDateTime(new \DateTime($requestDTO->eventDateTime));
+        $entity->setEventDateTime($eventDateTime);
+        $entity->setEndDateTime($endDateTime);
         $entity->setPurposeDescription($requestDTO->purposeDescription);
         $entity->setActivityType($requestDTO->activityType);
         $entity->setCurrentStatus('Pending Review');
@@ -71,6 +86,8 @@ class ReservationCreateService
             requestedEquipmentList: $entity->getRequestedEquipmentList(),
             requestedQuantity: $entity->getRequestedQuantity(),
             eventDateTime: $entity->getEventDateTime()->format(\DateTime::ATOM),
+            endDateTime: ($entity->getEndDateTime() ?? $entity->getEventDateTime())->format(\DateTime::ATOM),
+            activityTimeRange: $this->buildActivityTimeRange($entity),
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
             currentStatus: $entity->getCurrentStatus(),
@@ -79,5 +96,13 @@ class ReservationCreateService
             supportingDocuments: $entity->getSupportingDocuments(),
             submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM)
         );
+    }
+
+    private function buildActivityTimeRange(ReservationEntity $entity): string
+    {
+        $startDateTime = $entity->getEventDateTime();
+        $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
+
+        return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
     }
 }

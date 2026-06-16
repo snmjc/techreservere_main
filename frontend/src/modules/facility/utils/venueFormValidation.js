@@ -105,6 +105,11 @@ export function resolveVenuePhoto(record) {
 }
 
 export function deriveVenueAvailabilityForDate(venueRecord, selectedDate) {
+  const normalizedAvailabilityStatus = String(venueRecord?.availabilityStatus || '').trim();
+  if (normalizedAvailabilityStatus === 'Available' || normalizedAvailabilityStatus === 'Unavailable') {
+    return normalizedAvailabilityStatus;
+  }
+
   const operationalStatus = String(venueRecord?.operationalStatus || '').trim();
   if (operationalStatus !== 'Active') {
     return 'Unavailable';

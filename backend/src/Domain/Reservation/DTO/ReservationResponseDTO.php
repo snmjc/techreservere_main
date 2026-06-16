@@ -17,6 +17,8 @@ class ReservationResponseDTO
     public array $requestedEquipmentList;
     public int $requestedQuantity;
     public string $eventDateTime;
+    public string $endDateTime;
+    public string $activityTimeRange;
     public string $purposeDescription;
     public string $activityType;
     public string $currentStatus;
@@ -34,6 +36,8 @@ class ReservationResponseDTO
         array $requestedEquipmentList,
         int $requestedQuantity,
         string $eventDateTime,
+        string $endDateTime,
+        string $activityTimeRange,
         string $purposeDescription,
         string $activityType,
         string $currentStatus,
@@ -50,6 +54,8 @@ class ReservationResponseDTO
         $this->requestedEquipmentList = $requestedEquipmentList;
         $this->requestedQuantity = $requestedQuantity;
         $this->eventDateTime = $eventDateTime;
+        $this->endDateTime = $endDateTime;
+        $this->activityTimeRange = $activityTimeRange;
         $this->purposeDescription = $purposeDescription;
         $this->activityType = $activityType;
         $this->currentStatus = $currentStatus;
@@ -70,6 +76,8 @@ class ReservationResponseDTO
             'requestedEquipmentList' => $this->requestedEquipmentList,
             'requestedQuantity' => $this->requestedQuantity,
             'eventDateTime' => $this->eventDateTime,
+            'endDateTime' => $this->endDateTime,
+            'activityTimeRange' => $this->activityTimeRange,
             'purposeDescription' => $this->purposeDescription,
             'activityType' => $this->activityType,
             'currentStatus' => $this->currentStatus,
