@@ -132,7 +132,7 @@ const formData = ref(createEmptyForm());
 
 const isEditMode = computed(() => Boolean(props.venue?.venueIdentifier));
 const isFormReady = computed(() => validateVenueForm(formData.value) === '');
-const photoPreviewSrc = computed(() => formData.value.photoData || '');
+const photoPreviewSrc = computed(() => formData.value.photoData || formData.value.existingImageUrl || '');
 
 watch(
   () => props.show,
@@ -216,6 +216,7 @@ async function handlePhotoChange(event) {
 
   try {
     formData.value.photoData = await readVenuePhotoFileAsDataUrl(selectedFile);
+    formData.value.existingImageUrl = '';
     errorMessage.value = '';
   } catch (error) {
     errorMessage.value = error.message || 'Unable to read the selected venue photo.';
@@ -235,7 +236,8 @@ function hydrateFromVenue(venueRecord) {
         operationalStatus: venueRecord.operationalStatus || 'Active',
         availabilityStatus: venueRecord.availabilityStatus || 'Available',
         description: venueRecord.description || '',
-        photoData: String(venueRecord.photoData || '').trim() || String(venueRecord.imageUrl || '').trim() || null,
+        photoData: null,
+        existingImageUrl: String(venueRecord.photoData || '').trim() || String(venueRecord.imageUrl || '').trim() || null,
       }
     : createEmptyForm();
 
@@ -253,6 +255,7 @@ function createEmptyForm() {
     availabilityStatus: 'Available',
     description: '',
     photoData: null,
+    existingImageUrl: null,
   };
 }
 
