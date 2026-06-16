@@ -777,23 +777,28 @@
 
 .manage-facilities-venue-details-sheet {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .manage-facilities-venue-photo-banner {
   overflow: hidden;
-  border: 1px solid #e7eeea;
-  border-radius: 16px;
-  background: #f7faf8;
+  border: 1px solid #dbe9df;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(226, 245, 235, 0.95), rgba(245, 251, 247, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .manage-facilities-venue-photo-banner .manage-facilities-equipment-photo {
-  max-height: 160px;
+  max-height: 148px;
+  min-height: 148px;
 }
 
-.manage-facilities-venue-details-list {
+.manage-facilities-venue-overview-grid,
+.manage-facilities-venue-meta-grid {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
 }
 
 .manage-facilities-venue-detail-row {
@@ -801,24 +806,28 @@
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
-  padding: 0.8rem 0.9rem;
-  background: #f9fbfa;
-  border: 1px solid #e7eeea;
-  border-radius: 12px;
+  min-height: 96px;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, #fbfdfc 0%, #f5faf7 100%);
+  border: 1px solid #dde9e1;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
 }
 
 .manage-facilities-venue-detail-row--full {
   align-items: stretch;
+  min-height: 0;
 }
 
 .manage-facilities-venue-detail-icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   color: #345f47;
-  background: #ecf7f0;
-  border-radius: 10px;
+  background: linear-gradient(180deg, #eff9f3 0%, #e4f4eb 100%);
+  border: 1px solid #d8ebdf;
+  border-radius: 12px;
 }
 
 .manage-facilities-venue-detail-icon svg {
@@ -835,14 +844,20 @@
 
 .manage-facilities-venue-detail-row strong {
   color: #111827;
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
+  line-height: 1.35;
 }
 
 .manage-facilities-venue-detail-copy {
   display: block;
-  line-height: 1.55;
+  line-height: 1.65;
   white-space: pre-wrap;
+}
+
+.manage-facilities-venue-description-card {
+  grid-template-columns: 40px minmax(0, 1fr);
+  padding-block: 1rem;
 }
 
 .manage-facilities-venue-status-badge {
@@ -945,6 +960,11 @@
 
   .manage-facilities-equipment-details-layout,
   .manage-facilities-equipment-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-venue-overview-grid,
+  .manage-facilities-venue-meta-grid {
     grid-template-columns: 1fr;
   }
 

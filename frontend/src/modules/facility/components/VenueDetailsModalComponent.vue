@@ -24,7 +24,7 @@
           />
         </div>
 
-        <div class="manage-facilities-venue-details-list">
+        <div class="manage-facilities-venue-overview-grid">
           <article class="manage-facilities-venue-detail-row">
             <span class="manage-facilities-venue-detail-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -80,7 +80,9 @@
               <strong>{{ formatVenueCapacity(venue?.capacityLimit) }}</strong>
             </div>
           </article>
+        </div>
 
+        <div class="manage-facilities-venue-meta-grid">
           <article class="manage-facilities-venue-detail-row">
             <span class="manage-facilities-venue-detail-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -138,22 +140,22 @@
               </strong>
             </div>
           </article>
-
-          <article class="manage-facilities-venue-detail-row manage-facilities-venue-detail-row--full">
-            <span class="manage-facilities-venue-detail-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M8 7h8" />
-                <path d="M8 12h8" />
-                <path d="M8 17h5" />
-                <rect x="4" y="3" width="16" height="18" rx="2" />
-              </svg>
-            </span>
-            <div>
-              <p>Description</p>
-              <strong class="manage-facilities-venue-detail-copy">{{ formatVenueText(venue?.description) }}</strong>
-            </div>
-          </article>
         </div>
+
+        <article class="manage-facilities-venue-detail-row manage-facilities-venue-detail-row--full manage-facilities-venue-description-card">
+          <span class="manage-facilities-venue-detail-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M8 7h8" />
+              <path d="M8 12h8" />
+              <path d="M8 17h5" />
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+            </svg>
+          </span>
+          <div>
+            <p>Description</p>
+            <strong class="manage-facilities-venue-detail-copy">{{ formatVenueText(venue?.description) }}</strong>
+          </div>
+        </article>
       </div>
 
       <div class="manage-facilities-modal-actions">
