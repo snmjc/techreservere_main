@@ -182,16 +182,30 @@
   gap: 0.5rem;
 }
 
-.reservation-equipment-action button {
-  width: 24px;
-  height: 24px;
-  color: #355043;
+.reservation-equipment-quantity-input {
+  width: 72px;
+  min-height: 34px;
+  padding: 0 0.7rem;
+  color: #173122;
+  text-align: center;
   background: #ffffff;
   border: 1px solid #d8e1db;
-  border-radius: 6px;
+  border-radius: 8px;
   font: inherit;
-  font-weight: 900;
-  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.reservation-equipment-quantity-input:focus {
+  outline: none;
+  border-color: #11864d;
+  box-shadow: 0 0 0 3px rgba(17, 134, 77, 0.12);
+}
+
+.reservation-equipment-quantity-input:disabled {
+  color: #8ca095;
+  background: #f4f7f5;
+  cursor: not-allowed;
 }
 
 .reservation-equipment-sidebar {

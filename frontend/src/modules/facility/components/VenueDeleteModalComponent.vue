@@ -46,8 +46,12 @@
             <strong>{{ formatDisplayDate(venue?.availabilityDate) }}</strong>
           </div>
           <div>
-            <span>Status</span>
-            <strong>{{ formatVenueText(venue?.availabilityStatus || venue?.operationalStatus) }}</strong>
+            <span>Operational Status</span>
+            <strong>{{ formatVenueText(venue?.operationalStatus) }}</strong>
+          </div>
+          <div>
+            <span>Room Availability</span>
+            <strong>{{ formatVenueText(venue?.availabilityStatus) }}</strong>
           </div>
         </div>
       </div>

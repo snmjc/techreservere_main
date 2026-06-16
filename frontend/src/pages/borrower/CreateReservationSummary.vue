@@ -28,9 +28,10 @@
                   <div class="reservation-summary-grid">
                     <div><span>Request Date</span><strong>{{ formatDisplayDate(reservationFormStore.requestDate) }}</strong></div>
                     <div><span>Activity Name / Title</span><strong>{{ reservationFormStore.activityNameTitle || 'N/A' }}</strong></div>
-                    <div><span>Activity Date</span><strong>{{ formatDisplayDate(reservationFormStore.activityDate) }}</strong></div>
+                    <div><span>Activity Start Date</span><strong>{{ formatDisplayDate(reservationFormStore.activityDate) }}</strong></div>
+                    <div><span>Activity End Date</span><strong>{{ formatDisplayDate(reservationFormStore.activityEndDate || reservationFormStore.activityDate) }}</strong></div>
                     <div><span>Purpose</span><strong>{{ reservationFormStore.purposeText || 'N/A' }}</strong></div>
-                    <div><span>Activity Time</span><strong>{{ reservationFormStore.activityTimeFrom }} - {{ reservationFormStore.activityTimeTo }}</strong></div>
+                    <div><span>Activity Time</span><strong>{{ formatDisplayTime(reservationFormStore.activityTimeFrom) }} - {{ formatDisplayTime(reservationFormStore.activityTimeTo) }}</strong></div>
                     <div><span>No. of Participants</span><strong>{{ reservationFormStore.participantCount || '0' }}</strong></div>
                     <div><span>Reservation Type</span><strong>{{ reservationFormStore.reservationType }}</strong></div>
                   </div>
@@ -149,13 +150,22 @@ function formatDisplayDate(value) {
   return new Intl.DateTimeFormat('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }).format(parsed);
 }
 
+function formatDisplayTime(value) {
+  if (!value) return 'N/A';
+  const [hours, minutes] = String(value).split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
 async function handleSubmitReservationRequest() {
   try {
     isSubmitting.value = true;
     submissionError.value = '';
 
     const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
-    const endDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
+    const endDateTime = new Date(`${reservationFormStore.activityEndDate || reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
     const activityTimeRange = `${reservationFormStore.activityTimeFrom || '00:00'}-${reservationFormStore.activityTimeTo || '00:00'}`;
 
     const reservationData = {
