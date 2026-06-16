@@ -14,6 +14,7 @@ use Doctrine\DBAL\Connection;
 class VenueManagementService
 {
     private const ALLOWED_OPERATIONAL_STATUSES = ['Active', 'Inactive', 'Maintenance'];
+    private const MAX_IMAGE_URL_LENGTH = 1_600_000;
 
     private VenueRepository $venueRepository;
     private ReservationRepository $reservationRepository;
@@ -188,6 +189,10 @@ class VenueManagementService
 
         if ($normalizedImageUrl !== '' && !$this->isValidJpgImagePayload($normalizedImageUrl)) {
             throw new DomainValidationException('Venue photo must be a .jpg image only.');
+        }
+
+        if ($normalizedImageUrl !== '' && strlen($normalizedImageUrl) > self::MAX_IMAGE_URL_LENGTH) {
+            throw new DomainValidationException('Venue photo is too large. Please upload a smaller JPG image.');
         }
 
         return [

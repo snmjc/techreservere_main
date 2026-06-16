@@ -1,6 +1,14 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
 const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+const MAX_VENUE_IMAGE_DATA_URL_LENGTH = 1_500_000;
+const VENUE_PHOTO_COMPRESSION_STEPS = [
+  { maxDimension: 1280, quality: 0.82 },
+  { maxDimension: 1180, quality: 0.76 },
+  { maxDimension: 1024, quality: 0.7 },
+  { maxDimension: 900, quality: 0.64 },
+  { maxDimension: 768, quality: 0.58 },
+];
 
 const VENUE_FORM_VALIDATORS = [
   {
@@ -29,6 +37,13 @@ const VENUE_FORM_VALIDATORS = [
       return Boolean(photoValue) && JPG_DATA_URL_PATTERN.test(photoValue) !== true;
     },
     message: 'Venue photo must be a valid JPG image.',
+  },
+  {
+    isInvalid: (form) => {
+      const photoValue = String(form.imageUrl || form.photoData || '').trim();
+      return photoValue.length > MAX_VENUE_IMAGE_DATA_URL_LENGTH;
+    },
+    message: 'Venue photo is too large. Please upload a smaller JPG image.',
   },
 ];
 
@@ -92,6 +107,20 @@ export function formatVenueCapacity(value) {
   return Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 'N/A';
 }
 
+export function sanitizeVenuePayload(form) {
+  const normalizedForm = normalizeVenueForm(form);
+  return {
+    venueName: normalizedForm.venueName,
+    venueLocation: normalizedForm.venueLocation,
+    floorLevel: normalizedForm.floorLevel,
+    capacityLimit: normalizedForm.capacityLimit,
+    availabilityDate: normalizedForm.availabilityDate,
+    operationalStatus: normalizedForm.operationalStatus,
+    description: normalizedForm.description,
+    imageUrl: normalizedForm.imageUrl,
+  };
+}
+
 export function resolveVenuePhoto(record) {
   const photoData = String(record?.photoData || record?.imageUrl || '').trim();
   if (photoData !== '') {
@@ -151,20 +180,28 @@ function compressVenuePhoto(sourceDataUrl) {
     const image = new Image();
 
     image.onload = () => {
-      const { width, height } = scaleVenuePhotoDimensions(image.width, image.height);
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-
       const context = canvas.getContext('2d');
       if (!context) {
         reject(new Error('Unable to prepare the selected venue photo.'));
         return;
       }
 
-      context.drawImage(image, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      resolve(compressedDataUrl);
+      for (const step of VENUE_PHOTO_COMPRESSION_STEPS) {
+        const { width, height } = scaleVenuePhotoDimensions(image.width, image.height, step.maxDimension);
+        canvas.width = width;
+        canvas.height = height;
+        context.clearRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', step.quality);
+        if (compressedDataUrl.length <= MAX_VENUE_IMAGE_DATA_URL_LENGTH) {
+          resolve(compressedDataUrl);
+          return;
+        }
+      }
+
+      reject(new Error('Venue photo is too large. Please upload a smaller JPG image.'));
     };
 
     image.onerror = () => reject(new Error('Unable to process the selected venue photo.'));
@@ -172,23 +209,22 @@ function compressVenuePhoto(sourceDataUrl) {
   });
 }
 
-function scaleVenuePhotoDimensions(width, height) {
-  const MAX_DIMENSION = 1280;
-  if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
+function scaleVenuePhotoDimensions(width, height, maxDimension) {
+  if (width <= maxDimension && height <= maxDimension) {
     return { width, height };
   }
 
   if (width >= height) {
-    const ratio = MAX_DIMENSION / width;
+    const ratio = maxDimension / width;
     return {
-      width: MAX_DIMENSION,
+      width: maxDimension,
       height: Math.round(height * ratio),
     };
   }
 
-  const ratio = MAX_DIMENSION / height;
+  const ratio = maxDimension / height;
   return {
     width: Math.round(width * ratio),
-    height: MAX_DIMENSION,
+    height: maxDimension,
   };
 }

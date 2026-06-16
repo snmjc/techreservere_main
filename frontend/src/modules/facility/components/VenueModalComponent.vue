@@ -87,8 +87,8 @@
 import { computed, ref, watch } from 'vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import {
-  normalizeVenueForm,
   readVenuePhotoFileAsDataUrl,
+  sanitizeVenuePayload,
   validateVenueForm,
   validateVenuePhotoFile,
   venueOperationalStatuses,
@@ -171,7 +171,7 @@ async function handleSave() {
     isSaving.value = true;
     errorMessage.value = '';
 
-    const payload = normalizeVenueForm(formData.value);
+    const payload = sanitizeVenuePayload(formData.value);
 
     if (isEditMode.value && props.venue?.venueIdentifier) {
       await venueApi.updateVenue(props.venue.venueIdentifier, payload);
@@ -183,7 +183,7 @@ async function handleSave() {
     emit('saved');
     emit('close');
   } catch (error) {
-    errorMessage.value = error?.response?.data?.errorMessage || 'Failed to save venue. Please try again.';
+    errorMessage.value = resolveVenueSaveError(error);
   } finally {
     isSaving.value = false;
   }
@@ -252,6 +252,25 @@ function clearPhotoInput() {
   if (photoInputRef.value) {
     photoInputRef.value.value = '';
   }
+}
+
+function resolveVenueSaveError(error) {
+  const statusCode = Number(error?.response?.status || 0);
+  const apiMessage = String(error?.response?.data?.errorMessage || '').trim();
+
+  if (apiMessage !== '') {
+    return apiMessage;
+  }
+
+  if (statusCode === 413 || statusCode === 422) {
+    return 'Venue photo is too large. Please upload a smaller JPG image.';
+  }
+
+  if (statusCode === 409) {
+    return 'A venue with this name already exists.';
+  }
+
+  return 'Failed to save venue. Please try again.';
 }
 </script>
 

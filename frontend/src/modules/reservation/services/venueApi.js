@@ -37,7 +37,7 @@ const venueApi = {
   async createVenue(venueData) {
     const authToken = getStoredAuthToken();
     try {
-      const response = await axios.post(apiUrl('/api/v1/venues'), venueData, {
+      const response = await axios.post(apiUrl('/api/v1/venues'), buildVenueMutationPayload(venueData), {
         headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
@@ -50,7 +50,7 @@ const venueApi = {
   async updateVenue(venueIdentifier, venueData) {
     const authToken = getStoredAuthToken();
     try {
-      const response = await axios.put(apiUrl(`/api/v1/venues/${venueIdentifier}`), venueData, {
+      const response = await axios.put(apiUrl(`/api/v1/venues/${venueIdentifier}`), buildVenueMutationPayload(venueData), {
         headers: buildJsonAuthorizationHeaders(authToken)
       });
       return response.data;
@@ -91,6 +91,24 @@ function buildVenueListQueryParams(options) {
   }
 
   return params;
+}
+
+function buildVenueMutationPayload(venueData = {}) {
+  return {
+    venueName: String(venueData.venueName || '').trim(),
+    venueLocation: String(venueData.venueLocation || '').trim(),
+    floorLevel: String(venueData.floorLevel || '').trim(),
+    capacityLimit: Number(venueData.capacityLimit ?? 0),
+    availabilityDate: String(venueData.availabilityDate || '').trim(),
+    operationalStatus: String(venueData.operationalStatus || '').trim(),
+    description: String(venueData.description || '').trim(),
+    imageUrl: normalizeOptionalImageUrl(venueData.imageUrl),
+  };
+}
+
+function normalizeOptionalImageUrl(value) {
+  const normalizedValue = String(value || '').trim();
+  return normalizedValue === '' ? null : normalizedValue;
 }
 
 export default venueApi;
