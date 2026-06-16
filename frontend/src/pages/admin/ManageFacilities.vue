@@ -551,6 +551,10 @@ function openDeleteEquipmentModal(equipmentRecord) {
 
 function closeDeleteEquipmentModal() {
   if (isDeletingEquipment.value) return;
+  resetDeleteEquipmentModalState();
+}
+
+function resetDeleteEquipmentModalState() {
   deleteEquipmentRecord.value = null;
   deleteEquipmentConfirmEmail.value = '';
   deleteEquipmentConfirmPassword.value = '';
@@ -575,7 +579,7 @@ async function confirmDeleteEquipment() {
     });
 
     const deletedIdentifier = deleteEquipmentRecord.value.equipmentIdentifier;
-    closeDeleteEquipmentModal();
+    resetDeleteEquipmentModalState();
     clearDeletedEquipmentSelection(deletedIdentifier);
     await fetchEquipment();
   } catch (error) {
