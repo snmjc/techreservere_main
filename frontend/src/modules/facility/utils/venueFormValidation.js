@@ -36,6 +36,10 @@ const VENUE_FORM_VALIDATORS = [
     message: 'Operational status is required.',
   },
   {
+    isInvalid: (form) => form.availabilityStatus === '',
+    message: 'Room availability is required.',
+  },
+  {
     isInvalid: (form) => {
       const photoValue = String(form.imageUrl || form.photoData || '').trim();
       return Boolean(photoValue) && JPG_DATA_URL_PATTERN.test(photoValue) !== true;
@@ -52,6 +56,7 @@ const VENUE_FORM_VALIDATORS = [
 ];
 
 export const venueOperationalStatuses = ['Active', 'Inactive', 'Maintenance'];
+export const venueAvailabilityStatuses = ['Available', 'Unavailable'];
 
 export function normalizeVenueForm(form) {
   const normalizedPhotoData = normalizeOptionalPhotoData(form?.photoData);
@@ -63,6 +68,7 @@ export function normalizeVenueForm(form) {
     capacityLimit: Number(form?.capacityLimit ?? 0),
     availabilityDate: String(form?.availabilityDate || '').trim(),
     operationalStatus: String(form?.operationalStatus || '').trim(),
+    availabilityStatus: String(form?.availabilityStatus || '').trim(),
     description: String(form?.description || '').trim(),
     imageUrl: normalizedPhotoData,
   };
@@ -120,6 +126,7 @@ export function sanitizeVenuePayload(form) {
     capacityLimit: normalizedForm.capacityLimit,
     availabilityDate: normalizedForm.availabilityDate,
     operationalStatus: normalizedForm.operationalStatus,
+    availabilityStatus: normalizedForm.availabilityStatus,
     description: normalizedForm.description,
     imageUrl: normalizedForm.imageUrl,
   };
