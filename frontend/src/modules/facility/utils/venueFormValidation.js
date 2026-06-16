@@ -24,7 +24,10 @@ const VENUE_FORM_VALIDATORS = [
     message: 'Operational status is required.',
   },
   {
-    isInvalid: (form) => Boolean(form.photoData) && JPG_DATA_URL_PATTERN.test(form.photoData) !== true,
+    isInvalid: (form) => {
+      const photoValue = String(form.imageUrl || form.photoData || '').trim();
+      return Boolean(photoValue) && JPG_DATA_URL_PATTERN.test(photoValue) !== true;
+    },
     message: 'Venue photo must be a valid JPG image.',
   },
 ];
@@ -32,6 +35,8 @@ const VENUE_FORM_VALIDATORS = [
 export const venueOperationalStatuses = ['Active', 'Inactive', 'Maintenance'];
 
 export function normalizeVenueForm(form) {
+  const normalizedPhotoData = normalizeOptionalPhotoData(form?.photoData);
+
   return {
     venueName: String(form?.venueName || '').trim(),
     venueLocation: String(form?.venueLocation || '').trim(),
@@ -40,8 +45,7 @@ export function normalizeVenueForm(form) {
     availabilityDate: String(form?.availabilityDate || '').trim(),
     operationalStatus: String(form?.operationalStatus || '').trim(),
     description: String(form?.description || '').trim(),
-    photoData: normalizeOptionalPhotoData(form?.photoData),
-    imageUrl: normalizeOptionalPhotoData(form?.photoData),
+    imageUrl: normalizedPhotoData,
   };
 }
 
