@@ -10,6 +10,7 @@ use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
 use App\Shared\Utils\RoleConstants;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -79,6 +80,11 @@ class VenueController extends AbstractController
             return $this->createSuccessResponse($dto->toResponseArray(), 201);
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('VenueValidationFailed', $exception->getMessage(), 422);
+        } catch (UniqueConstraintViolationException $exception) {
+            return $this->createErrorResponse('VenueConflict', 'Venue name already exists.', 409);
+        } catch (\Throwable $exception) {
+            error_log('Venue create failed: ' . $exception->getMessage());
+            return $this->createErrorResponse('VenueCreateFailed', 'Unable to create venue at this time.', 500);
         }
     }
 
@@ -105,6 +111,11 @@ class VenueController extends AbstractController
             return $this->createErrorResponse('VenueNotFound', $exception->getMessage(), 404);
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('VenueValidationFailed', $exception->getMessage(), 422);
+        } catch (UniqueConstraintViolationException $exception) {
+            return $this->createErrorResponse('VenueConflict', 'Venue name already exists.', 409);
+        } catch (\Throwable $exception) {
+            error_log('Venue update failed: ' . $exception->getMessage());
+            return $this->createErrorResponse('VenueUpdateFailed', 'Unable to update venue at this time.', 500);
         }
     }
 
