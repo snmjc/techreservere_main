@@ -110,267 +110,84 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewReservationList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
-import { createTextPlaceholderDataUrl } from '@/shared/utils/mockImage.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
 const router = useRouter();
+const requestStore = useRequestStore();
 const searchQuery = ref('');
 const sortBy = ref('date');
 const sortOrder = ref('asc');
 
-/**
- * @constant {Array<Object>} mockReservations
- * @description Mock data for active reservations
- */
-const mockReservations = ref([
-  {
-    reservationId: 'RES-2026-001',
-    name: 'John Smith',
-    role: 'Student',
-    schedule: 'May 15, 2026 - 10:00 AM',
-    facility: 'Main Auditorium',
-    facilityImage: createTextPlaceholderDataUrl('Auditorium', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Student Presentation - Engineering Capstone Project',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-002',
-    name: 'Maria Garcia',
-    role: 'Faculty',
-    schedule: 'May 16, 2026 - 2:00 PM',
-    facility: 'Conference Room A',
-    facilityImage: createTextPlaceholderDataUrl('Conference', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Department Meeting - Academic Planning',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-003',
-    name: 'Robert Johnson',
-    role: 'Student',
-    schedule: 'May 17, 2026 - 3:30 PM',
-    facility: 'Projector HD',
-    facilityImage: createTextPlaceholderDataUrl('Projector', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 2,
-    type: 'Equipment',
-    purpose: 'Class Project - Research Presentation',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-004',
-    name: 'Sarah Williams',
-    role: 'Faculty',
-    schedule: 'May 18, 2026 - 9:00 AM',
-    facility: 'Lecture Hall B',
-    facilityImage: createTextPlaceholderDataUrl('Lecture', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Lecture - Advanced Database Systems',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-005',
-    name: 'Michael Chen',
-    role: 'Student',
-    schedule: 'May 19, 2026 - 1:00 PM',
-    facility: 'Wireless Microphone System',
-    facilityImage: createTextPlaceholderDataUrl('Microphone', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Equipment',
-    purpose: 'Event Coverage - Student Organization Summit',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-006',
-    name: 'Jennifer Lee',
-    role: 'Faculty',
-    schedule: 'May 20, 2026 - 11:00 AM',
-    facility: 'Meeting Room C',
-    facilityImage: createTextPlaceholderDataUrl('Meeting', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Advisory Session - Student Mentoring',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-007',
-    name: 'David Martinez',
-    role: 'Student',
-    schedule: 'May 21, 2026 - 4:00 PM',
-    facility: 'Interactive Whiteboard System',
-    facilityImage: createTextPlaceholderDataUrl('Whiteboard', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 3,
-    type: 'Equipment',
-    purpose: 'Study Group - Mathematics Tutoring',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-008',
-    name: 'Amanda Brown',
-    role: 'Faculty',
-    schedule: 'May 22, 2026 - 2:30 PM',
-    facility: 'Seminar Room',
-    facilityImage: createTextPlaceholderDataUrl('Seminar', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Seminar - Research Methodology Workshop',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-009',
-    name: 'Christopher Lee',
-    role: 'Student',
-    schedule: 'May 23, 2026 - 10:30 AM',
-    facility: '4K Projector System',
-    facilityImage: createTextPlaceholderDataUrl('4K Projector', { width: 100, height: 50, fontSize: 12 }),
-    quantity: 1,
-    type: 'Equipment',
-    purpose: 'Video Production - Documentary Screening',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-010',
-    name: 'Patricia Anderson',
-    role: 'Faculty',
-    schedule: 'May 24, 2026 - 1:30 PM',
-    facility: 'Board Room',
-    facilityImage: createTextPlaceholderDataUrl('Board Room', { width: 100, height: 50, fontSize: 13 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Faculty Meeting - Curriculum Review',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-011',
-    name: 'Kevin Thompson',
-    role: 'Student',
-    schedule: 'May 25, 2026 - 3:00 PM',
-    facility: 'LED Display Screen',
-    facilityImage: createTextPlaceholderDataUrl('LED Screen', { width: 100, height: 50, fontSize: 13 }),
-    quantity: 2,
-    type: 'Equipment',
-    purpose: 'Event Setup - Career Fair Display',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-012',
-    name: 'Elizabeth Martinez',
-    role: 'Faculty',
-    schedule: 'May 26, 2026 - 10:00 AM',
-    facility: 'Training Room A',
-    facilityImage: createTextPlaceholderDataUrl('Training', { width: 100, height: 50, fontSize: 14 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Training Session - Software Development Tools',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-013',
-    name: 'James Wilson',
-    role: 'Student',
-    schedule: 'May 27, 2026 - 2:00 PM',
-    facility: 'Portable Sound System',
-    facilityImage: createTextPlaceholderDataUrl('Sound System', { width: 100, height: 50, fontSize: 12 }),
-    quantity: 1,
-    type: 'Equipment',
-    purpose: 'Club Event - Music Performance',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-014',
-    name: 'Rachel Green',
-    role: 'Faculty',
-    schedule: 'May 28, 2026 - 11:30 AM',
-    facility: 'Discussion Room',
-    facilityImage: createTextPlaceholderDataUrl('Discussion', { width: 100, height: 50, fontSize: 13 }),
-    quantity: 1,
-    type: 'Venue',
-    purpose: 'Class Discussion - Literature Analysis',
-    status: 'Deployed'
-  },
-  {
-    reservationId: 'RES-2026-015',
-    name: 'Daniel Rodriguez',
-    role: 'Student',
-    schedule: 'May 29, 2026 - 4:30 PM',
-    facility: 'Document Camera System',
-    facilityImage: createTextPlaceholderDataUrl('Doc Camera', { width: 100, height: 50, fontSize: 13 }),
-    quantity: 1,
-    type: 'Equipment',
-    purpose: 'Presentation - Art Exhibition Documentation',
-    status: 'Deployed'
+onMounted(async () => {
+  try {
+    await requestStore.fetchReservations();
+  } catch (error) {
+    console.error('Error fetching active reservations:', error);
   }
-]);
+});
 
-/**
- * @computed {Array<Object>} filteredAndSortedReservations
- * @description Filters and sorts reservations based on search query and sort options
- */
+const activeReservations = computed(() =>
+  (requestStore.activeReservationsList || []).map((record) => ({
+    reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier || 'N/A'),
+    name: record.requesterFullName || 'You',
+    role: record.requesterRole || 'Borrower',
+    schedule: record.requestSchedule || 'N/A',
+    facility: record.facilityName || 'N/A',
+    quantity: record.requestQuantity || 0,
+    type: record.requestType || 'Reservation',
+    purpose: record.requestPurpose || 'N/A',
+    status: record.requestStatus || 'Active',
+    sortDate: getDateSortValue(record.requestSchedule),
+  }))
+);
+
 const filteredAndSortedReservations = computed(() => {
-  let reservations = [...mockReservations.value];
+  const query = searchQuery.value.toLowerCase().trim();
+  let reservations = activeReservations.value;
 
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    reservations = reservations.filter(res =>
-      res.name.toLowerCase().includes(query) ||
-      res.reservationId.toLowerCase().includes(query) ||
-      res.facility.toLowerCase().includes(query)
+  if (query) {
+    reservations = reservations.filter((reservation) =>
+      [reservation.name, reservation.reservationId, reservation.facility]
+        .some((value) => String(value || '').toLowerCase().includes(query))
     );
   }
 
-  // Apply sorting
-  reservations.sort((a, b) => {
-    let compareA, compareB;
+  return [...reservations].sort((first, second) => {
+    const firstValue = resolveSortValue(first);
+    const secondValue = resolveSortValue(second);
 
-    if (sortBy.value === 'date') {
-      compareA = new Date(a.schedule);
-      compareB = new Date(b.schedule);
-    } else if (sortBy.value === 'name') {
-      compareA = a.name.toLowerCase();
-      compareB = b.name.toLowerCase();
-    } else if (sortBy.value === 'facility') {
-      compareA = a.facility.toLowerCase();
-      compareB = b.facility.toLowerCase();
+    if (typeof firstValue === 'string' && typeof secondValue === 'string') {
+      return sortOrder.value === 'asc'
+        ? firstValue.localeCompare(secondValue)
+        : secondValue.localeCompare(firstValue);
     }
 
-    if (typeof compareA === 'string' && typeof compareB === 'string') {
-      return sortOrder.value === 'asc'
-        ? compareA.localeCompare(compareB)
-        : compareB.localeCompare(compareA);
-    } else {
-      return sortOrder.value === 'asc'
-        ? compareA - compareB
-        : compareB - compareA;
-    }
+    return sortOrder.value === 'asc' ? firstValue - secondValue : secondValue - firstValue;
   });
-
-  return reservations;
 });
 
-/**
- * @function handleGoBack
- * @description Navigates back to the previous page
- * @returns {void}
- */
 function handleGoBack() {
   router.back();
 }
 
-/**
- * @function toggleSortOrder
- * @description Toggles between ascending and descending sort order
- * @returns {void}
- */
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+function resolveSortValue(reservation) {
+  if (sortBy.value === 'name') return reservation.name.toLowerCase();
+  if (sortBy.value === 'facility') return reservation.facility.toLowerCase();
+  return reservation.sortDate;
+}
+
+function getDateSortValue(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 </script>
