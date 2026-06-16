@@ -70,7 +70,14 @@ export function validateVenuePhotoFile(file) {
 export function readVenuePhotoFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onload = async () => {
+      try {
+        const imageDataUrl = await compressVenuePhoto(String(reader.result || ''));
+        resolve(imageDataUrl);
+      } catch (error) {
+        reject(error);
+      }
+    };
     reader.onerror = () => reject(new Error('Unable to read the selected venue photo.'));
     reader.readAsDataURL(file);
   });
@@ -137,4 +144,51 @@ function normalizeOptionalPhotoData(photoData) {
 function isJpgPhotoFile(file) {
   const fileName = String(file?.name || '');
   return PHOTO_FILE_EXTENSION_PATTERN.test(fileName) && file?.type === 'image/jpeg';
+}
+
+function compressVenuePhoto(sourceDataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      const { width, height } = scaleVenuePhotoDimensions(image.width, image.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('Unable to prepare the selected venue photo.'));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      resolve(compressedDataUrl);
+    };
+
+    image.onerror = () => reject(new Error('Unable to process the selected venue photo.'));
+    image.src = sourceDataUrl;
+  });
+}
+
+function scaleVenuePhotoDimensions(width, height) {
+  const MAX_DIMENSION = 1280;
+  if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
+    return { width, height };
+  }
+
+  if (width >= height) {
+    const ratio = MAX_DIMENSION / width;
+    return {
+      width: MAX_DIMENSION,
+      height: Math.round(height * ratio),
+    };
+  }
+
+  const ratio = MAX_DIMENSION / height;
+  return {
+    width: Math.round(width * ratio),
+    height: MAX_DIMENSION,
+  };
 }
