@@ -311,10 +311,8 @@
       :equipment="viewEquipmentRecord"
       title="View Equipment Details"
       subtitle="Equipment details for admin review."
-      secondary-action-label="Edit Equipment"
       :show-admin-fields="true"
       @close="closeEquipmentDetails"
-      @secondary-action="openEditFromDetails"
     />
 
     <div

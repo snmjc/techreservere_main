@@ -184,9 +184,7 @@
       :show-admin-fields="true"
       title="View Equipment Details"
       subtitle="Equipment details for admin review and editing."
-      secondary-action-label="Edit Equipment"
       @close="closeEquipmentDetails"
-      @secondary-action="openEditFromDetails"
     />
 
     <div

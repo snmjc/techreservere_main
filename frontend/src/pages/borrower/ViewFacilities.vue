@@ -334,16 +334,19 @@ async function fetchEquipment() {
 }
 
 async function handleViewVenueDetails(venueRecord) {
-  if (!venueRecord?.venueIdentifier) {
+  const normalizedVenueRecord = normalizeVenueRecord(venueRecord);
+  const venueIdentifier = normalizedVenueRecord?.venueIdentifier;
+
+  viewVenueRecord.value = normalizedVenueRecord;
+  viewVenueLoading.value = Boolean(venueIdentifier);
+  viewVenueError.value = '';
+
+  if (!venueIdentifier) {
     return;
   }
 
-  viewVenueLoading.value = true;
-  viewVenueError.value = '';
-  viewVenueRecord.value = null;
-
   try {
-    const response = await venueApi.getVenueById(venueRecord.venueIdentifier);
+    const response = await venueApi.getVenueById(venueIdentifier);
     viewVenueRecord.value = normalizeVenueRecord(response?.data || response);
   } catch (error) {
     viewVenueError.value = error?.response?.data?.errorMessage || 'Failed to load venue details.';
@@ -389,7 +392,7 @@ function normalizeVenueRecord(venue) {
   }
 
   return {
-    venueIdentifier: venue.venueIdentifier,
+    venueIdentifier: venue.venueIdentifier ?? venue.venue_identifier ?? venue.id ?? venue.identifier ?? null,
     venueName: venue.venueName || '',
     venueLocation: venue.venueLocation || '',
     floorLevel: venue.floorLevel || 'Other',
@@ -399,7 +402,7 @@ function normalizeVenueRecord(venue) {
     availabilityStatus: venue.availabilityStatus || 'Unavailable',
     description: venue.description || '',
     imageUrl: venue.imageUrl || '',
-    venueAvailable: venue.availabilityStatus === 'Available',
+    venueAvailable: (venue.availabilityStatus || '') === 'Available',
   };
 }
 

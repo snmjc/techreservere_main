@@ -166,6 +166,7 @@
 </template>
 
 <script setup>
+import '@/pages/admin/css/ManageFacilities.css';
 import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 import {
   formatVenueCapacity,
