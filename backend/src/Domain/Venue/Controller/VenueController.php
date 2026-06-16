@@ -22,6 +22,8 @@ class VenueController extends AbstractController
 {
     use JsonResponseTrait;
 
+    private const MAX_VENUE_REQUEST_BYTES = 1_800_000;
+
     private VenueManagementService $venueManagementService;
 
     public function __construct(
@@ -75,7 +77,7 @@ class VenueController extends AbstractController
                 $body['availabilityDate'] ?? null,
                 $body['operationalStatus'] ?? null,
                 $body['description'] ?? null,
-                $body['imageUrl'] ?? $body['photoData'] ?? null
+                $body['imageUrl'] ?? null
             );
 
             return $this->createSuccessResponse($dto->toResponseArray(), 201);
@@ -106,7 +108,7 @@ class VenueController extends AbstractController
                 $body['availabilityDate'] ?? null,
                 $body['operationalStatus'] ?? null,
                 $body['description'] ?? null,
-                $body['imageUrl'] ?? $body['photoData'] ?? null
+                $body['imageUrl'] ?? null
             );
 
             return $this->createSuccessResponse($dto->toResponseArray());
@@ -156,6 +158,10 @@ class VenueController extends AbstractController
             return [];
         }
 
+        if (strlen($rawBody) > self::MAX_VENUE_REQUEST_BYTES) {
+            throw new DomainValidationException('Venue request is too large. Please upload a smaller JPG image.');
+        }
+
         return json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
     }
 
@@ -164,7 +170,7 @@ class VenueController extends AbstractController
         $rawBody = (string) $request->getContent();
         $decodedBody = json_decode($rawBody, true);
         $payload = is_array($decodedBody) ? $decodedBody : [];
-        $imageValue = (string) ($payload['imageUrl'] ?? $payload['photoData'] ?? '');
+        $imageValue = (string) ($payload['imageUrl'] ?? '');
 
         error_log(sprintf(
             'Venue %s failed: %s | context=%s',
