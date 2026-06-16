@@ -12,6 +12,9 @@ class ReservationResponseDTO
     public int $reservationIdentifier;
     public string $reservationCode;
     public int $borrowerAccountId;
+    public string $borrowerFirstName;
+    public string $borrowerLastName;
+    public string $borrowerFullName;
     public string $organizationName;
     public ?int $venueIdentifier;
     public array $requestedEquipmentList;
@@ -44,11 +47,17 @@ class ReservationResponseDTO
         ?string $priorityLevel,
         ?string $rejectionReason,
         ?array $supportingDocuments,
-        string $submissionTimestamp
+        string $submissionTimestamp,
+        string $borrowerFirstName = '',
+        string $borrowerLastName = '',
+        string $borrowerFullName = ''
     ) {
         $this->reservationIdentifier = $reservationIdentifier;
         $this->reservationCode = $reservationCode;
         $this->borrowerAccountId = $borrowerAccountId;
+        $this->borrowerFirstName = $borrowerFirstName;
+        $this->borrowerLastName = $borrowerLastName;
+        $this->borrowerFullName = $borrowerFullName;
         $this->organizationName = $organizationName;
         $this->venueIdentifier = $venueIdentifier;
         $this->requestedEquipmentList = $requestedEquipmentList;
@@ -71,6 +80,9 @@ class ReservationResponseDTO
             'reservationIdentifier' => $this->reservationIdentifier,
             'reservationCode' => $this->reservationCode,
             'borrowerAccountId' => $this->borrowerAccountId,
+            'borrowerFirstName' => $this->borrowerFirstName,
+            'borrowerLastName' => $this->borrowerLastName,
+            'borrowerFullName' => $this->borrowerFullName,
             'organizationName' => $this->organizationName,
             'venueIdentifier' => $this->venueIdentifier,
             'requestedEquipmentList' => $this->requestedEquipmentList,

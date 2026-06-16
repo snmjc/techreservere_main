@@ -2,6 +2,8 @@
 
 namespace App\Tests\Unit\Domain\Reservation\Service;
 
+use App\Domain\Account\Entity\AccountEntity;
+use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Service\ReservationReviewService;
@@ -15,12 +17,14 @@ use PHPUnit\Framework\TestCase;
 class ReservationReviewServiceTest extends TestCase
 {
     private ReservationRepository|MockObject $reservationRepository;
+    private AccountRepository|MockObject $accountRepository;
     private ReservationReviewService $service;
 
     protected function setUp(): void
     {
         $this->reservationRepository = $this->createMock(ReservationRepository::class);
-        $this->service = new ReservationReviewService($this->reservationRepository);
+        $this->accountRepository = $this->createMock(AccountRepository::class);
+        $this->service = new ReservationReviewService($this->reservationRepository, $this->accountRepository);
     }
 
     public function testAdminCanReadAnyReservationDetail(): void
@@ -30,11 +34,19 @@ class ReservationReviewServiceTest extends TestCase
             ->method('find')
             ->with(10)
             ->willReturn($this->createReservationEntity(25));
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(25)
+            ->willReturn($this->createAccountEntity('Juan', 'Dela Cruz'));
 
         $reservation = $this->service->getReservationByIdForRole(10, RoleConstants::ROLE_ADMIN, 99);
 
         $this->assertSame(10, $reservation->reservationIdentifier);
         $this->assertSame(25, $reservation->borrowerAccountId);
+        $this->assertSame('Juan', $reservation->borrowerFirstName);
+        $this->assertSame('Dela Cruz', $reservation->borrowerLastName);
+        $this->assertSame('Juan Dela Cruz', $reservation->borrowerFullName);
     }
 
     public function testBorrowerCanReadOwnReservationDetail(): void
@@ -44,11 +56,17 @@ class ReservationReviewServiceTest extends TestCase
             ->method('find')
             ->with(10)
             ->willReturn($this->createReservationEntity(25));
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(25)
+            ->willReturn($this->createAccountEntity('Juan', 'Dela Cruz'));
 
         $reservation = $this->service->getReservationByIdForRole(10, RoleConstants::ROLE_BORROWER, 25);
 
         $this->assertSame(10, $reservation->reservationIdentifier);
         $this->assertSame(25, $reservation->borrowerAccountId);
+        $this->assertSame('Juan Dela Cruz', $reservation->borrowerFullName);
     }
 
     public function testBorrowerCannotReadAnotherBorrowerReservationDetail(): void
@@ -77,6 +95,26 @@ class ReservationReviewServiceTest extends TestCase
         $this->service->getReservationByIdForRole(10, RoleConstants::ROLE_DEVELOPER, 25);
     }
 
+    public function testReservationResponseFallsBackToOrganizationNameWhenBorrowerAccountIsMissing(): void
+    {
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(10)
+            ->willReturn($this->createReservationEntity(25));
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(25)
+            ->willReturn(null);
+
+        $reservation = $this->service->getReservationByIdForRole(10, RoleConstants::ROLE_ADMIN, 99);
+
+        $this->assertSame('', $reservation->borrowerFirstName);
+        $this->assertSame('', $reservation->borrowerLastName);
+        $this->assertSame('Borrower Organization', $reservation->borrowerFullName);
+    }
+
     private function createReservationEntity(int $borrowerAccountId): ReservationEntity|MockObject
     {
         $reservation = $this->createMock(ReservationEntity::class);
@@ -98,5 +136,14 @@ class ReservationReviewServiceTest extends TestCase
         $reservation->method('getSubmissionTimestamp')->willReturn(new \DateTimeImmutable('2026-06-15T10:00:00+00:00'));
 
         return $reservation;
+    }
+
+    private function createAccountEntity(string $firstName, string $lastName): AccountEntity|MockObject
+    {
+        $account = $this->createMock(AccountEntity::class);
+        $account->method('getFirstName')->willReturn($firstName);
+        $account->method('getLastName')->willReturn($lastName);
+
+        return $account;
     }
 }
