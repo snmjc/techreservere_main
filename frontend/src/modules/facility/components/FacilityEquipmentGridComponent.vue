@@ -23,15 +23,38 @@
             <h3 class="facility-equipment-card-name">{{ resolveTextValue(equipmentRecord.equipmentName) }}</h3>
             <p class="facility-equipment-card-category">{{ resolveTextValue(equipmentRecord.equipmentCategory || equipmentRecord.categoryName) }}</p>
           </div>
-          <span
-            class="facility-equipment-card-status"
-            :class="{
-              'facility-equipment-card-status--available': resolveEquipmentState(equipmentRecord) === 'Available',
-              'facility-equipment-card-status--unavailable': resolveEquipmentState(equipmentRecord) !== 'Available',
-            }"
-          >
-            {{ resolveEquipmentState(equipmentRecord) }}
-          </span>
+          <div class="facility-equipment-card-header-meta">
+            <span
+              class="facility-equipment-card-status"
+              :class="{
+                'facility-equipment-card-status--available': resolveEquipmentState(equipmentRecord) === 'Available',
+                'facility-equipment-card-status--unavailable': resolveEquipmentState(equipmentRecord) !== 'Available',
+              }"
+            >
+              {{ resolveEquipmentState(equipmentRecord) }}
+            </span>
+
+            <div class="facility-equipment-card-actions">
+              <button type="button" class="facility-equipment-card-action" title="View equipment details" @click.stop="emit('view-equipment', equipmentRecord)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+              <button type="button" class="facility-equipment-card-action" title="Edit equipment" @click.stop="emit('edit-equipment', equipmentRecord)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button type="button" class="facility-equipment-card-action facility-equipment-card-action--delete" title="Delete equipment" @click.stop="emit('delete-equipment', equipmentRecord)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <dl class="facility-equipment-card-details">
@@ -53,17 +76,6 @@
           </div>
         </dl>
 
-        <div class="facility-equipment-card-actions">
-          <button type="button" class="facility-equipment-card-button facility-equipment-card-button--ghost" @click.stop="emit('view-equipment', equipmentRecord)">
-            View Details
-          </button>
-          <button type="button" class="facility-equipment-card-button" @click.stop="emit('edit-equipment', equipmentRecord)">
-            Edit Info
-          </button>
-          <button type="button" class="facility-equipment-card-button facility-equipment-card-button--danger" @click.stop="emit('delete-equipment', equipmentRecord)">
-            Delete
-          </button>
-        </div>
       </div>
     </article>
 
@@ -129,15 +141,15 @@ function resolveEquipmentState(equipmentRecord) {
 <style scoped>
 .facility-equipment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 320px));
   justify-content: start;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .facility-equipment-card {
   overflow: hidden;
   width: 100%;
-  max-width: 280px;
+  max-width: 320px;
   background: #ffffff;
   border: 1px solid #d8e4dd;
   border-radius: 12px;
@@ -151,7 +163,7 @@ function resolveEquipmentState(equipmentRecord) {
 }
 
 .facility-equipment-card-media {
-  height: 96px;
+  height: 116px;
   background: linear-gradient(135deg, #f6fbf7 0%, #ebf5ee 100%);
 }
 
@@ -164,8 +176,8 @@ function resolveEquipmentState(equipmentRecord) {
 
 .facility-equipment-card-body {
   display: grid;
-  gap: 0.6rem;
-  padding: 0.65rem;
+  gap: 0.7rem;
+  padding: 0.78rem;
 }
 
 .facility-equipment-card-header {
@@ -175,17 +187,24 @@ function resolveEquipmentState(equipmentRecord) {
   align-items: flex-start;
 }
 
+.facility-equipment-card-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
 .facility-equipment-card-name {
   margin: 0;
   color: #132a1d;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 800;
 }
 
 .facility-equipment-card-category {
   margin: 0.2rem 0 0;
   color: #567061;
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   font-weight: 600;
 }
 
@@ -194,11 +213,11 @@ function resolveEquipmentState(equipmentRecord) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 78px;
-  min-height: 24px;
-  padding: 0 0.55rem;
+  min-width: 88px;
+  min-height: 26px;
+  padding: 0 0.6rem;
   border-radius: 999px;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
@@ -215,12 +234,12 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.5rem;
   margin: 0;
 }
 
 .facility-equipment-card-details div {
-  padding: 0.5rem 0.6rem;
+  padding: 0.58rem 0.68rem;
   background: #f7faf8;
   border: 1px solid #e4ede8;
   border-radius: 8px;
@@ -229,7 +248,7 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-details dt {
   margin-bottom: 0.18rem;
   color: #6a7d72;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -238,36 +257,37 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-details dd {
   margin: 0;
   color: #173321;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .facility-equipment-card-actions {
   display: flex;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
-.facility-equipment-card-button {
-  flex: 1;
-  min-height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: #1a6e3a;
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.facility-equipment-card-button--ghost {
+.facility-equipment-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   background: #ffffff;
-  color: #244235;
-  border: 1px solid #d4ddd7;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
 }
 
-.facility-equipment-card-button--danger {
-  background: #a93434;
+.facility-equipment-card-action:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.facility-equipment-card-action--delete:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #dc2626;
 }
 
 .facility-equipment-empty-state {
@@ -285,9 +305,12 @@ function resolveEquipmentState(equipmentRecord) {
     grid-template-columns: 1fr;
   }
 
-  .facility-equipment-card-header,
-  .facility-equipment-card-actions {
+  .facility-equipment-card-header {
     flex-direction: column;
+  }
+
+  .facility-equipment-card-header-meta {
+    align-items: flex-start;
   }
 }
 </style>
