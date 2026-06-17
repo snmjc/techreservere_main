@@ -153,16 +153,6 @@
     <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
     <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <section v-else-if="activeFacilityTab === 'equipment'" class="manage-facilities-equipment-section">
-      <div class="manage-facilities-section-heading">
-        <div>
-          <p class="manage-facilities-section-kicker">Inventory roster</p>
-          <h3>Equipment status at a glance</h3>
-        </div>
-        <p class="manage-facilities-section-note">
-          Select a card to stage edits, then open details, update records, or permanently remove an item when required.
-        </p>
-      </div>
-
       <FacilityEquipmentGridComponent
         :equipment-records="filteredEquipmentRecords"
         :availability-filter="availabilityFilter"
