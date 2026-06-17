@@ -722,6 +722,10 @@ function handleDeleteVenue(venueRecord) {
 
 function closeDeleteVenueModal() {
   if (isDeletingVenue.value) return;
+  resetDeleteVenueModalState();
+}
+
+function resetDeleteVenueModalState() {
   deleteVenueRecord.value = null;
   deleteConfirmEmail.value = '';
   deleteConfirmPassword.value = '';
@@ -758,7 +762,7 @@ async function confirmDeleteVenue() {
       closeVenueDetails();
     }
 
-    closeDeleteVenueModal();
+    resetDeleteVenueModalState();
     await fetchVenues();
   } catch (error) {
     deleteVenueError.value = error?.response?.data?.errorMessage || 'Failed to delete venue. Please try again.';

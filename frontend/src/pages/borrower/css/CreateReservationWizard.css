@@ -8,29 +8,15 @@
 .borrower-reservation-topline {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
   margin-bottom: 1rem;
-  color: #ffffff;
+  color: #14804a;
 }
 
 .borrower-reservation-topline h1 {
   margin: 0;
-  color: #ffffff;
+  color: #14804a;
   font-size: 1.1rem;
   font-weight: 800;
-}
-
-.borrower-reservation-topline button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  color: #ffffff;
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
 }
 
 .borrower-reservation-surface {
