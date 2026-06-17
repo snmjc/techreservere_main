@@ -11,7 +11,6 @@ class AccountInputValidationService
 
     private const ADMIN_EMAIL_DOMAINS = [
         '@feutech.edu.ph',
-        '@fit.edu.ph',
     ];
 
     public function isValidPersonName(string $name): bool
@@ -50,7 +49,12 @@ class AccountInputValidationService
 
     public function isValidIdNumber(string $idNumber): bool
     {
-        return $this->normalizeIdNumber($idNumber) !== '';
+        return preg_match('/^\d{10}$/', $this->normalizeIdNumber($idNumber)) === 1;
+    }
+
+    public function isValidInstitutionalSignInEmail(string $emailAddress): bool
+    {
+        return $this->isInstitutionalUserEmail($emailAddress) || $this->isInstitutionalAdminEmail($emailAddress);
     }
 
     private function hasAllowedDomain(string $emailAddress, array $allowedDomains): bool

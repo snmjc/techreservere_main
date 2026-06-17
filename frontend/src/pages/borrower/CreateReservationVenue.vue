@@ -163,18 +163,24 @@
                           </td>
                           <td>
                             <div class="reservation-equipment-action">
-                              <input
-                                :value="getEquipmentSelectedQuantity(equipment)"
-                                type="text"
-                                inputmode="numeric"
-                                pattern="[0-9]*"
-                                class="reservation-equipment-quantity-input"
-                                :aria-label="`Quantity for ${equipment.equipmentName}`"
-                                :disabled="equipment.availableQuantity <= 0"
-                                @input="handleEquipmentQuantityInput(equipment, $event)"
-                                @keydown="handleEquipmentQuantityKeydown"
-                                @paste="handleEquipmentQuantityPaste(equipment, $event)"
-                              />
+                              <div class="reservation-equipment-quantity-control">
+                                <input
+                                  :value="getEquipmentSelectedQuantity(equipment)"
+                                  type="text"
+                                  inputmode="numeric"
+                                  pattern="[0-9]*"
+                                  class="reservation-equipment-quantity-input"
+                                  :class="{ 'is-invalid': hasEquipmentQuantityError(equipment.equipmentIdentifier) }"
+                                  :aria-label="`Quantity for ${equipment.equipmentName}`"
+                                  :disabled="equipment.availableQuantity <= 0"
+                                  @input="handleEquipmentQuantityInput(equipment, $event)"
+                                  @keydown="handleEquipmentQuantityKeydown"
+                                  @paste="handleEquipmentQuantityPaste(equipment, $event)"
+                                />
+                                <small v-if="getEquipmentQuantityError(equipment.equipmentIdentifier)" class="reservation-equipment-quantity-error">
+                                  {{ getEquipmentQuantityError(equipment.equipmentIdentifier) }}
+                                </small>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -241,6 +247,7 @@ const equipmentCategoryFilter = ref('all');
 const equipmentStatusFilter = ref('all');
 const selectedVenueRecord = ref(reservationFormStore.selectedVenueRecord);
 const selectedEquipmentItems = ref(buildInitialEquipmentSelection());
+const equipmentQuantityErrors = ref({});
 
 const fallbackEquipment = [
   { equipmentIdentifier: 1, equipmentName: 'Wireless Microphone', equipmentCategory: 'Audio', equipmentBrand: 'Shure', availableQuantity: 10 },
@@ -328,11 +335,19 @@ function getEquipmentSelectedQuantity(equipment) {
 }
 
 function setEquipmentQuantity(equipment, nextQuantity) {
-  const normalizedQuantity = Math.min(
-    Math.max(Number.isFinite(nextQuantity) ? Math.trunc(nextQuantity) : 0, 0),
-    Math.max(Number(equipment.availableQuantity || 0), 0)
-  );
+  const maxAvailableQuantity = Math.max(Number(equipment.availableQuantity || 0), 0);
+  const normalizedQuantity = Math.max(Number.isFinite(nextQuantity) ? Math.trunc(nextQuantity) : 0, 0);
   const existingItem = selectedEquipmentItems.value.find((item) => item.equipmentIdentifier === equipment.equipmentIdentifier);
+
+  if (normalizedQuantity > maxAvailableQuantity) {
+    equipmentQuantityErrors.value = {
+      ...equipmentQuantityErrors.value,
+      [equipment.equipmentIdentifier]: `Only ${maxAvailableQuantity} unit${maxAvailableQuantity === 1 ? '' : 's'} available.`,
+    };
+    return;
+  }
+
+  clearEquipmentQuantityError(equipment.equipmentIdentifier);
 
   if (normalizedQuantity <= 0) {
     selectedEquipmentItems.value = selectedEquipmentItems.value.filter((item) => item.equipmentIdentifier !== equipment.equipmentIdentifier);
@@ -340,6 +355,7 @@ function setEquipmentQuantity(equipment, nextQuantity) {
   }
 
   if (existingItem) {
+    existingItem.availableQuantity = maxAvailableQuantity;
     existingItem.selectedQuantity = normalizedQuantity;
     return;
   }
@@ -348,6 +364,7 @@ function setEquipmentQuantity(equipment, nextQuantity) {
     equipmentIdentifier: equipment.equipmentIdentifier,
     equipmentName: equipment.equipmentName,
     equipmentCategory: equipment.equipmentCategory,
+    availableQuantity: maxAvailableQuantity,
     selectedQuantity: normalizedQuantity,
   });
 }
@@ -379,6 +396,24 @@ function handleEquipmentQuantityPaste(equipment, event) {
   setEquipmentQuantity(equipment, digitsOnly === '' ? 0 : Number(digitsOnly));
 }
 
+function getEquipmentQuantityError(equipmentIdentifier) {
+  return equipmentQuantityErrors.value[equipmentIdentifier] || '';
+}
+
+function hasEquipmentQuantityError(equipmentIdentifier) {
+  return getEquipmentQuantityError(equipmentIdentifier) !== '';
+}
+
+function clearEquipmentQuantityError(equipmentIdentifier) {
+  if (!equipmentQuantityErrors.value[equipmentIdentifier]) {
+    return;
+  }
+
+  const nextErrors = { ...equipmentQuantityErrors.value };
+  delete nextErrors[equipmentIdentifier];
+  equipmentQuantityErrors.value = nextErrors;
+}
+
 function resetVenueFilters() {
   venueSearchQuery.value = '';
   venueFloorFilter.value = 'all';
@@ -404,6 +439,23 @@ function navigateToNextPage() {
 
   if (showEquipmentSection.value && !selectedEquipmentItems.value.length && reservationFormStore.reservationType !== 'Venue') {
     alert('Please select at least one equipment item before continuing.');
+    return;
+  }
+
+  const invalidEquipmentItem = selectedEquipmentItems.value.find((item) => {
+    const matchingEquipment = equipmentRecords.value.find((equipment) => equipment.equipmentIdentifier === item.equipmentIdentifier);
+    return !matchingEquipment || item.selectedQuantity < 1 || item.selectedQuantity > Number(matchingEquipment.availableQuantity || 0);
+  });
+
+  if (invalidEquipmentItem) {
+    const matchingEquipment = equipmentRecords.value.find((equipment) => equipment.equipmentIdentifier === invalidEquipmentItem.equipmentIdentifier);
+    if (matchingEquipment) {
+      equipmentQuantityErrors.value = {
+        ...equipmentQuantityErrors.value,
+        [matchingEquipment.equipmentIdentifier]: `Enter a quantity from 1 to ${matchingEquipment.availableQuantity}.`,
+      };
+    }
+    alert('Please fix invalid equipment quantities before continuing.');
     return;
   }
 

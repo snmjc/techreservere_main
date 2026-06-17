@@ -51,6 +51,12 @@ export function useClerkLoginPage() {
     isSubmitting.value = true;
 
     try {
+      const emailValidationError = validateInstitutionalLoginEmail(emailAddress.value);
+      if (emailValidationError) {
+        loginError.value = emailValidationError;
+        return;
+      }
+
       if (shouldPreferClerkOnCurrentHost()) {
         await handlePreferredClerkLogin();
         return;
@@ -216,6 +222,12 @@ export function useClerkLoginPage() {
     isResetSubmitting.value = true;
 
     try {
+      const emailValidationError = validateInstitutionalLoginEmail(resetEmailAddress.value);
+      if (emailValidationError) {
+        resetPasswordError.value = emailValidationError;
+        return;
+      }
+
       if (!resetCodeSent.value) {
         await sendResetPasswordCode();
         return;
@@ -417,6 +429,19 @@ function resolveClerkErrorMessage(error) {
 
 function isStrongPassword(value) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
+}
+
+function validateInstitutionalLoginEmail(value) {
+  const normalizedValue = String(value || '').trim();
+  if (normalizedValue === '') {
+    return 'Email address is required.';
+  }
+
+  if (!/^[^\s@]+@(fit|feutech)\.edu\.ph$/i.test(normalizedValue)) {
+    return 'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+  }
+
+  return '';
 }
 
 function shouldAttemptClerkPasswordLogin(error) {

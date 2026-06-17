@@ -13,7 +13,8 @@ class WishlistEmployeeAccountService
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountConflictLookupService $accountConflictLookupService
+        private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly AccountInputValidationService $accountInputValidationService
     ) {
     }
 
@@ -66,6 +67,10 @@ class WishlistEmployeeAccountService
 
         if (!preg_match('/^9\d{9}$/', $payload['phone'])) {
             return 'Phone number must be exactly 10 digits and begin with 9.';
+        }
+
+        if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
+            return 'Work ID number must be exactly 10 digits.';
         }
 
         return null;

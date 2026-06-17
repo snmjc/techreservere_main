@@ -30,7 +30,8 @@
 }
 
 .reservation-document-item strong,
-.reservation-document-item span {
+.reservation-document-item span,
+.reservation-document-item small {
   display: block;
 }
 
@@ -42,6 +43,13 @@
 .reservation-document-item span {
   margin-top: 0.18rem;
   color: #0f7a47;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.reservation-document-item-error,
+.reservation-documents-error {
+  color: #b42318;
   font-size: 0.7rem;
   font-weight: 700;
 }

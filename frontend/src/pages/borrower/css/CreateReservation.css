@@ -209,6 +209,10 @@
   border: 1px solid #14804a;
 }
 
+.borrower-reservation-help--error {
+  color: #b42318;
+}
+
 @media (max-width: 900px) {
   .reservation-time-picker__summary,
   .reservation-time-picker__trigger-grid {
