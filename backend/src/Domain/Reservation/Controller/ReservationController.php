@@ -93,15 +93,15 @@ class ReservationController extends AbstractController
         error_log('Reservation List - Resolved Role: ' . $resolvedRole);
         error_log('Reservation List - Identity: ' . json_encode($identity));
 
-        if ($resolvedRole === RoleConstants::ROLE_BORROWER) {
+        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+            $dtos = $this->reservationReviewService->getAllReservations();
+        } elseif ($resolvedRole === RoleConstants::ROLE_BORROWER) {
             $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
             if ($borrowerAccountId <= 0) {
                 return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
             }
             error_log('Reservation List - Borrower Account ID: ' . $borrowerAccountId);
             $dtos = $this->reservationReviewService->getReservationsByBorrower($borrowerAccountId);
-        } elseif ($resolvedRole === RoleConstants::ROLE_ADMIN || $resolvedRole === RoleConstants::ROLE_DEVELOPER) {
-            $dtos = $this->reservationReviewService->getAllReservations();
         } else {
             return $this->createErrorResponse('AuthorizationDenied', 'Insufficient permissions for this resource.', 403);
         }

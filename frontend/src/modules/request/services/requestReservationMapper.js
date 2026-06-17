@@ -83,7 +83,7 @@ function mapReservationRecord(reservation) {
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
     requestDisplayIdentifier: reservation?.reservationCode || reservation?.reservationIdentifier || 'N/A',
-    requesterFullName: reservation?.organizationName || 'User',
+    requesterFullName: resolveRequesterFullName(reservation),
     requesterRole: reservation?.requesterRole || reservation?.roleDesignation || reservation?.userRole || 'Borrower',
     requesterId: reservation?.idNumber || reservation?.accountIdentifier || reservation?.userIdentifier || null,
     contactEmail: reservation?.emailAddress || reservation?.requesterEmail || reservation?.organizationEmail || null,
@@ -101,6 +101,16 @@ function mapReservationRecord(reservation) {
     requestStatus: reservation?.currentStatus || 'Unknown',
     reservationSummary: mapRequestedEquipment(reservation?.requestedEquipmentList),
   };
+}
+
+function resolveRequesterFullName(reservation) {
+  return (
+    reservation?.borrowerFullName ||
+    reservation?.requesterFullName ||
+    reservation?.fullName ||
+    reservation?.accountFullName ||
+    'User'
+  );
 }
 
 function getReservationFacilityName(reservation, requestedEquipmentList) {

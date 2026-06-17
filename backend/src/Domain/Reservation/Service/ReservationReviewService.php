@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reservation\Service;
 
+use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
@@ -12,10 +13,12 @@ use App\Shared\Utils\RoleConstants;
 class ReservationReviewService
 {
     private ReservationRepository $reservationRepository;
+    private AccountRepository $accountRepository;
 
-    public function __construct(ReservationRepository $reservationRepository)
+    public function __construct(ReservationRepository $reservationRepository, AccountRepository $accountRepository)
     {
         $this->reservationRepository = $reservationRepository;
+        $this->accountRepository = $accountRepository;
     }
 
     // ===== AI GENERATED: getAllReservations =====
@@ -49,7 +52,11 @@ class ReservationReviewService
             throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
         }
 
-        if ($resolvedRole !== RoleConstants::ROLE_ADMIN && $entity->getBorrowerAccountId() !== $accountIdentifier) {
+        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+            return $this->transformEntityToDTO($entity);
+        }
+
+        if ($resolvedRole !== RoleConstants::ROLE_BORROWER || $entity->getBorrowerAccountId() !== $accountIdentifier) {
             throw new DomainValidationException('You are not allowed to access this reservation.');
         }
 
@@ -94,6 +101,8 @@ class ReservationReviewService
 
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
     {
+        [$borrowerFirstName, $borrowerLastName, $borrowerFullName] = $this->resolveBorrowerNames($entity);
+
         return new ReservationResponseDTO(
             reservationIdentifier: $entity->getReservationIdentifier(),
             reservationCode: $entity->getReservationCode(),
@@ -111,8 +120,29 @@ class ReservationReviewService
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
             supportingDocuments: $entity->getSupportingDocuments(),
-            submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM)
+            submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM),
+            borrowerFirstName: $borrowerFirstName,
+            borrowerLastName: $borrowerLastName,
+            borrowerFullName: $borrowerFullName
         );
+    }
+
+    private function resolveBorrowerNames(ReservationEntity $entity): array
+    {
+        $borrower = $this->accountRepository->find($entity->getBorrowerAccountId());
+        $firstName = trim((string)($borrower?->getFirstName() ?? ''));
+        $lastName = trim((string)($borrower?->getLastName() ?? ''));
+        $fullName = trim(sprintf('%s %s', $firstName, $lastName));
+
+        if ($fullName === '') {
+            $fullName = trim($entity->getOrganizationName());
+        }
+
+        if ($fullName === '') {
+            $fullName = 'User';
+        }
+
+        return [$firstName, $lastName, $fullName];
     }
 
     private function buildActivityTimeRange(ReservationEntity $entity): string

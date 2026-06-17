@@ -1,5 +1,5 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
-const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+const PHOTO_FILE_EXTENSION_PATTERN = /\.jpg$/i;
 const ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
 
 const EQUIPMENT_FORM_VALIDATORS = [

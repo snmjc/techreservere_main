@@ -30,9 +30,12 @@ if [ ! -f /app/vendor/autoload.php ]; then
   composer install --no-interaction --prefer-dist --no-scripts
 fi
 
-# Clear stale cache and warm prod cache so first request is fast
-php bin/console cache:clear --no-warmup --env=prod 2>/dev/null || true
-php bin/console cache:warmup --env=prod 2>/dev/null || true
+# Production gets a warm cache. Development skips cache mutation so generated
+# Symfony files on bind mounts are not rewritten during container startup.
+if [ "${APP_ENV:-dev}" = "prod" ]; then
+  php bin/console cache:clear --no-warmup --env=prod 2>/dev/null || true
+  php bin/console cache:warmup --env=prod 2>/dev/null || true
+fi
 
 # Optionally run database migrations on container boot, including production.
 # In production, fail fast if migrations cannot be applied so the app never runs

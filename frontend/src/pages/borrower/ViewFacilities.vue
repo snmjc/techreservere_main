@@ -269,23 +269,22 @@ const filteredVenueFloorGroups = computed(() => {
 });
 
 const filteredEquipment = computed(() => {
-  const normalizedQuery = equipmentSearchQuery.value.toLowerCase();
+  const normalizedQuery = normalizeSearchText(equipmentSearchQuery.value);
 
   let filtered = equipmentList.value.filter((equipment) => {
     return normalizedQuery === ''
-      || equipment.equipmentName.toLowerCase().includes(normalizedQuery)
-      || equipment.categoryName.toLowerCase().includes(normalizedQuery);
+      || getEquipmentSearchableValues(equipment).some((value) => normalizeSearchText(value).includes(normalizedQuery));
   });
 
   if (equipmentFilterValue.value === 'available') {
-    filtered = filtered.filter((equipment) => equipment.equipmentState === 'Available');
+    filtered = filtered.filter((equipment) => formatEquipmentStatus(equipment) === 'Available');
   } else if (equipmentFilterValue.value === 'maintenance') {
-    filtered = filtered.filter((equipment) => equipment.equipmentState === 'Under Maintenance');
+    filtered = filtered.filter((equipment) => formatEquipmentStatus(equipment) === 'Under Maintenance');
   }
 
   return [...filtered].sort((a, b) => {
-    const nameA = a.equipmentName.toLowerCase();
-    const nameB = b.equipmentName.toLowerCase();
+    const nameA = normalizeSearchText(a?.equipmentName);
+    const nameB = normalizeSearchText(b?.equipmentName);
     return equipmentSortOrder.value === 'asc'
       ? nameA.localeCompare(nameB)
       : nameB.localeCompare(nameA);
@@ -335,16 +334,19 @@ async function fetchEquipment() {
 }
 
 async function handleViewVenueDetails(venueRecord) {
-  if (!venueRecord?.venueIdentifier) {
+  const normalizedVenueRecord = normalizeVenueRecord(venueRecord);
+  const venueIdentifier = normalizedVenueRecord?.venueIdentifier;
+
+  viewVenueRecord.value = normalizedVenueRecord;
+  viewVenueLoading.value = Boolean(venueIdentifier);
+  viewVenueError.value = '';
+
+  if (!venueIdentifier) {
     return;
   }
 
-  viewVenueLoading.value = true;
-  viewVenueError.value = '';
-  viewVenueRecord.value = null;
-
   try {
-    const response = await venueApi.getVenueById(venueRecord.venueIdentifier);
+    const response = await venueApi.getVenueById(venueIdentifier);
     viewVenueRecord.value = normalizeVenueRecord(response?.data || response);
   } catch (error) {
     viewVenueError.value = error?.response?.data?.errorMessage || 'Failed to load venue details.';
@@ -390,7 +392,7 @@ function normalizeVenueRecord(venue) {
   }
 
   return {
-    venueIdentifier: venue.venueIdentifier,
+    venueIdentifier: venue.venueIdentifier ?? venue.venue_identifier ?? venue.id ?? venue.identifier ?? null,
     venueName: venue.venueName || '',
     venueLocation: venue.venueLocation || '',
     floorLevel: venue.floorLevel || 'Other',
@@ -400,7 +402,7 @@ function normalizeVenueRecord(venue) {
     availabilityStatus: venue.availabilityStatus || 'Unavailable',
     description: venue.description || '',
     imageUrl: venue.imageUrl || '',
-    venueAvailable: venue.availabilityStatus === 'Available',
+    venueAvailable: (venue.availabilityStatus || '') === 'Available',
   };
 }
 
@@ -429,12 +431,25 @@ function groupVenuesByFloor(venues) {
 }
 
 function compareByName(leftName, rightName, sortDirection) {
-  const normalizedLeft = String(leftName || '').trim().toLowerCase();
-  const normalizedRight = String(rightName || '').trim().toLowerCase();
+  const normalizedLeft = normalizeSearchText(leftName);
+  const normalizedRight = normalizeSearchText(rightName);
 
   return sortDirection === 'asc'
     ? normalizedLeft.localeCompare(normalizedRight)
     : normalizedRight.localeCompare(normalizedLeft);
+}
+
+function getEquipmentSearchableValues(equipment) {
+  return [
+    equipment?.equipmentName,
+    equipment?.equipmentCategory || equipment?.categoryName,
+    equipment?.equipmentBrand,
+    equipment?.description || equipment?.scheduleDescription,
+  ];
+}
+
+function normalizeSearchText(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function getTodayDateInputValue() {

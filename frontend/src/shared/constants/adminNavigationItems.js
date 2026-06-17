@@ -32,11 +32,6 @@ export const adminNavigationItems = [
     iconSvg: `<svg ${iconAttributes}><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M12 10v4l3 2"/></svg>`,
   },
   {
-    routeName: 'adminTaskAssignmentsPage',
-    label: 'Task Assignments',
-    iconSvg: `<svg ${iconAttributes}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></svg>`,
-  },
-  {
     routeName: 'adminApprovedRequestsPage',
     label: 'Approved Requests',
     iconSvg: `<svg ${iconAttributes}><path d="M16 11 18 13 22 8"/><path d="M12 12a4 4 0 1 0-4 4"/><path d="M4 21a8 8 0 0 1 9-7.94"/></svg>`,
@@ -50,6 +45,11 @@ export const adminNavigationItems = [
     routeName: 'adminPastRecordsPage',
     label: 'Past Records',
     iconSvg: `<svg ${iconAttributes}><path d="m16 3 5 5-12 12H4v-5L16 3Z"/><path d="m15 5 4 4"/></svg>`,
+  },
+  {
+    routeName: 'adminTaskAssignmentsPage',
+    label: 'Task Assignments',
+    iconSvg: `<svg ${iconAttributes}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></svg>`,
   },
   {
     routeName: 'adminReportsAnalyticsPage',

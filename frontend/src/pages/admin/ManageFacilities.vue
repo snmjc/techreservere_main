@@ -254,11 +254,10 @@
     <EquipmentDetailsModalComponent
       :show="Boolean(viewEquipmentRecord)"
       :equipment="viewEquipmentRecord"
+      :show-admin-fields="true"
       title="View Equipment Details"
       subtitle="Equipment details for admin review and editing."
-      secondary-action-label="Edit Equipment"
       @close="closeEquipmentDetails"
-      @secondary-action="openEditFromDetails"
     />
 
     <div
@@ -722,6 +721,10 @@ function openDeleteEquipmentModal(equipmentRecord) {
 
 function closeDeleteEquipmentModal() {
   if (isDeletingEquipment.value) return;
+  resetDeleteEquipmentModalState();
+}
+
+function resetDeleteEquipmentModalState() {
   deleteEquipmentRecord.value = null;
   deleteEquipmentConfirmEmail.value = '';
   deleteEquipmentConfirmPassword.value = '';
@@ -746,7 +749,7 @@ async function confirmDeleteEquipment() {
     });
 
     const deletedIdentifier = deleteEquipmentRecord.value.equipmentIdentifier;
-    closeDeleteEquipmentModal();
+    resetDeleteEquipmentModalState();
     clearDeletedEquipmentSelection(deletedIdentifier);
     await fetchEquipment();
   } catch (error) {

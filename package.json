@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "docker:up": "docker compose --env-file .env.dev up --build",
+    "docker:down": "docker compose --env-file .env.dev down",
+    "docker:logs": "docker compose --env-file .env.dev logs -f",
+    "docker:ps": "docker compose --env-file .env.dev ps"
+  },
   "dependencies": {
     "@clerk/clerk-js": "^6.11.1",
     "@clerk/vue": "^2.2.4"
