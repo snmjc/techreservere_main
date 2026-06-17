@@ -74,13 +74,6 @@
         </div>
 
         <div class="manage-facilities-inline-actions">
-          <button class="manage-facilities-edit-button manage-facilities-edit-button--compact" @click="handleEditFacility">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            {{ activeFacilityTab === 'venue' ? 'Edit Venue' : 'Edit Equipment' }}
-          </button>
           <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
