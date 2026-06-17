@@ -19,10 +19,6 @@
 
       <div class="facility-equipment-card-body">
         <div class="facility-equipment-card-header">
-          <div>
-            <h3 class="facility-equipment-card-name">{{ resolveTextValue(equipmentRecord.equipmentName) }}</h3>
-            <p class="facility-equipment-card-category">{{ resolveTextValue(equipmentRecord.equipmentCategory || equipmentRecord.categoryName) }}</p>
-          </div>
           <div class="facility-equipment-card-header-meta">
             <span
               class="facility-equipment-card-status"
@@ -182,7 +178,7 @@ function resolveEquipmentState(equipmentRecord) {
 
 .facility-equipment-card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.55rem;
   align-items: flex-start;
 }
@@ -192,20 +188,6 @@ function resolveEquipmentState(equipmentRecord) {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.35rem;
-}
-
-.facility-equipment-card-name {
-  margin: 0;
-  color: #132a1d;
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
-.facility-equipment-card-category {
-  margin: 0.2rem 0 0;
-  color: #567061;
-  font-size: 0.74rem;
-  font-weight: 600;
 }
 
 .facility-equipment-card-status {
@@ -259,6 +241,9 @@ function resolveEquipmentState(equipmentRecord) {
   color: #173321;
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .facility-equipment-card-actions {
