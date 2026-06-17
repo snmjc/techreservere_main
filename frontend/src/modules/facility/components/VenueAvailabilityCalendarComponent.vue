@@ -2,22 +2,26 @@
   <section class="venue-availability-calendar">
     <div class="venue-availability-calendar__header">
       <div>
-        <p class="venue-availability-calendar__eyebrow">Venue Calendar</p>
-        <h3>Availability for {{ formattedSelectedDate }}</h3>
+        <p class="venue-availability-calendar__eyebrow">Scheduling Snapshot</p>
+        <h3>Venue readiness for {{ formattedSelectedDate }}</h3>
       </div>
       <label class="venue-availability-calendar__date-picker">
-        <span>Select date</span>
+        <span>Review date</span>
         <input :value="selectedDate" type="date" @input="emit('update:selectedDate', $event.target.value)" />
       </label>
     </div>
 
+    <p class="venue-availability-calendar__intro">
+      Scan the selected day before editing records so you can see which spaces are already open, blocked, or carrying bookings.
+    </p>
+
     <div class="venue-availability-calendar__legend">
-      <span><i class="venue-availability-calendar__dot venue-availability-calendar__dot--available"></i> Available</span>
-      <span><i class="venue-availability-calendar__dot venue-availability-calendar__dot--unavailable"></i> Unavailable</span>
+      <span><i class="venue-availability-calendar__dot venue-availability-calendar__dot--available"></i> Ready to reserve</span>
+      <span><i class="venue-availability-calendar__dot venue-availability-calendar__dot--unavailable"></i> Needs review</span>
     </div>
 
     <div v-if="rows.length === 0" class="venue-availability-calendar__empty">
-      No venues to show for the selected date.
+      No venue records are visible for this date and filter set.
     </div>
 
     <div v-else class="venue-availability-calendar__grid">
@@ -31,17 +35,17 @@
           <strong>{{ row.venueName }}</strong>
           <span>{{ row.availabilityStatus }}</span>
         </div>
-        <p>{{ row.location }}</p>
-        <p>Capacity: {{ row.capacity }}</p>
-        <p>Operational: {{ row.operationalStatus }}</p>
-        <p>Open from: {{ row.availableDate }}</p>
-        <p v-if="row.reservationSummary.length">Booked slots: {{ row.reservationSummary.join(', ') }}</p>
-        <p v-else>No booked slots for the selected date.</p>
+        <p><strong>Location:</strong> {{ row.location }}</p>
+        <p><strong>Capacity:</strong> {{ row.capacity }}</p>
+        <p><strong>Operations:</strong> {{ row.operationalStatus }}</p>
+        <p><strong>Open from:</strong> {{ row.availableDate }}</p>
+        <p v-if="row.reservationSummary.length"><strong>Reserved slots:</strong> {{ row.reservationSummary.join(', ') }}</p>
+        <p v-else><strong>Reserved slots:</strong> None for the selected day.</p>
       </article>
     </div>
 
     <p class="venue-availability-calendar__note">
-      Venue availability is calculated from the venue record status plus overlapping reservations for the selected date.
+      Availability is based on venue status combined with overlapping reservation windows for the selected date.
     </p>
   </section>
 </template>
@@ -148,6 +152,13 @@ const rows = computed(() => props.venues.map((venueRecord) => {
   font-weight: 600;
 }
 
+.venue-availability-calendar__intro {
+  margin: 0 0 0.9rem;
+  color: #546659;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .venue-availability-calendar__legend span {
   display: inline-flex;
   align-items: center;
@@ -203,6 +214,10 @@ const rows = computed(() => props.venues.map((venueRecord) => {
   margin: 0.2rem 0 0;
   color: #4b5563;
   font-size: 0.8rem;
+}
+
+.venue-availability-calendar__card p strong {
+  color: #193625;
 }
 
 .venue-availability-calendar__empty,

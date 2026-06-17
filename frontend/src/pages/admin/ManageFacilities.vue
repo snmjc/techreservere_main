@@ -4,142 +4,215 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <h2 class="manage-facilities-page-heading">Facilities</h2>
-
-    <div class="manage-facilities-tabs-row">
-      <button
-        class="manage-facilities-tab-button"
-        :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'venue' }"
-        @click="handleFacilityTabChange('venue')"
-      >
-        Venue
-      </button>
-      <div class="manage-facilities-tab-divider"></div>
-      <button
-        class="manage-facilities-tab-button"
-        :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'equipment' }"
-        @click="handleFacilityTabChange('equipment')"
-      >
-        Equipment
-      </button>
-
-      <div class="manage-facilities-toolbar-spacer"></div>
-
-      <button class="manage-facilities-edit-button" @click="handleEditFacility">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-        {{ activeFacilityTab === 'venue' ? 'Edit Venue' : 'Edit Equipment' }}
-      </button>
-      <button class="manage-facilities-add-button" @click="handleAddFacility">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        {{ activeFacilityTab === 'venue' ? 'Add Venue' : 'Add Equipment' }}
-      </button>
-    </div>
-
-    <div class="manage-facilities-filter-row">
-      <button
-        class="manage-facilities-filter-pill"
-        :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'all' }"
-        @click="availabilityFilter = 'all'"
-      >
-        All
-      </button>
-      <button
-        class="manage-facilities-filter-pill"
-        :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'available' }"
-        @click="availabilityFilter = 'available'"
-      >
-        Available
-      </button>
-      <button
-        class="manage-facilities-filter-pill"
-        :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'unavailable' }"
-        @click="availabilityFilter = 'unavailable'"
-      >
-        Unavailable
-      </button>
-    </div>
-
-    <div class="manage-facilities-search-sort-row">
-      <div class="manage-facilities-search-group">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="manage-facilities-search-input"
-          :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name, location, or floor...' : 'Search by equipment name, type, brand, barcode, or asset ID...'"
-        />
+    <section class="manage-facilities-hero">
+      <div class="manage-facilities-hero-copy">
+        <p class="manage-facilities-hero-kicker">Facilities Command Center</p>
+        <h2 class="manage-facilities-page-heading">Manage spaces, equipment, and daily readiness.</h2>
+        <p class="manage-facilities-hero-description">
+          Keep venue availability current, surface rooms that need attention, and maintain an accurate inventory for reservation teams.
+        </p>
       </div>
-      <div class="manage-facilities-sort-group">
-        <label class="manage-facilities-sort-label">Sort:</label>
-        <select v-model="sortValue" class="manage-facilities-sort-select">
-          <option value="asc">Name (A-Z)</option>
-          <option value="desc">Name (Z-A)</option>
-        </select>
-      </div>
-    </div>
 
-    <div class="manage-facilities-showing-row">
-      <div class="manage-facilities-showing-group">
-        <label class="manage-facilities-showing-label">Showing:</label>
-        <select id="facilityShowingSelect" v-model="showingFilterValue" class="manage-facilities-showing-select">
-          <option value="all">All</option>
-        </select>
+      <div class="manage-facilities-hero-actions">
+        <button class="manage-facilities-edit-button" @click="handleEditFacility">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          {{ activeFacilityTab === 'venue' ? 'Update Selected Venue' : 'Update Selected Equipment' }}
+        </button>
+        <button class="manage-facilities-add-button" @click="handleAddFacility">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          {{ activeFacilityTab === 'venue' ? 'Register New Venue' : 'Register New Equipment' }}
+        </button>
       </div>
-      <div class="manage-facilities-legend">
-        <span class="manage-facilities-legend-item">
-          <span class="manage-facilities-legend-dot manage-facilities-legend-dot--available"></span>
-          Available
-        </span>
-        <span class="manage-facilities-legend-item">
-          <span class="manage-facilities-legend-dot manage-facilities-legend-dot--unavailable"></span>
-          Unavailable
-        </span>
-      </div>
-    </div>
+    </section>
 
-    <div v-if="activeFacilityTab === 'venue'">
-      <div v-if="loading" class="manage-facilities-loading">Loading venues...</div>
-      <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
-      <template v-else>
-        <VenueAvailabilityCalendarComponent
-          :venues="calendarVenueRecords"
-          :selected-date="selectedVenueCalendarDate"
-          @update:selected-date="selectedVenueCalendarDate = $event"
-        />
-        <FacilityVenueListComponent
-          :venue-floor-groups="venueFloorGroups"
-          :availability-filter="availabilityFilter"
-          @view-venue="handleViewVenue"
-          @edit-venue="handleEditVenue"
-          @delete-venue="handleDeleteVenue"
-        />
-      </template>
-    </div>
+    <section class="manage-facilities-summary-grid" aria-label="Facilities summary">
+      <article class="manage-facilities-summary-card">
+        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Venues tracked' : 'Equipment tracked' }}</span>
+        <strong class="manage-facilities-summary-value">{{ totalManagedCount }}</strong>
+        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Active spaces on the roster' : 'Reservable items in inventory' }}</p>
+      </article>
+      <article class="manage-facilities-summary-card">
+        <span class="manage-facilities-summary-label">Ready now</span>
+        <strong class="manage-facilities-summary-value">{{ availableManagedCount }}</strong>
+        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Open for the selected date' : 'Currently available for checkout' }}</p>
+      </article>
+      <article class="manage-facilities-summary-card">
+        <span class="manage-facilities-summary-label">Needs attention</span>
+        <strong class="manage-facilities-summary-value">{{ unavailableManagedCount }}</strong>
+        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Blocked, booked, or inactive rooms' : 'Unavailable or inactive equipment' }}</p>
+      </article>
+      <article class="manage-facilities-summary-card">
+        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Floors in view' : 'Categories in view' }}</span>
+        <strong class="manage-facilities-summary-value">{{ currentGroupingCount }}</strong>
+        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Organized by floor for faster scanning' : 'Grouped through the category filter' }}</p>
+      </article>
+    </section>
+
+    <section class="manage-facilities-workspace">
+      <div class="manage-facilities-tabs-row">
+        <div class="manage-facilities-tab-cluster" role="tablist" aria-label="Facility tabs">
+          <button
+            class="manage-facilities-tab-button"
+            :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'venue' }"
+            @click="handleFacilityTabChange('venue')"
+          >
+            Venue Operations
+          </button>
+          <button
+            class="manage-facilities-tab-button"
+            :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'equipment' }"
+            @click="handleFacilityTabChange('equipment')"
+          >
+            Equipment Inventory
+          </button>
+        </div>
+
+        <div class="manage-facilities-selection-chip" :class="{ 'manage-facilities-selection-chip--muted': !selectedRecordLabel }">
+          {{ selectedRecordLabel || (activeFacilityTab === 'venue' ? 'Pick a venue card to edit faster' : 'Select an equipment card to edit faster') }}
+        </div>
+      </div>
+
+      <div class="manage-facilities-filter-row">
+        <button
+          class="manage-facilities-filter-pill"
+          :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'all' }"
+          @click="availabilityFilter = 'all'"
+        >
+          All statuses
+        </button>
+        <button
+          class="manage-facilities-filter-pill"
+          :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'available' }"
+          @click="availabilityFilter = 'available'"
+        >
+          Ready now
+        </button>
+        <button
+          class="manage-facilities-filter-pill"
+          :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'unavailable' }"
+          @click="availabilityFilter = 'unavailable'"
+        >
+          Needs attention
+        </button>
+      </div>
+
+      <div class="manage-facilities-search-sort-row">
+        <div class="manage-facilities-search-group">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="manage-facilities-search-input"
+            :placeholder="activeFacilityTab === 'venue' ? 'Search rooms by name, floor, or location...' : 'Search equipment by name, type, brand, barcode, or asset ID...'"
+          />
+        </div>
+        <div class="manage-facilities-sort-group">
+          <label class="manage-facilities-sort-label">Browse by</label>
+          <select id="facilityShowingSelect" v-model="showingFilterValue" class="manage-facilities-showing-select">
+            <option
+              v-for="filterOption in showingFilterOptions"
+              :key="filterOption.value"
+              :value="filterOption.value"
+            >
+              {{ filterOption.label }}
+            </option>
+          </select>
+        </div>
+        <div class="manage-facilities-sort-group">
+          <label class="manage-facilities-sort-label">Sort</label>
+          <select v-model="sortValue" class="manage-facilities-sort-select">
+            <option value="asc">Name (A-Z)</option>
+            <option value="desc">Name (Z-A)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="manage-facilities-showing-row">
+        <p class="manage-facilities-showing-copy">
+          {{ resultsSummaryCopy }}
+        </p>
+        <div class="manage-facilities-legend">
+          <span class="manage-facilities-legend-item">
+            <span class="manage-facilities-legend-dot manage-facilities-legend-dot--available"></span>
+            Ready
+          </span>
+          <span class="manage-facilities-legend-item">
+            <span class="manage-facilities-legend-dot manage-facilities-legend-dot--unavailable"></span>
+            Unavailable
+          </span>
+        </div>
+      </div>
+
+      <div v-if="activeFacilityTab === 'venue'">
+        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <div v-else class="manage-facilities-venue-layout">
+          <aside class="manage-facilities-venue-sidebar">
+            <VenueAvailabilityCalendarComponent
+              :venues="calendarVenueRecords"
+              :selected-date="selectedVenueCalendarDate"
+              @update:selected-date="selectedVenueCalendarDate = $event"
+            />
+          </aside>
+
+          <div class="manage-facilities-venue-content">
+            <div class="manage-facilities-section-heading">
+              <div>
+                <p class="manage-facilities-section-kicker">Venue roster</p>
+                <h3>Room readiness by floor</h3>
+              </div>
+              <p class="manage-facilities-section-note">
+                Use card actions to inspect, revise, or retire venue records without leaving this view.
+              </p>
+            </div>
+
+            <FacilityVenueListComponent
+              :venue-floor-groups="venueFloorGroups"
+              :availability-filter="availabilityFilter"
+              @view-venue="handleViewVenue"
+              @edit-venue="handleEditVenue"
+              @delete-venue="handleDeleteVenue"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
 
     <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
     <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
-    <FacilityEquipmentGridComponent
-      v-else-if="activeFacilityTab === 'equipment'"
-      :equipment-records="filteredEquipmentRecords"
-      :availability-filter="availabilityFilter"
-      :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
-      @edit-equipment="handleEditEquipment"
-      @delete-equipment="openDeleteEquipmentModal"
-      @view-equipment="handleViewEquipment"
-      @select-equipment="handleSelectEquipment"
-    />
+    <section v-else-if="activeFacilityTab === 'equipment'" class="manage-facilities-equipment-section">
+      <div class="manage-facilities-section-heading">
+        <div>
+          <p class="manage-facilities-section-kicker">Inventory roster</p>
+          <h3>Equipment status at a glance</h3>
+        </div>
+        <p class="manage-facilities-section-note">
+          Select a card to stage edits, then open details, update records, or permanently remove an item when required.
+        </p>
+      </div>
+
+      <FacilityEquipmentGridComponent
+        :equipment-records="filteredEquipmentRecords"
+        :availability-filter="availabilityFilter"
+        :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
+        @edit-equipment="handleEditEquipment"
+        @delete-equipment="openDeleteEquipmentModal"
+        @view-equipment="handleViewEquipment"
+        @select-equipment="handleSelectEquipment"
+      />
+    </section>
 
     <div class="manage-facilities-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
+      TechReserve facilities operations workspace.
     </div>
 
     <VenueModalComponent
@@ -384,17 +457,115 @@ const calendarVenueRecords = computed(() =>
 );
 
 const filteredEquipmentRecords = computed(() => filterAndSortEquipment(
-  equipmentList.value,
+  filteredEquipmentBaseRecords.value,
   searchQuery.value,
   availabilityFilter.value,
   sortValue.value,
 ));
 
 const venueFloorGroups = computed(() => buildVenueFloorGroups(
-  searchedAndSortedVenues.value,
+  filteredVenueRecords.value,
   floorOrder,
   selectedVenueCalendarDate.value,
 ));
+
+const filteredVenueRecords = computed(() => {
+  const selectedFloor = showingFilterValue.value;
+  if (selectedFloor === 'all') {
+    return searchedAndSortedVenues.value;
+  }
+
+  return searchedAndSortedVenues.value.filter((venueRecord) => venueRecord.floorLevel === selectedFloor);
+});
+
+const visibleVenueRecords = computed(() => filteredVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
+  venueRecord,
+  availabilityFilter.value,
+  selectedVenueCalendarDate.value,
+)));
+
+const filteredEquipmentBaseRecords = computed(() => {
+  const selectedCategory = showingFilterValue.value;
+  if (selectedCategory === 'all') {
+    return equipmentList.value;
+  }
+
+  return equipmentList.value.filter((equipmentRecord) => resolveEquipmentCategory(equipmentRecord) === selectedCategory);
+});
+
+const showingFilterOptions = computed(() => {
+  if (activeFacilityTab.value === 'venue') {
+    const floorOptions = Array.from(new Set(
+      searchedAndSortedVenues.value
+        .map((venueRecord) => venueRecord.floorLevel)
+        .filter(Boolean)
+    ));
+
+    return [
+      { value: 'all', label: 'All floors' },
+      ...floorOrder
+        .filter((floorLabel) => floorOptions.includes(floorLabel))
+        .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
+      ...floorOptions
+        .filter((floorLabel) => !floorOrder.includes(floorLabel))
+        .sort((left, right) => left.localeCompare(right))
+        .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
+    ];
+  }
+
+  const categoryOptions = Array.from(new Set(
+    equipmentList.value
+      .map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))
+      .filter((value) => value !== 'Uncategorized')
+  )).sort((left, right) => left.localeCompare(right));
+
+  return [
+    { value: 'all', label: 'All categories' },
+    ...categoryOptions.map((categoryLabel) => ({ value: categoryLabel, label: categoryLabel })),
+  ];
+});
+
+const totalManagedCount = computed(() => (
+  activeFacilityTab.value === 'venue'
+    ? visibleVenueRecords.value.length
+    : filteredEquipmentRecords.value.length
+));
+
+const availableManagedCount = computed(() => (
+  activeFacilityTab.value === 'venue'
+    ? visibleVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
+      venueRecord,
+      'available',
+      selectedVenueCalendarDate.value,
+    )).length
+    : filteredEquipmentRecords.value.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) === 'Available').length
+));
+
+const unavailableManagedCount = computed(() => Math.max(totalManagedCount.value - availableManagedCount.value, 0));
+
+const currentGroupingCount = computed(() => (
+  activeFacilityTab.value === 'venue'
+    ? venueFloorGroups.value.filter((floorGroup) => (floorGroup.venueRecords || []).some((venueRecord) => matchesCalendarAvailability(
+      venueRecord,
+      availabilityFilter.value,
+      selectedVenueCalendarDate.value,
+    ))).length
+    : new Set(filteredEquipmentRecords.value.map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))).size
+));
+
+const selectedRecordLabel = computed(() => (
+  activeFacilityTab.value === 'venue'
+    ? selectedVenueCard.value?.venueName || ''
+    : selectedEquipmentCard.value?.equipmentName || ''
+));
+
+const resultsSummaryCopy = computed(() => {
+  if (activeFacilityTab.value === 'venue') {
+    return `${totalManagedCount.value} venue${totalManagedCount.value === 1 ? '' : 's'} visible for ${formatSummaryDate(selectedVenueCalendarDate.value)}.`;
+  }
+
+  return `${totalManagedCount.value} equipment record${totalManagedCount.value === 1 ? '' : 's'} match the current filters.`;
+});
 
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
@@ -416,6 +587,7 @@ function handleFacilityTabChange(tabName) {
   activeFacilityTab.value = tabName;
   availabilityFilter.value = 'all';
   searchQuery.value = '';
+  showingFilterValue.value = 'all';
   updateFacilityTabQuery(tabName);
 }
 
@@ -652,6 +824,16 @@ watch(
   }
 );
 
+watch(activeFacilityTab, () => {
+  showingFilterValue.value = 'all';
+});
+
+watch(showingFilterOptions, (nextOptions) => {
+  if (!nextOptions.some((option) => option.value === showingFilterValue.value)) {
+    showingFilterValue.value = 'all';
+  }
+});
+
 watch(selectedVenueCalendarDate, () => {
   if (activeFacilityTab.value === 'venue') {
     fetchVenues();
@@ -837,6 +1019,10 @@ function normalizeVenueRecord(venue) {
   };
 }
 
+function resolveEquipmentCategory(equipmentRecord) {
+  return formatEquipmentText(equipmentRecord?.equipmentCategory || equipmentRecord?.categoryName || 'Uncategorized');
+}
+
 function mapVenueRecordForList(venue, selectedDate) {
   const availabilityStatus = deriveVenueAvailabilityForDate(venue, selectedDate);
 
@@ -863,6 +1049,14 @@ function getTodayDateInputValue() {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatSummaryDate(dateValue) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${dateValue}T00:00:00`));
 }
 
 function syncActiveFacilityTabFromRoute(tabValue) {
