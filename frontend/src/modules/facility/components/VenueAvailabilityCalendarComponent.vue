@@ -8,14 +8,30 @@
     </div>
 
     <div class="venue-availability-calendar__date-toolbar">
-      <label class="venue-availability-calendar__date-input">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4" />
-          <path d="M8 2v4" />
-          <path d="M3 10h18" />
-        </svg>
-        <input :value="selectedDate" type="date" @input="emit('update:selectedDate', $event.target.value)" />
+      <label class="venue-availability-calendar__date-range-field">
+        <span>Start Date</span>
+        <div class="venue-availability-calendar__date-input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4" />
+            <path d="M8 2v4" />
+            <path d="M3 10h18" />
+          </svg>
+          <input :value="selectedDate" type="date" @input="emit('update:selectedDate', $event.target.value)" />
+        </div>
+      </label>
+
+      <label class="venue-availability-calendar__date-range-field">
+        <span>End Date</span>
+        <div class="venue-availability-calendar__date-input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4" />
+            <path d="M8 2v4" />
+            <path d="M3 10h18" />
+          </svg>
+          <input :value="selectedDate" type="date" @input="emit('update:selectedDate', $event.target.value)" />
+        </div>
       </label>
 
       <div class="venue-availability-calendar__day-nav">
@@ -216,10 +232,21 @@ function formatDateInputValue(date) {
 }
 
 .venue-availability-calendar__date-toolbar {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   gap: 0.75rem;
-  align-items: center;
+  align-items: end;
   margin-top: 1rem;
+}
+
+.venue-availability-calendar__date-range-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.venue-availability-calendar__date-range-field span {
+  color: #374151;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .venue-availability-calendar__date-input {

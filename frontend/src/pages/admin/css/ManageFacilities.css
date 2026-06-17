@@ -397,13 +397,13 @@ body {
 .facility-venue-chips-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 0.8rem;
 }
 
 .facility-venue-card {
   display: flex;
   flex-direction: column;
-  padding: 0.75rem;
+  padding: 0.6rem;
   border-radius: 10px;
   border: 2px solid #16a34a;
   background-color: #ffffff;
@@ -415,8 +415,8 @@ body {
 .facility-venue-card-photo {
   display: block;
   width: 100%;
-  height: 140px;
-  margin-bottom: 0.7rem;
+  height: 116px;
+  margin-bottom: 0.55rem;
   object-fit: cover;
   border-radius: 8px;
   background: #f3f4f6;
@@ -446,12 +446,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .facility-venue-card-name {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #1f2937;
   flex: 1;
@@ -460,11 +460,11 @@ body {
 
 .facility-venue-card-status {
   display: inline-flex;
-  margin-top: 0.35rem;
+  margin-top: 0.2rem;
   min-height: auto;
   padding: 0;
   border-radius: 0;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -481,15 +481,15 @@ body {
 
 .facility-venue-card-actions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 .facility-venue-card-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   background: #ffffff;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -512,11 +512,11 @@ body {
 .facility-venue-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.22rem;
 }
 
 .facility-venue-card-detail {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #374151;
 }
 
