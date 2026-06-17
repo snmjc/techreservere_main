@@ -19,50 +19,47 @@
 
       <div class="facility-equipment-card-body">
         <div class="facility-equipment-card-header">
-          <div>
+          <div class="facility-equipment-card-title-group">
             <h3 class="facility-equipment-card-name">{{ resolveTextValue(equipmentRecord.equipmentName) }}</h3>
-            <p class="facility-equipment-card-category">{{ resolveTextValue(equipmentRecord.equipmentCategory || equipmentRecord.categoryName) }}</p>
+            <span
+              class="facility-equipment-card-status"
+              :class="{
+                'facility-equipment-card-status--available': resolveEquipmentState(equipmentRecord) === 'Available',
+                'facility-equipment-card-status--unavailable': resolveEquipmentState(equipmentRecord) !== 'Available',
+              }"
+            >
+              {{ resolveEquipmentState(equipmentRecord) }}
+            </span>
           </div>
-          <span
-            class="facility-equipment-card-status"
-            :class="{
-              'facility-equipment-card-status--available': resolveEquipmentState(equipmentRecord) === 'Available',
-              'facility-equipment-card-status--unavailable': resolveEquipmentState(equipmentRecord) !== 'Available',
-            }"
-          >
-            {{ resolveEquipmentState(equipmentRecord) }}
-          </span>
+
+          <div class="facility-equipment-card-actions">
+            <button type="button" class="facility-equipment-card-action" title="View equipment details" @click.stop="emit('view-equipment', equipmentRecord)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+            <button type="button" class="facility-equipment-card-action" title="Edit equipment" @click.stop="emit('edit-equipment', equipmentRecord)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button type="button" class="facility-equipment-card-action facility-equipment-card-action--delete" title="Delete equipment" @click.stop="emit('delete-equipment', equipmentRecord)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <dl class="facility-equipment-card-details">
-          <div>
-            <dt>Brand</dt>
-            <dd>{{ resolveTextValue(equipmentRecord.equipmentBrand) }}</dd>
-          </div>
-          <div>
-            <dt>Available Qty</dt>
-            <dd>{{ resolveQuantityValue(equipmentRecord.availableQuantity) }}</dd>
-          </div>
-          <div>
-            <dt>Barcode</dt>
-            <dd>{{ resolveTextValue(equipmentRecord.barcode) }}</dd>
-          </div>
-          <div>
-            <dt>Asset ID</dt>
-            <dd>{{ resolveTextValue(equipmentRecord.assetId || equipmentRecord.serialNumber) }}</dd>
-          </div>
-        </dl>
-
-        <div class="facility-equipment-card-actions">
-          <button type="button" class="facility-equipment-card-button facility-equipment-card-button--ghost" @click.stop="emit('view-equipment', equipmentRecord)">
-            View Details
-          </button>
-          <button type="button" class="facility-equipment-card-button" @click.stop="emit('edit-equipment', equipmentRecord)">
-            Edit Info
-          </button>
-          <button type="button" class="facility-equipment-card-button facility-equipment-card-button--danger" @click.stop="emit('delete-equipment', equipmentRecord)">
-            Delete
-          </button>
+        <div class="facility-equipment-card-details">
+          <p class="facility-equipment-card-detail"><strong>Location:</strong> {{ resolveEquipmentLocation(equipmentRecord) }}</p>
+          <p class="facility-equipment-card-detail"><strong>Capacity:</strong> {{ resolveQuantityValue(equipmentRecord.availableQuantity) }}</p>
+          <p class="facility-equipment-card-detail"><strong>Opens on:</strong> {{ resolveEquipmentDate(equipmentRecord) }}</p>
+          <p class="facility-equipment-card-detail"><strong>Operations:</strong> {{ resolveEquipmentOperationalStatus(equipmentRecord) }}</p>
+          <p class="facility-equipment-card-detail"><strong>Booking status:</strong> {{ resolveEquipmentState(equipmentRecord) }}</p>
         </div>
       </div>
     </article>
@@ -124,31 +121,63 @@ function resolveQuantityValue(value) {
 function resolveEquipmentState(equipmentRecord) {
   return formatEquipmentStatus(equipmentRecord);
 }
+
+function resolveEquipmentLocation(equipmentRecord) {
+  return resolveTextValue(
+    equipmentRecord?.equipmentLocation
+    || equipmentRecord?.location
+    || equipmentRecord?.equipmentCategory
+    || equipmentRecord?.categoryName
+  );
+}
+
+function resolveEquipmentDate(equipmentRecord) {
+  return resolveTextValue(
+    equipmentRecord?.availabilityDate
+    || equipmentRecord?.updatedTimestamp?.slice?.(0, 10)
+    || equipmentRecord?.createdTimestamp?.slice?.(0, 10)
+  );
+}
+
+function resolveEquipmentOperationalStatus(equipmentRecord) {
+  return resolveTextValue(
+    equipmentRecord?.operationalStatus
+    || equipmentRecord?.equipmentStatus
+    || (resolveEquipmentState(equipmentRecord) === 'Available' ? 'Active' : 'Inactive')
+  );
+}
 </script>
 
 <style scoped>
 .facility-equipment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 280px));
+  justify-content: start;
+  gap: 0.8rem;
 }
 
 .facility-equipment-card {
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 280px;
   background: #ffffff;
-  border: 1px solid #d8e4dd;
-  border-radius: 18px;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  border: 2px solid #16a34a;
+  border-radius: 12px;
+  box-shadow: none;
   cursor: pointer;
 }
 
 .facility-equipment-card--selected {
-  border-color: #1a6e3a;
-  box-shadow: 0 0 0 2px rgba(26, 110, 58, 0.18), 0 18px 38px rgba(15, 23, 42, 0.08);
+  border-color: #15803d;
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.12);
 }
 
 .facility-equipment-card-media {
-  height: 180px;
+  height: 112px;
+  margin: 0.6rem 0.6rem 0;
+  overflow: hidden;
+  border-radius: 8px;
   background: linear-gradient(135deg, #f6fbf7 0%, #ebf5ee 100%);
 }
 
@@ -161,109 +190,101 @@ function resolveEquipmentState(equipmentRecord) {
 
 .facility-equipment-card-body {
   display: grid;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.45rem;
+  padding: 0.65rem 0.7rem 0.75rem;
 }
 
 .facility-equipment-card-header {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.45rem;
   align-items: flex-start;
+}
+
+.facility-equipment-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .facility-equipment-card-name {
   margin: 0;
-  color: #132a1d;
-  font-size: 1rem;
-  font-weight: 800;
-}
-
-.facility-equipment-card-category {
-  margin: 0.35rem 0 0;
-  color: #567061;
-  font-size: 0.85rem;
-  font-weight: 600;
+  color: #111827;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .facility-equipment-card-status {
-  flex-shrink: 0;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 110px;
-  min-height: 32px;
-  padding: 0 0.8rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 800;
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .facility-equipment-card-status--available {
-  color: #156f3a;
-  background: #def6e6;
+  color: #16a34a;
+  background: transparent;
 }
 
 .facility-equipment-card-status--unavailable {
-  color: #a33434;
-  background: #fde8e8;
+  color: #dc2626;
+  background: transparent;
 }
 
 .facility-equipment-card-details {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.facility-equipment-card-detail {
   margin: 0;
+  color: #374151;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.facility-equipment-card-details div {
-  padding: 0.8rem 0.9rem;
-  background: #f7faf8;
-  border: 1px solid #e4ede8;
-  border-radius: 12px;
-}
-
-.facility-equipment-card-details dt {
-  margin-bottom: 0.35rem;
-  color: #6a7d72;
-  font-size: 0.74rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.facility-equipment-card-details dd {
-  margin: 0;
-  color: #173321;
-  font-size: 0.92rem;
-  font-weight: 700;
+.facility-equipment-card-detail strong {
+  color: inherit;
 }
 
 .facility-equipment-card-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.3rem;
+  flex-shrink: 0;
 }
 
-.facility-equipment-card-button {
-  flex: 1;
-  min-height: 42px;
-  border: none;
-  border-radius: 12px;
-  background: #1a6e3a;
-  color: #ffffff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.facility-equipment-card-button--ghost {
+.facility-equipment-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   background: #ffffff;
-  color: #244235;
-  border: 1px solid #d4ddd7;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
 }
 
-.facility-equipment-card-button--danger {
-  background: #a93434;
+.facility-equipment-card-action:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.facility-equipment-card-action--delete:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #dc2626;
 }
 
 .facility-equipment-empty-state {
@@ -277,13 +298,12 @@ function resolveEquipmentState(equipmentRecord) {
 }
 
 @media (max-width: 640px) {
-  .facility-equipment-card-details {
-    grid-template-columns: 1fr;
+  .facility-equipment-card-header {
+    flex-direction: column;
   }
 
-  .facility-equipment-card-header,
   .facility-equipment-card-actions {
-    flex-direction: column;
+    align-self: flex-start;
   }
 }
 </style>

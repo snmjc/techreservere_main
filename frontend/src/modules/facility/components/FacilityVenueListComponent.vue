@@ -66,17 +66,17 @@
           </div>
 
           <div class="facility-venue-card-body">
-            <span class="facility-venue-card-detail">{{ venueRecord.venueLocation || 'N/A' }}</span>
-            <span class="facility-venue-card-detail">Capacity: {{ venueRecord.capacityLimit || 'N/A' }}</span>
-            <span class="facility-venue-card-detail">Available: {{ venueRecord.availabilityDate || 'N/A' }}</span>
-            <span class="facility-venue-card-detail">Operational: {{ venueRecord.operationalStatus || 'N/A' }}</span>
-            <span class="facility-venue-card-detail">Availability: {{ venueRecord.availabilityStatus || (venueRecord.venueAvailable ? 'Available' : 'Unavailable') }}</span>
+            <span class="facility-venue-card-detail"><strong>Location:</strong> {{ venueRecord.venueLocation || 'Not specified' }}</span>
+            <span class="facility-venue-card-detail"><strong>Capacity:</strong> {{ venueRecord.capacityLimit || 'Not set' }}</span>
+            <span class="facility-venue-card-detail"><strong>Opens on:</strong> {{ venueRecord.availabilityDate || 'Check record' }}</span>
+            <span class="facility-venue-card-detail"><strong>Operations:</strong> {{ venueRecord.operationalStatus || 'Unknown' }}</span>
+            <span class="facility-venue-card-detail"><strong>Booking status:</strong> {{ venueRecord.availabilityStatus || (venueRecord.venueAvailable ? 'Available' : 'Unavailable') }}</span>
           </div>
         </article>
       </div>
     </div>
     <div v-if="filteredVenueFloorGroups.length === 0" class="facility-venue-empty-state">
-      No venues found.
+      No venues match the current filters.
     </div>
   </div>
 </template>
