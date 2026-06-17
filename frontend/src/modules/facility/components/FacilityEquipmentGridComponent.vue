@@ -129,16 +129,19 @@ function resolveEquipmentState(equipmentRecord) {
 <style scoped>
 .facility-equipment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+  justify-content: start;
+  gap: 0.75rem;
 }
 
 .facility-equipment-card {
   overflow: hidden;
+  width: 100%;
+  max-width: 280px;
   background: #ffffff;
   border: 1px solid #d8e4dd;
-  border-radius: 14px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
   cursor: pointer;
 }
 
@@ -148,7 +151,7 @@ function resolveEquipmentState(equipmentRecord) {
 }
 
 .facility-equipment-card-media {
-  height: 128px;
+  height: 96px;
   background: linear-gradient(135deg, #f6fbf7 0%, #ebf5ee 100%);
 }
 
@@ -161,8 +164,8 @@ function resolveEquipmentState(equipmentRecord) {
 
 .facility-equipment-card-body {
   display: grid;
-  gap: 0.75rem;
-  padding: 0.8rem;
+  gap: 0.6rem;
+  padding: 0.65rem;
 }
 
 .facility-equipment-card-header {
@@ -175,14 +178,14 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-name {
   margin: 0;
   color: #132a1d;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
 .facility-equipment-card-category {
   margin: 0.2rem 0 0;
   color: #567061;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
@@ -191,11 +194,11 @@ function resolveEquipmentState(equipmentRecord) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 92px;
-  min-height: 28px;
-  padding: 0 0.65rem;
+  min-width: 78px;
+  min-height: 24px;
+  padding: 0 0.55rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 800;
 }
 
@@ -212,21 +215,21 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.45rem;
   margin: 0;
 }
 
 .facility-equipment-card-details div {
-  padding: 0.62rem 0.72rem;
+  padding: 0.5rem 0.6rem;
   background: #f7faf8;
   border: 1px solid #e4ede8;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .facility-equipment-card-details dt {
-  margin-bottom: 0.22rem;
+  margin-bottom: 0.18rem;
   color: #6a7d72;
-  font-size: 0.67rem;
+  font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -235,24 +238,24 @@ function resolveEquipmentState(equipmentRecord) {
 .facility-equipment-card-details dd {
   margin: 0;
   color: #173321;
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
 .facility-equipment-card-actions {
   display: flex;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .facility-equipment-card-button {
   flex: 1;
-  min-height: 36px;
+  min-height: 32px;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #1a6e3a;
   color: #ffffff;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
 }
