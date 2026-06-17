@@ -56,25 +56,38 @@
 
     <section class="manage-facilities-workspace">
       <div class="manage-facilities-tabs-row">
-        <div class="manage-facilities-tab-cluster" role="tablist" aria-label="Facility tabs">
+        <div class="manage-facilities-tab-cluster manage-facilities-tab-cluster--classic" role="tablist" aria-label="Facility tabs">
           <button
             class="manage-facilities-tab-button"
             :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'venue' }"
             @click="handleFacilityTabChange('venue')"
           >
-            Venue Operations
+            Venue
           </button>
           <button
             class="manage-facilities-tab-button"
             :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'equipment' }"
             @click="handleFacilityTabChange('equipment')"
           >
-            Equipment Inventory
+            Equipment
           </button>
         </div>
 
-        <div class="manage-facilities-selection-chip" :class="{ 'manage-facilities-selection-chip--muted': !selectedRecordLabel }">
-          {{ selectedRecordLabel || (activeFacilityTab === 'venue' ? 'Pick a venue card to edit faster' : 'Select an equipment card to edit faster') }}
+        <div class="manage-facilities-inline-actions">
+          <button class="manage-facilities-edit-button manage-facilities-edit-button--compact" @click="handleEditFacility">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            {{ activeFacilityTab === 'venue' ? 'Edit Venue' : 'Edit Equipment' }}
+          </button>
+          <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            {{ activeFacilityTab === 'venue' ? 'Add Venue' : 'Add Equipment' }}
+          </button>
         </div>
       </div>
 
@@ -84,21 +97,21 @@
           :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'all' }"
           @click="availabilityFilter = 'all'"
         >
-          All statuses
+          All
         </button>
         <button
           class="manage-facilities-filter-pill"
           :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'available' }"
           @click="availabilityFilter = 'available'"
         >
-          Ready now
+          Available
         </button>
         <button
           class="manage-facilities-filter-pill"
           :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'unavailable' }"
           @click="availabilityFilter = 'unavailable'"
         >
-          Needs attention
+          Unavailable
         </button>
       </div>
 
@@ -112,11 +125,11 @@
             v-model="searchQuery"
             type="text"
             class="manage-facilities-search-input"
-            :placeholder="activeFacilityTab === 'venue' ? 'Search rooms by name, floor, or location...' : 'Search equipment by name, type, brand, barcode, or asset ID...'"
+            :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name, location, or floor...' : 'Search by equipment name, type, brand, barcode, or asset ID...'"
           />
         </div>
-        <div class="manage-facilities-sort-group">
-          <label class="manage-facilities-sort-label">Browse by</label>
+        <div class="manage-facilities-sort-group manage-facilities-sort-group--showing">
+          <label class="manage-facilities-sort-label manage-facilities-sort-label--inline">Showing:</label>
           <select id="facilityShowingSelect" v-model="showingFilterValue" class="manage-facilities-showing-select">
             <option
               v-for="filterOption in showingFilterOptions"
@@ -127,8 +140,8 @@
             </option>
           </select>
         </div>
-        <div class="manage-facilities-sort-group">
-          <label class="manage-facilities-sort-label">Sort</label>
+        <div class="manage-facilities-sort-group manage-facilities-sort-group--sort">
+          <label class="manage-facilities-sort-label manage-facilities-sort-label--inline">Sort:</label>
           <select v-model="sortValue" class="manage-facilities-sort-select">
             <option value="asc">Name (A-Z)</option>
             <option value="desc">Name (Z-A)</option>
@@ -137,13 +150,10 @@
       </div>
 
       <div class="manage-facilities-showing-row">
-        <p class="manage-facilities-showing-copy">
-          {{ resultsSummaryCopy }}
-        </p>
         <div class="manage-facilities-legend">
           <span class="manage-facilities-legend-item">
             <span class="manage-facilities-legend-dot manage-facilities-legend-dot--available"></span>
-            Ready
+            Available
           </span>
           <span class="manage-facilities-legend-item">
             <span class="manage-facilities-legend-dot manage-facilities-legend-dot--unavailable"></span>
@@ -165,16 +175,6 @@
           </aside>
 
           <div class="manage-facilities-venue-content">
-            <div class="manage-facilities-section-heading">
-              <div>
-                <p class="manage-facilities-section-kicker">Venue roster</p>
-                <h3>Room readiness by floor</h3>
-              </div>
-              <p class="manage-facilities-section-note">
-                Use card actions to inspect, revise, or retire venue records without leaving this view.
-              </p>
-            </div>
-
             <FacilityVenueListComponent
               :venue-floor-groups="venueFloorGroups"
               :availability-filter="availabilityFilter"
