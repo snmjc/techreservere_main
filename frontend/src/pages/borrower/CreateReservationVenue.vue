@@ -5,9 +5,6 @@
   >
     <section class="borrower-reservation-page">
       <div class="borrower-reservation-topline">
-        <button type="button" aria-label="Back" @click="navigateToPreviousPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
         <h1>Create Reservation</h1>
       </div>
 
