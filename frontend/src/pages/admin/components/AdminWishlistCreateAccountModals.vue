@@ -24,7 +24,7 @@
       <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
         <label>
           <span>ID Number</span>
-          <input v-model.trim="addAdminForm.idNumber" type="text" placeholder="2023*****" required :disabled="isProcessing" />
+          <input v-model.trim="addAdminForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required :disabled="isProcessing" @input="sanitizeAdminIdNumber" />
         </label>
         <label>
           <span>Last Name</span>
@@ -113,7 +113,7 @@
         </label>
         <label>
           <span>ID Number</span>
-          <input v-model.trim="addUserForm.idNumber" type="text" placeholder="2023*****" required />
+          <input v-model.trim="addUserForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required @input="sanitizeUserIdNumber" />
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Account Role</span>
@@ -234,7 +234,7 @@
         </label>
         <label>
           <span>Work ID Number</span>
-          <input v-model.trim="addEmployeeForm.idNumber" type="text" placeholder="2023-****" required />
+          <input v-model.trim="addEmployeeForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required @input="sanitizeEmployeeIdNumber" />
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Role</span>
@@ -269,6 +269,7 @@ import {
   getAdminCreateError,
   getEmployeeCreateError,
   getUserCreateError,
+  sanitizeIdNumberInput,
   sanitizeNameInput,
   sanitizePhoneInput,
   validateEmployeeAccountForm,
@@ -514,6 +515,18 @@ function sanitizeEmployeeNameField(fieldName) {
 
 function sanitizeEmployeePhone() {
   addEmployeeForm.phone = sanitizePhoneInput(addEmployeeForm.phone);
+}
+
+function sanitizeAdminIdNumber() {
+  addAdminForm.idNumber = sanitizeIdNumberInput(addAdminForm.idNumber);
+}
+
+function sanitizeUserIdNumber() {
+  addUserForm.idNumber = sanitizeIdNumberInput(addUserForm.idNumber);
+}
+
+function sanitizeEmployeeIdNumber() {
+  addEmployeeForm.idNumber = sanitizeIdNumberInput(addEmployeeForm.idNumber);
 }
 
 defineExpose({ openForTab });

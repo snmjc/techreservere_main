@@ -26,6 +26,10 @@ export function sanitizePhoneInput(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 10);
 }
 
+export function sanitizeIdNumberInput(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 10);
+}
+
 export function validatePersonName(value) {
   const normalized = String(value || '').trim();
   const letterCount = (normalized.match(/[A-Za-z]/g) || []).length;
@@ -33,11 +37,11 @@ export function validatePersonName(value) {
 }
 
 export function normalizeIdNumber(value) {
-  return String(value || '').replace(/\s+/g, '').trim();
+  return String(value || '').replace(/\D/g, '').trim();
 }
 
 export function validateRequiredIdNumber(value) {
-  return normalizeIdNumber(value) !== '';
+  return /^\d{10}$/.test(normalizeIdNumber(value));
 }
 
 export function isAllowedAdminEmail(value) {
@@ -46,7 +50,7 @@ export function isAllowedAdminEmail(value) {
     return false;
   }
 
-  return normalized.endsWith('@feutech.edu.ph') || normalized.endsWith('@fit.edu.ph');
+  return normalized.endsWith('@feutech.edu.ph');
 }
 
 export function isAllowedRequestHubUserEmail(value) {

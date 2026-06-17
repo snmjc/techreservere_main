@@ -2,6 +2,7 @@
 
 namespace App\Domain\Account\Controller;
 
+use App\Domain\Account\Service\AccountInputValidationService;
 use App\Domain\Authentication\Service\AuthenticationWorkflowService;
 use App\Shared\Traits\RequestPayloadTrait;
 use App\Shared\Traits\ServiceResultResponseTrait;
@@ -15,7 +16,10 @@ class AuthenticationController
     use RequestPayloadTrait;
     use ServiceResultResponseTrait;
 
-    public function __construct(private readonly AuthenticationWorkflowService $workflowService)
+    public function __construct(
+        private readonly AuthenticationWorkflowService $workflowService,
+        private readonly AccountInputValidationService $accountInputValidationService
+    )
     {
     }
 
@@ -35,6 +39,14 @@ class AuthenticationController
             );
         }
 
+        if (!$this->accountInputValidationService->isValidInstitutionalSignInEmail($emailAddress)) {
+            return $this->createErrorResponse(
+                'ValidationError',
+                'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.',
+                422
+            );
+        }
+
         return $this->serviceResultResponse($this->workflowService->login($emailAddress, $passwordText));
     }
 
@@ -48,6 +60,14 @@ class AuthenticationController
             return $this->createErrorResponse(
                 'ValidationError',
                 'A valid username or email address is required.',
+                422
+            );
+        }
+
+        if (!$this->accountInputValidationService->isValidInstitutionalSignInEmail($emailAddress)) {
+            return $this->createErrorResponse(
+                'ValidationError',
+                'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.',
                 422
             );
         }

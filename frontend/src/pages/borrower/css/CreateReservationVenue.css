@@ -182,6 +182,11 @@
   gap: 0.5rem;
 }
 
+.reservation-equipment-quantity-control {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .reservation-equipment-quantity-input {
   width: 72px;
   min-height: 34px;
@@ -202,10 +207,21 @@
   box-shadow: 0 0 0 3px rgba(17, 134, 77, 0.12);
 }
 
+.reservation-equipment-quantity-input.is-invalid {
+  border-color: #d92d20;
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.12);
+}
+
 .reservation-equipment-quantity-input:disabled {
   color: #8ca095;
   background: #f4f7f5;
   cursor: not-allowed;
+}
+
+.reservation-equipment-quantity-error {
+  color: #b42318;
+  font-size: 0.65rem;
+  font-weight: 700;
 }
 
 .reservation-equipment-sidebar {

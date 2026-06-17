@@ -101,7 +101,7 @@
               </div>
 
               <div class="custom-signup-row custom-signup-row-wide">
-                <label for="fitEmailAddress">FIT Email Address</label>
+                <label for="fitEmailAddress">Institutional Email Address</label>
                 <input
                   id="fitEmailAddress"
                   v-model="formData.fitEmailAddress"
@@ -223,7 +223,7 @@
 
                 <div v-else class="custom-signup-faculty-note">
                   <strong>No file upload needed for faculty.</strong>
-                  <span>Recommended: use your official FIT faculty email and complete your department details for admin verification.</span>
+                  <span>Recommended: use your official institutional email and complete your department details for admin verification.</span>
                 </div>
               </div>
             </div>

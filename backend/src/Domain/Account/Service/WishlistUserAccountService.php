@@ -76,6 +76,10 @@ class WishlistUserAccountService
             return 'User account must use a valid @fit.edu.ph or @feutech.edu.ph email address.';
         }
 
+        if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
+            return 'ID number must be exactly 10 digits.';
+        }
+
         if ($payload['roleDesignation'] !== 'ROLE_BORROWER') {
             return 'Only ROLE_BORROWER can be created from the user tab.';
         }
