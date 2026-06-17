@@ -125,19 +125,6 @@
         </div>
       </div>
 
-      <div class="manage-facilities-showing-row">
-        <div class="manage-facilities-legend">
-          <span class="manage-facilities-legend-item">
-            <span class="manage-facilities-legend-dot manage-facilities-legend-dot--available"></span>
-            Available
-          </span>
-          <span class="manage-facilities-legend-item">
-            <span class="manage-facilities-legend-dot manage-facilities-legend-dot--unavailable"></span>
-            Unavailable
-          </span>
-        </div>
-      </div>
-
       <div v-if="activeFacilityTab === 'venue'">
         <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
         <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
