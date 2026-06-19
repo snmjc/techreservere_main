@@ -87,6 +87,8 @@ function mapReservationRecord(reservation) {
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
     requestDisplayIdentifier: reservation?.reservationCode || reservation?.reservationIdentifier || 'N/A',
+    reservationIdentifier: reservation?.reservationIdentifier || 0,
+    reservationCode: reservation?.reservationCode || reservation?.reservationIdentifier || 'N/A',
     requesterFullName: resolveRequesterFullName(reservation),
     requesterRole: reservation?.requesterRole || reservation?.roleDesignation || reservation?.userRole || 'Borrower',
     requesterId: reservation?.idNumber || reservation?.accountIdentifier || reservation?.userIdentifier || null,
@@ -98,6 +100,8 @@ function mapReservationRecord(reservation) {
     requestQuantity: reservation?.requestedQuantity || 0,
     requestType,
     requestPurpose: reservation?.purposeDescription || 'N/A',
+    activityTitle: reservation?.activityTitle || reservation?.activityNameTitle || reservation?.activityType || 'N/A',
+    typeOfActivity: reservation?.typeOfActivity || reservation?.activityCategory || reservation?.activityType || 'N/A',
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
@@ -111,6 +115,7 @@ function mapReservationRecord(reservation) {
     remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
     uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
     reservationSummary,
+    reservedResources: buildReservedResources(reservation, requestedEquipmentList),
   };
 }
 
@@ -172,7 +177,40 @@ function mapUploadedDocuments(supportingDocuments = []) {
 
   return documentList.map((documentFile, index) => ({
     fileName: typeof documentFile === 'string' ? documentFile : `Document ${index + 1}`,
+    previewLabel: buildDocumentPreviewLabel(typeof documentFile === 'string' ? documentFile : `Document ${index + 1}`),
   }));
+}
+
+function buildReservedResources(reservation, requestedEquipmentList = []) {
+  const reservedResources = [];
+  const facilityName = getReservationFacilityName(reservation, requestedEquipmentList);
+  const hasFacility = Boolean(reservation?.venueIdentifier || reservation?.venueName || reservation?.facilityName);
+
+  if (hasFacility && facilityName !== 'N/A') {
+    reservedResources.push({
+      resourceType: 'Facility',
+      resourceName: facilityName,
+      resourceCount: 1,
+    });
+  }
+
+  mapRequestedEquipment(requestedEquipmentList).forEach((equipment) => {
+    reservedResources.push({
+      resourceType: 'Equipment',
+      resourceName: equipment.itemName,
+      resourceCount: equipment.itemCount,
+    });
+  });
+
+  return reservedResources;
+}
+
+function buildDocumentPreviewLabel(fileName) {
+  const normalizedName = String(fileName || '').trim();
+  const parts = normalizedName.split('.');
+  const extension = parts.length > 1 ? parts.at(-1).toUpperCase() : '';
+
+  return extension ? `${extension} File` : 'Document';
 }
 
 function buildReservationRemark(reservation) {
