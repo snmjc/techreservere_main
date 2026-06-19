@@ -496,6 +496,14 @@
   cursor: pointer;
 }
 
+.approved-request-action-button:disabled,
+.approved-request-workflow-add:disabled,
+.approved-request-workflow-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  box-shadow: none;
+}
+
 .approved-request-action-button--ghost {
   color: #355043;
   background: #ffffff;
@@ -566,6 +574,40 @@
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.approved-request-workflow-summary-card--details {
+  gap: 0.9rem;
+}
+
+.approved-request-workflow-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.approved-request-workflow-detail-item {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.85rem 0.95rem;
+  background: #ffffff;
+  border: 1px solid #e1e8e3;
+  border-radius: 12px;
+}
+
+.approved-request-workflow-detail-item small {
+  color: #708078;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.approved-request-workflow-detail-item strong {
+  color: #1f2937;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .approved-request-action-feedback {
@@ -664,7 +706,8 @@
 
   .approved-request-action-grid,
   .approved-request-summary-top,
-  .approved-request-summary-bottom {
+  .approved-request-summary-bottom,
+  .approved-request-workflow-detail-grid {
     grid-template-columns: 1fr;
   }
 }

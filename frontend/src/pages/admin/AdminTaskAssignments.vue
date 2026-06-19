@@ -100,7 +100,6 @@
                   <th>Assigned To</th>
                   <th>Schedule</th>
                   <th>Status</th>
-                  <th>Progress</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -134,20 +133,6 @@
                     >
                       {{ getStatusLabel(task) }}
                     </span>
-                  </td>
-
-                  <td class="admin-task-cell-progress">
-                    <div class="admin-task-progress-copy">
-                      <strong>{{ getProgressValue(task) }}%</strong>
-                      <small>{{ getProgressCaption(task) }}</small>
-                    </div>
-                    <div class="admin-task-progress-bar" aria-hidden="true">
-                      <span
-                        class="admin-task-progress-fill"
-                        :class="`admin-task-progress-fill--${getStatusTone(task)}`"
-                        :style="{ width: `${getProgressValue(task)}%` }"
-                      />
-                    </div>
                   </td>
 
                   <td>
@@ -1206,7 +1191,7 @@ button:disabled {
 
 .admin-task-assignments-table {
   width: 100%;
-  min-width: 1030px;
+  min-width: 860px;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -1250,8 +1235,7 @@ button:disabled {
 .admin-task-cell-details span,
 .admin-task-cell-details small,
 .admin-task-cell-staff small,
-.admin-task-cell-schedule small,
-.admin-task-progress-copy small {
+.admin-task-cell-schedule small {
   display: block;
   margin-top: 0.24rem;
   color: #688072;
@@ -1298,49 +1282,6 @@ button:disabled {
 .admin-task-status-pill--neutral {
   color: #4b5563;
   background: #e5e7eb;
-}
-
-.admin-task-cell-progress {
-  min-width: 180px;
-}
-
-.admin-task-progress-copy {
-  margin-bottom: 0.48rem;
-}
-
-.admin-task-progress-bar {
-  position: relative;
-  width: 100%;
-  height: 8px;
-  background: #e8efea;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.admin-task-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.admin-task-progress-fill--pending {
-  background: #f59e0b;
-}
-
-.admin-task-progress-fill--progress {
-  background: #3b82f6;
-}
-
-.admin-task-progress-fill--completed {
-  background: #16a34a;
-}
-
-.admin-task-progress-fill--overdue {
-  background: #ef4444;
-}
-
-.admin-task-progress-fill--neutral {
-  background: #9ca3af;
 }
 
 .admin-task-actions {

@@ -146,6 +146,32 @@
                 <em v-if="!getEquipmentResources(editRequestRecord).length">No equipment reserved.</em>
               </div>
             </div>
+
+            <div class="approved-request-workflow-summary-card approved-request-workflow-summary-card--details">
+              <span>Workflow Details</span>
+              <div class="approved-request-workflow-detail-grid">
+                <div class="approved-request-workflow-detail-item">
+                  <small>Venue</small>
+                  <strong>{{ editRequestRecord.facilityName || 'N/A' }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Status</small>
+                  <strong>{{ editRequestRecord.requestStatus || 'Approved' }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Participants</small>
+                  <strong>{{ editRequestRecord.participantCount || 0 }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Start Date and Time</small>
+                  <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleStart || editRequestRecord.activityTime) }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>End Date and Time</small>
+                  <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleEnd || editRequestRecord.activityEndTime) }}</strong>
+                </div>
+              </div>
+            </div>
           </section>
 
           <p v-if="workflowEditorError" class="approved-request-action-feedback approved-request-action-feedback--error">
@@ -231,7 +257,7 @@
 
         <footer class="approved-request-action-footer">
           <button class="approved-request-action-button approved-request-action-button--ghost" type="button" :disabled="isWorkflowSaving" @click="closeEditModal">Cancel</button>
-          <button class="approved-request-action-button approved-request-action-button--edit" type="button" :disabled="isWorkflowEditorLoading || isWorkflowSaving" @click="submitEditWorkflow">
+          <button class="approved-request-action-button approved-request-action-button--edit" type="button" :disabled="isWorkflowEditorLoading || isWorkflowSaving || !hasWorkflowChanges" @click="submitEditWorkflow">
             {{ isWorkflowSaving ? 'Saving...' : 'Save Changes' }}
           </button>
         </footer>
@@ -432,6 +458,7 @@
 
 <script setup>
 import { ref, onMounted, computed, reactive, onBeforeUnmount } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ApprovedRequests.css';
@@ -470,6 +497,7 @@ const workflowInitialSnapshot = ref('[]');
 let workflowTaskCounter = 0;
 
 const approvedRequestsList = computed(() => requestStore.approvedRequestsList || []);
+const hasWorkflowChanges = computed(() => serializeWorkflowTasks(workflowTasks.value) !== workflowInitialSnapshot.value);
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim().toLowerCase();
@@ -498,6 +526,7 @@ function handleDeployRelease(requestRecord) {
 }
 
 async function handleEditWorkflow(requestRecord) {
+  selectedRequestRecord.value = null;
   editRequestRecord.value = requestRecord;
   workflowEditorError.value = '';
   workflowEditorNotice.value = '';
@@ -526,6 +555,12 @@ async function submitEditWorkflow() {
     return;
   }
 
+  if (!hasWorkflowChanges.value) {
+    workflowEditorNotice.value = 'No workflow changes to save.';
+    workflowEditorError.value = '';
+    return;
+  }
+
   const validationError = validateWorkflowTasks();
   if (validationError) {
     workflowEditorError.value = validationError;
@@ -551,6 +586,7 @@ async function submitEditWorkflow() {
 
     await requestStore.fetchReservations();
     syncEditedRequestAssignmentSummary();
+    workflowInitialSnapshot.value = serializeWorkflowTasks(workflowTasks.value);
     closeEditModal();
   } catch (error) {
     workflowEditorError.value = error?.message || 'Unable to save workflow changes.';
@@ -724,6 +760,7 @@ async function loadWorkflowTasks(requestRecord) {
 
 function addWorkflowTaskRow() {
   workflowTasks.value.push(createEmptyWorkflowTask());
+  workflowEditorNotice.value = '';
 }
 
 function removeWorkflowTaskRow(localId) {
@@ -731,6 +768,7 @@ function removeWorkflowTaskRow(localId) {
   if (workflowTasks.value.length === 0) {
     workflowTasks.value = [createEmptyWorkflowTask()];
   }
+  workflowEditorNotice.value = '';
 }
 
 function validateWorkflowTasks() {
@@ -892,14 +930,28 @@ function resetWorkflowDraftsOnTabChange() {
     return;
   }
 
-  if (serializeWorkflowTasks(workflowTasks.value) !== workflowInitialSnapshot.value) {
-    workflowTasks.value = JSON.parse(workflowInitialSnapshot.value).map((workflowTask) => ({
-      ...workflowTask,
-      localId: createWorkflowLocalId(),
-    }));
-    workflowEditorError.value = '';
-    workflowEditorNotice.value = 'Unsaved workflow inputs were cleared after switching tabs.';
+  restoreWorkflowDrafts('Unsaved workflow inputs were cleared after switching tabs.');
+}
+
+function resetWorkflowDraftsOnWindowBlur() {
+  if (!editRequestRecord.value || isWorkflowSaving.value) {
+    return;
   }
+
+  restoreWorkflowDrafts('Unsaved workflow inputs were cleared after switching tabs.');
+}
+
+function restoreWorkflowDrafts(noticeMessage) {
+  if (serializeWorkflowTasks(workflowTasks.value) === workflowInitialSnapshot.value) {
+    return;
+  }
+
+  workflowTasks.value = JSON.parse(workflowInitialSnapshot.value).map((workflowTask) => ({
+    ...workflowTask,
+    localId: createWorkflowLocalId(),
+  }));
+  workflowEditorError.value = '';
+  workflowEditorNotice.value = noticeMessage;
 }
 
 function createWorkflowLocalId() {
@@ -908,8 +960,16 @@ function createWorkflowLocalId() {
 }
 
 document.addEventListener('visibilitychange', resetWorkflowDraftsOnTabChange);
+window.addEventListener('blur', resetWorkflowDraftsOnWindowBlur);
+
+onBeforeRouteLeave(() => {
+  if (editRequestRecord.value && !isWorkflowSaving.value) {
+    restoreWorkflowDrafts('Unsaved workflow inputs were cleared after leaving the page.');
+  }
+});
 
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', resetWorkflowDraftsOnTabChange);
+  window.removeEventListener('blur', resetWorkflowDraftsOnWindowBlur);
 });
 </script>
