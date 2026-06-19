@@ -155,10 +155,6 @@
                 <input v-model.trim="confirmForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
 
-              <label class="active-reservation-action-field">
-                <span>Password</span>
-                <input v-model="confirmForm.password" type="password" placeholder="Enter your password" />
-              </label>
             </div>
           </div>
         </div>
@@ -257,10 +253,6 @@
                 <input v-model.trim="reportForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
 
-              <label class="active-reservation-action-field">
-                <span>Password</span>
-                <input v-model="reportForm.password" type="password" placeholder="Enter your password" />
-              </label>
             </div>
           </div>
         </div>
@@ -298,12 +290,10 @@ const reportReservationRecord = ref(null);
 const confirmForm = reactive({
   remarks: '',
   adminEmail: '',
-  password: '',
 });
 const reportForm = reactive({
   remarks: '',
   adminEmail: '',
-  password: '',
 });
 
 const activeReservationsList = computed(() => requestStore.activeReservationsList || []);
@@ -382,18 +372,12 @@ async function submitConfirmReturn() {
     return;
   }
 
-  if (confirmForm.password.trim() === '') {
-    window.alert('Please type your admin password before confirming this return.');
-    return;
-  }
-
   try {
     await requestStore.completeActiveReservation(
       confirmReservationRecord.value,
       confirmForm.remarks.trim(),
       {
         confirmedAdminEmail: normalizeEmailForConfirmation(confirmForm.adminEmail),
-        confirmedAdminPassword: confirmForm.password,
       },
     );
     closeConfirmModal();
@@ -419,18 +403,12 @@ async function submitReportReservation() {
     return;
   }
 
-  if (reportForm.password.trim() === '') {
-    window.alert('Please type your admin password before submitting this report.');
-    return;
-  }
-
   try {
     await requestStore.cancelActiveReservation(
       reportReservationRecord.value,
       reportForm.remarks.trim(),
       {
         confirmedAdminEmail: normalizeEmailForConfirmation(reportForm.adminEmail),
-        confirmedAdminPassword: reportForm.password,
       },
     );
     closeReportModal();
@@ -444,14 +422,12 @@ function closeConfirmModal() {
   confirmReservationRecord.value = null;
   confirmForm.remarks = '';
   confirmForm.adminEmail = '';
-  confirmForm.password = '';
 }
 
 function closeReportModal() {
   reportReservationRecord.value = null;
   reportForm.remarks = '';
   reportForm.adminEmail = '';
-  reportForm.password = '';
 }
 
 function validateAdminEmailConfirmation(emailValue, actionName) {
