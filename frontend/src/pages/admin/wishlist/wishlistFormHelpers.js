@@ -8,7 +8,7 @@ export function validateAdminAccountForm(form) {
   const emailAddress = form.emailAddress.trim().toLowerCase();
 
   if (!validateRequiredIdNumber(idNumber)) {
-    return 'ID number is required.';
+    return 'ID number must be exactly 10 digits.';
   }
 
   if (!validatePersonName(lastName)) {
@@ -20,7 +20,7 @@ export function validateAdminAccountForm(form) {
   }
 
   if (!isAllowedAdminEmail(emailAddress)) {
-    return 'Admin account must use a valid @feutech.edu.ph email address. For testing, @fit.edu.ph is also allowed.';
+    return 'Admin account must use a valid @feutech.edu.ph email address.';
   }
 
   return '';
@@ -79,6 +79,10 @@ export function validateUserAccountForm(form) {
     return 'Last name, first name, email, ID number, role, and password are required.';
   }
 
+  if (!validateRequiredIdNumber(idNumber)) {
+    return 'ID number must be exactly 10 digits.';
+  }
+
   if (!filterEmailAddress(emailAddress)) {
     return 'Please provide a valid email address.';
   }
@@ -118,6 +122,10 @@ export function validateEmployeeAccountForm(form) {
 
   if (idNumber === '') {
     return 'Work ID number is required.';
+  }
+
+  if (!validateRequiredIdNumber(idNumber)) {
+    return 'Work ID number must be exactly 10 digits.';
   }
 
   if (!/^9\d{9}$/.test(phone)) {

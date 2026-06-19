@@ -153,44 +153,59 @@ class ReservationController extends AbstractController
     // Returns: JsonResponse
 
     #[Route('/{reservationIdentifier}/status', name: 'reservation_update_status', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function updateReservationStatus(int $reservationIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-        $newStatus = $requestBody['currentStatus'] ?? '';
-        $rejectionReason = $requestBody['rejectionReason'] ?? null;
-        $confirmedAdminEmail = (string)($requestBody['confirmedAdminEmail'] ?? '');
-        $confirmedAdminPassword = (string)($requestBody['confirmedAdminPassword'] ?? '');
-        $identity = $request->attributes->get('authenticatedIdentity', []);
-        $authenticatedAdminId = (int)($identity['accountIdentifier'] ?? 0);
+        try {
+            $requestBody = json_decode($request->getContent(), true) ?? [];
+            $newStatus = $requestBody['currentStatus'] ?? '';
+            $rejectionReason = $requestBody['rejectionReason'] ?? null;
+            $resolvedRole = (string)$request->attributes->get('resolvedRole', '');
+            $identity = $request->attributes->get('authenticatedIdentity', []);
+            $accountIdentifier = (int)($identity['accountIdentifier'] ?? 0);
+            $confirmedAdminEmail = (string)($requestBody['confirmedAdminEmail'] ?? '');
+            $confirmedAdminPassword = (string)($requestBody['confirmedAdminPassword'] ?? '');
 
-        if ($newStatus === 'Approved') {
-            $emailError = $this->adminSecurityConfirmationService->validateAdminEmail(
-                $authenticatedAdminId,
-                $confirmedAdminEmail,
-                'approving'
+            if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
+                if ($newStatus === 'Approved') {
+                    $emailError = $this->adminSecurityConfirmationService->validateAdminEmail(
+                        $accountIdentifier,
+                        $confirmedAdminEmail,
+                        'approving'
+                    );
+
+                    if ($emailError !== null) {
+                        return $this->createErrorResponse('SecurityConfirmationFailed', $emailError, 422);
+                    }
+                }
+
+                if ($newStatus === 'Rejected') {
+                    $credentialError = $this->adminSecurityConfirmationService->validateAdminCredentials(
+                        $accountIdentifier,
+                        $confirmedAdminEmail,
+                        $confirmedAdminPassword,
+                        'denying'
+                    );
+
+                    if ($credentialError !== null) {
+                        return $this->createErrorResponse('SecurityConfirmationFailed', $credentialError, 422);
+                    }
+                }
+            }
+
+            $responseDTO = $this->reservationReviewService->updateReservationStatusForActor(
+                $reservationIdentifier,
+                $newStatus,
+                $resolvedRole,
+                $accountIdentifier,
+                $rejectionReason
             );
 
-            if ($emailError !== null) {
-                return $this->createErrorResponse('SecurityConfirmationFailed', $emailError, 422);
-            }
+            return $this->createSuccessResponse($responseDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('ReservationNotFound', $exception->getMessage(), 404);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('ReservationStatusUpdateDenied', $exception->getMessage(), 422);
         }
-
-        if ($newStatus === 'Rejected') {
-            $credentialError = $this->adminSecurityConfirmationService->validateAdminCredentials(
-                $authenticatedAdminId,
-                $confirmedAdminEmail,
-                $confirmedAdminPassword,
-                'denying'
-            );
-
-            if ($credentialError !== null) {
-                return $this->createErrorResponse('SecurityConfirmationFailed', $credentialError, 422);
-            }
-        }
-
-        $responseDTO = $this->reservationReviewService->updateReservationStatus($reservationIdentifier, $newStatus, $rejectionReason);
-
-        return $this->createSuccessResponse($responseDTO->toResponseArray());
     }
 }

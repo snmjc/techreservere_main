@@ -5,9 +5,6 @@
   >
     <section class="borrower-reservation-page">
       <div class="borrower-reservation-topline">
-        <button type="button" aria-label="Back" @click="navigateToPreviousPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
         <h1>Create Reservation</h1>
       </div>
 
@@ -26,9 +23,10 @@
                   <div>
                     <strong>{{ documentItem.label }}</strong>
                     <span>{{ getDocumentFileName(documentItem.key) }}</span>
+                    <small v-if="requiredDocumentErrors[documentItem.key]" class="reservation-document-item-error">{{ requiredDocumentErrors[documentItem.key] }}</small>
                   </div>
                   <button type="button" @click="triggerFileInput(documentItem.key)">Upload</button>
-                  <input :ref="(node) => setFileInputRef(documentItem.key, node)" type="file" hidden @change="handleRequiredDocumentUpload(documentItem.key, $event)" />
+                  <input :ref="(node) => setFileInputRef(documentItem.key, node)" type="file" :accept="allowedDocumentAccept" hidden @change="handleRequiredDocumentUpload(documentItem.key, $event)" />
                 </article>
               </section>
 
@@ -39,10 +37,11 @@
                   <p>Drag and drop files here or click to browse</p>
                   <small>PDF, DOC, DOCX, JPG, PNG. Max 10MB per file.</small>
                 </div>
-                <input ref="optionalInputRef" type="file" hidden multiple @change="handleOptionalDocumentsUpload" />
+                <input ref="optionalInputRef" type="file" :accept="allowedDocumentAccept" hidden multiple @change="handleOptionalDocumentsUpload" />
                 <div v-if="additionalDocuments.length" class="reservation-documents-optional-list">
                   <span v-for="documentFile in additionalDocuments" :key="documentFile.documentFileName">{{ documentFile.documentFileName }}</span>
                 </div>
+                <p v-if="optionalDocumentsError" class="reservation-documents-error">{{ optionalDocumentsError }}</p>
                 <div class="borrower-reservation-note">
                   <strong>Note</strong>
                   <p>Please ensure all uploaded files are clear and complete.</p>
@@ -55,8 +54,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--secondary" type="button" @click="navigateToPreviousPage">
               Previous
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="navigateToNextPage">
-              Next: Review Summary
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="navigateToNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Review Summary' }}
             </button>
           </footer>
         </section>
@@ -66,7 +65,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -75,11 +74,20 @@ import './css/CreateReservationWizard.css';
 import './css/CreateReservationDocuments.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
+import {
+  getReservationDocumentAcceptValue,
+  validateReservationDocumentFile,
+} from './reservationDocumentHelpers.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
 const optionalInputRef = ref(null);
 const fileInputRefs = ref({});
+const allowedDocumentAccept = getReservationDocumentAcceptValue();
+const optionalDocumentsError = ref('');
+const requiredDocumentErrors = reactive({});
+const isStepLoading = ref(false);
 
 const requiredDocumentItems = [
   { key: 'proposal', label: 'Activity Proposal' },
@@ -91,6 +99,12 @@ const requiredDocumentItems = [
 const supportingDocuments = computed(() => reservationFormStore.supportingDocumentsList || []);
 const recommendationDocuments = computed(() => reservationFormStore.recommendationDocumentsList || []);
 const additionalDocuments = computed(() => reservationFormStore.additionalDocumentsList || []);
+
+onMounted(() => {
+  if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+  }
+});
 
 function setFileInputRef(key, node) {
   if (!node) return;
@@ -108,8 +122,16 @@ function triggerOptionalInput() {
 function handleRequiredDocumentUpload(key, event) {
   const [file] = event.target.files || [];
   if (!file) return;
+  const validationError = validateReservationDocumentFile(file);
+
+  if (validationError) {
+    requiredDocumentErrors[key] = validationError;
+    event.target.value = '';
+    return;
+  }
 
   const payload = { documentKey: key, documentFileName: file.name };
+  requiredDocumentErrors[key] = '';
 
   if (key === 'recommendation') {
     reservationFormStore.recommendationDocumentsList = [payload];
@@ -123,6 +145,15 @@ function handleRequiredDocumentUpload(key, event) {
 
 function handleOptionalDocumentsUpload(event) {
   const files = Array.from(event.target.files || []);
+  const invalidFile = files.find((file) => validateReservationDocumentFile(file));
+
+  if (invalidFile) {
+    optionalDocumentsError.value = validateReservationDocumentFile(invalidFile);
+    event.target.value = '';
+    return;
+  }
+
+  optionalDocumentsError.value = '';
   reservationFormStore.additionalDocumentsList = files.map((file) => ({
     documentFileName: file.name,
   }));
@@ -142,6 +173,10 @@ function navigateToPreviousPage() {
 }
 
 function navigateToNextPage() {
-  router.push({ name: 'borrowerCreateReservationSummaryPage' });
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationSummaryPage' });
+  }, 250);
 }
 </script>

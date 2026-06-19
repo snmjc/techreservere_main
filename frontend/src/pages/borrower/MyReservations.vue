@@ -109,7 +109,7 @@
                   <path d="M8 18h8" />
                 </svg>
               </span>
-              View active reservations
+              View all requests
             </button>
             <button type="button" @click="navigateToPastRecords">
               <span class="my-reservations-action-icon" aria-hidden="true">

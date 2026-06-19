@@ -5,9 +5,6 @@
   >
     <section class="borrower-reservation-page">
       <div class="borrower-reservation-topline">
-        <button type="button" aria-label="Back" @click="navigateToPreviousPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
         <h1>Create Reservation</h1>
       </div>
 
@@ -53,8 +50,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--secondary" type="button" @click="navigateToPreviousPage">
               Previous
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="navigateToNextPage">
-              Next: Supporting Documents
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="navigateToNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Supporting Documents' }}
             </button>
           </footer>
         </section>
@@ -64,7 +61,7 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -72,13 +69,21 @@ import '@/shared/components/adminSidebarLayout.css';
 import './css/CreateReservationWizard.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
+const isStepLoading = ref(false);
 
 const formState = reactive({
   securityGuardCount: reservationFormStore.securityGuardCount || 'None',
   securityCrewCount: reservationFormStore.securityCrewCount || 'None',
+});
+
+onMounted(() => {
+  if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+  }
 });
 
 function navigateToPreviousPage() {
@@ -88,6 +93,10 @@ function navigateToPreviousPage() {
 function navigateToNextPage() {
   reservationFormStore.securityGuardCount = formState.securityGuardCount;
   reservationFormStore.securityCrewCount = formState.securityCrewCount;
-  router.push({ name: 'borrowerCreateReservationDocumentsPage' });
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationDocumentsPage' });
+  }, 250);
 }
 </script>

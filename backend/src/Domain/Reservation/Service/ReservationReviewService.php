@@ -99,6 +99,43 @@ class ReservationReviewService
         return $this->transformEntityToDTO($entity);
     }
 
+    public function updateReservationStatusForActor(
+        int $reservationIdentifier,
+        string $newStatus,
+        string $resolvedRole,
+        int $accountIdentifier,
+        ?string $reason = null
+    ): ReservationResponseDTO {
+        $entity = $this->reservationRepository->find($reservationIdentifier);
+        if ($entity === null) {
+            throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
+        }
+
+        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+            return $this->updateReservationStatus($reservationIdentifier, $newStatus, $reason);
+        }
+
+        if ($resolvedRole !== RoleConstants::ROLE_BORROWER || $entity->getBorrowerAccountId() !== $accountIdentifier) {
+            throw new DomainValidationException('You are not allowed to update this reservation.');
+        }
+
+        if ($newStatus !== 'Cancelled') {
+            throw new DomainValidationException('Borrowers can only cancel their own reservation requests.');
+        }
+
+        $allowedBorrowerStatuses = ['Pending Review', 'Pending', 'Submitted'];
+        if (!in_array($entity->getCurrentStatus(), $allowedBorrowerStatuses, true)) {
+            throw new DomainValidationException('Only submitted or pending reservation requests can be cancelled.');
+        }
+
+        $entity->setCurrentStatus('Cancelled');
+        $entity->setRejectionReason($reason ?: 'Cancelled by requester');
+
+        $this->reservationRepository->persistReservation($entity);
+
+        return $this->transformEntityToDTO($entity);
+    }
+
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
     {
         [$borrowerFirstName, $borrowerLastName, $borrowerFullName, $borrowerEmailAddress, $borrowerContactNumber] = $this->resolveBorrowerDetails($entity);

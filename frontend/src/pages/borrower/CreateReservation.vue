@@ -5,9 +5,6 @@
   >
     <section class="borrower-reservation-page">
       <div class="borrower-reservation-topline">
-        <button type="button" aria-label="Back" @click="router.push({ name: ROUTE_NAMES.borrowerMyReservations })">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
         <h1>Create Reservation</h1>
       </div>
 
@@ -22,23 +19,27 @@
             <div class="borrower-reservation-grid">
               <div class="borrower-reservation-field">
                 <label for="requestDate">Request Date <em>*</em></label>
-                <input id="requestDate" v-model="formState.requestDate" type="date" />
+                <input id="requestDate" v-model="formState.requestDate" type="date" :min="todayIsoDate" :max="yearEndIsoDate" />
+                <small v-if="validationErrors.requestDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.requestDate }}</small>
               </div>
 
               <div class="borrower-reservation-field">
                 <label for="participantCount">No. of Participants <em>*</em></label>
-                <input id="participantCount" v-model="formState.participantCount" type="number" min="1" placeholder="Enter estimated participants" />
-                <small class="borrower-reservation-help">Enter the estimated number of participants.</small>
+                <input id="participantCount" v-model="formState.participantCount" type="number" min="1" max="500" placeholder="Enter estimated participants" />
+                <small class="borrower-reservation-help">Enter the estimated number of participants. Maximum: 500.</small>
+                <small v-if="validationErrors.participantCount" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.participantCount }}</small>
               </div>
 
               <div class="borrower-reservation-field">
                 <label for="activityDate">Activity Start Date <em>*</em></label>
-                <input id="activityDate" v-model="formState.activityDate" type="date" :min="formState.requestDate || todayIsoDate" @change="handleActivityDateChange" />
+                <input id="activityDate" v-model="formState.activityDate" type="date" :min="activityStartMinDate" :max="yearEndIsoDate" @change="handleActivityDateChange" />
+                <small v-if="validationErrors.activityDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityDate }}</small>
               </div>
 
               <div class="borrower-reservation-field">
                 <label for="activityEndDate">Activity End Date <em>*</em></label>
-                <input id="activityEndDate" v-model="formState.activityEndDate" type="date" :min="formState.activityDate || formState.requestDate || todayIsoDate" @change="handleActivityEndDateChange" />
+                <input id="activityEndDate" v-model="formState.activityEndDate" type="date" :min="activityEndMinDate" :max="yearEndIsoDate" @change="handleActivityEndDateChange" />
+                <small v-if="validationErrors.activityEndDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityEndDate }}</small>
               </div>
 
               <div class="borrower-reservation-field">
@@ -198,12 +199,15 @@
                     </div>
                   </div>
                 </div>
+                <small class="borrower-reservation-help">Choose a start and end time for the activity.</small>
+                <small v-if="validationErrors.activityTime" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityTime }}</small>
               </div>
 
               <div class="borrower-reservation-field">
                 <label for="activityNameTitle">Activity Name / Title <em>*</em></label>
                 <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" placeholder="IT0003 Presentation" />
                 <small class="borrower-reservation-help">Enter a short title for your activity or event.</small>
+                <small v-if="validationErrors.activityNameTitle" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityNameTitle }}</small>
               </div>
 
               <div class="borrower-reservation-note">
@@ -218,6 +222,7 @@
                   <option v-for="option in purposeOptions" :key="option" :value="option">{{ option }}</option>
                 </select>
                 <small class="borrower-reservation-help">Select the main purpose of your reservation.</small>
+                <small v-if="validationErrors.purposeText" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.purposeText }}</small>
               </div>
             </div>
           </div>
@@ -226,8 +231,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--ghost" type="button" @click="router.push({ name: ROUTE_NAMES.borrowerMyReservations })">
               Cancel
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="handleNextPage">
-              Next: Select Venue / Equipment
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="handleNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Select Venue / Equipment' }}
             </button>
           </footer>
         </section>
@@ -237,7 +242,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -251,6 +256,7 @@ import { ROUTE_NAMES } from '@/router/routeNames.js';
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
 const todayIsoDate = getTodayISODate();
+const yearEndIsoDate = getCurrentYearEndISODate();
 
 const purposeOptions = [
   'Academic Class',
@@ -274,6 +280,16 @@ const timePickerPeriods = ['AM', 'PM'];
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
+const isStepLoading = ref(false);
+const validationErrors = reactive({
+  requestDate: '',
+  participantCount: '',
+  activityDate: '',
+  activityEndDate: '',
+  activityTime: '',
+  activityNameTitle: '',
+  purposeText: '',
+});
 
 const formState = ref({
   requestDate: reservationFormStore.requestDate || todayIsoDate,
@@ -289,6 +305,8 @@ const formState = ref({
 
 const selectedStartTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeFrom, 'Choose a start time'));
 const selectedEndTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeTo, 'Choose an end time'));
+const activityStartMinDate = computed(() => maxIsoDate(todayIsoDate, formState.value.requestDate || todayIsoDate));
+const activityEndMinDate = computed(() => maxIsoDate(activityStartMinDate.value, formState.value.activityDate || activityStartMinDate.value));
 const startTimeDraft = ref(createTimeDraft(formState.value.activityTimeFrom || '07:00'));
 const endTimeDraft = ref(createTimeDraft(formState.value.activityTimeTo || '07:30'));
 
@@ -302,7 +320,16 @@ onBeforeUnmount(() => {
 
 function getTodayISODate() {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function getCurrentYearEndISODate() {
+  const today = new Date();
+  return `${today.getFullYear()}-12-31`;
 }
 
 function createTimeDraft(timeValue) {
@@ -390,6 +417,10 @@ function handleGlobalPointerDown(event) {
 }
 
 function handleActivityDateChange() {
+  if (formState.value.activityDate && formState.value.activityDate < activityStartMinDate.value) {
+    formState.value.activityDate = activityStartMinDate.value;
+  }
+
   if (!formState.value.activityEndDate || formState.value.activityEndDate < formState.value.activityDate) {
     formState.value.activityEndDate = formState.value.activityDate;
   }
@@ -405,6 +436,10 @@ function handleActivityDateChange() {
 }
 
 function handleActivityEndDateChange() {
+  if (formState.value.activityEndDate && formState.value.activityEndDate < activityEndMinDate.value) {
+    formState.value.activityEndDate = activityEndMinDate.value;
+  }
+
   if (
     formState.value.activityDate === formState.value.activityEndDate &&
     formState.value.activityTimeFrom &&
@@ -416,25 +451,7 @@ function handleActivityEndDateChange() {
 }
 
 function handleNextPage() {
-  if (
-    !formState.value.requestDate ||
-    !formState.value.activityDate ||
-    !formState.value.activityEndDate ||
-    !formState.value.activityTimeFrom ||
-    !formState.value.activityTimeTo ||
-    !formState.value.activityNameTitle.trim() ||
-    !formState.value.purposeText ||
-    !String(formState.value.participantCount).trim()
-  ) {
-    alert('Please complete all required reservation details first.');
-    return;
-  }
-
-  const startDateTime = new Date(`${formState.value.activityDate}T${formState.value.activityTimeFrom}`);
-  const endDateTime = new Date(`${formState.value.activityEndDate}T${formState.value.activityTimeTo}`);
-
-  if (endDateTime <= startDateTime) {
-    alert('End date and time must be later than the start date and time.');
+  if (!validateReservationDetails()) {
     return;
   }
 
@@ -447,8 +464,72 @@ function handleNextPage() {
   reservationFormStore.purposeText = formState.value.purposeText;
   reservationFormStore.participantCount = String(formState.value.participantCount);
   reservationFormStore.reservationType = formState.value.reservationType;
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationVenuePage' });
+  }, 250);
+}
 
-  router.push({ name: 'borrowerCreateReservationVenuePage' });
+function validateReservationDetails() {
+  clearValidationErrors();
+
+  if (!isWithinAllowedReservationDate(formState.value.requestDate)) {
+    validationErrors.requestDate = 'Request date must be between today and December 31 of the current year.';
+  }
+
+  const participantCount = Number(formState.value.participantCount);
+  if (!String(formState.value.participantCount).trim()) {
+    validationErrors.participantCount = 'Participant count is required.';
+  } else if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
+    validationErrors.participantCount = 'Participant count must be a whole number from 1 to 500.';
+  }
+
+  if (!isWithinAllowedReservationDate(formState.value.activityDate)) {
+    validationErrors.activityDate = 'Activity start date must be between today and December 31 of the current year.';
+  } else if (formState.value.activityDate < activityStartMinDate.value) {
+    validationErrors.activityDate = 'Activity start date cannot be earlier than the request date.';
+  }
+
+  if (!isWithinAllowedReservationDate(formState.value.activityEndDate)) {
+    validationErrors.activityEndDate = 'Activity end date must be between today and December 31 of the current year.';
+  } else if (formState.value.activityEndDate < activityEndMinDate.value) {
+    validationErrors.activityEndDate = 'Activity end date cannot be earlier than the activity start date.';
+  }
+
+  if (!formState.value.activityTimeFrom || !formState.value.activityTimeTo) {
+    validationErrors.activityTime = 'Start time and end time are required.';
+  } else {
+    const startDateTime = new Date(`${formState.value.activityDate}T${formState.value.activityTimeFrom}`);
+    const endDateTime = new Date(`${formState.value.activityEndDate}T${formState.value.activityTimeTo}`);
+    if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
+      validationErrors.activityTime = 'End time must be later than the start time.';
+    }
+  }
+
+  if (!formState.value.activityNameTitle.trim()) {
+    validationErrors.activityNameTitle = 'Activity name or title is required.';
+  }
+
+  if (!formState.value.purposeText) {
+    validationErrors.purposeText = 'Purpose is required.';
+  }
+
+  return Object.values(validationErrors).every((value) => value === '');
+}
+
+function clearValidationErrors() {
+  Object.keys(validationErrors).forEach((key) => {
+    validationErrors[key] = '';
+  });
+}
+
+function isWithinAllowedReservationDate(value) {
+  return typeof value === 'string' && value >= todayIsoDate && value <= yearEndIsoDate;
+}
+
+function maxIsoDate(leftValue, rightValue) {
+  return leftValue > rightValue ? leftValue : rightValue;
 }
 function parseTimeToMinutes(timeValue) {
   const [hours, minutes] = String(timeValue).split(':').map(Number);

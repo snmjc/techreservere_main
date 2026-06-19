@@ -32,14 +32,15 @@ class ReservationCreateService
     public function createReservation(int $borrowerAccountId, ReservationCreateRequestDTO $requestDTO): ReservationResponseDTO
     {
         $this->ensureReservationSchemaReady();
+        $today = new \DateTimeImmutable('today');
+        $currentYearEnd = new \DateTimeImmutable($today->format('Y') . '-12-31 23:59:59');
 
         if (empty($requestDTO->organizationName)) {
             throw new DomainValidationException('Organization name is required.');
         }
-        // Allow empty equipment list for venue-only reservations
-        // if (empty($requestDTO->requestedEquipmentList)) {
-        //     throw new DomainValidationException('At least one equipment must be requested.');
-        // }
+        if ($requestDTO->requestedQuantity < 1 || $requestDTO->requestedQuantity > 500) {
+            throw new DomainValidationException('Participant count must be between 1 and 500.');
+        }
         if (empty($requestDTO->eventDateTime)) {
             throw new DomainValidationException('Event date and time is required.');
         }
@@ -56,6 +57,21 @@ class ReservationCreateService
 
         if ($endDateTime <= $eventDateTime) {
             throw new DomainValidationException('Reservation end time must be after the start time.');
+        }
+
+        if ($eventDateTime < $today || $endDateTime < $today) {
+            throw new DomainValidationException('Reservation dates must not be earlier than today.');
+        }
+
+        if ($eventDateTime > $currentYearEnd || $endDateTime > $currentYearEnd) {
+            throw new DomainValidationException('Reservation dates must be within the current year.');
+        }
+
+        foreach ($requestDTO->requestedEquipmentList as $equipmentItem) {
+            $requestedQuantity = (int)($equipmentItem['quantity'] ?? 0);
+            if ($requestedQuantity <= 0) {
+                throw new DomainValidationException('Each requested equipment quantity must be at least 1.');
+            }
         }
 
         $reservationCode = $this->reservationRepository->generateReservationCode();

@@ -55,7 +55,7 @@ export function useCustomSignUpPage() {
   const invitationCopy = computed(() => (
     isInvitationMode.value
       ? 'Finish setting your password so your invited account can be activated immediately.'
-      : 'Use your official FIT email and institutional details.'
+      : 'Use your official @fit.edu.ph or @feutech.edu.ph email and institutional details.'
   ));
 
   watch(
@@ -242,9 +242,9 @@ export function useCustomSignUpPage() {
     }
 
     if (!formData.value.fitEmailAddress.trim()) {
-      errors.value.fitEmailAddress = 'FIT email address is required.';
-    } else if (!isFitEmail(formData.value.fitEmailAddress)) {
-      errors.value.fitEmailAddress = 'Please use your official @fit.edu.ph email address.';
+      errors.value.fitEmailAddress = 'Institutional email address is required.';
+    } else if (!isInstitutionalUserEmail(formData.value.fitEmailAddress)) {
+      errors.value.fitEmailAddress = 'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.';
     }
   }
 
@@ -300,8 +300,8 @@ function isValidName(value) {
   return /^[A-Za-z][A-Za-z .'-]*$/.test(value.trim());
 }
 
-function isFitEmail(value) {
-  return /^[^\s@]+@fit\.edu\.ph$/i.test(value.trim());
+function isInstitutionalUserEmail(value) {
+  return /^[^\s@]+@(fit|feutech)\.edu\.ph$/i.test(value.trim());
 }
 
 function isStrongPassword(value) {

@@ -8,6 +8,8 @@
 // 3. Export router instance
 
 import { createRouter, createWebHistory } from 'vue-router';
+import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { isReservationWizardRoute } from '@/modules/reservation/utils/reservationWizard.js';
 import { routeDefinitions } from './routes.js';
 import { evaluateRouteAccessGuard } from './accessGuard.js';
 
@@ -22,6 +24,15 @@ const applicationRouter = createRouter({
 
 applicationRouter.beforeEach((toRoute, fromRoute) => {
   return evaluateRouteAccessGuard(toRoute, fromRoute);
+});
+
+applicationRouter.afterEach((toRoute, fromRoute) => {
+  if (!isReservationWizardRoute(fromRoute.name) || isReservationWizardRoute(toRoute.name)) {
+    return;
+  }
+
+  const reservationFormStore = useReservationFormStore();
+  reservationFormStore.resetForm();
 });
 
 applicationRouter.onError((error, toRoute) => {

@@ -79,8 +79,8 @@ function mapReservationRecord(reservation) {
   const requestedEquipmentList = Array.isArray(reservation?.requestedEquipmentList)
     ? reservation.requestedEquipmentList
     : [];
-  const hasVenue = Boolean(reservation?.venueIdentifier || reservation?.venueName || reservation?.facilityName);
-  const hasEquipment = requestedEquipmentList.length > 0;
+  const reservationSummary = mapRequestedEquipment(requestedEquipmentList);
+  const requestType = resolveRequestType(reservation, requestedEquipmentList);
 
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
@@ -94,17 +94,34 @@ function mapReservationRecord(reservation) {
     requestScheduleStart: reservation?.eventDateTime || null,
     requestScheduleEnd: reservation?.endDateTime || null,
     requestQuantity: reservation?.requestedQuantity || 0,
-    requestType: resolveRequestType(hasVenue, hasEquipment),
+    requestType,
     requestPurpose: reservation?.purposeDescription || 'N/A',
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
+    neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityTime: reservation?.activityTimeRange || reservation?.eventDateTime || 'N/A',
+    activityEndTime: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
-    reservationSummary: mapRequestedEquipment(reservation?.requestedEquipmentList),
+    cancellationReason: reservation?.rejectionReason || '',
+    remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
+    uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
+    reservationSummary,
   };
+}
+
+function resolveRequestType(reservation, requestedEquipmentList) {
+  if (reservation?.venueIdentifier && requestedEquipmentList.length > 0) {
+    return 'Both';
+  }
+
+  if (requestedEquipmentList.length > 0) {
+    return 'Equipment';
+  }
+
+  return 'Venue';
 }
 
 function resolveRequesterFullName(reservation) {
@@ -148,14 +165,28 @@ function mapRequestedEquipment(requestedEquipmentList = []) {
   }));
 }
 
-function resolveRequestType(hasVenue, hasEquipment) {
-  if (hasVenue && hasEquipment) {
-    return 'Both';
+function mapUploadedDocuments(supportingDocuments = []) {
+  const documentList = Array.isArray(supportingDocuments) ? supportingDocuments : [];
+
+  return documentList.map((documentFile, index) => ({
+    fileName: typeof documentFile === 'string' ? documentFile : `Document ${index + 1}`,
+  }));
+}
+
+function buildReservationRemark(reservation) {
+  const status = String(reservation?.currentStatus || 'Unknown');
+
+  if (status === 'Completed') {
+    return 'Reservation was completed successfully.';
   }
 
-  if (hasEquipment) {
-    return 'Equipment';
+  if (status === 'Cancelled') {
+    return 'Reservation was cancelled before completion.';
   }
 
-  return 'Venue';
+  if (status === 'Rejected') {
+    return 'Reservation request was rejected during review.';
+  }
+
+  return `Reservation is currently marked as ${status}.`;
 }

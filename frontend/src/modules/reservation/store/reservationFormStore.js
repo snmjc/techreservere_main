@@ -1,30 +1,93 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import {
+  clearReservationWizardCache,
+  readReservationWizardCache,
+  writeReservationWizardCache,
+} from '@/modules/reservation/utils/reservationWizard.js';
 
 /**
  * @description Shared Pinia store for the multi-step reservation form.
  * Persists form state (especially reservationType) across Page 1 → Page 2 → Page 3.
  */
 export const useReservationFormStore = defineStore('reservationFormStore', () => {
-  const reservationType = ref('Venue');
-  const requestDate = ref('');
-  const activityDate = ref('');
-  const activityEndDate = ref('');
-  const activityTimeFrom = ref('');
-  const activityTimeTo = ref('');
-  const activityNameTitle = ref('');
-  const purposeText = ref('');
-  const departmentName = ref('');
-  const participantCount = ref('');
-  const selectedVenueName = ref(null);
-  const selectedVenueRecord = ref(null);
-  const selectedEquipmentItems = ref([]);
-  const securityGuardCount = ref('None');
-  const securityCrewCount = ref('None');
-  const supportingDocumentsList = ref([]);
-  const recommendationDocumentsList = ref([]);
-  const additionalDocumentsList = ref([]);
-  const documentType = ref('Reservation');
+  const cachedState = readReservationWizardCache() || {};
+  const reservationType = ref(cachedState.reservationType || 'Venue');
+  const requestDate = ref(cachedState.requestDate || '');
+  const activityDate = ref(cachedState.activityDate || '');
+  const activityEndDate = ref(cachedState.activityEndDate || '');
+  const activityTimeFrom = ref(cachedState.activityTimeFrom || '');
+  const activityTimeTo = ref(cachedState.activityTimeTo || '');
+  const activityNameTitle = ref(cachedState.activityNameTitle || '');
+  const purposeText = ref(cachedState.purposeText || '');
+  const departmentName = ref(cachedState.departmentName || '');
+  const participantCount = ref(cachedState.participantCount || '');
+  const selectedVenueName = ref(cachedState.selectedVenueName || null);
+  const selectedVenueRecord = ref(cachedState.selectedVenueRecord || null);
+  const selectedEquipmentItems = ref(Array.isArray(cachedState.selectedEquipmentItems) ? cachedState.selectedEquipmentItems : []);
+  const securityGuardCount = ref(cachedState.securityGuardCount || 'None');
+  const securityCrewCount = ref(cachedState.securityCrewCount || 'None');
+  const supportingDocumentsList = ref(Array.isArray(cachedState.supportingDocumentsList) ? cachedState.supportingDocumentsList : []);
+  const recommendationDocumentsList = ref(Array.isArray(cachedState.recommendationDocumentsList) ? cachedState.recommendationDocumentsList : []);
+  const additionalDocumentsList = ref(Array.isArray(cachedState.additionalDocumentsList) ? cachedState.additionalDocumentsList : []);
+  const documentType = ref(cachedState.documentType || 'Reservation');
+
+  function persistForm() {
+    writeReservationWizardCache({
+      reservationType: reservationType.value,
+      requestDate: requestDate.value,
+      activityDate: activityDate.value,
+      activityEndDate: activityEndDate.value,
+      activityTimeFrom: activityTimeFrom.value,
+      activityTimeTo: activityTimeTo.value,
+      activityNameTitle: activityNameTitle.value,
+      purposeText: purposeText.value,
+      departmentName: departmentName.value,
+      participantCount: participantCount.value,
+      selectedVenueName: selectedVenueName.value,
+      selectedVenueRecord: selectedVenueRecord.value,
+      selectedEquipmentItems: selectedEquipmentItems.value,
+      securityGuardCount: securityGuardCount.value,
+      securityCrewCount: securityCrewCount.value,
+      supportingDocumentsList: supportingDocumentsList.value,
+      recommendationDocumentsList: recommendationDocumentsList.value,
+      additionalDocumentsList: additionalDocumentsList.value,
+      documentType: documentType.value,
+    });
+  }
+
+  function clearWizardCache() {
+    clearReservationWizardCache();
+  }
+
+  function hasReservationDetails() {
+    return Boolean(
+      String(requestDate.value || '').trim()
+      && String(activityDate.value || '').trim()
+      && String(activityEndDate.value || '').trim()
+      && String(activityTimeFrom.value || '').trim()
+      && String(activityTimeTo.value || '').trim()
+      && String(activityNameTitle.value || '').trim()
+      && String(purposeText.value || '').trim()
+      && String(participantCount.value || '').trim()
+    );
+  }
+
+  function hasSelectionForCurrentType() {
+    if (reservationType.value === 'Venue') {
+      return Boolean(selectedVenueRecord.value?.venueIdentifier);
+    }
+
+    if (reservationType.value === 'Equipment') {
+      return selectedEquipmentItems.value.length > 0;
+    }
+
+    return Boolean(selectedVenueRecord.value?.venueIdentifier) && selectedEquipmentItems.value.length > 0;
+  }
+
+  function hasDocumentUploads() {
+    return supportingDocumentsList.value.length > 0 || recommendationDocumentsList.value.length > 0 || additionalDocumentsList.value.length > 0;
+  }
 
   function resetForm() {
     reservationType.value = 'Venue';
@@ -46,6 +109,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     recommendationDocumentsList.value = [];
     additionalDocumentsList.value = [];
     documentType.value = 'Reservation';
+    clearWizardCache();
   }
 
   return {
@@ -68,6 +132,11 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     recommendationDocumentsList,
     additionalDocumentsList,
     documentType,
+    persistForm,
+    clearWizardCache,
+    hasReservationDetails,
+    hasSelectionForCurrentType,
+    hasDocumentUploads,
     resetForm,
   };
 });

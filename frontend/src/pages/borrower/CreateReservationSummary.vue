@@ -5,9 +5,6 @@
   >
     <section class="borrower-reservation-page">
       <div class="borrower-reservation-topline">
-        <button type="button" aria-label="Back" @click="navigateToPreviousPage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
         <h1>Create Reservation</h1>
       </div>
 
@@ -98,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -115,6 +112,12 @@ const reservationFormStore = useReservationFormStore();
 const requestStore = useRequestStore();
 const isSubmitting = ref(false);
 const submissionError = ref('');
+
+onMounted(() => {
+  if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+  }
+});
 
 const allDocumentNames = computed(() => [
   ...(reservationFormStore.supportingDocumentsList || []).map((item) => item.documentFileName),
@@ -164,12 +167,17 @@ async function handleSubmitReservationRequest() {
     isSubmitting.value = true;
     submissionError.value = '';
 
+    const validationError = validateReservationSubmission();
+    if (validationError) {
+      submissionError.value = validationError;
+      return;
+    }
+
     const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
     const endDateTime = new Date(`${reservationFormStore.activityEndDate || reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
-    const activityTimeRange = `${reservationFormStore.activityTimeFrom || '00:00'}-${reservationFormStore.activityTimeTo || '00:00'}`;
 
     const reservationData = {
-      organizationName: reservationFormStore.departmentName || 'Organization',
+      organizationName: reservationFormStore.activityNameTitle.trim(),
       venueIdentifier: reservationFormStore.selectedVenueRecord?.venueIdentifier || null,
       requestedEquipmentList: (reservationFormStore.selectedEquipmentItems || []).map((item) => ({
         equipmentIdentifier: item.equipmentIdentifier,
@@ -177,12 +185,11 @@ async function handleSubmitReservationRequest() {
         selectedQuantity: item.selectedQuantity,
         quantity: item.selectedQuantity,
       })),
-      requestedQuantity: reservationFormStore.participantCount || 0,
+      requestedQuantity: Number(reservationFormStore.participantCount),
       eventDateTime: eventDateTime.toISOString(),
       endDateTime: endDateTime.toISOString(),
-      activityTimeRange,
-      purposeDescription: reservationFormStore.purposeText || 'Reservation',
-      activityType: reservationFormStore.activityNameTitle || 'Activity',
+      purposeDescription: reservationFormStore.purposeText,
+      activityType: reservationFormStore.activityNameTitle.trim(),
       supportingDocuments: allDocumentNames.value,
     };
 
@@ -200,5 +207,83 @@ async function handleSubmitReservationRequest() {
 
 function navigateToPreviousPage() {
   router.push({ name: 'borrowerCreateReservationDocumentsPage' });
+}
+
+function validateReservationSubmission() {
+  const participantCount = Number(reservationFormStore.participantCount);
+  const startDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || ''}`);
+  const endDateTime = new Date(`${reservationFormStore.activityEndDate || reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || ''}`);
+  const todayIsoDate = getTodayIsoDate();
+  const yearEndIsoDate = `${new Date().getFullYear()}-12-31`;
+  const selectedEquipmentItems = reservationFormStore.selectedEquipmentItems || [];
+
+  if (!reservationFormStore.requestDate || !reservationFormStore.activityDate || !reservationFormStore.activityEndDate) {
+    return 'Reservation dates are required.';
+  }
+
+  if (
+    reservationFormStore.requestDate < todayIsoDate
+    || reservationFormStore.activityDate < todayIsoDate
+    || reservationFormStore.activityEndDate < todayIsoDate
+    || reservationFormStore.requestDate > yearEndIsoDate
+    || reservationFormStore.activityDate > yearEndIsoDate
+    || reservationFormStore.activityEndDate > yearEndIsoDate
+  ) {
+    return 'Reservation dates must stay between today and December 31 of the current year.';
+  }
+
+  if (!reservationFormStore.activityTimeFrom || !reservationFormStore.activityTimeTo) {
+    return 'Activity start and end time are required.';
+  }
+
+  if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
+    return 'End date and time must be later than the start date and time.';
+  }
+
+  if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
+    return 'Participant count must be a whole number from 1 to 500.';
+  }
+
+  if (!reservationFormStore.activityNameTitle.trim()) {
+    return 'Activity name or title is required.';
+  }
+
+  if (!reservationFormStore.purposeText) {
+    return 'Purpose is required.';
+  }
+
+  if (reservationFormStore.reservationType !== 'Equipment' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {
+    return 'Please select a venue before submitting.';
+  }
+
+  if (reservationFormStore.reservationType !== 'Venue' && !selectedEquipmentItems.length) {
+    return 'Please select at least one equipment item before submitting.';
+  }
+
+  if (reservationFormStore.reservationType === 'Both' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {
+    return 'Both venue and equipment selections are required before submitting.';
+  }
+
+  const invalidEquipmentItem = selectedEquipmentItems.find((item) => {
+    const selectedQuantity = Number(item.selectedQuantity);
+    const availableQuantity = Number(item.availableQuantity ?? 0);
+
+    return !Number.isInteger(selectedQuantity) || selectedQuantity < 1 || selectedQuantity > availableQuantity;
+  });
+
+  if (invalidEquipmentItem) {
+    return `Equipment quantity for ${invalidEquipmentItem.equipmentName} must be between 1 and ${invalidEquipmentItem.availableQuantity}.`;
+  }
+
+  return '';
+}
+
+function getTodayIsoDate() {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 </script>
