@@ -20,6 +20,7 @@
               <div class="borrower-reservation-field">
                 <label for="requestDate">Request Date <em>*</em></label>
                 <input id="requestDate" v-model="formState.requestDate" type="date" :min="todayIsoDate" :max="yearEndIsoDate" />
+                <small class="borrower-reservation-help borrower-reservation-help--placeholder" aria-hidden="true">.</small>
                 <small v-if="validationErrors.requestDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.requestDate }}</small>
               </div>
 

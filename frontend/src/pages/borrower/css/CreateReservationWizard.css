@@ -1,7 +1,7 @@
 .borrower-reservation-page {
   width: min(1160px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: 5.8rem 0 2rem;
+  padding: 3.4rem 0 2rem;
   color: #20352a;
 }
 
@@ -187,7 +187,7 @@
 @media (max-width: 760px) {
   .borrower-reservation-page {
     width: min(100%, calc(100vw - 1rem));
-    padding-top: 5.25rem;
+    padding-top: 3rem;
   }
 
   .borrower-reservation-actions {
