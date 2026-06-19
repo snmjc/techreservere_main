@@ -9,6 +9,7 @@ export const ROUTE_NAMES = Object.freeze({
   accountDeactivated: 'accountDeactivatedPage',
   adminDashboard: 'adminDashboardPage',
   adminRequestDatabase: 'adminRequestDatabasePage',
+  adminCancelledRequests: 'adminCancelledRequestsPage',
   employeeDashboard: 'employeeDashboardPage',
   dashboard: 'dashboardPage',
   borrowerMyReservations: 'borrowerMyReservationsPage',

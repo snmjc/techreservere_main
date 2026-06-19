@@ -539,6 +539,20 @@
   gap: 1rem;
 }
 
+.pending-request-action-feedback {
+  margin: 0;
+  padding: 0.82rem 0.95rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.pending-request-action-feedback--error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
 .pending-request-action-button {
   min-height: 50px;
   min-width: 182px;
@@ -548,6 +562,11 @@
   font-size: 0.88rem;
   font-weight: 900;
   cursor: pointer;
+}
+
+.pending-request-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .pending-request-action-button--ghost {

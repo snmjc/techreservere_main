@@ -1,0 +1,222 @@
+@import './adminOperations.css';
+
+.admin-cancelled-requests-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-cancelled-requests-hero,
+.admin-cancelled-requests-toolbar,
+.admin-cancelled-requests-table-card {
+  background:
+    radial-gradient(circle at top right, rgba(248, 113, 113, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 250, 0.96));
+  border: 1px solid #dce7e1;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+}
+
+.admin-cancelled-requests-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.45rem 1.55rem;
+  border-radius: 24px;
+}
+
+.admin-cancelled-requests-kicker {
+  margin: 0 0 0.35rem;
+  color: #dc2626;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.admin-cancelled-requests-hero h1 {
+  margin: 0;
+  color: #132238;
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
+  line-height: 1.05;
+  font-weight: 900;
+}
+
+.admin-cancelled-requests-hero p:last-child {
+  margin: 0.55rem 0 0;
+  max-width: 760px;
+  color: #60706a;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.admin-cancelled-requests-badge {
+  min-width: 170px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+  color: #fffaf9;
+}
+
+.admin-cancelled-requests-badge strong {
+  display: block;
+  font-size: 2rem;
+}
+
+.admin-cancelled-requests-badge span {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 250, 249, 0.82);
+  font-size: 0.82rem;
+}
+
+.admin-cancelled-requests-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 22px;
+}
+
+.admin-cancelled-requests-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.admin-cancelled-requests-field--search {
+  flex: 1 1 auto;
+}
+
+.admin-cancelled-requests-field span {
+  color: #60706a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-cancelled-requests-field input,
+.admin-cancelled-requests-field select {
+  height: 46px;
+  border: 1px solid #d8e3dd;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: #fff;
+  color: #17211d;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.admin-cancelled-requests-sort-button,
+.admin-cancelled-requests-view-button,
+.admin-cancelled-requests-pagination button {
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-cancelled-requests-sort-button {
+  border: 1px solid #7f1d1d;
+  background: linear-gradient(180deg, #dc2626, #b91c1c);
+  color: #fff;
+}
+
+.admin-cancelled-requests-table-card {
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.admin-cancelled-requests-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-cancelled-requests-table thead {
+  background: #24332e;
+}
+
+.admin-cancelled-requests-table th {
+  padding: 0.9rem 1rem;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.admin-cancelled-requests-table td {
+  padding: 0.95rem 1rem;
+  border-top: 1px solid #edf2ef;
+  color: #33403c;
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.admin-cancelled-requests-table td strong,
+.admin-cancelled-requests-table td p {
+  margin: 0;
+}
+
+.admin-cancelled-requests-table td p {
+  margin-top: 0.2rem;
+  color: #6b7785;
+  font-size: 0.8rem;
+}
+
+.admin-cancelled-requests-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6b7785;
+  font-weight: 700;
+}
+
+.admin-cancelled-requests-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  color: #b45309;
+  background: #fef3c7;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.admin-cancelled-requests-view-button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #1d4ed8;
+}
+
+.admin-cancelled-requests-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.admin-cancelled-requests-pagination button {
+  border: 1px solid #d8e3dd;
+  background: #fff;
+  color: #17211d;
+}
+
+.admin-cancelled-requests-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .admin-cancelled-requests-hero,
+  .admin-cancelled-requests-toolbar {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .admin-cancelled-requests-table-card {
+    overflow-x: auto;
+  }
+}

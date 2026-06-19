@@ -47,6 +47,11 @@ export const adminNavigationItems = [
     iconSvg: `<svg ${iconAttributes}><path d="M3 7h18"/><path d="M5 7v12h14V7"/><path d="m8 12 3 3 5-6"/></svg>`,
   },
   {
+    routeName: ROUTE_NAMES.adminCancelledRequests,
+    label: 'Cancelled Requests',
+    iconSvg: `<svg ${iconAttributes}><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/><path d="M16 8l-8 8"/></svg>`,
+  },
+  {
     routeName: 'adminPastRecordsPage',
     label: 'Past Records',
     iconSvg: `<svg ${iconAttributes}><path d="m16 3 5 5-12 12H4v-5L16 3Z"/><path d="m15 5 4 4"/></svg>`,

@@ -310,6 +310,16 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/admin/cancelled-requests',
+    name: ROUTE_NAMES.adminCancelledRequests,
+    component: () => import('@/pages/admin/CancelledRequests.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ)),
+    },
+  },
+  {
     path: '/admin/past-records',
     name: 'adminPastRecordsPage',
     component: () => import('@/pages/admin/PastRecords.vue'),
