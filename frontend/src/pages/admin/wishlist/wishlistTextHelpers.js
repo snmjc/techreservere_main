@@ -23,7 +23,16 @@ export function sanitizeNameInput(value) {
 }
 
 export function sanitizePhoneInput(value) {
-  return String(value || '').replace(/\D/g, '').slice(0, 10);
+  return String(value || '').replace(/\D/g, '').slice(0, 11);
+}
+
+export function normalizeStaffPhoneNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '').trim();
+  if (digits.startsWith('09') && digits.length === 11) {
+    return digits.slice(1);
+  }
+
+  return digits;
 }
 
 export function sanitizeIdNumberInput(value) {

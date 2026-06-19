@@ -230,7 +230,7 @@
         </label>
         <label>
           <span>Phone</span>
-          <input v-model.trim="addEmployeeForm.phone" type="tel" inputmode="numeric" maxlength="10" placeholder="9123456789" required @input="sanitizeEmployeePhone" />
+          <input v-model.trim="addEmployeeForm.phone" type="tel" inputmode="numeric" maxlength="11" placeholder="09123456789" required @input="sanitizeEmployeePhone" />
         </label>
         <label>
           <span>Work ID Number</span>
