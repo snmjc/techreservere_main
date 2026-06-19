@@ -54,7 +54,12 @@ function redirectInvitationTraffic(toRoute) {
 export const routeDefinitions = [
   {
     path: '/',
-    redirect: { name: ROUTE_NAMES.clerkLogin },
+    name: ROUTE_NAMES.landing,
+    component: () => import('@/pages/auth/LandingPage.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
   },
   {
     path: '/login',

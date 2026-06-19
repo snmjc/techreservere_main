@@ -100,8 +100,12 @@
   width: 46px;
   height: 46px;
   border-radius: 16px;
-  font-size: 1.25rem;
-  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.admin-past-records-stat-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
 }
 
 .admin-past-records-stat-card p,
