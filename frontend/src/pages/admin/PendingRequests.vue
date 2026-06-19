@@ -279,76 +279,87 @@
     <div v-if="selectedRequestRecord" class="pending-request-details-overlay" @click.self="handleCloseRequestModal">
       <section class="pending-request-details-card">
         <header class="pending-request-details-header">
-          <h2>Request Details</h2>
+          <h2>Workflow</h2>
           <button class="pending-request-details-close" type="button" aria-label="Close" @click="handleCloseRequestModal">&times;</button>
         </header>
 
         <div class="pending-request-details-body">
-          <div class="pending-request-details-section-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v8" />
-              <path d="M12 16h.01" />
-            </svg>
-            <span>Request Information</span>
-          </div>
-
-          <div class="pending-request-details-grid">
-            <div class="pending-request-details-column">
-              <div class="pending-request-details-item">
-                <dt>Request ID</dt>
-                <dd>{{ selectedRequestRecord.requestDisplayIdentifier || selectedRequestRecord.requestIdentifier }}</dd>
+          <div class="pending-request-details-topline">
+            <div class="pending-request-details-meta-list">
+              <div class="pending-request-details-inline">
+                <strong>Request ID:</strong>
+                <span>{{ selectedRequestRecord.requestDisplayIdentifier || selectedRequestRecord.requestIdentifier }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Requester</dt>
-                <dd>{{ selectedRequestRecord.requesterFullName || 'N/A' }}</dd>
-                <small>ID: {{ selectedRequestRecord.requesterId || selectedRequestRecord.requestIdentifier || 'N/A' }}</small>
+              <div class="pending-request-details-inline">
+                <strong>Requester:</strong>
+                <span>{{ selectedRequestRecord.requesterFullName || 'N/A' }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Role</dt>
-                <dd>{{ selectedRequestRecord.requesterRole || 'N/A' }}</dd>
+              <div class="pending-request-details-inline">
+                <strong>Role:</strong>
+                <span>{{ selectedRequestRecord.requesterRole || 'N/A' }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Contact</dt>
-                <dd>{{ selectedRequestRecord.contactEmail || selectedRequestRecord.requesterDepartment || 'N/A' }}</dd>
-                <small>{{ selectedRequestRecord.contactNumber || 'No contact number provided' }}</small>
+              <div class="pending-request-details-inline">
+                <strong>Department:</strong>
+                <span>{{ selectedRequestRecord.requesterDepartment || 'N/A' }}</span>
+              </div>
+              <div class="pending-request-details-inline">
+                <strong>Requested Date:</strong>
+                <span>{{ selectedRequestRecord.requestedDate || 'N/A' }}</span>
               </div>
             </div>
 
-            <div class="pending-request-details-column">
-              <div class="pending-request-details-item">
-                <dt>Type</dt>
-                <dd>{{ selectedRequestRecord.requestType || 'N/A' }}</dd>
-              </div>
+            <div class="pending-request-details-type-card">
+              <strong>Request Type:</strong>
+              <span>{{ selectedRequestRecord.requestType || 'N/A' }}</span>
+            </div>
+          </div>
 
-              <div class="pending-request-details-item">
-                <dt>Facility</dt>
-                <dd class="pending-request-details-facility">
-                  <img :src="buildFacilityPlaceholder(selectedRequestRecord.facilityName)" alt="Facility preview" />
-                  <span>{{ selectedRequestRecord.facilityName || 'N/A' }}</span>
-                </dd>
-              </div>
+          <div class="pending-request-details-divider"></div>
 
-              <div class="pending-request-details-item">
-                <dt>Schedule</dt>
-                <dd class="pending-request-details-stack">
-                  <span>{{ formatScheduleDateRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
-                  <span>{{ formatScheduleTimeRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
-                </dd>
+          <div class="pending-request-details-grid">
+            <div class="pending-request-details-panel">
+              <strong>Facility</strong>
+              <div class="pending-request-details-facility">
+                <img :src="buildFacilityPlaceholder(selectedRequestRecord.facilityName)" alt="Facility preview" />
+                <span>{{ selectedRequestRecord.facilityName || 'N/A' }}</span>
               </div>
+            </div>
 
-              <div class="pending-request-details-item">
-                <dt>Quantity</dt>
-                <dd>{{ selectedRequestRecord.requestQuantity || 0 }}</dd>
+            <div class="pending-request-details-panel">
+              <strong>Schedule</strong>
+              <div class="pending-request-details-stack">
+                <span>{{ formatScheduleDateRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
+                <span>{{ formatScheduleTimeRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
               </div>
+            </div>
 
-              <div class="pending-request-details-item">
-                <dt>Purpose</dt>
-                <dd>{{ selectedRequestRecord.requestPurpose || 'N/A' }}</dd>
-              </div>
+            <div class="pending-request-details-panel pending-request-details-panel--wide">
+              <strong>Activity Name/Title</strong>
+              <span>{{ selectedRequestRecord.activityNameTitle || 'N/A' }}</span>
+            </div>
+
+            <div class="pending-request-details-panel pending-request-details-panel--wide">
+              <strong>Purpose</strong>
+              <span>{{ selectedRequestRecord.requestPurpose || 'N/A' }}</span>
+            </div>
+
+            <div class="pending-request-details-panel">
+              <strong>No. of Participants</strong>
+              <span>{{ selectedRequestRecord.participantCount || 0 }}</span>
+            </div>
+
+            <div class="pending-request-details-panel">
+              <strong>Status</strong>
+              <span class="pending-request-details-status">{{ selectedRequestRecord.requestStatus || 'N/A' }}</span>
+            </div>
+          </div>
+
+          <div class="pending-request-details-divider"></div>
+
+          <div class="pending-request-details-remarks">
+            <strong>Remarks:</strong>
+            <div class="pending-request-details-remarks-box">
+              {{ selectedRequestRecord.remarks || 'No remarks added yet.' }}
             </div>
           </div>
         </div>
