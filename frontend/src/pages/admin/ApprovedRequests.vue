@@ -76,7 +76,7 @@
         <header class="approved-request-action-header">
           <div>
             <h2>Edit Workflow</h2>
-            <p>Update the workflow details for this approved request.</p>
+            <p>Manually update the workflow tasks for this approved request.</p>
           </div>
           <button class="approved-request-action-close" type="button" aria-label="Close" @click="closeEditModal">&times;</button>
         </header>
@@ -108,56 +108,157 @@
                 <strong>{{ editRequestRecord.requestStatus || 'Approved' }}</strong>
               </div>
             </div>
+
+            <div class="approved-request-summary-bottom">
+              <div class="approved-request-summary-item">
+                <span>Venue</span>
+                <strong>{{ editRequestRecord.facilityName || 'N/A' }}</strong>
+              </div>
+
+              <div class="approved-request-summary-item">
+                <span>Participants</span>
+                <strong>{{ editRequestRecord.participantCount || 0 }}</strong>
+              </div>
+
+              <div class="approved-request-summary-item">
+                <span>Start</span>
+                <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleStart || editRequestRecord.activityTime) }}</strong>
+              </div>
+
+              <div class="approved-request-summary-item">
+                <span>End</span>
+                <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleEnd || editRequestRecord.activityEndTime) }}</strong>
+              </div>
+            </div>
           </section>
 
-          <div class="approved-request-action-grid">
-            <label class="approved-request-action-field">
-              <span>Activity Name/Title</span>
-              <input v-model.trim="editForm.activityNameTitle" type="text" placeholder="Enter activity title" />
-            </label>
+          <section class="approved-request-workflow-summary">
+            <div class="approved-request-workflow-summary-card">
+              <span>Equipment</span>
+              <div class="approved-request-resource-list">
+                <span
+                  v-for="resource in getEquipmentResources(editRequestRecord)"
+                  :key="`${resource.resourceName}-${resource.resourceCount}`"
+                  class="approved-request-resource-chip"
+                >
+                  {{ resource.resourceName }} x{{ resource.resourceCount }}
+                </span>
+                <em v-if="!getEquipmentResources(editRequestRecord).length">No equipment reserved.</em>
+              </div>
+            </div>
 
-            <label class="approved-request-action-field">
-              <span>Assigned FO Personnel</span>
-              <input v-model.trim="editForm.assignedPersonnel" type="text" placeholder="Assign FO personnel" />
-            </label>
+            <div class="approved-request-workflow-summary-card approved-request-workflow-summary-card--details">
+              <span>Workflow Details</span>
+              <div class="approved-request-workflow-detail-grid">
+                <div class="approved-request-workflow-detail-item">
+                  <small>Venue</small>
+                  <strong>{{ editRequestRecord.facilityName || 'N/A' }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Status</small>
+                  <strong>{{ editRequestRecord.requestStatus || 'Approved' }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Participants</small>
+                  <strong>{{ editRequestRecord.participantCount || 0 }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>Start Date and Time</small>
+                  <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleStart || editRequestRecord.activityTime) }}</strong>
+                </div>
+                <div class="approved-request-workflow-detail-item">
+                  <small>End Date and Time</small>
+                  <strong>{{ formatWorkflowDateTime(editRequestRecord.requestScheduleEnd || editRequestRecord.activityEndTime) }}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
 
-            <label class="approved-request-action-field">
-              <span>Schedule</span>
-              <input v-model.trim="editForm.requestSchedule" type="text" placeholder="Enter schedule" />
-            </label>
+          <p v-if="workflowEditorError" class="approved-request-action-feedback approved-request-action-feedback--error">
+            {{ workflowEditorError }}
+          </p>
+          <p v-else-if="workflowEditorNotice" class="approved-request-action-feedback approved-request-action-feedback--notice">
+            {{ workflowEditorNotice }}
+          </p>
 
-            <label class="approved-request-action-field">
-              <span>Participants</span>
-              <input v-model.number="editForm.participantCount" type="number" min="0" placeholder="0" />
-            </label>
+          <div v-if="isWorkflowEditorLoading" class="approved-request-workflow-loading">
+            Loading workflow tasks...
           </div>
 
-          <label class="approved-request-action-field approved-request-action-field--full">
-            <span>Purpose</span>
-            <textarea
-              v-model.trim="editForm.requestPurpose"
-              maxlength="500"
-              rows="3"
-              placeholder="Enter purpose"
-            />
-          </label>
+          <template v-else>
+            <div
+              v-for="(workflowTask, index) in workflowTasks"
+              :key="workflowTask.localId"
+              class="approved-request-workflow-task-card"
+            >
+              <div class="approved-request-workflow-task-header">
+                <div>
+                  <strong>Workflow Task {{ index + 1 }}</strong>
+                  <small>{{ workflowTask.taskIdentifier ? `Task #${workflowTask.taskIdentifier}` : 'New task assignment' }}</small>
+                </div>
+                <button
+                  v-if="workflowTask.isNew"
+                  class="approved-request-workflow-remove"
+                  type="button"
+                  @click="removeWorkflowTaskRow(workflowTask.localId)"
+                >
+                  Remove
+                </button>
+              </div>
 
-          <label class="approved-request-action-field approved-request-action-field--full">
-            <span>Remarks</span>
-            <textarea
-              v-model.trim="editForm.remarks"
-              maxlength="500"
-              rows="4"
-              placeholder="Add workflow remarks..."
-            />
-            <small>{{ editForm.remarks.length }} / 500</small>
-          </label>
+              <div class="approved-request-action-grid">
+                <label class="approved-request-action-field">
+                  <span>Task Assignments of Staff</span>
+                  <input
+                    v-model.trim="workflowTask.taskTitle"
+                    type="text"
+                    maxlength="200"
+                    placeholder="Enter task assignment"
+                  />
+                </label>
+
+                <label class="approved-request-action-field">
+                  <span>Staff Assigned</span>
+                  <select v-model="workflowTask.assignedToAccountId">
+                    <option value="">Select staff</option>
+                    <option v-for="staff in workflowStaffOptions" :key="staff.value" :value="staff.value">
+                      {{ staff.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="approved-request-action-field">
+                  <span>Ingress</span>
+                  <input v-model="workflowTask.preparationStartTimestamp" type="datetime-local" />
+                </label>
+
+                <label class="approved-request-action-field">
+                  <span>Egress</span>
+                  <input v-model="workflowTask.preparationEndTimestamp" type="datetime-local" />
+                </label>
+              </div>
+
+              <label class="approved-request-action-field approved-request-action-field--full">
+                <span>Notes</span>
+                <textarea
+                  v-model.trim="workflowTask.taskDescription"
+                  rows="4"
+                  maxlength="1000"
+                  placeholder="Add workflow notes..."
+                />
+              </label>
+            </div>
+
+            <button class="approved-request-workflow-add" type="button" @click="addWorkflowTaskRow">
+              + Add Task Assignment
+            </button>
+          </template>
         </div>
 
         <footer class="approved-request-action-footer">
-          <button class="approved-request-action-button approved-request-action-button--ghost" type="button" @click="closeEditModal">Cancel</button>
-          <button class="approved-request-action-button approved-request-action-button--edit" type="button" @click="submitEditWorkflow">
-            Save Changes
+          <button class="approved-request-action-button approved-request-action-button--ghost" type="button" :disabled="isWorkflowSaving" @click="closeEditModal">Cancel</button>
+          <button class="approved-request-action-button approved-request-action-button--edit" type="button" :disabled="isWorkflowEditorLoading || isWorkflowSaving || !hasWorkflowChanges" @click="submitEditWorkflow">
+            {{ isWorkflowSaving ? 'Saving...' : 'Save Changes' }}
           </button>
         </footer>
       </section>
@@ -356,7 +457,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, onBeforeUnmount } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ApprovedRequests.css';
@@ -366,6 +468,7 @@ import RequestWorkflowModalComponent from '@/modules/request/components/RequestW
 import '@/modules/request/components/requestWorkflowModal.css';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { taskWorkflowApi } from '@/modules/task/services/taskWorkflowApi.js';
 
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
@@ -376,14 +479,6 @@ const editRequestRecord = ref(null);
 const deployRequestRecord = ref(null);
 const cancelRequestRecord = ref(null);
 
-const editForm = reactive({
-  activityNameTitle: '',
-  assignedPersonnel: '',
-  requestSchedule: '',
-  participantCount: 0,
-  requestPurpose: '',
-  remarks: '',
-});
 const deployForm = reactive({
   remarks: '',
   adminEmail: '',
@@ -392,8 +487,17 @@ const cancelForm = reactive({
   remarks: '',
   adminEmail: '',
 });
+const workflowTasks = ref([]);
+const workflowStaffOptions = ref([]);
+const workflowEditorError = ref('');
+const workflowEditorNotice = ref('');
+const isWorkflowEditorLoading = ref(false);
+const isWorkflowSaving = ref(false);
+const workflowInitialSnapshot = ref('[]');
+let workflowTaskCounter = 0;
 
 const approvedRequestsList = computed(() => requestStore.approvedRequestsList || []);
+const hasWorkflowChanges = computed(() => serializeWorkflowTasks(workflowTasks.value) !== workflowInitialSnapshot.value);
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim().toLowerCase();
@@ -421,35 +525,74 @@ function handleDeployRelease(requestRecord) {
   deployRequestRecord.value = requestRecord;
 }
 
-function handleEditWorkflow(requestRecord) {
+async function handleEditWorkflow(requestRecord) {
+  selectedRequestRecord.value = null;
   editRequestRecord.value = requestRecord;
-  editForm.activityNameTitle = requestRecord?.activityNameTitle || '';
-  editForm.assignedPersonnel = requestRecord?.assignedPersonnel || '';
-  editForm.requestSchedule = requestRecord?.requestSchedule || '';
-  editForm.participantCount = Number(requestRecord?.participantCount || 0);
-  editForm.requestPurpose = requestRecord?.requestPurpose || '';
-  editForm.remarks = requestRecord?.remarks || '';
+  workflowEditorError.value = '';
+  workflowEditorNotice.value = '';
+  isWorkflowEditorLoading.value = true;
+
+  try {
+    await Promise.all([
+      loadWorkflowStaffOptions(),
+      loadWorkflowTasks(requestRecord),
+    ]);
+  } finally {
+    isWorkflowEditorLoading.value = false;
+  }
 }
 
 function handleCancelRequest(requestRecord) {
   cancelRequestRecord.value = requestRecord;
 }
 
-function submitEditWorkflow() {
+async function submitEditWorkflow() {
   if (!editRequestRecord.value) {
     return;
   }
 
-  Object.assign(editRequestRecord.value, {
-    activityNameTitle: editForm.activityNameTitle.trim(),
-    assignedPersonnel: editForm.assignedPersonnel.trim(),
-    requestSchedule: editForm.requestSchedule.trim(),
-    participantCount: Number(editForm.participantCount || 0),
-    requestPurpose: editForm.requestPurpose.trim(),
-    remarks: editForm.remarks.trim(),
-  });
+  if (isWorkflowSaving.value) {
+    return;
+  }
 
-  closeEditModal();
+  if (!hasWorkflowChanges.value) {
+    workflowEditorNotice.value = 'No workflow changes to save.';
+    workflowEditorError.value = '';
+    return;
+  }
+
+  const validationError = validateWorkflowTasks();
+  if (validationError) {
+    workflowEditorError.value = validationError;
+    workflowEditorNotice.value = '';
+    return;
+  }
+
+  isWorkflowSaving.value = true;
+  workflowEditorError.value = '';
+  workflowEditorNotice.value = '';
+
+  try {
+    for (const workflowTask of workflowTasks.value) {
+      const payload = buildWorkflowTaskPayload(workflowTask, editRequestRecord.value.requestIdentifier);
+      const result = workflowTask.taskIdentifier
+        ? await taskWorkflowApi.updateTask(workflowTask.taskIdentifier, payload, authStore.authToken)
+        : await taskWorkflowApi.createTask(payload, authStore.authToken);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unable to save workflow task.');
+      }
+    }
+
+    await requestStore.fetchReservations();
+    syncEditedRequestAssignmentSummary();
+    workflowInitialSnapshot.value = serializeWorkflowTasks(workflowTasks.value);
+    closeEditModal();
+  } catch (error) {
+    workflowEditorError.value = error?.message || 'Unable to save workflow changes.';
+  } finally {
+    isWorkflowSaving.value = false;
+  }
 }
 
 async function submitDeployRequest() {
@@ -507,12 +650,10 @@ async function submitCancelRequest() {
 
 function closeEditModal() {
   editRequestRecord.value = null;
-  editForm.activityNameTitle = '';
-  editForm.assignedPersonnel = '';
-  editForm.requestSchedule = '';
-  editForm.participantCount = 0;
-  editForm.requestPurpose = '';
-  editForm.remarks = '';
+  workflowTasks.value = [];
+  workflowEditorError.value = '';
+  workflowEditorNotice.value = '';
+  workflowInitialSnapshot.value = '[]';
 }
 
 function closeDeployModal() {
@@ -559,4 +700,276 @@ function getRequesterInitials(requestRecord) {
 
   return name || 'TR';
 }
+
+function getEquipmentResources(requestRecord) {
+  return (requestRecord?.reservedResources || []).filter((resource) => resource.resourceType === 'Equipment');
+}
+
+function formatWorkflowDateTime(value) {
+  if (!value) {
+    return 'N/A';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Manila',
+  }).format(parsedDate);
+}
+
+async function loadWorkflowStaffOptions() {
+  if (workflowStaffOptions.value.length > 0) {
+    return;
+  }
+
+  const result = await taskWorkflowApi.fetchAccounts(authStore.authToken);
+  if (!result.success) {
+    throw new Error(result.error || 'Unable to load staff assignments.');
+  }
+
+  workflowStaffOptions.value = normalizeStaffOptions(result.data.accounts || []);
+}
+
+async function loadWorkflowTasks(requestRecord) {
+  const reservationIdentifier = Number(requestRecord?.requestIdentifier || 0);
+  if (!reservationIdentifier) {
+    workflowTasks.value = [createEmptyWorkflowTask()];
+    workflowInitialSnapshot.value = serializeWorkflowTasks(workflowTasks.value);
+    return;
+  }
+
+  const result = await taskWorkflowApi.fetchTasksByReservation(reservationIdentifier, authStore.authToken);
+  if (!result.success) {
+    throw new Error(result.error || 'Unable to load workflow tasks.');
+  }
+
+  const taskList = Array.isArray(result.data.tasks) ? result.data.tasks : [];
+  workflowTasks.value = taskList.length > 0
+    ? taskList.map(mapWorkflowTaskRecord)
+    : [createEmptyWorkflowTask()];
+  workflowInitialSnapshot.value = serializeWorkflowTasks(workflowTasks.value);
+}
+
+function addWorkflowTaskRow() {
+  workflowTasks.value.push(createEmptyWorkflowTask());
+  workflowEditorNotice.value = '';
+}
+
+function removeWorkflowTaskRow(localId) {
+  workflowTasks.value = workflowTasks.value.filter((workflowTask) => workflowTask.localId !== localId);
+  if (workflowTasks.value.length === 0) {
+    workflowTasks.value = [createEmptyWorkflowTask()];
+  }
+  workflowEditorNotice.value = '';
+}
+
+function validateWorkflowTasks() {
+  if (workflowTasks.value.length === 0) {
+    return 'Add at least one workflow task before saving.';
+  }
+
+  for (const [index, workflowTask] of workflowTasks.value.entries()) {
+    const label = `Workflow Task ${index + 1}`;
+    if (workflowTask.taskTitle.trim() === '') {
+      return `${label}: task assignment is required.`;
+    }
+    if (!workflowTask.assignedToAccountId) {
+      return `${label}: please select the assigned staff.`;
+    }
+    if (!workflowTask.preparationStartTimestamp) {
+      return `${label}: ingress time is required.`;
+    }
+    if (!workflowTask.preparationEndTimestamp) {
+      return `${label}: egress time is required.`;
+    }
+    if (new Date(workflowTask.preparationEndTimestamp).getTime() < new Date(workflowTask.preparationStartTimestamp).getTime()) {
+      return `${label}: egress time must be later than ingress time.`;
+    }
+  }
+
+  return '';
+}
+
+function buildWorkflowTaskPayload(workflowTask, reservationIdentifier) {
+  return {
+    taskTitle: workflowTask.taskTitle.trim(),
+    taskDescription: workflowTask.taskDescription.trim(),
+    taskType: workflowTask.taskType || 'Preparation',
+    taskStatus: workflowTask.taskStatus || 'Pending',
+    reservationIdentifier: Number(reservationIdentifier),
+    assignedToAccountId: Number(workflowTask.assignedToAccountId),
+    dueDateTimestamp: normalizeDateTimeForApi(workflowTask.preparationEndTimestamp),
+    preparationStartTimestamp: normalizeDateTimeForApi(workflowTask.preparationStartTimestamp),
+    preparationEndTimestamp: normalizeDateTimeForApi(workflowTask.preparationEndTimestamp),
+    emergencyOverride: false,
+    confirmedAdminEmail: '',
+    confirmedAdminPassword: '',
+  };
+}
+
+function createEmptyWorkflowTask() {
+  workflowTaskCounter += 1;
+
+  return {
+    localId: `workflow-task-${workflowTaskCounter}`,
+    taskIdentifier: null,
+    taskTitle: '',
+    taskDescription: '',
+    taskType: 'Preparation',
+    taskStatus: 'Pending',
+    assignedToAccountId: '',
+    preparationStartTimestamp: '',
+    preparationEndTimestamp: '',
+    isNew: true,
+  };
+}
+
+function mapWorkflowTaskRecord(taskRecord) {
+  workflowTaskCounter += 1;
+
+  return {
+    localId: `workflow-task-${workflowTaskCounter}`,
+    taskIdentifier: taskRecord.taskIdentifier || null,
+    taskTitle: taskRecord.taskTitle || '',
+    taskDescription: taskRecord.taskDescription || '',
+    taskType: taskRecord.taskType || 'Preparation',
+    taskStatus: taskRecord.taskStatus || 'Pending',
+    assignedToAccountId: taskRecord.assignedToAccountId ? String(taskRecord.assignedToAccountId) : '',
+    preparationStartTimestamp: toDateTimeLocal(taskRecord.preparationStartTimestamp),
+    preparationEndTimestamp: toDateTimeLocal(taskRecord.preparationEndTimestamp || taskRecord.dueDateTimestamp),
+    isNew: false,
+  };
+}
+
+function normalizeDateTimeForApi(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function toDateTimeLocal(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function normalizeStaffOptions(accounts) {
+  return accounts
+    .filter((account) => resolveAccountType(account) === 'Employee')
+    .map((account) => ({
+      value: String(account.accountIdentifier || account.account_identifier),
+      label: [
+        `${account.firstName || account.first_name || ''} ${account.lastName || account.last_name || ''}`.trim(),
+        account.idNumber || account.id_number,
+        account.roleLabel || account.department,
+      ].filter(Boolean).join(' - '),
+    }))
+    .filter((staff) => staff.value);
+}
+
+function resolveAccountType(account) {
+  const role = String(account.roleDesignation || account.role_designation || '').toUpperCase();
+  const department = String(account.department || '').toLowerCase();
+  if (role.includes('STAFF') || department.includes('staff') || department.includes('maintenance') || department.includes('support')) {
+    return 'Employee';
+  }
+
+  return account.accountType || account.account_type || '';
+}
+
+function serializeWorkflowTasks(taskList) {
+  return JSON.stringify(taskList.map((workflowTask) => ({
+    taskIdentifier: workflowTask.taskIdentifier || null,
+    taskTitle: workflowTask.taskTitle || '',
+    taskDescription: workflowTask.taskDescription || '',
+    taskType: workflowTask.taskType || 'Preparation',
+    taskStatus: workflowTask.taskStatus || 'Pending',
+    assignedToAccountId: workflowTask.assignedToAccountId || '',
+    preparationStartTimestamp: workflowTask.preparationStartTimestamp || '',
+    preparationEndTimestamp: workflowTask.preparationEndTimestamp || '',
+    isNew: Boolean(workflowTask.isNew),
+  })));
+}
+
+function syncEditedRequestAssignmentSummary() {
+  if (!editRequestRecord.value) {
+    return;
+  }
+
+  const assignedPersonnel = workflowTasks.value
+    .map((workflowTask) => workflowStaffOptions.value.find((staff) => staff.value === String(workflowTask.assignedToAccountId)))
+    .filter(Boolean)
+    .map((staff) => staff.label.split(' - ')[0])
+    .filter((name, index, list) => list.indexOf(name) === index)
+    .join(', ');
+
+  editRequestRecord.value.assignedPersonnel = assignedPersonnel || 'Pending Assignment';
+}
+
+function resetWorkflowDraftsOnTabChange() {
+  if (!editRequestRecord.value || isWorkflowSaving.value || document.visibilityState !== 'hidden') {
+    return;
+  }
+
+  restoreWorkflowDrafts('Unsaved workflow inputs were cleared after switching tabs.');
+}
+
+function resetWorkflowDraftsOnWindowBlur() {
+  if (!editRequestRecord.value || isWorkflowSaving.value) {
+    return;
+  }
+
+  restoreWorkflowDrafts('Unsaved workflow inputs were cleared after switching tabs.');
+}
+
+function restoreWorkflowDrafts(noticeMessage) {
+  if (serializeWorkflowTasks(workflowTasks.value) === workflowInitialSnapshot.value) {
+    return;
+  }
+
+  workflowTasks.value = JSON.parse(workflowInitialSnapshot.value).map((workflowTask) => ({
+    ...workflowTask,
+    localId: createWorkflowLocalId(),
+  }));
+  workflowEditorError.value = '';
+  workflowEditorNotice.value = noticeMessage;
+}
+
+function createWorkflowLocalId() {
+  workflowTaskCounter += 1;
+  return `workflow-task-${workflowTaskCounter}`;
+}
+
+document.addEventListener('visibilitychange', resetWorkflowDraftsOnTabChange);
+window.addEventListener('blur', resetWorkflowDraftsOnWindowBlur);
+
+onBeforeRouteLeave(() => {
+  if (editRequestRecord.value && !isWorkflowSaving.value) {
+    restoreWorkflowDrafts('Unsaved workflow inputs were cleared after leaving the page.');
+  }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', resetWorkflowDraftsOnTabChange);
+  window.removeEventListener('blur', resetWorkflowDraftsOnWindowBlur);
+});
 </script>

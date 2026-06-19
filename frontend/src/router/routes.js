@@ -54,7 +54,12 @@ function redirectInvitationTraffic(toRoute) {
 export const routeDefinitions = [
   {
     path: '/',
-    redirect: { name: ROUTE_NAMES.clerkLogin },
+    name: ROUTE_NAMES.landing,
+    component: () => import('@/pages/auth/LandingPage.vue'),
+    meta: {
+      requiresAuth: false,
+      allowedRoles: null,
+    },
   },
   {
     path: '/login',
@@ -267,6 +272,19 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/admin/request-database',
+    name: ROUTE_NAMES.adminRequestDatabase,
+    component: () => import('@/pages/admin/RequestDatabase.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(
+        permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ),
+        permission(RBAC_CAPABILITY.UPDATE_RESERVATION_STATUS, RBAC_ACTION.UPDATE),
+      ),
+    },
+  },
+  {
     path: '/admin/pending-requests',
     name: 'adminPendingRequestsPage',
     component: () => import('@/pages/admin/PendingRequests.vue'),
@@ -294,6 +312,16 @@ export const routeDefinitions = [
       requiresAuth: true,
       allowedRoles: ['ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.PROCESS_DEPLOYMENT_RETURN, RBAC_ACTION.READ)),
+    },
+  },
+  {
+    path: '/admin/cancelled-requests',
+    name: ROUTE_NAMES.adminCancelledRequests,
+    component: () => import('@/pages/admin/CancelledRequests.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ)),
     },
   },
   {

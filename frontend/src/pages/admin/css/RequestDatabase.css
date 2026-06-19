@@ -1,0 +1,444 @@
+@import './adminOperations.css';
+
+.admin-request-database-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.admin-request-database-page__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #fff9f1, #ffffff);
+  border: 1px solid #f0e1ca;
+  border-radius: 24px;
+}
+
+.admin-request-database-page__eyebrow {
+  margin: 0 0 0.35rem;
+  color: #d97706;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-request-database-page__hero h1 {
+  margin: 0;
+  color: #1f2937;
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+}
+
+.admin-request-database-page__hero p:last-child {
+  margin: 0.45rem 0 0;
+  color: #667085;
+  max-width: 720px;
+}
+
+.admin-request-database-page__hero-badge {
+  min-width: 160px;
+  padding: 1rem 1.15rem;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #eadfce;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.admin-request-database-page__hero-badge strong {
+  display: block;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.admin-request-database-page__hero-badge span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-request-database-page__toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.7fr) repeat(2, minmax(160px, 0.9fr)) auto;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+}
+
+.admin-request-database-page__field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.admin-request-database-page__field--full {
+  grid-column: 1 / -1;
+}
+
+.admin-request-database-page__field span {
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.admin-request-database-page__field input,
+.admin-request-database-page__field select,
+.admin-request-database-page__field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.75rem 0.85rem;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.admin-request-database-page__field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.admin-request-database-page__sort-button,
+.admin-request-database-page__pagination button,
+.admin-request-database-page__action-button,
+.admin-request-database-page__modal-button {
+  min-height: 46px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-request-database-page__sort-button {
+  align-self: end;
+  padding: 0 1.1rem;
+  color: #355043;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+}
+
+.admin-request-database-page__table-card {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+}
+
+.admin-request-database-page__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-request-database-page__table thead tr {
+  background: #24332e;
+}
+
+.admin-request-database-page__table th {
+  padding: 0.85rem 0.9rem;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.admin-request-database-page__table td {
+  padding: 0.9rem;
+  color: #475467;
+  font-size: 0.86rem;
+  border-bottom: 1px solid #edf0f3;
+  vertical-align: middle;
+}
+
+.admin-request-database-page__table td strong {
+  display: block;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.admin-request-database-page__table td p {
+  margin: 0.2rem 0 0;
+  color: #667085;
+  font-size: 0.76rem;
+}
+
+.admin-request-database-page__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.admin-request-database-page__badge.is-pending {
+  color: #9a6700;
+  background: #fff3d1;
+}
+
+.admin-request-database-page__badge.is-approved {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.admin-request-database-page__badge.is-rejected,
+.admin-request-database-page__badge.is-cancelled {
+  color: #b42318;
+  background: #fee4e2;
+}
+
+.admin-request-database-page__badge.is-completed {
+  color: #155eef;
+  background: #dbeafe;
+}
+
+.admin-request-database-page__actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.admin-request-database-page__action-button {
+  padding: 0 0.9rem;
+  color: #344054;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+}
+
+.admin-request-database-page__action-button--approve {
+  color: #ffffff;
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.admin-request-database-page__action-button--reject {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.admin-request-database-page__action-button:disabled {
+  color: #98a2b3;
+  background: #eaecf0;
+  border-color: #eaecf0;
+  cursor: not-allowed;
+}
+
+.admin-request-database-page__state {
+  padding: 2rem 1rem;
+  color: #667085;
+  text-align: center;
+}
+
+.admin-request-database-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.admin-request-database-page__pagination button {
+  padding: 0 1rem;
+  color: #355043;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+}
+
+.admin-request-database-page__pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-request-database-page__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1350;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.admin-request-database-page__modal {
+  width: min(620px, 100%);
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 22px;
+  box-shadow: 0 26px 54px rgba(15, 23, 42, 0.2);
+}
+
+.admin-request-database-page__modal-header,
+.admin-request-database-page__modal-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+}
+
+.admin-request-database-page__modal-header {
+  border-bottom: 1px solid #e7eaee;
+}
+
+.admin-request-database-page__modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e7eaee;
+}
+
+.admin-request-database-page__modal-header h2 {
+  margin: 0;
+  color: #e67e00;
+  font-size: 1.6rem;
+}
+
+.admin-request-database-page__modal-header p {
+  margin: 0.35rem 0 0;
+  color: #667085;
+  font-size: 0.9rem;
+}
+
+.admin-request-database-page__modal-close {
+  width: 30px;
+  height: 30px;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.admin-request-database-page__modal-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem 1.25rem 1.3rem;
+}
+
+.admin-request-database-page__modal-summary {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  background: #fafbfc;
+  border: 1px solid #e7eaee;
+  border-radius: 14px;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.admin-request-database-page__modal-summary strong {
+  color: #1f2937;
+  font-size: 0.98rem;
+}
+
+.admin-request-database-page__confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-request-database-page__confirm-card {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.95rem 1rem;
+  background: #fafbfc;
+  border: 1px solid #e7eaee;
+  border-radius: 14px;
+}
+
+.admin-request-database-page__confirm-card span,
+.admin-request-database-page__confirm-label,
+.admin-request-database-page__resource-card span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-request-database-page__confirm-card strong,
+.admin-request-database-page__resource-card strong {
+  color: #1f2937;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.admin-request-database-page__confirm-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-request-database-page__resource-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-request-database-page__resource-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e7eaee;
+  border-radius: 14px;
+}
+
+.admin-request-database-page__resource-card small,
+.admin-request-database-page__resource-empty {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.admin-request-database-page__modal-button {
+  min-width: 148px;
+  padding: 0 1rem;
+}
+
+.admin-request-database-page__modal-button--ghost {
+  color: #355043;
+  background: #ffffff;
+  border: 1px solid #d7dde4;
+}
+
+.admin-request-database-page__modal-button--approve {
+  color: #ffffff;
+  background: #16a34a;
+  border: 1px solid #16a34a;
+}
+
+.admin-request-database-page__modal-button--reject {
+  color: #ffffff;
+  background: #dc2626;
+  border: 1px solid #dc2626;
+}
+
+@media (max-width: 920px) {
+  .admin-request-database-page__hero,
+  .admin-request-database-page__toolbar {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-request-database-page__table-card {
+    overflow-x: auto;
+  }
+
+  .admin-request-database-page__pagination,
+  .admin-request-database-page__modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-request-database-page__confirm-grid,
+  .admin-request-database-page__resource-list {
+    grid-template-columns: 1fr;
+  }
+}

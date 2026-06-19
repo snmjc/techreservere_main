@@ -487,6 +487,129 @@
   gap: 1rem;
 }
 
+.active-reservation-workflow-section {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.active-reservation-workflow-label {
+  margin: 0;
+  color: #27343c;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.active-reservation-resource-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.active-reservation-resource-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 0.8rem;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.active-reservation-workflow-empty {
+  margin: 0;
+  padding: 0.95rem 1rem;
+  color: #6e7785;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.active-reservation-workflow-task-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.active-reservation-workflow-task-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  background: #f8faf9;
+  border: 1px solid #dfe7e1;
+  border-radius: 16px;
+}
+
+.active-reservation-workflow-task-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.active-reservation-workflow-task-head strong {
+  color: #1f2937;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.active-reservation-workflow-task-head span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.75rem;
+  color: #0f766e;
+  background: #ccfbf1;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.active-reservation-workflow-task-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.active-reservation-workflow-task-grid small,
+.active-reservation-workflow-task-notes small {
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #7b8592;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.active-reservation-workflow-task-grid strong {
+  color: #27343c;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.active-reservation-workflow-task-notes p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.active-reservation-action-feedback {
+  margin: 0;
+  padding: 0.82rem 0.95rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.active-reservation-action-feedback--error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
 .active-reservation-action-button {
   min-height: 50px;
   min-width: 182px;
@@ -496,6 +619,11 @@
   font-size: 0.88rem;
   font-weight: 900;
   cursor: pointer;
+}
+
+.active-reservation-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .active-reservation-action-button--ghost {
@@ -540,7 +668,8 @@
 
   .active-reservation-summary-top,
   .active-reservation-summary-bottom,
-  .active-reservation-action-grid {
+  .active-reservation-action-grid,
+  .active-reservation-workflow-task-grid {
     grid-template-columns: 1fr;
   }
 }

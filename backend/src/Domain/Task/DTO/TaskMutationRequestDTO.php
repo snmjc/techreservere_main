@@ -11,7 +11,9 @@ class TaskMutationRequestDTO
         public readonly string $taskStatus,
         public readonly ?int $reservationIdentifier,
         public readonly ?int $assignedToAccountId,
-        public readonly ?string $dueDateTimestamp
+        public readonly ?string $dueDateTimestamp,
+        public readonly ?string $preparationStartTimestamp,
+        public readonly ?string $preparationEndTimestamp
     ) {
     }
 }

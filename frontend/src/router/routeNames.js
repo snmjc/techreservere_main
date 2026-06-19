@@ -1,4 +1,5 @@
 export const ROUTE_NAMES = Object.freeze({
+  landing: 'landingPage',
   login: 'loginPage',
   signUp: 'signUpPage',
   clerkLogin: 'clerkLoginPage',
@@ -8,6 +9,8 @@ export const ROUTE_NAMES = Object.freeze({
   requestPending: 'requestPendingPage',
   accountDeactivated: 'accountDeactivatedPage',
   adminDashboard: 'adminDashboardPage',
+  adminRequestDatabase: 'adminRequestDatabasePage',
+  adminCancelledRequests: 'adminCancelledRequestsPage',
   employeeDashboard: 'employeeDashboardPage',
   dashboard: 'dashboardPage',
   borrowerMyReservations: 'borrowerMyReservationsPage',

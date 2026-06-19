@@ -23,7 +23,7 @@
           class="admin-past-records-stat-card"
           :class="`admin-past-records-stat-card--${card.tone}`"
         >
-          <span class="admin-past-records-stat-icon">{{ card.icon }}</span>
+          <span class="admin-past-records-stat-icon" v-html="card.iconSvg"></span>
           <div>
             <p>{{ card.label }}</p>
             <strong>{{ card.value }}</strong>
@@ -276,6 +276,7 @@ import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { createTextPlaceholderDataUrl } from '@/shared/utils/mockImage.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+const summaryIconAttributes = 'width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
@@ -307,10 +308,34 @@ const summaryCards = computed(() => {
   const cancelled = pastRecordsList.value.filter((record) => record.recordStatus === 'Cancelled').length;
 
   return [
-    { label: 'Total Records', value: pastRecordsList.value.length, caption: 'All archived reservations', icon: 'Total', tone: 'total' },
-    { label: 'Completed', value: completed, caption: `${Math.round((completed / total) * 100)}% of all records`, icon: 'Done', tone: 'completed' },
-    { label: 'Rejected', value: rejected, caption: `${Math.round((rejected / total) * 100)}% of all records`, icon: 'No', tone: 'rejected' },
-    { label: 'Cancelled', value: cancelled, caption: `${Math.round((cancelled / total) * 100)}% of all records`, icon: 'Stop', tone: 'cancelled' },
+    {
+      label: 'Total Records',
+      value: pastRecordsList.value.length,
+      caption: 'All archived reservations',
+      iconSvg: `<svg ${summaryIconAttributes}><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>`,
+      tone: 'total',
+    },
+    {
+      label: 'Completed',
+      value: completed,
+      caption: `${Math.round((completed / total) * 100)}% of all records`,
+      iconSvg: `<svg ${summaryIconAttributes}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>`,
+      tone: 'completed',
+    },
+    {
+      label: 'Rejected',
+      value: rejected,
+      caption: `${Math.round((rejected / total) * 100)}% of all records`,
+      iconSvg: `<svg ${summaryIconAttributes}><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg>`,
+      tone: 'rejected',
+    },
+    {
+      label: 'Cancelled',
+      value: cancelled,
+      caption: `${Math.round((cancelled / total) * 100)}% of all records`,
+      iconSvg: `<svg ${summaryIconAttributes}><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>`,
+      tone: 'cancelled',
+    },
   ];
 });
 

@@ -36,6 +36,12 @@ class TaskEntity
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $dueDateTimestamp = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $preparationStartTimestamp = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $preparationEndTimestamp = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdTimestamp;
 
@@ -66,6 +72,10 @@ class TaskEntity
     public function setAssignedToAccountId(?int $val): self { $this->assignedToAccountId = $val; return $this; }
     public function getDueDateTimestamp(): ?\DateTimeInterface { return $this->dueDateTimestamp; }
     public function setDueDateTimestamp(?\DateTimeInterface $val): self { $this->dueDateTimestamp = $val; return $this; }
+    public function getPreparationStartTimestamp(): ?\DateTimeInterface { return $this->preparationStartTimestamp; }
+    public function setPreparationStartTimestamp(?\DateTimeInterface $val): self { $this->preparationStartTimestamp = $val; return $this; }
+    public function getPreparationEndTimestamp(): ?\DateTimeInterface { return $this->preparationEndTimestamp; }
+    public function setPreparationEndTimestamp(?\DateTimeInterface $val): self { $this->preparationEndTimestamp = $val; return $this; }
     public function getCreatedTimestamp(): \DateTimeInterface { return $this->createdTimestamp; }
     public function getUpdatedTimestamp(): \DateTimeInterface { return $this->updatedTimestamp; }
 }

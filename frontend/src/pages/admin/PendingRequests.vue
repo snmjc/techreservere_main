@@ -66,7 +66,7 @@
       <section class="pending-request-action-card">
         <header class="pending-request-action-header">
           <div>
-            <h2>Approve Request</h2>
+            <h2>Approval Confirmation</h2>
             <p>Please review the request details and provide your confirmation to approve.</p>
           </div>
           <button class="pending-request-action-close" type="button" aria-label="Close" @click="closeApproveModal">&times;</button>
@@ -154,12 +154,16 @@
               <small>This helps us verify your identity before processing the approval.</small>
             </label>
           </div>
+
+          <p v-if="approveModalError" class="pending-request-action-feedback pending-request-action-feedback--error">
+            {{ approveModalError }}
+          </p>
         </div>
 
         <footer class="pending-request-action-footer">
-          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" @click="closeApproveModal">Cancel</button>
-          <button class="pending-request-action-button pending-request-action-button--approve" type="button" @click="confirmApproveRequest">
-            Confirm Approval
+          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" :disabled="isApprovingRequest" @click="closeApproveModal">Cancel</button>
+          <button class="pending-request-action-button pending-request-action-button--approve" type="button" :disabled="isApprovingRequest" @click="confirmApproveRequest">
+            {{ isApprovingRequest ? 'Confirming...' : 'Confirm Approval' }}
           </button>
         </footer>
       </section>
@@ -394,6 +398,8 @@ const approveForm = reactive({
   remarks: '',
   adminEmail: '',
 });
+const approveModalError = ref('');
+const isApprovingRequest = ref(false);
 const deleteForm = reactive({
   remarks: '',
   adminEmail: '',
@@ -466,15 +472,18 @@ function handleRejectRequest(requestRecord) {
 }
 
 async function confirmApproveRequest() {
-  if (!approveRequestRecord.value) {
+  if (!approveRequestRecord.value || isApprovingRequest.value) {
     return;
   }
 
   const emailError = validateAdminEmailConfirmation(approveForm.adminEmail, 'approve');
   if (emailError) {
-    window.alert(emailError);
+    approveModalError.value = emailError;
     return;
   }
+
+  isApprovingRequest.value = true;
+  approveModalError.value = '';
 
   try {
     await requestStore.approvePendingRequest(approveRequestRecord.value, {
@@ -483,7 +492,9 @@ async function confirmApproveRequest() {
     closeApproveModal();
     selectedRequestRecord.value = null;
   } catch (error) {
-    window.alert(error?.message || 'Unable to approve this request.');
+    approveModalError.value = error?.message || 'Unable to approve this request.';
+  } finally {
+    isApprovingRequest.value = false;
   }
 }
 
@@ -519,6 +530,8 @@ function closeApproveModal() {
   approveRequestRecord.value = null;
   approveForm.remarks = '';
   approveForm.adminEmail = '';
+  approveModalError.value = '';
+  isApprovingRequest.value = false;
 }
 
 function closeDeleteModal() {

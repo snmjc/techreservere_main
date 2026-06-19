@@ -442,6 +442,7 @@
 }
 
 .approved-request-action-field input,
+.approved-request-action-field select,
 .approved-request-action-field textarea {
   width: 100%;
   min-height: 50px;
@@ -452,6 +453,10 @@
   border-radius: 12px;
   font: inherit;
   font-size: 0.9rem;
+}
+
+.approved-request-action-field select {
+  appearance: none;
 }
 
 .approved-request-action-field textarea {
@@ -491,6 +496,14 @@
   cursor: pointer;
 }
 
+.approved-request-action-button:disabled,
+.approved-request-workflow-add:disabled,
+.approved-request-workflow-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  box-shadow: none;
+}
+
 .approved-request-action-button--ghost {
   color: #355043;
   background: #ffffff;
@@ -513,6 +526,160 @@
   color: #ffffff;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   border: 1px solid #dc2626;
+}
+
+.approved-request-workflow-summary {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.approved-request-workflow-summary-card,
+.approved-request-workflow-task-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem 1.05rem;
+  background: #f8faf9;
+  border: 1px solid #dfe7e1;
+  border-radius: 16px;
+}
+
+.approved-request-workflow-summary-card > span,
+.approved-request-workflow-task-header strong {
+  color: #1f2937;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.approved-request-resource-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.approved-request-resource-list em {
+  color: #7b8592;
+  font-size: 0.83rem;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.approved-request-resource-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 0.8rem;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.approved-request-workflow-summary-card--details {
+  gap: 0.9rem;
+}
+
+.approved-request-workflow-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.approved-request-workflow-detail-item {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.85rem 0.95rem;
+  background: #ffffff;
+  border: 1px solid #e1e8e3;
+  border-radius: 12px;
+}
+
+.approved-request-workflow-detail-item small {
+  color: #708078;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.approved-request-workflow-detail-item strong {
+  color: #1f2937;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.approved-request-action-feedback {
+  margin: 0;
+  padding: 0.82rem 0.95rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.approved-request-action-feedback--error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
+.approved-request-action-feedback--notice {
+  color: #155e75;
+  background: #cffafe;
+  border: 1px solid #67e8f9;
+}
+
+.approved-request-workflow-loading {
+  padding: 1rem 1.05rem;
+  color: #5b6471;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.approved-request-workflow-task-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.approved-request-workflow-task-header small {
+  display: block;
+  margin-top: 0.18rem;
+  color: #7b8592;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.approved-request-workflow-remove {
+  min-height: 36px;
+  padding: 0 0.85rem;
+  color: #b91c1c;
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.approved-request-workflow-add {
+  justify-self: flex-start;
+  min-height: 44px;
+  padding: 0 1rem;
+  color: #0f766e;
+  background: #ecfeff;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 /* ========================================= */
@@ -539,7 +706,8 @@
 
   .approved-request-action-grid,
   .approved-request-summary-top,
-  .approved-request-summary-bottom {
+  .approved-request-summary-bottom,
+  .approved-request-workflow-detail-grid {
     grid-template-columns: 1fr;
   }
 }
