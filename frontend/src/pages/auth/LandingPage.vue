@@ -129,27 +129,6 @@
               <div class="landing-workspace-photo-shell">
                 <img :src="workspaceImage" alt="TechReserve workspace preview" class="landing-workspace-photo" />
               </div>
-              <div class="landing-dashboard-panel">
-                <div class="landing-dashboard-header">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <div class="landing-dashboard-content">
-                  <div class="landing-dashboard-chart landing-dashboard-chart-large" />
-                  <div class="landing-dashboard-stats">
-                    <div class="landing-dashboard-stat">
-                      <strong>24</strong>
-                      <span>Requests</span>
-                    </div>
-                    <div class="landing-dashboard-stat">
-                      <strong>92%</strong>
-                      <span>Ready</span>
-                    </div>
-                  </div>
-                  <div class="landing-dashboard-chart landing-dashboard-chart-small" />
-                </div>
-              </div>
             </div>
           </div>
         </div>
