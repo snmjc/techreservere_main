@@ -262,7 +262,10 @@
 }
 
 .reservation-equipment-sidebar {
+  display: grid;
+  gap: 0.8rem;
   padding: 1rem;
+  max-height: 640px;
 }
 
 .reservation-equipment-sidebar h3 {
@@ -275,6 +278,10 @@
 .reservation-equipment-selected-list {
   display: grid;
   gap: 0.65rem;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+  scrollbar-gutter: stable;
 }
 
 .reservation-equipment-selected-item {
@@ -301,5 +308,10 @@
   .reservation-selection-filters--equipment,
   .reservation-equipment-layout {
     grid-template-columns: 1fr;
+  }
+
+  .reservation-equipment-sidebar,
+  .reservation-equipment-selected-list {
+    max-height: none;
   }
 }
