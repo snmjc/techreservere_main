@@ -9,7 +9,7 @@
         <div class="admin-ops-header-copy">
           <p class="admin-ops-kicker">Deployment Tracking</p>
           <h1>Active Reservations</h1>
-          <p>Track reservations currently in use, open deployment details, confirm returns, and flag issues when needed.</p>
+          <p>Track reservations currently in use, open workflow details, complete active requests, and flag overdue ones when needed.</p>
         </div>
       </header>
 
@@ -74,8 +74,8 @@
       <section class="active-reservation-action-card">
         <header class="active-reservation-action-header">
           <div>
-            <h2>Return Confirmation</h2>
-            <p>Review the active reservation and confirm the return with remarks and administrator verification.</p>
+            <h2>Completed</h2>
+            <p>Review the active reservation and confirm completion with remarks and administrator verification.</p>
           </div>
           <button class="active-reservation-action-close" type="button" aria-label="Close" @click="closeConfirmModal">&times;</button>
         </header>
@@ -140,14 +140,14 @@
               v-model.trim="confirmForm.remarks"
               maxlength="500"
               rows="4"
-              placeholder="Enter any remarks or return notes..."
+              placeholder="Enter any completion remarks..."
             />
             <small>{{ confirmForm.remarks.length }} / 500</small>
           </label>
 
           <div class="active-reservation-action-security">
             <h3>Admin Confirmation</h3>
-            <p>Please verify your administrator account before confirming the return.</p>
+            <p>Please verify your administrator account before confirming completion.</p>
 
             <div class="active-reservation-action-grid">
               <label class="active-reservation-action-field">
@@ -162,7 +162,7 @@
         <footer class="active-reservation-action-footer">
           <button class="active-reservation-action-button active-reservation-action-button--ghost" type="button" @click="closeConfirmModal">Cancel</button>
           <button class="active-reservation-action-button active-reservation-action-button--confirm" type="button" @click="submitConfirmReturn">
-            Return Confirmation
+            Completed
           </button>
         </footer>
       </section>
@@ -172,8 +172,8 @@
       <section class="active-reservation-action-card">
         <header class="active-reservation-action-header">
           <div>
-            <h2>Report</h2>
-            <p>Provide the incident details and administrator verification before reporting this active reservation.</p>
+            <h2>Overdue</h2>
+            <p>Provide the overdue details and administrator verification before flagging this active reservation.</p>
           </div>
           <button class="active-reservation-action-close" type="button" aria-label="Close" @click="closeReportModal">&times;</button>
         </header>
@@ -238,14 +238,14 @@
               v-model.trim="reportForm.remarks"
               maxlength="500"
               rows="4"
-              placeholder="Describe the issue or report details..."
+              placeholder="Describe why this reservation is overdue..."
             />
             <small>{{ reportForm.remarks.length }} / 500</small>
           </label>
 
           <div class="active-reservation-action-security">
             <h3>Admin Confirmation</h3>
-            <p>Please verify your administrator account before submitting this report.</p>
+            <p>Please verify your administrator account before marking this reservation as overdue.</p>
 
             <div class="active-reservation-action-grid">
               <label class="active-reservation-action-field">
@@ -260,7 +260,7 @@
         <footer class="active-reservation-action-footer">
           <button class="active-reservation-action-button active-reservation-action-button--ghost" type="button" @click="closeReportModal">Cancel</button>
           <button class="active-reservation-action-button active-reservation-action-button--report" type="button" @click="submitReportReservation">
-            Report
+            Overdue
           </button>
         </footer>
       </section>
@@ -353,7 +353,7 @@ function handleConfirmReturn(reservationRecord) {
 
 /**
  * @function handleReportReservation
- * @description Cancels an active reservation → moves to Past Records as "Cancelled".
+ * @description Marks an active reservation as overdue and archives it in Past Records as "Cancelled".
  * @param {Object} reservationRecord - The reservation record to cancel
  * @returns {void}
  */
@@ -383,7 +383,7 @@ async function submitConfirmReturn() {
     closeConfirmModal();
     selectedReservationRecord.value = null;
   } catch (error) {
-    window.alert(error?.message || 'Unable to confirm this return.');
+    window.alert(error?.message || 'Unable to complete this reservation.');
   }
 }
 
@@ -393,7 +393,7 @@ async function submitReportReservation() {
   }
 
   if (reportForm.remarks.trim() === '') {
-    window.alert('Please add remarks before submitting this report.');
+    window.alert('Please add remarks before marking this reservation as overdue.');
     return;
   }
 
@@ -414,7 +414,7 @@ async function submitReportReservation() {
     closeReportModal();
     selectedReservationRecord.value = null;
   } catch (error) {
-    window.alert(error?.message || 'Unable to submit this report.');
+    window.alert(error?.message || 'Unable to mark this reservation as overdue.');
   }
 }
 
@@ -433,7 +433,7 @@ function closeReportModal() {
 function validateAdminEmailConfirmation(emailValue, actionName) {
   const normalizedEmail = normalizeEmailForConfirmation(emailValue);
   if (normalizedEmail === '') {
-    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming this return' : 'submitting this report'}.`;
+    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming completion' : 'marking this reservation as overdue'}.`;
   }
 
   if (currentAdminEmail.value === '') {
@@ -441,7 +441,7 @@ function validateAdminEmailConfirmation(emailValue, actionName) {
   }
 
   if (normalizedEmail !== currentAdminEmail.value) {
-    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming this return' : 'submitting this report'}.`;
+    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming completion' : 'marking this reservation as overdue'}.`;
   }
 
   return '';
