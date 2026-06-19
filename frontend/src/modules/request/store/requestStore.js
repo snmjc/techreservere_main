@@ -43,24 +43,36 @@ export const useRequestStore = defineStore('requestStore', () => {
     );
   }
 
-  async function deployApprovedRequest(requestRecord) {
-    await updateReservationStatusAndRefresh(requestRecord, 'Deployed', null, 'Failed to deploy request:');
+  async function deployApprovedRequest(requestRecord, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(requestRecord, 'Deployed', null, 'Failed to deploy request:', securityConfirmation);
   }
 
-  async function cancelApprovedRequest(requestRecord) {
-    await updateReservationStatusAndRefresh(requestRecord, 'Cancelled', null, 'Failed to cancel request:');
+  async function cancelApprovedRequest(requestRecord, cancellationReason = null, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(requestRecord, 'Cancelled', cancellationReason, 'Failed to cancel request:', securityConfirmation);
   }
 
   async function cancelOwnRequest(requestRecord, cancellationReason) {
     await updateReservationStatusAndRefresh(requestRecord, 'Cancelled', cancellationReason, 'Failed to cancel reservation request:');
   }
 
-  async function completeActiveReservation(reservationRecord) {
-    await updateReservationStatusAndRefresh(reservationRecord, 'Completed', null, 'Failed to complete reservation:');
+  async function completeActiveReservation(reservationRecord, completionRemarks = null, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(
+      reservationRecord,
+      'Completed',
+      completionRemarks,
+      'Failed to complete reservation:',
+      securityConfirmation,
+    );
   }
 
-  async function cancelActiveReservation(reservationRecord) {
-    await updateReservationStatusAndRefresh(reservationRecord, 'Cancelled', null, 'Failed to cancel reservation:');
+  async function cancelActiveReservation(reservationRecord, cancellationReason = null, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(
+      reservationRecord,
+      'Cancelled',
+      cancellationReason,
+      'Failed to cancel reservation:',
+      securityConfirmation,
+    );
   }
 
   async function fetchDashboardData() {

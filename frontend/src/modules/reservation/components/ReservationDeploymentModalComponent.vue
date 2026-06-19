@@ -45,26 +45,39 @@
 
           <div class="reservation-deployment-modal-divider"></div>
 
-          <div class="reservation-deployment-modal-grid">
-            <div class="reservation-deployment-modal-detail-card">
-              <span class="reservation-deployment-modal-label">Activity Date:</span>
-              <strong class="reservation-deployment-modal-detail-value">{{ reservationRecord.activityDate }}</strong>
+          <div class="reservation-deployment-modal-flow-grid">
+            <div class="reservation-deployment-modal-flow-column">
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Activity Date:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityDate }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Activity Name/Title:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityNameTitle }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Purpose:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestPurpose }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">No. of Participants:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.participantCount }}</span>
+              </div>
             </div>
-            <div class="reservation-deployment-modal-detail-card">
-              <span class="reservation-deployment-modal-label">Activity Time:</span>
-              <strong class="reservation-deployment-modal-detail-value">{{ reservationRecord.activityEndTime }}</strong>
-            </div>
-            <div class="reservation-deployment-modal-detail-card reservation-deployment-modal-detail-card--wide">
-              <span class="reservation-deployment-modal-label">Activity Name/Title:</span>
-              <strong class="reservation-deployment-modal-detail-value">{{ reservationRecord.activityNameTitle }}</strong>
-            </div>
-            <div class="reservation-deployment-modal-detail-card reservation-deployment-modal-detail-card--wide">
-              <span class="reservation-deployment-modal-label">Purpose:</span>
-              <strong class="reservation-deployment-modal-detail-value">{{ reservationRecord.requestPurpose }}</strong>
-            </div>
-            <div class="reservation-deployment-modal-detail-card">
-              <span class="reservation-deployment-modal-label">No. of Participants:</span>
-              <strong class="reservation-deployment-modal-detail-value">{{ reservationRecord.participantCount }}</strong>
+
+            <div class="reservation-deployment-modal-flow-column">
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Activity Time:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityEndTime }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Schedule:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestSchedule }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Facility:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.facilityName }}</span>
+              </div>
             </div>
           </div>
 

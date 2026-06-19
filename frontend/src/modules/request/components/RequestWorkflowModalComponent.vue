@@ -44,26 +44,39 @@
 
         <div class="request-workflow-modal-divider"></div>
 
-        <div class="request-workflow-modal-grid">
-          <div class="request-workflow-modal-detail-card">
-            <span class="request-workflow-modal-label">Activity Time:</span>
-            <strong class="request-workflow-modal-detail-value">{{ requestRecord.activityTime }}</strong>
+        <div class="request-workflow-modal-flow-grid">
+          <div class="request-workflow-modal-flow-column">
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Activity Time:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.activityTime }}</span>
+            </div>
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Activity Name/Title:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.activityNameTitle }}</span>
+            </div>
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Purpose:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.requestPurpose }}</span>
+            </div>
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">No. of Participants:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.participantCount }}</span>
+            </div>
           </div>
-          <div class="request-workflow-modal-detail-card">
-            <span class="request-workflow-modal-label">End Time:</span>
-            <strong class="request-workflow-modal-detail-value">{{ requestRecord.activityEndTime }}</strong>
-          </div>
-          <div class="request-workflow-modal-detail-card request-workflow-modal-detail-card--wide">
-            <span class="request-workflow-modal-label">Activity Name/Title:</span>
-            <strong class="request-workflow-modal-detail-value">{{ requestRecord.activityNameTitle }}</strong>
-          </div>
-          <div class="request-workflow-modal-detail-card request-workflow-modal-detail-card--wide">
-            <span class="request-workflow-modal-label">Purpose:</span>
-            <strong class="request-workflow-modal-detail-value">{{ requestRecord.requestPurpose }}</strong>
-          </div>
-          <div class="request-workflow-modal-detail-card">
-            <span class="request-workflow-modal-label">No. of Participants:</span>
-            <strong class="request-workflow-modal-detail-value">{{ requestRecord.participantCount }}</strong>
+
+          <div class="request-workflow-modal-flow-column">
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Activity End Time:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.activityEndTime }}</span>
+            </div>
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Schedule:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.requestSchedule }}</span>
+            </div>
+            <div class="request-workflow-modal-field">
+              <span class="request-workflow-modal-label">Facility:</span>
+              <span class="request-workflow-modal-value">{{ requestRecord.facilityName }}</span>
+            </div>
           </div>
         </div>
 
