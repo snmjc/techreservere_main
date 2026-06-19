@@ -54,8 +54,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--secondary" type="button" @click="navigateToPreviousPage">
               Previous
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="navigateToNextPage">
-              Next: Review Summary
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="navigateToNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Review Summary' }}
             </button>
           </footer>
         </section>
@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -74,6 +74,7 @@ import './css/CreateReservationWizard.css';
 import './css/CreateReservationDocuments.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 import {
   getReservationDocumentAcceptValue,
   validateReservationDocumentFile,
@@ -86,6 +87,7 @@ const fileInputRefs = ref({});
 const allowedDocumentAccept = getReservationDocumentAcceptValue();
 const optionalDocumentsError = ref('');
 const requiredDocumentErrors = reactive({});
+const isStepLoading = ref(false);
 
 const requiredDocumentItems = [
   { key: 'proposal', label: 'Activity Proposal' },
@@ -97,6 +99,12 @@ const requiredDocumentItems = [
 const supportingDocuments = computed(() => reservationFormStore.supportingDocumentsList || []);
 const recommendationDocuments = computed(() => reservationFormStore.recommendationDocumentsList || []);
 const additionalDocuments = computed(() => reservationFormStore.additionalDocumentsList || []);
+
+onMounted(() => {
+  if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+  }
+});
 
 function setFileInputRef(key, node) {
   if (!node) return;
@@ -165,6 +173,10 @@ function navigateToPreviousPage() {
 }
 
 function navigateToNextPage() {
-  router.push({ name: 'borrowerCreateReservationSummaryPage' });
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationSummaryPage' });
+  }, 250);
 }
 </script>

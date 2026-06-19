@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -112,6 +112,12 @@ const reservationFormStore = useReservationFormStore();
 const requestStore = useRequestStore();
 const isSubmitting = ref(false);
 const submissionError = ref('');
+
+onMounted(() => {
+  if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+  }
+});
 
 const allDocumentNames = computed(() => [
   ...(reservationFormStore.supportingDocumentsList || []).map((item) => item.documentFileName),
@@ -251,6 +257,10 @@ function validateReservationSubmission() {
 
   if (reservationFormStore.reservationType !== 'Venue' && !selectedEquipmentItems.length) {
     return 'Please select at least one equipment item before submitting.';
+  }
+
+  if (reservationFormStore.reservationType === 'Both' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {
+    return 'Both venue and equipment selections are required before submitting.';
   }
 
   const invalidEquipmentItem = selectedEquipmentItems.find((item) => {

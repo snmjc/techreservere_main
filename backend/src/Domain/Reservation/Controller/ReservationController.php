@@ -146,15 +146,30 @@ class ReservationController extends AbstractController
     // Returns: JsonResponse
 
     #[Route('/{reservationIdentifier}/status', name: 'reservation_update_status', methods: ['PUT'])]
-    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function updateReservationStatus(int $reservationIdentifier, Request $request): JsonResponse
     {
-        $requestBody = json_decode($request->getContent(), true) ?? [];
-        $newStatus = $requestBody['currentStatus'] ?? '';
-        $rejectionReason = $requestBody['rejectionReason'] ?? null;
+        try {
+            $requestBody = json_decode($request->getContent(), true) ?? [];
+            $newStatus = $requestBody['currentStatus'] ?? '';
+            $rejectionReason = $requestBody['rejectionReason'] ?? null;
+            $resolvedRole = (string)$request->attributes->get('resolvedRole', '');
+            $identity = $request->attributes->get('authenticatedIdentity', []);
+            $accountIdentifier = (int)($identity['accountIdentifier'] ?? 0);
 
-        $responseDTO = $this->reservationReviewService->updateReservationStatus($reservationIdentifier, $newStatus, $rejectionReason);
+            $responseDTO = $this->reservationReviewService->updateReservationStatusForActor(
+                $reservationIdentifier,
+                $newStatus,
+                $resolvedRole,
+                $accountIdentifier,
+                $rejectionReason
+            );
 
-        return $this->createSuccessResponse($responseDTO->toResponseArray());
+            return $this->createSuccessResponse($responseDTO->toResponseArray());
+        } catch (DomainNotFoundException $exception) {
+            return $this->createErrorResponse('ReservationNotFound', $exception->getMessage(), 404);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('ReservationStatusUpdateDenied', $exception->getMessage(), 422);
+        }
     }
 }

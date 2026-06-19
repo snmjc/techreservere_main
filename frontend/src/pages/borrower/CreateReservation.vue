@@ -231,8 +231,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--ghost" type="button" @click="router.push({ name: ROUTE_NAMES.borrowerMyReservations })">
               Cancel
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="handleNextPage">
-              Next: Select Venue / Equipment
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="handleNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Select Venue / Equipment' }}
             </button>
           </footer>
         </section>
@@ -280,6 +280,7 @@ const timePickerPeriods = ['AM', 'PM'];
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
+const isStepLoading = ref(false);
 const validationErrors = reactive({
   requestDate: '',
   participantCount: '',
@@ -463,8 +464,11 @@ function handleNextPage() {
   reservationFormStore.purposeText = formState.value.purposeText;
   reservationFormStore.participantCount = String(formState.value.participantCount);
   reservationFormStore.reservationType = formState.value.reservationType;
-
-  router.push({ name: 'borrowerCreateReservationVenuePage' });
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationVenuePage' });
+  }, 250);
 }
 
 function validateReservationDetails() {
