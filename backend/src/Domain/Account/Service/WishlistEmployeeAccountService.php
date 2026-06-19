@@ -49,7 +49,9 @@ class WishlistEmployeeAccountService
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => $emailAddress,
             'username' => AccountUsername::fromEmail($emailAddress),
-            'phone' => preg_replace('/\D+/', '', trim($requestBody['phone'] ?? $requestBody['phoneNumber'] ?? $requestBody['phone_number'] ?? $requestBody['contactNumber'] ?? '')),
+            'phone' => $this->normalizeStaffPhone(
+                preg_replace('/\D+/', '', trim($requestBody['phone'] ?? $requestBody['phoneNumber'] ?? $requestBody['phone_number'] ?? $requestBody['contactNumber'] ?? ''))
+            ),
             'idNumber' => $idNumber,
             'role' => self::STAFF_ROLE_LABEL,
         ];
@@ -224,6 +226,15 @@ class WishlistEmployeeAccountService
         $letterCount = preg_match_all('/[A-Za-z]/', $normalizedName);
 
         return $letterCount >= 2 && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
+    }
+
+    private function normalizeStaffPhone(string $phone): string
+    {
+        if (preg_match('/^09\d{9}$/', $phone) === 1) {
+            return substr($phone, 1);
+        }
+
+        return $phone;
     }
 
     private function buildStaffEmailAddress(string $idNumber): string
