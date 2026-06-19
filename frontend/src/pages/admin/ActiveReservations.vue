@@ -74,8 +74,8 @@
       <section class="active-reservation-action-card">
         <header class="active-reservation-action-header">
           <div>
-            <h2>Completed</h2>
-            <p>Review the active reservation and confirm completion with remarks and administrator verification.</p>
+            <h2>Workflow Confirmation</h2>
+            <p>Review the workflow details below, validate the reservation completion, or reject the workflow when needed.</p>
           </div>
           <button class="active-reservation-action-close" type="button" aria-label="Close" @click="closeConfirmModal">&times;</button>
         </header>
@@ -110,28 +110,88 @@
 
             <div class="active-reservation-summary-bottom">
               <div class="active-reservation-summary-item">
-                <span>Facility</span>
+                <span>Venue</span>
                 <strong>{{ confirmReservationRecord.facilityName || 'N/A' }}</strong>
               </div>
 
               <div class="active-reservation-summary-item">
-                <span>Schedule</span>
+                <span>Start Date &amp; Time</span>
                 <strong class="active-reservation-summary-stack">
-                  <em>{{ confirmReservationRecord.activityDate || 'N/A' }}</em>
-                  <em>{{ confirmReservationRecord.activityEndTime || confirmReservationRecord.requestSchedule || 'N/A' }}</em>
+                  <em>{{ formatWorkflowDateTime(confirmReservationRecord.requestScheduleStart || confirmReservationRecord.activityTime) }}</em>
                 </strong>
               </div>
 
               <div class="active-reservation-summary-item">
-                <span>Purpose</span>
-                <strong>{{ confirmReservationRecord.requestPurpose || 'N/A' }}</strong>
+                <span>End Date &amp; Time</span>
+                <strong class="active-reservation-summary-stack">
+                  <em>{{ formatWorkflowDateTime(confirmReservationRecord.requestScheduleEnd || confirmReservationRecord.activityEndTime) }}</em>
+                </strong>
               </div>
 
               <div class="active-reservation-summary-item">
-                <span>Quantity</span>
-                <strong>{{ confirmReservationRecord.requestQuantity || 0 }}</strong>
+                <span>Number of Participants</span>
+                <strong>{{ confirmReservationRecord.participantCount || 0 }}</strong>
               </div>
             </div>
+          </section>
+
+          <section class="active-reservation-workflow-section">
+            <p class="active-reservation-workflow-label">Equipment</p>
+            <div v-if="getEquipmentResources(confirmReservationRecord).length" class="active-reservation-resource-list">
+              <span
+                v-for="resource in getEquipmentResources(confirmReservationRecord)"
+                :key="`${resource.resourceName}-${resource.resourceCount}`"
+                class="active-reservation-resource-chip"
+              >
+                {{ resource.resourceName }} x{{ resource.resourceCount }}
+              </span>
+            </div>
+            <p v-else class="active-reservation-workflow-empty">No equipment reserved for this workflow.</p>
+          </section>
+
+          <section class="active-reservation-workflow-section">
+            <p class="active-reservation-workflow-label">Task Workflow</p>
+
+            <div v-if="isWorkflowConfirmationLoading" class="active-reservation-workflow-empty">
+              Loading workflow confirmation details...
+            </div>
+
+            <div v-else-if="workflowConfirmationTasks.length" class="active-reservation-workflow-task-list">
+              <article
+                v-for="workflowTask in workflowConfirmationTasks"
+                :key="workflowTask.taskIdentifier || workflowTask.localKey"
+                class="active-reservation-workflow-task-card"
+              >
+                <div class="active-reservation-workflow-task-head">
+                  <strong>{{ workflowTask.taskTitle || 'Task Assignment' }}</strong>
+                  <span>{{ workflowTask.taskStatus || 'Pending' }}</span>
+                </div>
+
+                <div class="active-reservation-workflow-task-grid">
+                  <div>
+                    <small>Staff Assigned</small>
+                    <strong>{{ workflowTask.assignedStaffName || 'Unassigned' }}</strong>
+                  </div>
+                  <div>
+                    <small>Ingress</small>
+                    <strong>{{ formatWorkflowDateTime(workflowTask.preparationStartTimestamp) }}</strong>
+                  </div>
+                  <div>
+                    <small>Egress</small>
+                    <strong>{{ formatWorkflowDateTime(workflowTask.preparationEndTimestamp || workflowTask.dueDateTimestamp) }}</strong>
+                  </div>
+                </div>
+
+                <div class="active-reservation-workflow-task-notes">
+                  <small>Notes</small>
+                  <p>{{ workflowTask.taskDescription || 'No workflow notes added.' }}</p>
+                </div>
+              </article>
+            </div>
+
+            <p v-else class="active-reservation-workflow-empty">
+              No workflow task assignments are linked to this reservation yet.
+            </p>
           </section>
 
           <label class="active-reservation-action-field active-reservation-action-field--full">
@@ -140,14 +200,14 @@
               v-model.trim="confirmForm.remarks"
               maxlength="500"
               rows="4"
-              placeholder="Enter any completion remarks..."
+              placeholder="Add validation remarks or explain why the workflow is being rejected..."
             />
             <small>{{ confirmForm.remarks.length }} / 500</small>
           </label>
 
           <div class="active-reservation-action-security">
             <h3>Admin Confirmation</h3>
-            <p>Please verify your administrator account before confirming completion.</p>
+            <p>Please verify your administrator account before confirming or rejecting this workflow.</p>
 
             <div class="active-reservation-action-grid">
               <label class="active-reservation-action-field">
@@ -157,12 +217,19 @@
 
             </div>
           </div>
+
+          <p v-if="workflowConfirmationError" class="active-reservation-action-feedback active-reservation-action-feedback--error">
+            {{ workflowConfirmationError }}
+          </p>
         </div>
 
         <footer class="active-reservation-action-footer">
-          <button class="active-reservation-action-button active-reservation-action-button--ghost" type="button" @click="closeConfirmModal">Cancel</button>
-          <button class="active-reservation-action-button active-reservation-action-button--confirm" type="button" @click="submitConfirmReturn">
-            Completed
+          <button class="active-reservation-action-button active-reservation-action-button--ghost" type="button" :disabled="isWorkflowConfirmationSubmitting" @click="closeConfirmModal">Cancel</button>
+          <button class="active-reservation-action-button active-reservation-action-button--report" type="button" :disabled="isWorkflowConfirmationSubmitting" @click="rejectWorkflowConfirmation">
+            {{ isWorkflowConfirmationSubmitting ? 'Processing...' : 'Reject Workflow' }}
+          </button>
+          <button class="active-reservation-action-button active-reservation-action-button--confirm" type="button" :disabled="isWorkflowConfirmationSubmitting" @click="submitConfirmReturn">
+            {{ isWorkflowConfirmationSubmitting ? 'Processing...' : 'Confirm Completed' }}
           </button>
         </footer>
       </section>
@@ -279,6 +346,7 @@ import ReservationDeploymentModalComponent from '@/modules/reservation/component
 import '@/modules/reservation/components/reservationDeploymentModal.css';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { taskWorkflowApi } from '@/modules/task/services/taskWorkflowApi.js';
 
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
@@ -295,6 +363,10 @@ const reportForm = reactive({
   remarks: '',
   adminEmail: '',
 });
+const workflowConfirmationTasks = ref([]);
+const isWorkflowConfirmationLoading = ref(false);
+const isWorkflowConfirmationSubmitting = ref(false);
+const workflowConfirmationError = ref('');
 
 const activeReservationsList = computed(() => requestStore.activeReservationsList || []);
 const currentAdminEmail = computed(() => {
@@ -337,8 +409,8 @@ function handleCloseDeploymentModal() {
  * @param {Object} reservationRecord - The reservation record
  * @returns {void}
  */
-function handleReturnConfirmation(reservationRecord) {
-  confirmReservationRecord.value = reservationRecord;
+async function handleReturnConfirmation(reservationRecord) {
+  await openWorkflowConfirmationModal(reservationRecord);
 }
 
 /**
@@ -347,8 +419,8 @@ function handleReturnConfirmation(reservationRecord) {
  * @param {Object} reservationRecord - The reservation record returned
  * @returns {void}
  */
-function handleConfirmReturn(reservationRecord) {
-  confirmReservationRecord.value = reservationRecord;
+async function handleConfirmReturn(reservationRecord) {
+  await openWorkflowConfirmationModal(reservationRecord);
 }
 
 /**
@@ -368,9 +440,12 @@ async function submitConfirmReturn() {
 
   const emailError = validateAdminEmailConfirmation(confirmForm.adminEmail, 'confirm');
   if (emailError) {
-    window.alert(emailError);
+    workflowConfirmationError.value = emailError;
     return;
   }
+
+  isWorkflowConfirmationSubmitting.value = true;
+  workflowConfirmationError.value = '';
 
   try {
     await requestStore.completeActiveReservation(
@@ -383,7 +458,45 @@ async function submitConfirmReturn() {
     closeConfirmModal();
     selectedReservationRecord.value = null;
   } catch (error) {
-    window.alert(error?.message || 'Unable to complete this reservation.');
+    workflowConfirmationError.value = error?.message || 'Unable to complete this reservation.';
+  } finally {
+    isWorkflowConfirmationSubmitting.value = false;
+  }
+}
+
+async function rejectWorkflowConfirmation() {
+  if (!confirmReservationRecord.value) {
+    return;
+  }
+
+  if (confirmForm.remarks.trim() === '') {
+    workflowConfirmationError.value = 'Please add remarks before rejecting this workflow.';
+    return;
+  }
+
+  const emailError = validateAdminEmailConfirmation(confirmForm.adminEmail, 'reject');
+  if (emailError) {
+    workflowConfirmationError.value = emailError;
+    return;
+  }
+
+  isWorkflowConfirmationSubmitting.value = true;
+  workflowConfirmationError.value = '';
+
+  try {
+    await requestStore.cancelActiveReservation(
+      confirmReservationRecord.value,
+      confirmForm.remarks.trim(),
+      {
+        confirmedAdminEmail: normalizeEmailForConfirmation(confirmForm.adminEmail),
+      },
+    );
+    closeConfirmModal();
+    selectedReservationRecord.value = null;
+  } catch (error) {
+    workflowConfirmationError.value = error?.message || 'Unable to reject this workflow.';
+  } finally {
+    isWorkflowConfirmationSubmitting.value = false;
   }
 }
 
@@ -422,6 +535,10 @@ function closeConfirmModal() {
   confirmReservationRecord.value = null;
   confirmForm.remarks = '';
   confirmForm.adminEmail = '';
+  workflowConfirmationTasks.value = [];
+  workflowConfirmationError.value = '';
+  isWorkflowConfirmationLoading.value = false;
+  isWorkflowConfirmationSubmitting.value = false;
 }
 
 function closeReportModal() {
@@ -432,8 +549,14 @@ function closeReportModal() {
 
 function validateAdminEmailConfirmation(emailValue, actionName) {
   const normalizedEmail = normalizeEmailForConfirmation(emailValue);
+  const actionCopy = actionName === 'confirm'
+    ? 'confirming completion'
+    : actionName === 'reject'
+      ? 'rejecting this workflow'
+      : 'marking this reservation as overdue';
+
   if (normalizedEmail === '') {
-    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming completion' : 'marking this reservation as overdue'}.`;
+    return `Please type your exact admin email before ${actionCopy}.`;
   }
 
   if (currentAdminEmail.value === '') {
@@ -441,7 +564,7 @@ function validateAdminEmailConfirmation(emailValue, actionName) {
   }
 
   if (normalizedEmail !== currentAdminEmail.value) {
-    return `Please type your exact admin email before ${actionName === 'confirm' ? 'confirming completion' : 'marking this reservation as overdue'}.`;
+    return `Please type your exact admin email before ${actionCopy}.`;
   }
 
   return '';
@@ -461,5 +584,59 @@ function getRequesterInitials(reservationRecord) {
     .join('');
 
   return name || 'TR';
+}
+
+async function openWorkflowConfirmationModal(reservationRecord) {
+  confirmReservationRecord.value = reservationRecord;
+  workflowConfirmationError.value = '';
+  isWorkflowConfirmationLoading.value = true;
+
+  try {
+    const reservationIdentifier = Number(reservationRecord?.requestIdentifier || reservationRecord?.reservationIdentifier || 0);
+    if (!reservationIdentifier) {
+      workflowConfirmationTasks.value = [];
+      return;
+    }
+
+    const result = await taskWorkflowApi.fetchTasksByReservation(reservationIdentifier, authStore.authToken);
+    if (!result.success) {
+      throw new Error(result.error || 'Unable to load workflow confirmation details.');
+    }
+
+    workflowConfirmationTasks.value = Array.isArray(result.data.tasks)
+      ? result.data.tasks.map((taskRecord, index) => ({
+        ...taskRecord,
+        localKey: `workflow-confirmation-${taskRecord.taskIdentifier || index}`,
+      }))
+      : [];
+  } catch (error) {
+    workflowConfirmationTasks.value = [];
+    workflowConfirmationError.value = error?.message || 'Unable to load workflow confirmation details.';
+  } finally {
+    isWorkflowConfirmationLoading.value = false;
+  }
+}
+
+function formatWorkflowDateTime(value) {
+  if (!value) {
+    return 'N/A';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function getEquipmentResources(reservationRecord) {
+  return (reservationRecord?.reservedResources || []).filter((resource) => resource.resourceType === 'Equipment');
 }
 </script>
