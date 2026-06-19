@@ -277,6 +277,13 @@
           </section>
 
           <footer class="admin-task-assignments-modal-actions">
+            <p
+              v-if="taskSubmissionFeedback.message"
+              class="admin-task-assignments-submit-feedback"
+              :class="`admin-task-assignments-submit-feedback--${taskSubmissionFeedback.tone}`"
+            >
+              {{ taskSubmissionFeedback.message }}
+            </p>
             <button type="button" class="admin-task-assignments-secondary" :disabled="isSubmitting" @click="closeTaskModal">Cancel</button>
             <button type="submit" class="admin-task-assignments-primary" :disabled="isSubmitting">
               {{ isSubmitting ? (taskModalMode === 'create' ? 'Creating...' : 'Saving...') : (taskModalMode === 'create' ? 'Create' : 'Save Changes') }}
@@ -342,6 +349,10 @@ const isSubmitting = ref(false);
 const loadError = ref('');
 const modalError = ref('');
 const taskToastMessage = ref('');
+const taskSubmissionFeedback = reactive({
+  message: '',
+  tone: 'success',
+});
 const tasks = ref([]);
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
@@ -578,6 +589,7 @@ async function submitTaskForm() {
 
   isSubmitting.value = true;
   modalError.value = '';
+  resetTaskSubmissionFeedback();
   const payload = buildTaskPayload();
   const endpoint = taskModalMode.value === 'create'
     ? '/api/v1/tasks'
@@ -591,14 +603,17 @@ async function submitTaskForm() {
     return;
   }
 
-  if (typeof result.data?.warning === 'string' && result.data.warning.trim() !== '') {
-    showTaskToast(result.data.warning);
-  } else {
-    showTaskToast(taskModalMode.value === 'create' ? 'Task assignment created.' : 'Task assignment updated.');
-  }
-
-  closeTaskModal();
   await loadPageData();
+  const feedback = buildTaskSubmissionFeedback(result.data?.warning);
+  taskSubmissionFeedback.message = feedback.message;
+  taskSubmissionFeedback.tone = feedback.tone;
+  showTaskToast(feedback.message);
+  window.clearTimeout(submitTaskForm.closeTimeoutId);
+  submitTaskForm.closeTimeoutId = window.setTimeout(() => {
+    if (taskSubmissionFeedback.message === feedback.message) {
+      closeTaskModal();
+    }
+  }, feedback.tone === 'warning' ? 2600 : 1800);
 }
 
 async function confirmDeleteTask() {
@@ -854,8 +869,30 @@ function showTaskToast(message) {
 }
 
 showTaskToast.timeoutId = null;
+submitTaskForm.closeTimeoutId = null;
+
+function buildTaskSubmissionFeedback(warning) {
+  const normalizedWarning = typeof warning === 'string' ? warning.trim() : '';
+  if (normalizedWarning !== '') {
+    return {
+      message: normalizedWarning,
+      tone: 'warning',
+    };
+  }
+
+  return {
+    message: 'Task assignment saved and SMS sent to assigned staff.',
+    tone: 'success',
+  };
+}
+
+function resetTaskSubmissionFeedback() {
+  taskSubmissionFeedback.message = '';
+  taskSubmissionFeedback.tone = 'success';
+}
 
 function resetTaskForm() {
+  window.clearTimeout(submitTaskForm.closeTimeoutId);
   taskForm.taskTitle = '';
   taskForm.taskDescription = '';
   taskForm.taskType = 'Preparation';
@@ -866,6 +903,7 @@ function resetTaskForm() {
   taskForm.emergencyOverride = false;
   taskForm.confirmedAdminEmail = '';
   taskForm.confirmedAdminPassword = '';
+  resetTaskSubmissionFeedback();
 }
 
 function resetDeleteForm() {
@@ -944,6 +982,10 @@ function resetDeleteForm() {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.admin-task-assignments-modal-actions {
+  align-items: center;
 }
 
 .admin-task-assignments-primary,
@@ -1106,6 +1148,13 @@ button:disabled {
   border-radius: 12px;
 }
 
+.admin-task-assignments-form input,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  min-height: 40px;
+  padding: 0.58rem 0.78rem;
+}
+
 .admin-task-assignments-search input {
   padding-left: 0.92rem;
 }
@@ -1119,6 +1168,27 @@ button:disabled {
   border-radius: 12px;
   font-size: 0.86rem;
   font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0.78rem 0.92rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback--success {
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.admin-task-assignments-submit-feedback--warning {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
 }
 
 .admin-task-assignments-state {
@@ -1429,6 +1499,14 @@ button:disabled {
 .admin-task-assignments-modal-actions,
 .admin-task-assignments-delete-summary {
   grid-column: 1 / -1;
+}
+
+.admin-task-assignments-form textarea {
+  min-height: 88px;
+  max-height: 120px;
+  padding: 0.72rem 0.78rem;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .admin-task-assignments-checkbox {
