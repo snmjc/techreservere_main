@@ -103,9 +103,7 @@ class WishlistEmployeeAccountService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         try {
-            $accountIdentifier = $this->connection->transactional(function (): int {
-                $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-
+            $accountIdentifier = $this->connection->transactional(function () use ($payload, $now): int {
                 $this->connection->executeStatement(
                     'INSERT INTO accounts
                         (last_name, first_name, email_address, username, role_designation, id_number, department,
