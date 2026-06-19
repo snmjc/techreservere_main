@@ -338,6 +338,62 @@
   font-size: 0.98rem;
 }
 
+.admin-request-database-page__confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-request-database-page__confirm-card {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.95rem 1rem;
+  background: #fafbfc;
+  border: 1px solid #e7eaee;
+  border-radius: 14px;
+}
+
+.admin-request-database-page__confirm-card span,
+.admin-request-database-page__confirm-label,
+.admin-request-database-page__resource-card span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-request-database-page__confirm-card strong,
+.admin-request-database-page__resource-card strong {
+  color: #1f2937;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.admin-request-database-page__confirm-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-request-database-page__resource-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-request-database-page__resource-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e7eaee;
+  border-radius: 14px;
+}
+
+.admin-request-database-page__resource-card small,
+.admin-request-database-page__resource-empty {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
 .admin-request-database-page__modal-button {
   min-width: 148px;
   padding: 0 1rem;
@@ -379,5 +435,10 @@
   .admin-request-database-page__modal-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .admin-request-database-page__confirm-grid,
+  .admin-request-database-page__resource-list {
+    grid-template-columns: 1fr;
   }
 }

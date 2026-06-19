@@ -126,8 +126,8 @@
       <section class="admin-request-database-page__modal">
         <header class="admin-request-database-page__modal-header">
           <div>
-            <h2>Approve Request</h2>
-            <p>Confirm the request using your admin email.</p>
+            <h2>Approval Confirmation</h2>
+            <p>Review the request details below and confirm the approval using your admin email.</p>
           </div>
           <button type="button" class="admin-request-database-page__modal-close" @click="closeApproveModal">&times;</button>
         </header>
@@ -137,6 +137,46 @@
             <strong>{{ approveRequestRecord.requestDisplayIdentifier }}</strong>
             <span>{{ approveRequestRecord.requesterFullName }}</span>
             <span>{{ approveRequestRecord.requestStatus }}</span>
+          </div>
+
+          <div class="admin-request-database-page__confirm-grid">
+            <div class="admin-request-database-page__confirm-card">
+              <span>Activity Title</span>
+              <strong>{{ approveRequestRecord.activityTitle || approveRequestRecord.activityNameTitle || 'N/A' }}</strong>
+            </div>
+
+            <div class="admin-request-database-page__confirm-card">
+              <span>Type of Activity</span>
+              <strong>{{ approveRequestRecord.typeOfActivity || 'N/A' }}</strong>
+            </div>
+
+            <div class="admin-request-database-page__confirm-card">
+              <span>Schedule</span>
+              <strong>{{ formatDateTime(approveRequestRecord.activityTime) }}</strong>
+            </div>
+
+            <div class="admin-request-database-page__confirm-card">
+              <span>Participants</span>
+              <strong>{{ approveRequestRecord.participantCount || 0 }}</strong>
+            </div>
+          </div>
+
+          <div class="admin-request-database-page__confirm-section">
+            <span class="admin-request-database-page__confirm-label">Reserved Facilities and/or Equipment</span>
+
+            <div v-if="approveRequestRecord.reservedResources?.length" class="admin-request-database-page__resource-list">
+              <article
+                v-for="resource in approveRequestRecord.reservedResources"
+                :key="`${resource.resourceType}-${resource.resourceName}`"
+                class="admin-request-database-page__resource-card"
+              >
+                <span>{{ resource.resourceType }}</span>
+                <strong>{{ resource.resourceName }}</strong>
+                <small>Qty: {{ resource.resourceCount }}</small>
+              </article>
+            </div>
+
+            <p v-else class="admin-request-database-page__resource-empty">No reserved resource details available.</p>
           </div>
 
           <label class="admin-request-database-page__field admin-request-database-page__field--full">
@@ -155,7 +195,7 @@
             :disabled="isSubmittingAction"
             @click="submitApproveRequest"
           >
-            Approve
+            Confirm Approval
           </button>
         </footer>
       </section>
