@@ -89,6 +89,10 @@ class ReservationReviewService
             $rejectionReason = 'Rejected by administrator';
         }
 
+        if ($newStatus === 'Approved') {
+            $this->validateVenueApprovalConflict($entity);
+        }
+
         $entity->setCurrentStatus($newStatus);
         if ($rejectionReason !== null) {
             $entity->setRejectionReason($rejectionReason);
@@ -192,5 +196,41 @@ class ReservationReviewService
         $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
+    }
+
+    private function validateVenueApprovalConflict(ReservationEntity $entity): void
+    {
+        $venueIdentifier = $entity->getVenueIdentifier();
+        if ($venueIdentifier === null) {
+            return;
+        }
+
+        $rangeStart = $entity->getEventDateTime();
+        $rangeEnd = $entity->getEndDateTime() ?? $rangeStart;
+        if ($rangeEnd <= $rangeStart) {
+            $rangeEnd = (clone $rangeStart)->modify('+1 minute');
+        }
+
+        $overlappingReservations = $this->reservationRepository->findAcceptedVenueReservationsOverlappingRange(
+            $venueIdentifier,
+            $rangeStart,
+            $rangeEnd,
+            $entity->getReservationIdentifier()
+        );
+
+        if ($overlappingReservations === []) {
+            return;
+        }
+
+        $conflict = $overlappingReservations[0];
+        $conflictEndDateTime = $conflict->getEndDateTime() ?? $conflict->getEventDateTime();
+
+        throw new DomainValidationException(sprintf(
+            'This venue is already approved for Reservation %s on %s from %s to %s.',
+            $conflict->getReservationCode(),
+            $conflict->getEventDateTime()->format('F j, Y'),
+            $conflict->getEventDateTime()->format('g:i A'),
+            $conflictEndDateTime->format('g:i A')
+        ));
     }
 }
