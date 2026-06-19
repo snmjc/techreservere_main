@@ -470,11 +470,11 @@
           </div>
 
           <label class="admin-wishlist-confirm-field">
-            <span>Type the exact email <strong>{{ denialAccount.emailAddress }}</strong> to confirm denial:</span>
+            <span>Type your admin email <strong>{{ currentAdminEmail || 'from your account' }}</strong> to confirm denial:</span>
             <input
               v-model.trim="denialConfirmEmail"
               type="email"
-              :placeholder="denialAccount.emailAddress"
+              :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
               autocomplete="off"
             />
           </label>

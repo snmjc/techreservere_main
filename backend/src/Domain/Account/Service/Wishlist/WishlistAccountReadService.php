@@ -82,7 +82,10 @@ class WishlistAccountReadService
         $employeeRoleLabel = str_contains($department, 'faculty') || str_contains($normalizedRole, 'FACULTY')
             ? 'Faculty'
             : ($department !== '' ? ucwords($department) : 'Technical Staff');
-        $roleLabel = $isAdmin ? 'Admin' : ($isEmployee ? $employeeRoleLabel : 'User: Student');
+        $userRoleLabel = str_contains($department, 'faculty') || str_contains($normalizedRole, 'FACULTY')
+            ? 'Faculty'
+            : 'Student';
+        $roleLabel = $isAdmin ? 'Admin' : ($isEmployee ? $employeeRoleLabel : 'User: ' . $userRoleLabel);
 
         $supportingDocumentPath = $this->resolveAvailableSupportingDocumentPath($row);
 

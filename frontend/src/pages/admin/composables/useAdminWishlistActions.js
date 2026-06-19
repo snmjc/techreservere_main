@@ -33,7 +33,8 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
   ));
   const isDenialConfirmationReady = computed(() => (
     Boolean(denialAccount.value)
-    && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(denialAccount.value.emailAddress)
+    && Boolean(currentAdminEmail.value)
+    && normalizeEmailForConfirmation(denialConfirmEmail.value) === normalizeEmailForConfirmation(currentAdminEmail.value)
     && denialConfirmPassword.value.trim() !== ''
   ));
   const isDeleteConfirmationReady = computed(() => (
@@ -128,7 +129,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
         denialAccount.value.accountIdentifier,
         authStore.authToken,
         {
-          confirmEmail: normalizeEmailForConfirmation(denialConfirmEmail.value),
+          confirmedAdminEmail: normalizeEmailForConfirmation(denialConfirmEmail.value),
           confirmedAdminPassword: denialConfirmPassword.value,
         },
       );
@@ -251,8 +252,12 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function canSubmitDenial() {
     if (!denialAccount.value) return false;
-    if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(denialAccount.value.emailAddress)) {
-      denialFormError.value = 'Please type the exact email address to deny this request.';
+    if (!currentAdminEmail.value) {
+      denialFormError.value = 'Unable to confirm the responsible admin email. Please sign in again.';
+      return false;
+    }
+    if (normalizeEmailForConfirmation(denialConfirmEmail.value) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
+      denialFormError.value = 'Please type your exact admin email to deny this request.';
       return false;
     }
     if (denialConfirmPassword.value.trim() === '') {
