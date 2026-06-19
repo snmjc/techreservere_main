@@ -79,6 +79,8 @@ function mapReservationRecord(reservation) {
   const requestedEquipmentList = Array.isArray(reservation?.requestedEquipmentList)
     ? reservation.requestedEquipmentList
     : [];
+  const reservationSummary = mapRequestedEquipment(requestedEquipmentList);
+  const requestType = resolveRequestType(reservation, requestedEquipmentList);
 
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
@@ -90,17 +92,32 @@ function mapReservationRecord(reservation) {
     contactNumber: reservation?.contactNumber || reservation?.phoneNumber || reservation?.mobileNumber || null,
     requestSchedule: reservation?.eventDateTime || 'N/A',
     requestQuantity: reservation?.requestedQuantity || 0,
-    requestType: requestedEquipmentList.length > 0 ? 'Equipment' : 'Venue',
+    requestType,
     requestPurpose: reservation?.purposeDescription || 'N/A',
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
     activityTime: reservation?.eventDateTime || 'N/A',
+    activityEndTime: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
-    reservationSummary: mapRequestedEquipment(reservation?.requestedEquipmentList),
+    cancellationReason: reservation?.rejectionReason || '',
+    uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
+    reservationSummary,
   };
+}
+
+function resolveRequestType(reservation, requestedEquipmentList) {
+  if (reservation?.venueIdentifier && requestedEquipmentList.length > 0) {
+    return 'Both';
+  }
+
+  if (requestedEquipmentList.length > 0) {
+    return 'Equipment';
+  }
+
+  return 'Venue';
 }
 
 function resolveRequesterFullName(reservation) {
@@ -140,6 +157,14 @@ function mapRequestedEquipment(requestedEquipmentList = []) {
 
   return equipmentList.map((equipment) => ({
     itemName: equipment?.name || equipment,
-    itemCount: 1,
+    itemCount: Number(equipment?.quantity ?? 1),
+  }));
+}
+
+function mapUploadedDocuments(supportingDocuments = []) {
+  const documentList = Array.isArray(supportingDocuments) ? supportingDocuments : [];
+
+  return documentList.map((documentFile, index) => ({
+    fileName: typeof documentFile === 'string' ? documentFile : `Document ${index + 1}`,
   }));
 }

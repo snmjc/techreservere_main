@@ -21,6 +21,8 @@
             <h2>Select Venue</h2>
             <p>Choose the venue you want to reserve.</p>
 
+            <p v-if="selectionWarning" class="reservation-selection-warning">{{ selectionWarning }}</p>
+
             <div class="reservation-selection-filters">
               <label class="borrower-reservation-field">
                 <span>Search</span>
@@ -68,7 +70,7 @@
                   </thead>
                   <tbody>
                     <tr
-                      v-for="venue in filteredVenues"
+                      v-for="venue in paginatedVenues"
                       :key="venue.venueIdentifier"
                       :class="{ 'is-selected': selectedVenueRecord?.venueIdentifier === venue.venueIdentifier }"
                     >
@@ -99,6 +101,11 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+            <div v-if="filteredVenues.length > venuePageSize" class="reservation-selection-pagination">
+              <button type="button" :disabled="venuePage === 1" @click="venuePage -= 1">Previous</button>
+              <span>Page {{ venuePage }} of {{ venueTotalPages }}</span>
+              <button type="button" :disabled="venuePage === venueTotalPages" @click="venuePage += 1">Next</button>
             </div>
           </div>
 
@@ -144,7 +151,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr v-for="equipment in filteredEquipmentRecords" :key="equipment.equipmentIdentifier">
+                        <tr v-for="equipment in paginatedEquipmentRecords" :key="equipment.equipmentIdentifier">
                           <td>
                             <div class="reservation-equipment-name">
                               <strong>{{ equipment.equipmentName }}</strong>
@@ -188,10 +195,15 @@
                     </table>
                   </div>
                 </div>
+                <div v-if="filteredEquipmentRecords.length > equipmentPageSize" class="reservation-selection-pagination">
+                  <button type="button" :disabled="equipmentPage === 1" @click="equipmentPage -= 1">Previous</button>
+                  <span>Page {{ equipmentPage }} of {{ equipmentTotalPages }}</span>
+                  <button type="button" :disabled="equipmentPage === equipmentTotalPages" @click="equipmentPage += 1">Next</button>
+                </div>
               </div>
 
               <aside class="reservation-equipment-sidebar">
-                <h3>Selected Equipment ({{ selectedEquipmentItems.length }})</h3>
+                <h3>Selected Equipment ({{ selectedEquipmentItems.length }}/{{ MAX_EQUIPMENT_SELECTION_COUNT }})</h3>
                 <div v-if="selectedEquipmentItems.length" class="reservation-equipment-selected-list">
                   <article v-for="item in selectedEquipmentItems" :key="item.equipmentIdentifier" class="reservation-equipment-selected-item">
                     <strong>{{ item.equipmentName }}</strong>
@@ -199,6 +211,7 @@
                   </article>
                 </div>
                 <p v-else class="borrower-reservation-help">You can review and edit selected equipment on the next step.</p>
+                <p class="borrower-reservation-help">Maximum equipment selections at a time: {{ MAX_EQUIPMENT_SELECTION_COUNT }}.</p>
               </aside>
             </div>
           </div>
@@ -207,8 +220,8 @@
             <button class="borrower-reservation-button borrower-reservation-button--secondary" type="button" @click="navigateToPreviousPage">
               Previous
             </button>
-            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" @click="navigateToNextPage">
-              Next: Additional Information
+            <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="navigateToNextPage">
+              {{ isStepLoading ? 'Loading...' : 'Next: Additional Information' }}
             </button>
           </footer>
         </section>
@@ -218,7 +231,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -228,6 +241,7 @@ import './css/CreateReservationVenue.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
+import { MAX_EQUIPMENT_SELECTION_COUNT } from '@/modules/reservation/utils/reservationWizard.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
@@ -245,6 +259,12 @@ const equipmentStatusFilter = ref('all');
 const selectedVenueRecord = ref(reservationFormStore.selectedVenueRecord);
 const selectedEquipmentItems = ref(buildInitialEquipmentSelection());
 const equipmentQuantityErrors = ref({});
+const selectionWarning = ref('');
+const isStepLoading = ref(false);
+const venuePage = ref(1);
+const equipmentPage = ref(1);
+const venuePageSize = 6;
+const equipmentPageSize = 6;
 
 const fallbackEquipment = [
   { equipmentIdentifier: 1, equipmentName: 'Wireless Microphone', equipmentCategory: 'Audio', equipmentBrand: 'Shure', availableQuantity: 10 },
@@ -256,6 +276,11 @@ const fallbackEquipment = [
 ];
 
 onMounted(async () => {
+  if (!reservationFormStore.hasReservationDetails()) {
+    router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
+    return;
+  }
+
   await loadAllData({
     selectedDate: reservationFormStore.activityDate,
     startTime: reservationFormStore.activityTimeFrom,
@@ -294,6 +319,12 @@ const filteredVenues = computed(() => {
     });
 });
 
+const venueTotalPages = computed(() => Math.max(1, Math.ceil(filteredVenues.value.length / venuePageSize)));
+const paginatedVenues = computed(() => {
+  const startIndex = (venuePage.value - 1) * venuePageSize;
+  return filteredVenues.value.slice(startIndex, startIndex + venuePageSize);
+});
+
 const equipmentRecords = computed(() => {
   const apiRecords = equipmentList.value.map((item) => ({
     equipmentIdentifier: item.equipmentIdentifier,
@@ -316,6 +347,32 @@ const filteredEquipmentRecords = computed(() => {
     if (equipmentStatusFilter.value === 'unavailable' && item.availableQuantity > 0) return false;
     return [item.equipmentName, item.equipmentCategory, item.equipmentBrand].join(' ').toLowerCase().includes(query);
   });
+});
+
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipmentRecords.value.length / equipmentPageSize)));
+const paginatedEquipmentRecords = computed(() => {
+  const startIndex = (equipmentPage.value - 1) * equipmentPageSize;
+  return filteredEquipmentRecords.value.slice(startIndex, startIndex + equipmentPageSize);
+});
+
+watch([venueSearchQuery, venueFloorFilter, venueStatusFilter, venueSortValue], () => {
+  venuePage.value = 1;
+});
+
+watch([equipmentSearchQuery, equipmentCategoryFilter, equipmentStatusFilter], () => {
+  equipmentPage.value = 1;
+});
+
+watch(venueTotalPages, (nextValue) => {
+  if (venuePage.value > nextValue) {
+    venuePage.value = nextValue;
+  }
+});
+
+watch(equipmentTotalPages, (nextValue) => {
+  if (equipmentPage.value > nextValue) {
+    equipmentPage.value = nextValue;
+  }
 });
 
 function buildInitialEquipmentSelection() {
@@ -348,6 +405,14 @@ function setEquipmentQuantity(equipment, nextQuantity) {
 
   if (normalizedQuantity <= 0) {
     selectedEquipmentItems.value = selectedEquipmentItems.value.filter((item) => item.equipmentIdentifier !== equipment.equipmentIdentifier);
+    return;
+  }
+
+  if (!existingItem && selectedEquipmentItems.value.length >= MAX_EQUIPMENT_SELECTION_COUNT) {
+    equipmentQuantityErrors.value = {
+      ...equipmentQuantityErrors.value,
+      [equipment.equipmentIdentifier]: `You can only select up to ${MAX_EQUIPMENT_SELECTION_COUNT} equipment items at a time.`,
+    };
     return;
   }
 
@@ -429,13 +494,15 @@ function navigateToPreviousPage() {
 }
 
 function navigateToNextPage() {
+  selectionWarning.value = '';
+
   if (showVenueSection.value && !selectedVenueRecord.value && reservationFormStore.reservationType !== 'Equipment') {
-    alert('Please select a venue before continuing.');
+    selectionWarning.value = 'Select at least one venue before moving to the next step.';
     return;
   }
 
   if (showEquipmentSection.value && !selectedEquipmentItems.value.length && reservationFormStore.reservationType !== 'Venue') {
-    alert('Please select at least one equipment item before continuing.');
+    selectionWarning.value = 'Select at least one equipment item before moving to the next step.';
     return;
   }
 
@@ -452,14 +519,18 @@ function navigateToNextPage() {
         [matchingEquipment.equipmentIdentifier]: `Enter a quantity from 1 to ${matchingEquipment.availableQuantity}.`,
       };
     }
-    alert('Please fix invalid equipment quantities before continuing.');
+    selectionWarning.value = 'Fix invalid equipment quantities before moving to the next step.';
     return;
   }
 
   reservationFormStore.selectedVenueName = selectedVenueRecord.value?.venueName || null;
   reservationFormStore.selectedVenueRecord = selectedVenueRecord.value;
   reservationFormStore.selectedEquipmentItems = selectedEquipmentItems.value.filter((item) => item.selectedQuantity > 0);
-  router.push({ name: 'borrowerCreateReservationAdditionalPage' });
+  reservationFormStore.persistForm();
+  isStepLoading.value = true;
+  window.setTimeout(() => {
+    router.push({ name: 'borrowerCreateReservationAdditionalPage' });
+  }, 250);
 }
 
 function inferVenueType(venue) {

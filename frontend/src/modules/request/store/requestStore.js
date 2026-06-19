@@ -15,6 +15,7 @@ export const useRequestStore = defineStore('requestStore', () => {
   const approvedRequestsList = ref([]);
   const activeReservationsList = ref([]);
   const pastRecordsList = ref([]);
+  const isLoadingReservations = ref(false);
 
   const pendingCount = computed(() => pendingRequestsList.value.length);
   const approvedCount = computed(() => approvedRequestsList.value.length);
@@ -38,6 +39,10 @@ export const useRequestStore = defineStore('requestStore', () => {
     await updateReservationStatusAndRefresh(requestRecord, 'Cancelled', null, 'Failed to cancel request:');
   }
 
+  async function cancelOwnRequest(requestRecord, cancellationReason) {
+    await updateReservationStatusAndRefresh(requestRecord, 'Cancelled', cancellationReason, 'Failed to cancel reservation request:');
+  }
+
   async function completeActiveReservation(reservationRecord) {
     await updateReservationStatusAndRefresh(reservationRecord, 'Completed', null, 'Failed to complete reservation:');
   }
@@ -57,6 +62,7 @@ export const useRequestStore = defineStore('requestStore', () => {
 
   async function fetchReservations() {
     try {
+      isLoadingReservations.value = true;
       const response = await reservationApi.listReservations();
       console.log('Raw API response:', response);
 
@@ -67,6 +73,8 @@ export const useRequestStore = defineStore('requestStore', () => {
     } catch (error) {
       console.error('Failed to fetch reservations:', error);
       clearReservationLists();
+    } finally {
+      isLoadingReservations.value = false;
     }
   }
 
@@ -92,6 +100,7 @@ export const useRequestStore = defineStore('requestStore', () => {
       await fetchReservations();
     } catch (error) {
       console.error(errorMessage, error);
+      throw error;
     }
   }
 
@@ -128,6 +137,7 @@ export const useRequestStore = defineStore('requestStore', () => {
     approvedRequestsList,
     activeReservationsList,
     pastRecordsList,
+    isLoadingReservations,
     pendingCount,
     approvedCount,
     activeCount,
@@ -137,6 +147,7 @@ export const useRequestStore = defineStore('requestStore', () => {
     rejectPendingRequest,
     deployApprovedRequest,
     cancelApprovedRequest,
+    cancelOwnRequest,
     completeActiveReservation,
     cancelActiveReservation,
     fetchDashboardData,

@@ -1,262 +1,348 @@
-/* ===== AI GENERATED: BorrowerViewReservationListPage Styles ===== */
-/* Purpose: Styles for borrower view reservation list page with search, sorting, and table */
-/* Scope: BorrowerViewReservationListPage.vue */
+.borrower-request-list-page {
+  display: grid;
+  gap: 1.25rem;
+}
 
-/* ========================================= */
-/* PAGE HEADER                               */
-/* ========================================= */
+.borrower-request-list-page__hero,
+.borrower-request-list-page__toolbar,
+.borrower-request-list-page__table-card,
+.borrower-request-list-page__pagination,
+.borrower-request-modal {
+  background: #ffffff;
+  border: 1px solid #d9e1d7;
+  border-radius: 20px;
+  box-shadow: 0 18px 40px rgba(34, 60, 40, 0.08);
+}
 
-.view-reservation-list-page-header {
+.borrower-request-list-page__hero {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  padding: 1.5rem;
 }
 
-.view-reservation-list-page-heading {
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  color: #1a6e3a !important;
+.borrower-request-list-page__eyebrow,
+.borrower-request-modal__eyebrow {
+  margin: 0 0 0.35rem;
+  color: #55715d;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.borrower-request-list-page__hero h1,
+.borrower-request-modal h2 {
+  margin: 0 0 0.35rem;
+  color: #183222;
+}
+
+.borrower-request-list-page__hero p,
+.borrower-request-modal p {
   margin: 0;
+  color: #526257;
 }
 
-.view-reservation-list-go-back-button {
-  background: none;
+.borrower-request-list-page__create-button,
+.borrower-request-list-page__sort-button,
+.borrower-request-list-page__action-button,
+.borrower-request-list-page__pagination button,
+.borrower-request-modal__button {
   border: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #555555;
+  border-radius: 12px;
   cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.view-reservation-list-go-back-button:hover {
-  background-color: #f0f0f0;
-  color: #1a6e3a;
-}
-
-/* ========================================= */
-/* CONTROLS (Search + Sort)                  */
-/* ========================================= */
-
-.view-reservation-list-controls {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.view-reservation-list-search-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 250px;
-}
-
-.view-reservation-list-search-label {
-  font-size: 0.9rem;
   font-weight: 600;
-  color: #555555;
-  white-space: nowrap;
 }
 
-.view-reservation-list-search-input {
-  flex: 1;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.9rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+.borrower-request-list-page__create-button,
+.borrower-request-list-page__sort-button,
+.borrower-request-list-page__action-button,
+.borrower-request-modal__button--ghost {
+  background: #edf4ee;
+  color: #173322;
 }
 
-.view-reservation-list-search-input:focus {
-  outline: none;
-  border-color: #1a6e3a;
-  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.1);
+.borrower-request-list-page__create-button {
+  min-width: 160px;
+  padding: 0.95rem 1.2rem;
 }
 
-.view-reservation-list-sort-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.borrower-request-list-page__toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
 }
 
-.view-reservation-list-sort-label {
-  font-size: 0.9rem;
+.borrower-request-list-page__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.borrower-request-list-page__field span {
+  color: #526257;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #555555;
-  white-space: nowrap;
 }
 
-.view-reservation-list-sort-select {
-  padding: 0.6rem 0.8rem;
-  font-size: 0.9rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  background-color: #ffffff;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
+.borrower-request-list-page__field input,
+.borrower-request-list-page__field select,
+.borrower-request-modal__field input,
+.borrower-request-modal__field textarea {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #cdd8cf;
+  border-radius: 12px;
+  font: inherit;
 }
 
-.view-reservation-list-sort-select:focus {
-  outline: none;
-  border-color: #1a6e3a;
+.borrower-request-list-page__sort-button {
+  align-self: end;
+  min-height: 46px;
 }
 
-.view-reservation-list-sort-toggle {
-  padding: 0.6rem 0.8rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ffffff;
-  background-color: #1a6e3a;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+.borrower-request-list-page__table-card {
+  overflow: hidden;
 }
 
-.view-reservation-list-sort-toggle:hover {
-  background-color: #145a30;
-}
-
-/* ========================================= */
-/* TABLE                                     */
-/* ========================================= */
-
-.view-reservation-list-table-wrapper {
-  overflow-x: auto;
-  margin-bottom: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.view-reservation-list-table {
+.borrower-request-list-page__table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #ffffff;
 }
 
-.view-reservation-list-th {
+.borrower-request-list-page__table th,
+.borrower-request-list-page__table td {
   padding: 1rem;
   text-align: left;
-  font-size: 0.9rem;
+  border-bottom: 1px solid #edf1ec;
+  vertical-align: top;
+}
+
+.borrower-request-list-page__table th {
+  color: #55715d;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.borrower-request-list-page__table td p {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+}
+
+.borrower-request-list-page__badge,
+.borrower-request-modal__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
   font-weight: 700;
+}
+
+.is-pending {
+  background: #fff4d6;
+  color: #8a5a00;
+}
+
+.is-approved {
+  background: #dff6e6;
+  color: #11653b;
+}
+
+.is-cancelled,
+.is-rejected {
+  background: #fde3e1;
+  color: #a33127;
+}
+
+.is-completed {
+  background: #e6eefc;
+  color: #234b8f;
+}
+
+.borrower-request-list-page__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.borrower-request-list-page__action-button {
+  padding: 0.65rem 0.9rem;
+}
+
+.borrower-request-list-page__action-button--danger,
+.borrower-request-modal__button--danger {
+  background: #8b2c27;
   color: #ffffff;
-  background-color: #1a6e3a;
-  border-bottom: 2px solid #145a30;
-  white-space: nowrap;
 }
 
-.view-reservation-list-tr {
-  border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.2s ease;
+.borrower-request-list-page__action-button:disabled,
+.borrower-request-modal__button:disabled,
+.borrower-request-list-page__pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.view-reservation-list-tr:hover {
-  background-color: #f9fafb;
+.borrower-request-list-page__state {
+  padding: 2rem;
+  text-align: center;
+  color: #5c6b61;
 }
 
-.view-reservation-list-tr:last-child {
-  border-bottom: none;
-}
-
-.view-reservation-list-td {
-  padding: 1rem;
-  font-size: 0.9rem;
-  color: #333333;
-}
-
-/* ========================================= */
-/* BADGES                                    */
-/* ========================================= */
-
-.view-reservation-list-badge {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 20px;
-  white-space: nowrap;
-}
-
-.view-reservation-list-badge--student {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-.view-reservation-list-badge--faculty {
-  background-color: #fce7f3;
-  color: #be185d;
-}
-
-.view-reservation-list-badge--venue {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.view-reservation-list-badge--equipment {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.view-reservation-list-status-badge {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 20px;
-  white-space: nowrap;
-}
-
-.view-reservation-list-status-badge--deployed {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-/* ========================================= */
-/* FACILITY CELL                             */
-/* ========================================= */
-
-.view-reservation-list-facility {
+.borrower-request-list-page__pagination {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.borrower-request-list-page__pagination button {
+  padding: 0.7rem 1rem;
+  background: #edf4ee;
+  color: #173322;
+}
+
+.borrower-request-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(13, 29, 18, 0.48);
+}
+
+.borrower-request-modal {
+  position: relative;
+  width: min(860px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 1.4rem;
+}
+
+.borrower-request-modal--compact {
+  width: min(540px, 100%);
+}
+
+.borrower-request-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  border: none;
+  background: transparent;
+  color: #6a776d;
+  cursor: pointer;
+}
+
+.borrower-request-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.borrower-request-modal__header--stacked {
+  display: block;
+}
+
+.borrower-request-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.borrower-request-modal__grid section,
+.borrower-request-modal__footer-block {
+  padding: 1rem;
+  background: #f7faf7;
+  border-radius: 16px;
+}
+
+.borrower-request-modal__grid h3,
+.borrower-request-modal__footer-block h3,
+.borrower-request-modal__summary h4 {
+  margin-top: 0;
+}
+
+.borrower-request-modal dl {
+  margin: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.borrower-request-modal dt {
+  color: #5b6c61;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.borrower-request-modal dd {
+  margin: 0.2rem 0 0;
+  color: #183222;
+  font-weight: 600;
+}
+
+.borrower-request-modal__summary ul,
+.borrower-request-modal__documents {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.borrower-request-modal__summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.borrower-request-modal__warning {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  background: #fff5ea;
+  border-radius: 14px;
+  color: #8a5a00;
+}
+
+.borrower-request-modal__field {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.borrower-request-modal__actions {
+  display: flex;
+  justify-content: flex-end;
   gap: 0.75rem;
 }
 
-.view-reservation-list-facility-image {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  object-fit: cover;
-  background-color: #f0f0f0;
+.borrower-request-modal__button {
+  padding: 0.8rem 1rem;
 }
 
-/* ========================================= */
-/* NO RESULTS MESSAGE                        */
-/* ========================================= */
+@media (max-width: 960px) {
+  .borrower-request-list-page__toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-.view-reservation-list-no-results {
-  padding: 2rem;
-  text-align: center;
-  font-size: 0.95rem;
-  color: #888888;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 2rem;
+  .borrower-request-modal__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* ========================================= */
-/* PAGE FOOTER                               */
-/* ========================================= */
+@media (max-width: 720px) {
+  .borrower-request-list-page__hero {
+    flex-direction: column;
+  }
 
-.view-reservation-list-page-footer {
-  text-align: center;
-  padding-top: 2rem;
-  border-top: 1px solid #e5e7eb;
-  font-size: 0.8rem;
-  color: #888888;
+  .borrower-request-list-page__toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .borrower-request-list-page__table {
+    min-width: 760px;
+  }
+
+  .borrower-request-list-page__pagination {
+    justify-content: space-between;
+  }
 }

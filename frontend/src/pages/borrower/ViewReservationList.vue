@@ -1,193 +1,282 @@
-<!-- ===== AI GENERATED: BorrowerViewReservationListPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'BORROWER'"
+    :role-label="authStore.userFullName || 'BORROWER'"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Header with Go Back Button -->
-    <div class="view-reservation-list-page-header">
-      <h2 class="view-reservation-list-page-heading">Active Reservations</h2>
-      <button class="view-reservation-list-go-back-button" @click="handleGoBack">
-        ← Go Back
-      </button>
-    </div>
-
-    <!-- Search and Sorting Controls -->
-    <div class="view-reservation-list-controls">
-      <div class="view-reservation-list-search-group">
-        <label class="view-reservation-list-search-label" for="reservationSearch">Search:</label>
-        <input
-          id="reservationSearch"
-          v-model="searchQuery"
-          type="text"
-          class="view-reservation-list-search-input"
-          placeholder="Name, ID, or Facility"
-        />
+    <section class="borrower-request-list-page">
+      <div class="borrower-request-list-page__hero">
+        <div>
+          <p class="borrower-request-list-page__eyebrow">Request Database</p>
+          <h1>My Request Listings</h1>
+          <p>Review every reservation request you submitted, preview the full details, and withdraw pending ones when needed.</p>
+        </div>
+        <button type="button" class="borrower-request-list-page__create-button" @click="router.push({ name: ROUTE_NAMES.borrowerCreateReservation })">
+          Create Request
+        </button>
       </div>
 
-      <div class="view-reservation-list-sort-group">
-        <label class="view-reservation-list-sort-label" for="reservationSort">Sort By:</label>
-        <select
-          id="reservationSort"
-          v-model="sortBy"
-          class="view-reservation-list-sort-select"
-        >
-          <option value="date">Requested Date</option>
-          <option value="name">Name</option>
-          <option value="facility">Facility</option>
-        </select>
+      <div class="borrower-request-list-page__toolbar">
+        <label class="borrower-request-list-page__field">
+          <span>Search</span>
+          <input v-model.trim="searchQuery" type="search" placeholder="Search code, facility, or activity" />
+        </label>
+
+        <label class="borrower-request-list-page__field">
+          <span>Status</span>
+          <select v-model="statusFilter">
+            <option value="all">All statuses</option>
+            <option v-for="option in statusOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </label>
+
+        <label class="borrower-request-list-page__field">
+          <span>Sort By</span>
+          <select v-model="sortBy">
+            <option value="requestedDate">Submitted Date</option>
+            <option value="requestDisplayIdentifier">Request Code</option>
+            <option value="facilityName">Facility</option>
+            <option value="requestStatus">Status</option>
+          </select>
+        </label>
+
+        <button type="button" class="borrower-request-list-page__sort-button" @click="toggleSortOrder">
+          {{ sortOrder === 'asc' ? 'Ascending' : 'Descending' }}
+        </button>
       </div>
 
-      <button
-        class="view-reservation-list-sort-toggle"
-        @click="toggleSortOrder"
-        :title="sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'"
-        aria-label="Toggle sort order"
-      >
-        {{ sortOrder === 'asc' ? '↑' : '↓' }}
-      </button>
-    </div>
+      <div class="borrower-request-list-page__table-card">
+        <div v-if="requestStore.isLoadingReservations" class="borrower-request-list-page__state">
+          Loading your requests...
+        </div>
 
-    <!-- Reservations Table -->
-    <div class="view-reservation-list-table-wrapper">
-      <table class="view-reservation-list-table">
-        <thead>
-          <tr>
-            <th class="view-reservation-list-th">Reservation ID</th>
-            <th class="view-reservation-list-th">Name</th>
-            <th class="view-reservation-list-th">Role</th>
-            <th class="view-reservation-list-th">Schedule</th>
-            <th class="view-reservation-list-th">Facility</th>
-            <th class="view-reservation-list-th">Quantity</th>
-            <th class="view-reservation-list-th">Type</th>
-            <th class="view-reservation-list-th">Purpose</th>
-            <th class="view-reservation-list-th">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="reservation in filteredAndSortedReservations" :key="reservation.reservationId" class="view-reservation-list-tr">
-            <td class="view-reservation-list-td">{{ reservation.reservationId }}</td>
-            <td class="view-reservation-list-td">{{ reservation.name }}</td>
-            <td class="view-reservation-list-td">
-              <span class="view-reservation-list-badge" :class="{ 'view-reservation-list-badge--student': reservation.role === 'Student', 'view-reservation-list-badge--faculty': reservation.role === 'Faculty' }">
-                {{ reservation.role }}
-              </span>
-            </td>
-            <td class="view-reservation-list-td">{{ reservation.schedule }}</td>
-            <td class="view-reservation-list-td">
-              <div class="view-reservation-list-facility">
-                <img v-if="reservation.facilityImage" :src="reservation.facilityImage" :alt="reservation.facility" class="view-reservation-list-facility-image" />
-                <span>{{ reservation.facility }}</span>
-              </div>
-            </td>
-            <td class="view-reservation-list-td">{{ reservation.quantity }}</td>
-            <td class="view-reservation-list-td">
-              <span class="view-reservation-list-badge" :class="{ 'view-reservation-list-badge--venue': reservation.type === 'Venue', 'view-reservation-list-badge--equipment': reservation.type === 'Equipment' }">
-                {{ reservation.type }}
-              </span>
-            </td>
-            <td class="view-reservation-list-td">{{ reservation.purpose }}</td>
-            <td class="view-reservation-list-td">
-              <span class="view-reservation-list-status-badge view-reservation-list-status-badge--deployed">
-                {{ reservation.status }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <template v-else>
+          <table class="borrower-request-list-page__table">
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Schedule</th>
+                <th>Facility / Type</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="requestRecord in paginatedRequests" :key="requestRecord.requestIdentifier">
+                <td>
+                  <strong>{{ requestRecord.requestDisplayIdentifier }}</strong>
+                  <p>{{ requestRecord.activityNameTitle }}</p>
+                </td>
+                <td>{{ formatDateTime(requestRecord.activityTime) }}</td>
+                <td>
+                  <strong>{{ requestRecord.facilityName }}</strong>
+                  <p>{{ requestRecord.requestType }}</p>
+                </td>
+                <td>
+                  <span class="borrower-request-list-page__badge" :class="getStatusBadgeClass(requestRecord.requestStatus)">
+                    {{ requestRecord.requestStatus }}
+                  </span>
+                </td>
+                <td>
+                  <div class="borrower-request-list-page__actions">
+                    <button type="button" class="borrower-request-list-page__action-button" @click="selectedRequest = requestRecord">
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      class="borrower-request-list-page__action-button borrower-request-list-page__action-button--danger"
+                      :disabled="!canCancelRequest(requestRecord)"
+                      @click="openCancelModal(requestRecord)"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-      <!-- No Results Message -->
-      <div v-if="filteredAndSortedReservations.length === 0" class="view-reservation-list-no-results">
-        No active reservations found matching your search.
+          <div v-if="!paginatedRequests.length" class="borrower-request-list-page__state">
+            Nothing found for the current search or filter.
+          </div>
+        </template>
       </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="view-reservation-list-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+      <div v-if="totalPages > 1" class="borrower-request-list-page__pagination">
+        <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
+      </div>
+    </section>
+
+    <BorrowerRequestViewModal :request-record="selectedRequest" @close="selectedRequest = null" />
+    <BorrowerRequestCancelModal
+      :request-record="requestToCancel"
+      :is-submitting="isCancelling"
+      @close="closeCancelModal"
+      @confirm="handleCancelRequest"
+    />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
+import BorrowerRequestViewModal from '@/modules/request/components/BorrowerRequestViewModal.vue';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewReservationList.css';
-import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
-import { useRequestStore } from '@/modules/request/store/requestStore.js';
 
 const router = useRouter();
+const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQuery = ref('');
-const sortBy = ref('date');
-const sortOrder = ref('asc');
+const statusFilter = ref('all');
+const sortBy = ref('requestedDate');
+const sortOrder = ref('desc');
+const currentPage = ref(1);
+const pageSize = 8;
+const selectedRequest = ref(null);
+const requestToCancel = ref(null);
+const isCancelling = ref(false);
 
 onMounted(async () => {
-  try {
-    await requestStore.fetchReservations();
-  } catch (error) {
-    console.error('Error fetching active reservations:', error);
-  }
+  await requestStore.fetchReservations();
 });
 
-const activeReservations = computed(() =>
-  (requestStore.activeReservationsList || []).map((record) => ({
-    reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier || 'N/A'),
-    name: record.requesterFullName || 'You',
-    role: record.requesterRole || 'Borrower',
-    schedule: record.requestSchedule || 'N/A',
-    facility: record.facilityName || 'N/A',
-    quantity: record.requestQuantity || 0,
-    type: record.requestType || 'Reservation',
-    purpose: record.requestPurpose || 'N/A',
-    status: record.requestStatus || 'Active',
-    sortDate: getDateSortValue(record.requestSchedule),
-  }))
-);
-
-const filteredAndSortedReservations = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim();
-  let reservations = activeReservations.value;
-
-  if (query) {
-    reservations = reservations.filter((reservation) =>
-      [reservation.name, reservation.reservationId, reservation.facility]
-        .some((value) => String(value || '').toLowerCase().includes(query))
-    );
-  }
-
-  return [...reservations].sort((first, second) => {
-    const firstValue = resolveSortValue(first);
-    const secondValue = resolveSortValue(second);
-
-    if (typeof firstValue === 'string' && typeof secondValue === 'string') {
-      return sortOrder.value === 'asc'
-        ? firstValue.localeCompare(secondValue)
-        : secondValue.localeCompare(firstValue);
-    }
-
-    return sortOrder.value === 'asc' ? firstValue - secondValue : secondValue - firstValue;
-  });
+const requestRecords = computed(() => {
+  return [
+    ...(requestStore.pendingRequestsList || []),
+    ...(requestStore.approvedRequestsList || []),
+    ...(requestStore.activeReservationsList || []),
+    ...(requestStore.pastRecordsList || []),
+  ];
 });
 
-function handleGoBack() {
-  router.back();
-}
+const statusOptions = computed(() => [...new Set(requestRecords.value.map((requestRecord) => requestRecord.requestStatus))]);
+
+const filteredRequests = computed(() => {
+  const query = searchQuery.value.toLowerCase();
+
+  return requestRecords.value
+    .filter((requestRecord) => {
+      if (statusFilter.value !== 'all' && requestRecord.requestStatus !== statusFilter.value) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [
+        requestRecord.requestDisplayIdentifier,
+        requestRecord.facilityName,
+        requestRecord.activityNameTitle,
+        requestRecord.requestStatus,
+      ].some((value) => String(value || '').toLowerCase().includes(query));
+    })
+    .sort((leftRecord, rightRecord) => compareRequestRecords(leftRecord, rightRecord, sortBy.value, sortOrder.value));
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRequests.value.length / pageSize)));
+const paginatedRequests = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredRequests.value.slice(startIndex, startIndex + pageSize);
+});
+
+watch([searchQuery, statusFilter, sortBy, sortOrder], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (nextTotalPages) => {
+  if (currentPage.value > nextTotalPages) {
+    currentPage.value = nextTotalPages;
+  }
+});
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
 }
 
-function resolveSortValue(reservation) {
-  if (sortBy.value === 'name') return reservation.name.toLowerCase();
-  if (sortBy.value === 'facility') return reservation.facility.toLowerCase();
-  return reservation.sortDate;
+function canCancelRequest(requestRecord) {
+  return ['Pending', 'Pending Review', 'Submitted'].includes(String(requestRecord.requestStatus || ''));
 }
 
-function getDateSortValue(value) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+function openCancelModal(requestRecord) {
+  if (!canCancelRequest(requestRecord)) {
+    return;
+  }
+
+  requestToCancel.value = requestRecord;
+}
+
+function closeCancelModal() {
+  requestToCancel.value = null;
+}
+
+async function handleCancelRequest({ reason }) {
+  if (!requestToCancel.value) {
+    return;
+  }
+
+  try {
+    isCancelling.value = true;
+    await requestStore.cancelOwnRequest(requestToCancel.value, reason);
+    closeCancelModal();
+  } catch (error) {
+    console.error('Unable to cancel request.', error);
+  } finally {
+    isCancelling.value = false;
+  }
+}
+
+function getStatusBadgeClass(status) {
+  const normalizedStatus = String(status || '').toLowerCase();
+  if (normalizedStatus.includes('approved') || normalizedStatus.includes('active') || normalizedStatus.includes('deploy')) return 'is-approved';
+  if (normalizedStatus.includes('cancel')) return 'is-cancelled';
+  if (normalizedStatus.includes('reject')) return 'is-rejected';
+  if (normalizedStatus.includes('complete')) return 'is-completed';
+  return 'is-pending';
+}
+
+function compareRequestRecords(leftRecord, rightRecord, sortKey, direction) {
+  const leftValue = resolveSortValue(leftRecord, sortKey);
+  const rightValue = resolveSortValue(rightRecord, sortKey);
+
+  if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+    return direction === 'asc' ? leftValue - rightValue : rightValue - leftValue;
+  }
+
+  return direction === 'asc'
+    ? String(leftValue).localeCompare(String(rightValue))
+    : String(rightValue).localeCompare(String(leftValue));
+}
+
+function resolveSortValue(requestRecord, sortKey) {
+  if (sortKey === 'requestedDate') {
+    const parsedDate = new Date(requestRecord.requestedDate);
+    return Number.isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+  }
+
+  return String(requestRecord[sortKey] || '').toLowerCase();
+}
+
+function formatDateTime(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsed);
 }
 </script>
