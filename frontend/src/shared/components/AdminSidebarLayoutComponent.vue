@@ -1,7 +1,15 @@
 <!-- ===== AI GENERATED: AdminSidebarLayoutComponent ===== -->
 <template>
   <div class="admin-layout-wrapper">
-    <aside class="admin-sidebar">
+    <button
+      v-if="isMobileSidebarOpen"
+      type="button"
+      class="admin-sidebar-backdrop"
+      aria-label="Close navigation"
+      @click="closeMobileSidebar"
+    />
+
+    <aside class="admin-sidebar" :class="{ 'admin-sidebar--open': isMobileSidebarOpen }">
       <div class="admin-sidebar-brand">
         <img
           src="@/assets/TechReserve_LogoA.png"
@@ -41,6 +49,19 @@
 
     <div class="admin-main-area">
       <header class="admin-topbar">
+        <button
+          type="button"
+          class="admin-topbar-menu-button"
+          aria-label="Open navigation menu"
+          @click="toggleMobileSidebar"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </svg>
+        </button>
+
         <div class="admin-topbar-actions">
           <NotificationDropdown />
           <div class="admin-topbar-user">
@@ -62,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import NotificationDropdown from '@/components/NotificationDropdown.vue';
@@ -88,6 +109,7 @@ const props = defineProps({
 
 const currentRoute = useRoute();
 const authStore = useAuthenticationStore();
+const isMobileSidebarOpen = ref(false);
 
 const isAdminPortal = computed(() => {
   return props.navigationItems.some((item) => String(item.routeName).startsWith('admin'));
@@ -142,4 +164,16 @@ const userProfilePhoto = computed(() => {
 function isActiveRoute(routeName) {
   return currentRoute.name === routeName;
 }
+
+function toggleMobileSidebar() {
+  isMobileSidebarOpen.value = !isMobileSidebarOpen.value;
+}
+
+function closeMobileSidebar() {
+  isMobileSidebarOpen.value = false;
+}
+
+watch(() => currentRoute.fullPath, () => {
+  closeMobileSidebar();
+});
 </script>

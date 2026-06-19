@@ -738,3 +738,60 @@
     text-align: center;
   }
 }
+
+@media (max-width: 520px) {
+  .landing-header-inner {
+    gap: 0.85rem;
+  }
+
+  .landing-nav {
+    gap: 0.95rem;
+  }
+
+  .landing-nav-link {
+    font-size: 0.8rem;
+  }
+
+  .landing-signin-button {
+    width: 100%;
+  }
+
+  .landing-kicker,
+  .landing-section-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+
+  .landing-hero-copy h1 {
+    font-size: 2.1rem;
+  }
+
+  .landing-hero-actions {
+    flex-direction: column;
+  }
+
+  .landing-primary-button,
+  .landing-secondary-button {
+    width: 100%;
+  }
+
+  .landing-hero-visual {
+    min-height: 300px;
+  }
+
+  .landing-hero-image-shell {
+    height: 280px;
+    border-radius: 28% 10% 24% 20%;
+  }
+
+  .landing-about-copy h2,
+  .landing-contact-copy h2 {
+    font-size: 1.9rem;
+  }
+
+  .landing-contact-card,
+  .landing-feature-card,
+  .landing-workspace-card {
+    border-radius: 16px;
+  }
+}

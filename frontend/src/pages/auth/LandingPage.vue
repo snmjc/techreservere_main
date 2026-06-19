@@ -127,7 +127,7 @@
             <div class="landing-about-grid" />
             <div class="landing-workspace-card">
               <div class="landing-workspace-photo-shell">
-                <img :src="heroImage" alt="TechReserve workspace preview" class="landing-workspace-photo" />
+                <img :src="workspaceImage" alt="TechReserve workspace preview" class="landing-workspace-photo" />
               </div>
               <div class="landing-dashboard-panel">
                 <div class="landing-dashboard-header">
@@ -191,8 +191,9 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
-import heroImage from '@/assets/Page-20-3.png';
 import logoPrimary from '@/assets/TechReserve_LogoA.png';
+import heroImage from '@/assets/221138d8-d7d9-4020-9907-bb1e218d2724.jpg';
+import workspaceImage from '@/assets/01f7a5a9-fd6a-4259-9abc-84a378d1784b.jpg';
 
 const router = useRouter();
 const activeSection = ref('home');

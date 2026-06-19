@@ -1544,5 +1544,49 @@ button:disabled {
   .admin-task-assignments-panel {
     padding: 0.9rem;
   }
+
+  .admin-task-actions {
+    flex-direction: column;
+  }
+
+  .admin-task-action,
+  .admin-task-assignments-header-actions > button,
+  .admin-task-assignments-modal-actions > button {
+    width: 100%;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-task-assignments-header,
+  .admin-task-summary-card,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    border-radius: 16px;
+  }
+
+  .admin-task-assignments-header,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    padding: 0.9rem;
+  }
+
+  .admin-task-assignments-header h1,
+  .admin-task-assignments-modal-header h2 {
+    font-size: 1.55rem;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 640px;
+  }
+
+  .admin-task-assignments-pagination {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
 }
 </style>
