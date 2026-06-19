@@ -172,7 +172,9 @@ async function handleSubmitReservationRequest() {
       organizationName: reservationFormStore.departmentName || 'Organization',
       venueIdentifier: reservationFormStore.selectedVenueRecord?.venueIdentifier || null,
       requestedEquipmentList: (reservationFormStore.selectedEquipmentItems || []).map((item) => ({
+        equipmentIdentifier: item.equipmentIdentifier,
         name: item.equipmentName,
+        selectedQuantity: item.selectedQuantity,
         quantity: item.selectedQuantity,
       })),
       requestedQuantity: reservationFormStore.participantCount || 0,

@@ -101,7 +101,7 @@ class ReservationReviewService
 
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
     {
-        [$borrowerFirstName, $borrowerLastName, $borrowerFullName] = $this->resolveBorrowerNames($entity);
+        [$borrowerFirstName, $borrowerLastName, $borrowerFullName, $borrowerEmailAddress, $borrowerContactNumber] = $this->resolveBorrowerDetails($entity);
 
         return new ReservationResponseDTO(
             reservationIdentifier: $entity->getReservationIdentifier(),
@@ -123,16 +123,20 @@ class ReservationReviewService
             submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM),
             borrowerFirstName: $borrowerFirstName,
             borrowerLastName: $borrowerLastName,
-            borrowerFullName: $borrowerFullName
+            borrowerFullName: $borrowerFullName,
+            borrowerEmailAddress: $borrowerEmailAddress,
+            borrowerContactNumber: $borrowerContactNumber
         );
     }
 
-    private function resolveBorrowerNames(ReservationEntity $entity): array
+    private function resolveBorrowerDetails(ReservationEntity $entity): array
     {
         $borrower = $this->accountRepository->find($entity->getBorrowerAccountId());
         $firstName = trim((string)($borrower?->getFirstName() ?? ''));
         $lastName = trim((string)($borrower?->getLastName() ?? ''));
         $fullName = trim(sprintf('%s %s', $firstName, $lastName));
+        $emailAddress = $borrower?->getEmailAddress();
+        $contactNumber = $borrower?->getContactNumber();
 
         if ($fullName === '') {
             $fullName = trim($entity->getOrganizationName());
@@ -142,7 +146,7 @@ class ReservationReviewService
             $fullName = 'User';
         }
 
-        return [$firstName, $lastName, $fullName];
+        return [$firstName, $lastName, $fullName, $emailAddress, $contactNumber];
     }
 
     private function buildActivityTimeRange(ReservationEntity $entity): string

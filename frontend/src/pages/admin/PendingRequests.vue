@@ -100,7 +100,7 @@
 
               <div class="pending-request-summary-metric">
                 <span>Requested On</span>
-                <strong>{{ formatRequestDate(approveRequestRecord.requestSchedule) }}</strong>
+                <strong>{{ formatRequestDate(approveRequestRecord.requestedDate) }}</strong>
               </div>
             </div>
 
@@ -121,8 +121,8 @@
               <div class="pending-request-summary-item">
                 <span>Schedule</span>
                 <strong class="pending-request-summary-stack">
-                  <em>{{ formatRequestDate(approveRequestRecord.requestSchedule) }}</em>
-                  <em>{{ formatRequestTime(approveRequestRecord.requestSchedule) }}</em>
+                  <em>{{ formatScheduleDateRange(approveRequestRecord.requestScheduleStart, approveRequestRecord.requestScheduleEnd) }}</em>
+                  <em>{{ formatScheduleTimeRange(approveRequestRecord.requestScheduleStart, approveRequestRecord.requestScheduleEnd) }}</em>
                 </strong>
               </div>
 
@@ -169,8 +169,8 @@
       <section class="pending-request-action-card pending-request-action-card--delete">
         <header class="pending-request-action-header">
           <div>
-            <h2>Delete Request</h2>
-            <p>You are about to delete this request. This action cannot be undone.</p>
+            <h2>Deny Request</h2>
+            <p>You are about to deny this request. This action cannot be undone.</p>
           </div>
           <button class="pending-request-action-close" type="button" aria-label="Close" @click="closeDeleteModal">&times;</button>
         </header>
@@ -203,7 +203,7 @@
 
               <div class="pending-request-summary-metric">
                 <span>Requested On</span>
-                <strong>{{ formatRequestDate(deleteRequestRecord.requestSchedule) }}</strong>
+                <strong>{{ formatRequestDate(deleteRequestRecord.requestedDate) }}</strong>
               </div>
             </div>
 
@@ -224,8 +224,8 @@
               <div class="pending-request-summary-item">
                 <span>Schedule</span>
                 <strong class="pending-request-summary-stack">
-                  <em>{{ formatRequestDate(deleteRequestRecord.requestSchedule) }}</em>
-                  <em>{{ formatRequestTime(deleteRequestRecord.requestSchedule) }}</em>
+                  <em>{{ formatScheduleDateRange(deleteRequestRecord.requestScheduleStart, deleteRequestRecord.requestScheduleEnd) }}</em>
+                  <em>{{ formatScheduleTimeRange(deleteRequestRecord.requestScheduleStart, deleteRequestRecord.requestScheduleEnd) }}</em>
                 </strong>
               </div>
 
@@ -242,7 +242,7 @@
               v-model.trim="deleteForm.remarks"
               maxlength="500"
               rows="4"
-              placeholder="Enter the reason for deleting this request..."
+              placeholder="Enter the reason for denying this request..."
             />
             <small>{{ deleteForm.remarks.length }} / 500</small>
           </label>
@@ -254,7 +254,7 @@
             <div class="pending-request-action-grid">
               <label class="pending-request-action-field">
                 <span>Admin Email</span>
-                <input v-model.trim="deleteForm.adminEmail" type="email" placeholder="Enter your admin email" />
+                <input v-model.trim="deleteForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
 
               <label class="pending-request-action-field">
@@ -263,14 +263,14 @@
               </label>
             </div>
 
-            <p class="pending-request-action-help">This helps us verify your identity before processing the deletion.</p>
+            <p class="pending-request-action-help">This helps us verify your identity before processing the denial.</p>
           </div>
         </div>
 
         <footer class="pending-request-action-footer">
           <button class="pending-request-action-button pending-request-action-button--ghost" type="button" @click="closeDeleteModal">Cancel</button>
           <button class="pending-request-action-button pending-request-action-button--delete" type="button" @click="confirmDeleteRequest">
-            Delete Request
+            Deny Request
           </button>
         </footer>
       </section>
@@ -335,8 +335,8 @@
               <div class="pending-request-details-item">
                 <dt>Schedule</dt>
                 <dd class="pending-request-details-stack">
-                  <span>{{ formatRequestDate(selectedRequestRecord.requestSchedule) }}</span>
-                  <span>{{ formatRequestTime(selectedRequestRecord.requestSchedule) }}</span>
+                  <span>{{ formatScheduleDateRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
+                  <span>{{ formatScheduleTimeRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
                 </dd>
               </div>
 
@@ -369,8 +369,10 @@ import './css/PendingRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
@@ -388,6 +390,10 @@ const deleteForm = reactive({
 });
 
 const pendingRequestsList = computed(() => requestStore.pendingRequestsList || []);
+const currentAdminEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim().toLowerCase();
+});
 
 onMounted(async () => {
   try {
@@ -449,23 +455,53 @@ function handleRejectRequest(requestRecord) {
 }
 
 async function confirmApproveRequest() {
-  if (!approveRequestRecord.value || !approveForm.adminEmail.trim()) {
+  if (!approveRequestRecord.value) {
     return;
   }
 
-  await requestStore.approvePendingRequest(approveRequestRecord.value);
-  closeApproveModal();
-  selectedRequestRecord.value = null;
+  const emailError = validateAdminEmailConfirmation(approveForm.adminEmail, 'approve');
+  if (emailError) {
+    window.alert(emailError);
+    return;
+  }
+
+  try {
+    await requestStore.approvePendingRequest(approveRequestRecord.value, {
+      confirmedAdminEmail: normalizeEmailForConfirmation(approveForm.adminEmail),
+    });
+    closeApproveModal();
+    selectedRequestRecord.value = null;
+  } catch (error) {
+    window.alert(error?.message || 'Unable to approve this request.');
+  }
 }
 
 async function confirmDeleteRequest() {
-  if (!deleteRequestRecord.value || !deleteForm.remarks.trim() || !deleteForm.adminEmail.trim() || !deleteForm.password.trim()) {
+  if (!deleteRequestRecord.value || !deleteForm.remarks.trim()) {
     return;
   }
 
-  await requestStore.rejectPendingRequest(deleteRequestRecord.value, deleteForm.remarks.trim());
-  closeDeleteModal();
-  selectedRequestRecord.value = null;
+  const emailError = validateAdminEmailConfirmation(deleteForm.adminEmail, 'deny');
+  if (emailError) {
+    window.alert(emailError);
+    return;
+  }
+
+  if (deleteForm.password.trim() === '') {
+    window.alert('Please type your admin password before denying this request.');
+    return;
+  }
+
+  try {
+    await requestStore.rejectPendingRequest(deleteRequestRecord.value, deleteForm.remarks.trim(), {
+      confirmedAdminEmail: normalizeEmailForConfirmation(deleteForm.adminEmail),
+      confirmedAdminPassword: deleteForm.password,
+    });
+    closeDeleteModal();
+    selectedRequestRecord.value = null;
+  } catch (error) {
+    window.alert(error?.message || 'Unable to deny this request.');
+  }
 }
 
 function closeApproveModal() {
@@ -504,6 +540,66 @@ function formatRequestTime(value) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(parsedDate);
+}
+
+function formatScheduleDateRange(startValue, endValue) {
+  const startDate = parseValidDate(startValue);
+  const endDate = parseValidDate(endValue);
+
+  if (!startDate && !endDate) {
+    return 'Date not available';
+  }
+
+  if (!startDate || !endDate) {
+    return formatRequestDate(startValue || endValue);
+  }
+
+  if (startDate.toDateString() === endDate.toDateString()) {
+    return formatRequestDate(startValue);
+  }
+
+  return `${formatRequestDate(startValue)} - ${formatRequestDate(endValue)}`;
+}
+
+function formatScheduleTimeRange(startValue, endValue) {
+  const startDate = parseValidDate(startValue);
+  const endDate = parseValidDate(endValue);
+
+  if (!startDate && !endDate) {
+    return 'Time not available';
+  }
+
+  if (!startDate || !endDate) {
+    return formatRequestTime(startValue || endValue);
+  }
+
+  return `${formatRequestTime(startValue)} - ${formatRequestTime(endValue)}`;
+}
+
+function parseValidDate(value) {
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function validateAdminEmailConfirmation(emailValue, actionName) {
+  const normalizedEmail = normalizeEmailForConfirmation(emailValue);
+  if (normalizedEmail === '') {
+    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'denying'} this request.`;
+  }
+
+  if (currentAdminEmail.value === '') {
+    return 'Unable to verify the admin in charge. Please sign in again.';
+  }
+
+  if (normalizedEmail !== currentAdminEmail.value) {
+    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'denying'} this request.`;
+  }
+
+  return '';
+}
+
+function normalizeEmailForConfirmation(emailValue) {
+  return String(emailValue || '').trim().toLowerCase();
 }
 
 function buildFacilityPlaceholder(facilityName) {

@@ -79,6 +79,8 @@ function mapReservationRecord(reservation) {
   const requestedEquipmentList = Array.isArray(reservation?.requestedEquipmentList)
     ? reservation.requestedEquipmentList
     : [];
+  const hasVenue = Boolean(reservation?.venueIdentifier || reservation?.venueName || reservation?.facilityName);
+  const hasEquipment = requestedEquipmentList.length > 0;
 
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
@@ -86,16 +88,18 @@ function mapReservationRecord(reservation) {
     requesterFullName: resolveRequesterFullName(reservation),
     requesterRole: reservation?.requesterRole || reservation?.roleDesignation || reservation?.userRole || 'Borrower',
     requesterId: reservation?.idNumber || reservation?.accountIdentifier || reservation?.userIdentifier || null,
-    contactEmail: reservation?.emailAddress || reservation?.requesterEmail || reservation?.organizationEmail || null,
-    contactNumber: reservation?.contactNumber || reservation?.phoneNumber || reservation?.mobileNumber || null,
+    contactEmail: reservation?.borrowerEmailAddress || reservation?.emailAddress || reservation?.requesterEmail || reservation?.organizationEmail || null,
+    contactNumber: reservation?.borrowerContactNumber || reservation?.contactNumber || reservation?.phoneNumber || reservation?.mobileNumber || null,
     requestSchedule: reservation?.eventDateTime || 'N/A',
+    requestScheduleStart: reservation?.eventDateTime || null,
+    requestScheduleEnd: reservation?.endDateTime || null,
     requestQuantity: reservation?.requestedQuantity || 0,
-    requestType: requestedEquipmentList.length > 0 ? 'Equipment' : 'Venue',
+    requestType: resolveRequestType(hasVenue, hasEquipment),
     requestPurpose: reservation?.purposeDescription || 'N/A',
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
-    activityTime: reservation?.eventDateTime || 'N/A',
+    activityTime: reservation?.activityTimeRange || reservation?.eventDateTime || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
@@ -139,7 +143,19 @@ function mapRequestedEquipment(requestedEquipmentList = []) {
   const equipmentList = Array.isArray(requestedEquipmentList) ? requestedEquipmentList : [];
 
   return equipmentList.map((equipment) => ({
-    itemName: equipment?.name || equipment,
-    itemCount: 1,
+    itemName: equipment?.name || equipment?.equipmentName || equipment,
+    itemCount: Number(equipment?.quantity ?? equipment?.selectedQuantity ?? 1) || 1,
   }));
+}
+
+function resolveRequestType(hasVenue, hasEquipment) {
+  if (hasVenue && hasEquipment) {
+    return 'Both';
+  }
+
+  if (hasEquipment) {
+    return 'Equipment';
+  }
+
+  return 'Venue';
 }

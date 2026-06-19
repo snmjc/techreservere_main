@@ -13,7 +13,8 @@ class WishlistEmployeeAccountService
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly AccountConflictLookupService $accountConflictLookupService
+        private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly StaffInfoWriterService $staffInfoWriterService
     ) {
     }
 
@@ -96,20 +97,39 @@ class WishlistEmployeeAccountService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         try {
-            $this->connection->executeStatement(
-                'INSERT INTO accounts
-                    (last_name, first_name, email_address, username, role_designation, id_number, department,
-                     contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
-                     failed_login_attempts, created_timestamp, updated_timestamp)
-                 VALUES
-                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
-                     :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
-                     :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildInsertParameters($payload, $now),
-                $this->buildInsertTypes()
-            );
+            $accountIdentifier = $this->connection->transactional(function (): int {
+                $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-            $accountIdentifier = (int)$this->connection->lastInsertId();
+                $this->connection->executeStatement(
+                    'INSERT INTO accounts
+                        (last_name, first_name, email_address, username, role_designation, id_number, department,
+                         contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
+                         failed_login_attempts, created_timestamp, updated_timestamp)
+                     VALUES
+                        (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
+                         :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
+                         :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
+                    $this->buildInsertParameters($payload, $now),
+                    $this->buildInsertTypes()
+                );
+
+                $accountIdentifier = (int)$this->connection->lastInsertId();
+                if ($accountIdentifier <= 0) {
+                    throw new \RuntimeException('Unable to determine the new staff account identifier.');
+                }
+
+                $this->staffInfoWriterService->upsertStaffInfo(
+                    $accountIdentifier,
+                    $payload['idNumber'],
+                    $payload['firstName'],
+                    $payload['lastName'],
+                    $payload['phone'],
+                    $payload['role'],
+                    null
+                );
+
+                return $accountIdentifier;
+            });
 
             return $this->success([
                 'accountIdentifier' => $accountIdentifier,
