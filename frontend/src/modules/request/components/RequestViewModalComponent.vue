@@ -123,21 +123,35 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="request-view-modal-actions">
-        <button class="request-view-modal-action-button request-view-modal-action-button--approve" @click="handleApproveClick">
+      <div v-if="showActionButtons" class="request-view-modal-actions">
+        <button
+          class="request-view-modal-action-button request-view-modal-action-button--approve"
+          :class="{ 'request-view-modal-action-button--disabled': reviewActionsDisabled }"
+          :disabled="reviewActionsDisabled"
+          @click="handleApproveClick"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
           Approve Request
         </button>
-        <button class="request-view-modal-action-button request-view-modal-action-button--revisions" @click="handleRequestRevisionsClick">
+        <button
+          v-if="showRevisionsButton"
+          class="request-view-modal-action-button request-view-modal-action-button--revisions"
+          @click="handleRequestRevisionsClick"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="1 4 1 10 7 10"/>
             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
           </svg>
           Request Revisions
         </button>
-        <button class="request-view-modal-action-button request-view-modal-action-button--reject" @click="handleRejectClick">
+        <button
+          class="request-view-modal-action-button request-view-modal-action-button--reject"
+          :class="{ 'request-view-modal-action-button--disabled': reviewActionsDisabled }"
+          :disabled="reviewActionsDisabled"
+          @click="handleRejectClick"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
@@ -159,6 +173,21 @@ const props = defineProps({
     type: Object,
     required: false,
     default: null,
+  },
+  showActionButtons: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+  showRevisionsButton: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+  reviewActionsDisabled: {
+    type: Boolean,
+    required: false,
+    default: false,
   },
 });
 

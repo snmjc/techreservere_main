@@ -251,6 +251,14 @@
   transform: scale(0.97);
 }
 
+.request-view-modal-action-button:disabled,
+.request-view-modal-action-button--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.2);
+}
+
 /* Approve — green */
 .request-view-modal-action-button--approve {
   background-color: #16a34a;

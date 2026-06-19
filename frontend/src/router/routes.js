@@ -267,6 +267,19 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/admin/request-database',
+    name: ROUTE_NAMES.adminRequestDatabase,
+    component: () => import('@/pages/admin/RequestDatabase.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(
+        permission(RBAC_CAPABILITY.VIEW_RESERVATIONS, RBAC_ACTION.READ),
+        permission(RBAC_CAPABILITY.UPDATE_RESERVATION_STATUS, RBAC_ACTION.UPDATE),
+      ),
+    },
+  },
+  {
     path: '/admin/pending-requests',
     name: 'adminPendingRequestsPage',
     component: () => import('@/pages/admin/PendingRequests.vue'),
