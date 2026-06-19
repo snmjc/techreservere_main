@@ -46,6 +46,14 @@ class AuthenticationLoginService
 
     private function validateAccountAvailability(AccountEntity $account): ?array
     {
+        if ($this->isAssignmentOnlyStaffAccount($account)) {
+            return $this->error(
+                'AccountAssignmentOnly',
+                'This staff record is for task assignment only and cannot sign in to TechReserve.',
+                403
+            );
+        }
+
         $accountStatus = strtolower(trim((string)$account->getStatus()));
         $isActiveInvitationAccount = in_array($accountStatus, ['active', 'approved', 'accepted'], true);
         if (!$account->getIsActive()) {
@@ -74,6 +82,15 @@ class AuthenticationLoginService
         }
 
         return null;
+    }
+
+    private function isAssignmentOnlyStaffAccount(AccountEntity $account): bool
+    {
+        $roleDesignation = strtoupper(trim((string)$account->getRoleDesignation()));
+
+        return $roleDesignation === 'ROLE_STAFF'
+            && $account->getClerkUserId() === null
+            && $account->getPasswordHash() === null;
     }
 
     private function recordFailedAttempt(AccountEntity $account): array

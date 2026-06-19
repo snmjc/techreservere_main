@@ -44,6 +44,10 @@ class AccountResponseMapperService
         $profilePhotoData = ($isEmployee && !empty($row['staff_image_url']))
             ? (string)$row['staff_image_url']
             : (!empty($row['profile_photo_data']) ? (string)$row['profile_photo_data'] : null);
+        $hasPassword = !empty($row['password_hash']);
+        $hasClerkUserId = !empty($row['clerk_user_id']);
+        $loginEnabled = !$isEmployee || $hasPassword || $hasClerkUserId;
+        $assignmentOnly = $isEmployee && !$loginEnabled;
 
         return [
             'accountIdentifier' => (int)$row['account_identifier'],
@@ -59,6 +63,8 @@ class AccountResponseMapperService
             'isActive' => $isActive,
             'isApproved' => $isApproved,
             'isVerified' => $isVerified,
+            'loginEnabled' => $loginEnabled,
+            'assignmentOnly' => $assignmentOnly,
             'verificationStatus' => !empty($row['verification_status']) ? (string)$row['verification_status'] : ($isVerified ? 'verified' : 'unverified'),
             'invitationStatus' => !empty($row['invitation_status']) ? (string)$row['invitation_status'] : 'not_sent',
             'clerkUserId' => !empty($row['clerk_user_id']) ? (string)$row['clerk_user_id'] : null,

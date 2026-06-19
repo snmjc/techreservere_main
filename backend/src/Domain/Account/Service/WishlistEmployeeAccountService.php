@@ -9,7 +9,6 @@ use Doctrine\DBAL\ParameterType;
 class WishlistEmployeeAccountService
 {
     private const STAFF_ROLE_LABEL = 'Maintenance Staff';
-    private const DEFAULT_STAFF_PASSWORD = 'staff123';
 
     public function __construct(
         private readonly Connection $connection,
@@ -149,11 +148,12 @@ class WishlistEmployeeAccountService
                 'accountType' => 'Employee',
                 'accountStatus' => 'approved',
                 'isApproved' => true,
+                'loginEnabled' => false,
+                'assignmentOnly' => true,
                 'registeredAt' => $now,
                 'inviteSentAt' => null,
                 'inviteExpiresAt' => null,
                 'inviteAcceptedAt' => null,
-                'defaultPassword' => self::DEFAULT_STAFF_PASSWORD,
             ], 201);
         } catch (\Throwable $exception) {
             return $this->error(
@@ -176,7 +176,7 @@ class WishlistEmployeeAccountService
             'department' => $payload['role'],
             'contactNumber' => $payload['phone'],
             'clerkUserId' => null,
-            'passwordHash' => password_hash(self::DEFAULT_STAFF_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
+            'passwordHash' => null,
             'status' => 'approved',
             'isApproved' => true,
             'isActive' => true,
@@ -198,7 +198,7 @@ class WishlistEmployeeAccountService
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::STRING,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::STRING,
+            'passwordHash' => ParameterType::NULL,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,

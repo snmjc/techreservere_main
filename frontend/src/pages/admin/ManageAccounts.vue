@@ -623,20 +623,14 @@ function openAddEmployeeRequestModal() {
 
 async function handleEmployeeRequestCreated(payload) {
   const accountType = typeof payload === 'string' ? payload : payload?.type;
-  const defaultPassword = typeof payload === 'object' ? payload?.data?.defaultPassword : '';
   if (accountType !== 'employee') {
     return;
   }
 
   await handleRefreshAccounts();
-  toastMessage.value = defaultPassword
-    ? `Staff account created. Default password: ${defaultPassword}`
-    : 'Staff account created.';
+  toastMessage.value = 'Staff account created and ready for assignment.';
   window.setTimeout(() => {
-    if (
-      toastMessage.value === 'Staff account created.'
-      || toastMessage.value === `Staff account created. Default password: ${defaultPassword}`
-    ) {
+    if (toastMessage.value === 'Staff account created and ready for assignment.') {
       toastMessage.value = '';
     }
   }, 2800);
