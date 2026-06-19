@@ -18,7 +18,7 @@ class AccountReadService
         $rows = $this->connection->fetchAllAssociative(
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
-                       accounts.email_address, accounts.username, accounts.role_designation, accounts.department, accounts.contact_number,
+                       accounts.email_address, accounts.username, accounts.role_designation, accounts.department, accounts.contact_number, accounts.password_hash,
                        accounts.profile_photo_data,
                        accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                        accounts.signup_supporting_document_data,
@@ -85,7 +85,7 @@ class AccountReadService
         $row = $this->connection->fetchAssociative(
             "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_verified, accounts.verification_status,
-                    accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
+                    accounts.invitation_status, accounts.clerk_user_id, accounts.password_hash, accounts.invited_at, accounts.approved_at, accounts.is_active, accounts.created_timestamp,
                     accounts.profile_photo_data,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,
@@ -121,7 +121,7 @@ class AccountReadService
         $row = $this->connection->fetchAssociative(
             "SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name, accounts.email_address, accounts.username, accounts.role_designation,
                     accounts.department, accounts.contact_number, accounts.status, accounts.is_approved, accounts.is_active, accounts.created_timestamp,
-                    accounts.last_login_timestamp, accounts.profile_photo_data,
+                    accounts.last_login_timestamp, accounts.profile_photo_data, accounts.password_hash,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
                     accounts.signup_supporting_document_data,
                     staff_info.employee_id_number AS staff_employee_id_number,

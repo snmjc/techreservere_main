@@ -4,6 +4,10 @@
     :navigation-items="adminNavigationItems"
   >
     <section class="admin-task-assignments-page">
+      <div v-if="taskToastMessage" class="admin-task-assignments-toast">
+        {{ taskToastMessage }}
+      </div>
+
       <header class="admin-task-assignments-header">
         <div class="admin-task-assignments-header-copy">
           <p class="admin-task-assignments-kicker">Operations Workspace</p>
@@ -337,6 +341,7 @@ const isLoading = ref(false);
 const isSubmitting = ref(false);
 const loadError = ref('');
 const modalError = ref('');
+const taskToastMessage = ref('');
 const tasks = ref([]);
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
@@ -586,6 +591,12 @@ async function submitTaskForm() {
     return;
   }
 
+  if (typeof result.data?.warning === 'string' && result.data.warning.trim() !== '') {
+    showTaskToast(result.data.warning);
+  } else {
+    showTaskToast(taskModalMode.value === 'create' ? 'Task assignment created.' : 'Task assignment updated.');
+  }
+
   closeTaskModal();
   await loadPageData();
 }
@@ -832,6 +843,18 @@ function normalizeEmailForConfirmation(value) {
   return String(value || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, '').trim().toLowerCase();
 }
 
+function showTaskToast(message) {
+  taskToastMessage.value = message;
+  window.clearTimeout(showTaskToast.timeoutId);
+  showTaskToast.timeoutId = window.setTimeout(() => {
+    if (taskToastMessage.value === message) {
+      taskToastMessage.value = '';
+    }
+  }, 3200);
+}
+
+showTaskToast.timeoutId = null;
+
 function resetTaskForm() {
   taskForm.taskTitle = '';
   taskForm.taskDescription = '';
@@ -858,6 +881,17 @@ function resetDeleteForm() {
   margin: 0;
   padding: 0.4rem 0 2rem;
   color: #14261f;
+}
+
+.admin-task-assignments-toast {
+  margin-bottom: 0.9rem;
+  padding: 0.82rem 0.95rem;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .admin-task-assignments-header {

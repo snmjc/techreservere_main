@@ -19,7 +19,7 @@ class ClerkLoginPreflightService
     public function check(string $emailAddress): array
     {
         $account = $this->connection->fetchAssociative(
-            "SELECT account_identifier, email_address, username, clerk_user_id, status, is_approved, is_verified, is_active, invitation_status
+            "SELECT account_identifier, email_address, username, clerk_user_id, password_hash, role_designation, status, is_approved, is_verified, is_active, invitation_status
              FROM accounts
              WHERE LOWER(email_address) = LOWER(:emailAddress)
                 OR LOWER(username) = LOWER(:emailAddress)
@@ -30,6 +30,14 @@ class ClerkLoginPreflightService
 
         if (!$account) {
             return $this->error('AccountPendingInvitation', 'Please wait for an administrator invitation before signing in.', 403);
+        }
+
+        if ($this->isAssignmentOnlyStaffAccount($account)) {
+            return $this->error(
+                'AccountAssignmentOnly',
+                'This staff record is for task assignment only and cannot sign in to TechReserve.',
+                403
+            );
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
@@ -100,6 +108,15 @@ class ClerkLoginPreflightService
         }
 
         return $this->error('AccountPendingInvitation', 'Your account request is still pending. Please wait for an administrator invitation before signing in.', 403);
+    }
+
+    private function isAssignmentOnlyStaffAccount(array $account): bool
+    {
+        $roleDesignation = strtoupper(trim((string)($account['role_designation'] ?? '')));
+        $hasPassword = !empty($account['password_hash']);
+        $hasClerk = !empty($account['clerk_user_id']);
+
+        return $roleDesignation === 'ROLE_STAFF' && !$hasPassword && !$hasClerk;
     }
 
     private function isAcceptedInvitation(?array $invitation): bool

@@ -81,6 +81,8 @@ function mapReservationRecord(reservation) {
     : [];
   const reservationSummary = mapRequestedEquipment(requestedEquipmentList);
   const requestType = resolveRequestType(reservation, requestedEquipmentList);
+  const requestScheduleStart = reservation?.eventDateTime || null;
+  const requestScheduleEnd = reservation?.endDateTime || null;
 
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
@@ -90,9 +92,9 @@ function mapReservationRecord(reservation) {
     requesterId: reservation?.idNumber || reservation?.accountIdentifier || reservation?.userIdentifier || null,
     contactEmail: reservation?.borrowerEmailAddress || reservation?.emailAddress || reservation?.requesterEmail || reservation?.organizationEmail || null,
     contactNumber: reservation?.borrowerContactNumber || reservation?.contactNumber || reservation?.phoneNumber || reservation?.mobileNumber || null,
-    requestSchedule: reservation?.eventDateTime || 'N/A',
-    requestScheduleStart: reservation?.eventDateTime || null,
-    requestScheduleEnd: reservation?.endDateTime || null,
+    requestSchedule: formatReservationScheduleRange(requestScheduleStart, requestScheduleEnd),
+    requestScheduleStart,
+    requestScheduleEnd,
     requestQuantity: reservation?.requestedQuantity || 0,
     requestType,
     requestPurpose: reservation?.purposeDescription || 'N/A',
@@ -189,4 +191,36 @@ function buildReservationRemark(reservation) {
   }
 
   return `Reservation is currently marked as ${status}.`;
+}
+
+function formatReservationScheduleRange(startValue, endValue) {
+  const formattedStart = formatReservationScheduleDate(startValue);
+  const formattedEnd = formatReservationScheduleDate(endValue);
+
+  if (formattedStart && formattedEnd) {
+    return formattedStart === formattedEnd
+      ? formattedStart
+      : `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
+}
+
+function formatReservationScheduleDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  const parsedValue = new Date(value);
+
+  if (Number.isNaN(parsedValue.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'Asia/Manila',
+  }).format(parsedValue);
 }

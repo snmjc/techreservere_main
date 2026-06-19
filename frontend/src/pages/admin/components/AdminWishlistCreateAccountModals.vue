@@ -241,7 +241,7 @@
           <input v-model="addEmployeeForm.role" type="text" readonly />
         </label>
 
-        <p class="admin-wishlist-add-helper">Default password: <strong>staff123</strong></p>
+        <p class="admin-wishlist-add-helper">This staff record will be used for task assignments and SMS notifications only.</p>
         <p v-if="addEmployeeError" class="admin-wishlist-add-error">{{ addEmployeeError }}</p>
 
         <div class="admin-wishlist-modal-actions">
