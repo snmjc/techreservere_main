@@ -248,146 +248,32 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const authStore = useAuthenticationStore();
+const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const sortOrder = ref('desc');
 const orderByValue = ref('date');
-const loading = ref(false);
 const selectedRecord = ref(null);
-
-const pastRecordsList = ref([]);
 const userFullName = computed(() => authStore.userFullName || 'USER');
-
-const mockPastRecords = [
-  {
-    requestIdentifier: 'RES-001',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-05-01',
-    neededDate: '2024-05-15',
-    facilityName: 'Classroom A',
-    requestQuantity: 1,
-    requestType: 'Venue',
-    requestPurpose: 'Department presentation',
-    recordStatus: 'Completed',
-    remarks: 'Reservation was completed successfully.',
-  },
-  {
-    requestIdentifier: 'RES-002',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-04-28',
-    neededDate: '2024-05-10',
-    facilityName: 'Multipurpose Room',
-    requestQuantity: 2,
-    requestType: 'Equipment',
-    requestPurpose: 'Organization workshop',
-    recordStatus: 'Completed',
-    remarks: 'Equipment was issued and returned on time.',
-  },
-  {
-    requestIdentifier: 'RES-003',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-04-20',
-    neededDate: '2024-05-05',
-    facilityName: 'Projector',
-    requestQuantity: 1,
-    requestType: 'Equipment',
-    requestPurpose: 'Capstone consultation',
-    recordStatus: 'Rejected',
-    remarks: 'Requested item was unavailable during the schedule.',
-  },
-  {
-    requestIdentifier: 'RES-004',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-04-15',
-    neededDate: '2024-04-25',
-    facilityName: 'Classroom B',
-    requestQuantity: 1,
-    requestType: 'Venue',
-    requestPurpose: 'Study session',
-    recordStatus: 'Cancelled',
-    remarks: 'Reservation was cancelled before approval.',
-  },
-  {
-    requestIdentifier: 'RES-005',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-04-10',
-    neededDate: '2024-04-22',
-    facilityName: 'Conference Room',
-    requestQuantity: 3,
-    requestType: 'Venue + Equipment',
-    requestPurpose: 'Panel discussion',
-    recordStatus: 'Completed',
-    remarks: 'Venue and supporting items were prepared successfully.',
-  },
-  {
-    requestIdentifier: 'RES-006',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-04-05',
-    neededDate: '2024-04-18',
-    facilityName: 'LED Screen',
-    requestQuantity: 2,
-    requestType: 'Equipment',
-    requestPurpose: 'Multimedia showcase',
-    recordStatus: 'Rejected',
-    remarks: 'Technical inventory was reserved for another event.',
-  },
-  {
-    requestIdentifier: 'RES-007',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-03-28',
-    neededDate: '2024-04-10',
-    facilityName: 'Auditorium',
-    requestQuantity: 1,
-    requestType: 'Venue',
-    requestPurpose: 'General assembly',
-    recordStatus: 'Completed',
-    remarks: 'Reservation proceeded as scheduled.',
-  },
-  {
-    requestIdentifier: 'RES-008',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Student',
-    requestedDate: '2024-03-20',
-    neededDate: '2024-04-02',
-    facilityName: 'Microphone Set',
-    requestQuantity: 1,
-    requestType: 'Equipment',
-    requestPurpose: 'Speech practice',
-    recordStatus: 'Cancelled',
-    remarks: 'Requester withdrew the reservation before release.',
-  },
-];
+const loading = computed(() => requestStore.isLoadingReservations);
+const pastRecordsList = computed(() => requestStore.pastRecordsList || []);
 
 onMounted(async () => {
-  await loadPastRecords();
-});
-
-async function loadPastRecords() {
-  loading.value = true;
   try {
-    pastRecordsList.value = mockPastRecords;
+    await requestStore.fetchReservations();
   } catch (error) {
     console.error('Error loading past records:', error);
-    pastRecordsList.value = mockPastRecords;
-  } finally {
-    loading.value = false;
   }
-}
+});
 
 const summaryCards = computed(() => {
   const total = pastRecordsList.value.length || 1;

@@ -103,7 +103,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="filteredRecordList.length === 0">
+                <tr v-if="requestStore.isLoadingReservations">
+                  <td colspan="8" class="admin-past-records-empty-state">Loading archived reservations...</td>
+                </tr>
+                <tr v-else-if="filteredRecordList.length === 0">
                   <td colspan="8" class="admin-past-records-empty-state">No past records match the current filters.</td>
                 </tr>
                 <tr
@@ -149,7 +152,7 @@
             </table>
 
             <div class="admin-past-records-table-footer">
-              <span>Showing {{ filteredRecordList.length }} of {{ mockPastRecords.length }} records</span>
+              <span>Showing {{ filteredRecordList.length }} of {{ pastRecordsList.length }} records</span>
             </div>
           </div>
         </div>
@@ -281,129 +284,6 @@ const sortOrderAscending = ref(false);
 const sortByValue = ref('requestedDate');
 const selectedRecord = ref(null);
 
-const mockPastRecords = ref([
-  {
-    requestIdentifier: 'RES-001',
-    requesterFullName: 'Maria Santos',
-    requesterRole: 'Faculty',
-    borrowerAvatar: createTextPlaceholderDataUrl('MS'),
-    requestedDate: '2026-04-15',
-    neededDate: '2026-05-10',
-    facilityName: '18F Roofdeck',
-    requestQuantity: 150,
-    requestType: 'Venue',
-    requestPurpose: 'Graduation Ceremony',
-    dateProcessed: '2026-05-10',
-    recordStatus: 'Completed',
-    remarks: 'Reservation finished successfully without incident.',
-  },
-  {
-    requestIdentifier: 'RES-002',
-    requesterFullName: 'Juan Dela Cruz',
-    requesterRole: 'Staff',
-    borrowerAvatar: createTextPlaceholderDataUrl('JD'),
-    requestedDate: '2026-04-20',
-    neededDate: '2026-05-05',
-    facilityName: 'Chairs',
-    requestQuantity: 200,
-    requestType: 'Equipment',
-    requestPurpose: 'Conference Setup',
-    dateProcessed: '2026-05-05',
-    recordStatus: 'Completed',
-    remarks: 'Equipment released and returned complete.',
-  },
-  {
-    requestIdentifier: 'RES-003',
-    requesterFullName: 'Ana Garcia',
-    requesterRole: 'Student',
-    borrowerAvatar: createTextPlaceholderDataUrl('AG'),
-    requestedDate: '2026-04-10',
-    neededDate: '2026-04-25',
-    facilityName: 'F407',
-    requestQuantity: 50,
-    requestType: 'Venue',
-    requestPurpose: 'Club Meeting',
-    dateProcessed: '2026-04-25',
-    recordStatus: 'Rejected',
-    remarks: 'Request conflicted with a higher-priority venue booking.',
-  },
-  {
-    requestIdentifier: 'RES-004',
-    requesterFullName: 'Pedro Reyes',
-    requesterRole: 'Faculty',
-    borrowerAvatar: createTextPlaceholderDataUrl('PR'),
-    requestedDate: '2026-04-12',
-    neededDate: '2026-05-01',
-    facilityName: 'Microphone and Podium',
-    requestQuantity: 5,
-    requestType: 'Equipment',
-    requestPurpose: 'Seminar',
-    dateProcessed: '2026-05-01',
-    recordStatus: 'Completed',
-    remarks: 'Audio support completed on schedule.',
-  },
-  {
-    requestIdentifier: 'RES-005',
-    requesterFullName: 'Rosa Mendoza',
-    requesterRole: 'Student',
-    borrowerAvatar: createTextPlaceholderDataUrl('RM'),
-    requestedDate: '2026-04-18',
-    neededDate: '2026-05-08',
-    facilityName: 'F503 and Tables',
-    requestQuantity: 80,
-    requestType: 'Venue + Equipment',
-    requestPurpose: 'Workshop',
-    dateProcessed: '2026-05-08',
-    recordStatus: 'Completed',
-    remarks: 'Venue handoff and equipment return both completed.',
-  },
-  {
-    requestIdentifier: 'RES-006',
-    requesterFullName: 'Carlos Lopez',
-    requesterRole: 'Staff',
-    borrowerAvatar: createTextPlaceholderDataUrl('CL'),
-    requestedDate: '2026-04-22',
-    neededDate: '2026-05-02',
-    facilityName: 'LED Video Wall',
-    requestQuantity: 1,
-    requestType: 'Equipment',
-    requestPurpose: 'Presentation',
-    dateProcessed: '2026-05-02',
-    recordStatus: 'Cancelled',
-    remarks: 'Requester cancelled before preparation was completed.',
-  },
-  {
-    requestIdentifier: 'RES-007',
-    requesterFullName: 'Lisa Wong',
-    requesterRole: 'Faculty',
-    borrowerAvatar: createTextPlaceholderDataUrl('LW'),
-    requestedDate: '2026-04-08',
-    neededDate: '2026-04-28',
-    facilityName: 'F608',
-    requestQuantity: 60,
-    requestType: 'Venue',
-    requestPurpose: 'Exam',
-    dateProcessed: '2026-04-28',
-    recordStatus: 'Rejected',
-    remarks: 'Room capacity did not meet the request requirements.',
-  },
-  {
-    requestIdentifier: 'RES-008',
-    requesterFullName: 'Miguel Torres',
-    requesterRole: 'Student',
-    borrowerAvatar: createTextPlaceholderDataUrl('MT'),
-    requestedDate: '2026-04-25',
-    neededDate: '2026-05-09',
-    facilityName: 'Stage and Sound System',
-    requestQuantity: 1,
-    requestType: 'Equipment',
-    requestPurpose: 'Concert',
-    dateProcessed: '2026-05-09',
-    recordStatus: 'Completed',
-    remarks: 'Sound check and deployment completed successfully.',
-  },
-]);
-
 onMounted(async () => {
   try {
     await requestStore.fetchReservations();
@@ -412,29 +292,37 @@ onMounted(async () => {
   }
 });
 
+const pastRecordsList = computed(() =>
+  (requestStore.pastRecordsList || []).map((record) => ({
+    ...record,
+    borrowerAvatar: createTextPlaceholderDataUrl(buildInitials(record.requesterFullName)),
+    dateProcessed: record.neededDate || record.activityEndTime || record.activityTime || record.requestedDate,
+  }))
+);
+
 const summaryCards = computed(() => {
-  const total = mockPastRecords.value.length || 1;
-  const completed = mockPastRecords.value.filter((record) => record.recordStatus === 'Completed').length;
-  const rejected = mockPastRecords.value.filter((record) => record.recordStatus === 'Rejected').length;
-  const cancelled = mockPastRecords.value.filter((record) => record.recordStatus === 'Cancelled').length;
+  const total = pastRecordsList.value.length || 1;
+  const completed = pastRecordsList.value.filter((record) => record.recordStatus === 'Completed').length;
+  const rejected = pastRecordsList.value.filter((record) => record.recordStatus === 'Rejected').length;
+  const cancelled = pastRecordsList.value.filter((record) => record.recordStatus === 'Cancelled').length;
 
   return [
-    { label: 'Total Records', value: mockPastRecords.value.length, caption: 'All archived reservations', icon: '▦', tone: 'total' },
-    { label: 'Completed', value: completed, caption: `${Math.round((completed / total) * 100)}% of all records`, icon: '✓', tone: 'completed' },
-    { label: 'Rejected', value: rejected, caption: `${Math.round((rejected / total) * 100)}% of all records`, icon: '×', tone: 'rejected' },
-    { label: 'Cancelled', value: cancelled, caption: `${Math.round((cancelled / total) * 100)}% of all records`, icon: '!', tone: 'cancelled' },
+    { label: 'Total Records', value: pastRecordsList.value.length, caption: 'All archived reservations', icon: 'Total', tone: 'total' },
+    { label: 'Completed', value: completed, caption: `${Math.round((completed / total) * 100)}% of all records`, icon: 'Done', tone: 'completed' },
+    { label: 'Rejected', value: rejected, caption: `${Math.round((rejected / total) * 100)}% of all records`, icon: 'No', tone: 'rejected' },
+    { label: 'Cancelled', value: cancelled, caption: `${Math.round((cancelled / total) * 100)}% of all records`, icon: 'Stop', tone: 'cancelled' },
   ];
 });
 
 const recordTabs = computed(() => [
-  { label: 'All', value: 'all', count: mockPastRecords.value.length },
-  { label: 'Completed', value: 'completed', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Completed').length },
-  { label: 'Rejected', value: 'rejected', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Rejected').length },
-  { label: 'Cancelled', value: 'cancelled', count: mockPastRecords.value.filter((record) => record.recordStatus === 'Cancelled').length },
+  { label: 'All', value: 'all', count: pastRecordsList.value.length },
+  { label: 'Completed', value: 'completed', count: pastRecordsList.value.filter((record) => record.recordStatus === 'Completed').length },
+  { label: 'Rejected', value: 'rejected', count: pastRecordsList.value.filter((record) => record.recordStatus === 'Rejected').length },
+  { label: 'Cancelled', value: 'cancelled', count: pastRecordsList.value.filter((record) => record.recordStatus === 'Cancelled').length },
 ]);
 
 const filteredRecordList = computed(() => {
-  let recordsFiltered = [...mockPastRecords.value];
+  let recordsFiltered = [...pastRecordsList.value];
 
   if (activeRecordTab.value !== 'all') {
     const tabStatusMap = {
@@ -494,9 +382,9 @@ watch(
 );
 
 function resolveSortValue(record, sortKey) {
-  if (sortKey === 'borrower') return record.requesterFullName.toLowerCase();
-  if (sortKey === 'facility') return record.facilityName.toLowerCase();
-  if (sortKey === 'status') return record.recordStatus.toLowerCase();
+  if (sortKey === 'borrower') return String(record.requesterFullName || '').toLowerCase();
+  if (sortKey === 'facility') return String(record.facilityName || '').toLowerCase();
+  if (sortKey === 'status') return String(record.recordStatus || '').toLowerCase();
   return new Date(record.requestedDate).getTime();
 }
 
@@ -608,5 +496,18 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function buildInitials(fullName) {
+  const parts = String(fullName || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (!parts.length) {
+    return 'NA';
+  }
+
+  return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 </script>

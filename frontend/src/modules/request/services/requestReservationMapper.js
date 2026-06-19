@@ -97,12 +97,14 @@ function mapReservationRecord(reservation) {
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
+    neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityTime: reservation?.eventDateTime || 'N/A',
     activityEndTime: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
     cancellationReason: reservation?.rejectionReason || '',
+    remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
     uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
     reservationSummary,
   };
@@ -167,4 +169,22 @@ function mapUploadedDocuments(supportingDocuments = []) {
   return documentList.map((documentFile, index) => ({
     fileName: typeof documentFile === 'string' ? documentFile : `Document ${index + 1}`,
   }));
+}
+
+function buildReservationRemark(reservation) {
+  const status = String(reservation?.currentStatus || 'Unknown');
+
+  if (status === 'Completed') {
+    return 'Reservation was completed successfully.';
+  }
+
+  if (status === 'Cancelled') {
+    return 'Reservation was cancelled before completion.';
+  }
+
+  if (status === 'Rejected') {
+    return 'Reservation request was rejected during review.';
+  }
+
+  return `Reservation is currently marked as ${status}.`;
 }
