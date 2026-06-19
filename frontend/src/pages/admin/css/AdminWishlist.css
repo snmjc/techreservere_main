@@ -492,6 +492,10 @@
   background: #ffffff;
 }
 
+.admin-wishlist-add-employee-modal {
+  width: min(640px, 100%);
+}
+
 .admin-wishlist-modal-close {
   position: absolute;
   top: 0.9rem;
@@ -892,6 +896,10 @@
   gap: 0.85rem 1rem;
 }
 
+.admin-wishlist-create-modal--employee .admin-wishlist-add-form {
+  gap: 0.8rem 0.9rem;
+}
+
 .admin-wishlist-create-modal .admin-wishlist-field-wide,
 .admin-wishlist-create-modal .admin-wishlist-add-form .admin-wishlist-add-error,
 .admin-wishlist-create-modal .admin-wishlist-add-form .admin-wishlist-modal-actions {
@@ -992,8 +1000,35 @@
   font-weight: 800;
 }
 
+.admin-wishlist-add-helper--employee {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.85rem 0.95rem;
+  color: #14532d;
+  background: linear-gradient(180deg, #f4fbf7 0%, #edf8f1 100%);
+  border: 1px solid #b7dfc6;
+  border-radius: 14px;
+}
+
+.admin-wishlist-add-helper--employee strong {
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.admin-wishlist-add-helper--employee span {
+  color: #3f5d4b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .admin-wishlist-create-modal .admin-wishlist-modal-actions {
   margin-top: 0.35rem;
+}
+
+.admin-wishlist-modal-actions--employee {
+  justify-content: flex-end;
+  padding-top: 0.1rem;
 }
 
 @media (hover: hover) {
