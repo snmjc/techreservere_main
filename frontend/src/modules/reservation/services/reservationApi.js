@@ -59,14 +59,16 @@ const reservationApi = {
     }
   },
 
-  async updateReservationStatus(reservationIdentifier, status, rejectionReason = null) {
+  async updateReservationStatus(reservationIdentifier, status, rejectionReason = null, securityConfirmation = null) {
     try {
       const authToken = getStoredAuthToken();
       const response = await axios.put(
         apiUrl(`/api/v1/reservations/${reservationIdentifier}/status`),
         {
           currentStatus: status,
-          rejectionReason: rejectionReason
+          rejectionReason: rejectionReason,
+          confirmedAdminEmail: securityConfirmation?.confirmedAdminEmail || '',
+          confirmedAdminPassword: securityConfirmation?.confirmedAdminPassword || '',
         },
         {
           headers: buildJsonAuthorizationHeaders(authToken)

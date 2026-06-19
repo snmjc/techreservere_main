@@ -203,7 +203,7 @@
               </div>
 
               <aside class="reservation-equipment-sidebar">
-                <h3>Selected Equipment ({{ selectedEquipmentItems.length }}/{{ MAX_EQUIPMENT_SELECTION_COUNT }})</h3>
+                <h3>Selected Equipment ({{ selectedEquipmentItems.length }})</h3>
                 <div v-if="selectedEquipmentItems.length" class="reservation-equipment-selected-list">
                   <article v-for="item in selectedEquipmentItems" :key="item.equipmentIdentifier" class="reservation-equipment-selected-item">
                     <strong>{{ item.equipmentName }}</strong>
@@ -211,7 +211,6 @@
                   </article>
                 </div>
                 <p v-else class="borrower-reservation-help">You can review and edit selected equipment on the next step.</p>
-                <p class="borrower-reservation-help">Maximum equipment selections at a time: {{ MAX_EQUIPMENT_SELECTION_COUNT }}.</p>
               </aside>
             </div>
           </div>
@@ -241,7 +240,6 @@ import './css/CreateReservationVenue.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
-import { MAX_EQUIPMENT_SELECTION_COUNT } from '@/modules/reservation/utils/reservationWizard.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
@@ -337,6 +335,14 @@ const equipmentRecords = computed(() => {
   return apiRecords.length ? apiRecords : fallbackEquipment;
 });
 
+watch(
+  equipmentRecords,
+  (records) => {
+    syncSelectedEquipmentItems(records);
+  },
+  { immediate: true }
+);
+
 const equipmentCategoryOptions = computed(() => [...new Set(equipmentRecords.value.map((item) => item.equipmentCategory))]);
 
 const filteredEquipmentRecords = computed(() => {
@@ -376,7 +382,7 @@ watch(equipmentTotalPages, (nextValue) => {
 });
 
 function buildInitialEquipmentSelection() {
-  return (reservationFormStore.selectedEquipmentItems || []).map((item) => ({ ...item }));
+  return dedupeEquipmentSelections(reservationFormStore.selectedEquipmentItems || []);
 }
 
 function handleVenueSelection(venue) {
@@ -408,14 +414,6 @@ function setEquipmentQuantity(equipment, nextQuantity) {
     return;
   }
 
-  if (!existingItem && selectedEquipmentItems.value.length >= MAX_EQUIPMENT_SELECTION_COUNT) {
-    equipmentQuantityErrors.value = {
-      ...equipmentQuantityErrors.value,
-      [equipment.equipmentIdentifier]: `You can only select up to ${MAX_EQUIPMENT_SELECTION_COUNT} equipment items at a time.`,
-    };
-    return;
-  }
-
   if (existingItem) {
     existingItem.availableQuantity = maxAvailableQuantity;
     existingItem.selectedQuantity = normalizedQuantity;
@@ -426,6 +424,7 @@ function setEquipmentQuantity(equipment, nextQuantity) {
     equipmentIdentifier: equipment.equipmentIdentifier,
     equipmentName: equipment.equipmentName,
     equipmentCategory: equipment.equipmentCategory,
+    equipmentBrand: equipment.equipmentBrand,
     availableQuantity: maxAvailableQuantity,
     selectedQuantity: normalizedQuantity,
   });
@@ -525,7 +524,8 @@ function navigateToNextPage() {
 
   reservationFormStore.selectedVenueName = selectedVenueRecord.value?.venueName || null;
   reservationFormStore.selectedVenueRecord = selectedVenueRecord.value;
-  reservationFormStore.selectedEquipmentItems = selectedEquipmentItems.value.filter((item) => item.selectedQuantity > 0);
+  reservationFormStore.selectedEquipmentItems = dedupeEquipmentSelections(selectedEquipmentItems.value)
+    .filter((item) => item.selectedQuantity > 0);
   reservationFormStore.persistForm();
   isStepLoading.value = true;
   window.setTimeout(() => {
@@ -539,5 +539,59 @@ function inferVenueType(venue) {
   if (normalizedName.includes('audio visual')) return 'Audio Visual Room';
   if (normalizedName.includes('room')) return 'Venue';
   return 'Venue';
+}
+
+function dedupeEquipmentSelections(items) {
+  const selectionMap = new Map();
+
+  for (const item of Array.isArray(items) ? items : []) {
+    const equipmentIdentifier = Number(item?.equipmentIdentifier);
+    if (!Number.isFinite(equipmentIdentifier) || equipmentIdentifier <= 0) {
+      continue;
+    }
+
+    const selectedQuantity = Math.max(Number.parseInt(item?.selectedQuantity ?? item?.quantity ?? 0, 10) || 0, 0);
+    if (selectedQuantity <= 0) {
+      continue;
+    }
+
+    selectionMap.set(equipmentIdentifier, {
+      equipmentIdentifier,
+      equipmentName: item?.equipmentName || item?.name || 'Equipment Item',
+      equipmentCategory: item?.equipmentCategory || 'Miscellaneous',
+      equipmentBrand: item?.equipmentBrand || '',
+      availableQuantity: Math.max(Number.parseInt(item?.availableQuantity ?? 0, 10) || 0, 0),
+      selectedQuantity,
+    });
+  }
+
+  return Array.from(selectionMap.values());
+}
+
+function syncSelectedEquipmentItems(records) {
+  const recordMap = new Map(
+    (Array.isArray(records) ? records : []).map((record) => [Number(record.equipmentIdentifier), record])
+  );
+
+  selectedEquipmentItems.value = dedupeEquipmentSelections(selectedEquipmentItems.value)
+    .map((item) => {
+      const currentRecord = recordMap.get(Number(item.equipmentIdentifier));
+      if (!currentRecord) {
+        return item;
+      }
+
+      return {
+        equipmentIdentifier: Number(currentRecord.equipmentIdentifier),
+        equipmentName: currentRecord.equipmentName,
+        equipmentCategory: currentRecord.equipmentCategory,
+        equipmentBrand: currentRecord.equipmentBrand,
+        availableQuantity: Math.max(Number(currentRecord.availableQuantity || 0), 0),
+        selectedQuantity: Math.min(
+          item.selectedQuantity,
+          Math.max(Number(currentRecord.availableQuantity || 0), 0)
+        ),
+      };
+    })
+    .filter((item) => item.selectedQuantity > 0);
 }
 </script>

@@ -23,12 +23,24 @@ export const useRequestStore = defineStore('requestStore', () => {
   const overdueCount = computed(() => 0);
   const completedCount = computed(() => pastRecordsList.value.filter((record) => record.recordStatus === 'Completed').length);
 
-  async function approvePendingRequest(requestRecord) {
-    await updateReservationStatusAndRefresh(requestRecord, 'Approved', null, 'Failed to approve request:');
+  async function approvePendingRequest(requestRecord, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(
+      requestRecord,
+      'Approved',
+      null,
+      'Failed to approve request:',
+      securityConfirmation,
+    );
   }
 
-  async function rejectPendingRequest(requestRecord, rejectionReason = null) {
-    await updateReservationStatusAndRefresh(requestRecord, 'Rejected', rejectionReason, 'Failed to reject request:');
+  async function rejectPendingRequest(requestRecord, rejectionReason = null, securityConfirmation = null) {
+    await updateReservationStatusAndRefresh(
+      requestRecord,
+      'Rejected',
+      rejectionReason,
+      'Failed to reject request:',
+      securityConfirmation,
+    );
   }
 
   async function deployApprovedRequest(requestRecord) {
@@ -94,13 +106,17 @@ export const useRequestStore = defineStore('requestStore', () => {
     }
   }
 
-  async function updateReservationStatusAndRefresh(requestRecord, status, reason, errorMessage) {
+  async function updateReservationStatusAndRefresh(requestRecord, status, reason, errorMessage, securityConfirmation = null) {
     try {
-      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, status, reason);
+      await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, status, reason, securityConfirmation);
       await fetchReservations();
     } catch (error) {
       console.error(errorMessage, error);
-      throw error;
+      throw new Error(
+        error?.response?.data?.errorMessage
+          || error?.message
+          || errorMessage.replace(/:$/, '.')
+      );
     }
   }
 
