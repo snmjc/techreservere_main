@@ -18,6 +18,8 @@ class TaskResponseMapperService
             taskStatus: $entity->getTaskStatus(),
             assignedToAccountId: $entity->getAssignedToAccountId(),
             dueDateTimestamp: $entity->getDueDateTimestamp()?->format(\DateTime::ATOM),
+            preparationStartTimestamp: $entity->getPreparationStartTimestamp()?->format(\DateTime::ATOM),
+            preparationEndTimestamp: $entity->getPreparationEndTimestamp()?->format(\DateTime::ATOM),
             createdTimestamp: $entity->getCreatedTimestamp()->format(\DateTime::ATOM)
         );
     }

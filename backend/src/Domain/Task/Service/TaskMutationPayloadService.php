@@ -52,7 +52,9 @@ class TaskMutationPayloadService
             taskStatus: $body['taskStatus'] ?? 'Pending',
             reservationIdentifier: $linkedRecords->reservationIdentifier,
             assignedToAccountId: $linkedRecords->assignedToAccountId,
-            dueDateTimestamp: $this->normalizeNullableString($body['dueDateTimestamp'] ?? null)
+            dueDateTimestamp: $this->normalizeNullableString($body['dueDateTimestamp'] ?? null),
+            preparationStartTimestamp: $this->normalizeNullableString($body['preparationStartTimestamp'] ?? null),
+            preparationEndTimestamp: $this->normalizeNullableString($body['preparationEndTimestamp'] ?? null)
         );
     }
 

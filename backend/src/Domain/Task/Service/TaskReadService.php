@@ -37,6 +37,8 @@ class TaskReadService
                     tasks.task_status,
                     tasks.assigned_to_account_id,
                     tasks.due_date_timestamp,
+                    tasks.preparation_start_timestamp,
+                    tasks.preparation_end_timestamp,
                     tasks.created_timestamp,
                     reservations.reservation_code,
                     reservations.organization_name,
@@ -98,6 +100,8 @@ class TaskReadService
             'eventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
             'endDateTime' => $row['end_date_time'] ? (string)$row['end_date_time'] : null,
             'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
+            'preparationStartTimestamp' => $row['preparation_start_timestamp'] ? (string)$row['preparation_start_timestamp'] : null,
+            'preparationEndTimestamp' => $row['preparation_end_timestamp'] ? (string)$row['preparation_end_timestamp'] : null,
             'createdTimestamp' => (string)$row['created_timestamp'],
         ];
     }
