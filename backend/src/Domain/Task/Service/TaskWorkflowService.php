@@ -42,10 +42,8 @@ class TaskWorkflowService
 
     public function getTasksByReservation(int $reservationIdentifier): array
     {
-        $dtos = $this->taskManagementService->getTasksByReservation($reservationIdentifier);
-
         return $this->success([
-            'tasks' => array_map(fn($dto) => $dto->toResponseArray(), $dtos),
+            'tasks' => $this->taskReadService->fetchTaskRowsByReservation($reservationIdentifier),
         ]);
     }
 

@@ -7,8 +7,10 @@ use App\Domain\Equipment\Entity\EquipmentEntity;
 use App\Domain\Equipment\Repository\EquipmentRepository;
 use App\Domain\Equipment\Service\EquipmentAssetIdValidator;
 use App\Domain\Equipment\Service\EquipmentManagementService;
+use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
+use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -17,15 +19,25 @@ use PHPUnit\Framework\TestCase;
 class EquipmentManagementServiceTest extends TestCase
 {
     private EquipmentRepository|MockObject $equipmentRepository;
+    private ReservationRepository|MockObject $reservationRepository;
+    private Connection|MockObject $connection;
     private EquipmentManagementService $service;
 
     protected function setUp(): void
     {
         $this->equipmentRepository = $this->createMock(EquipmentRepository::class);
+        $this->reservationRepository = $this->createMock(ReservationRepository::class);
+        $this->connection = $this->createMock(Connection::class);
         $this->service = new EquipmentManagementService(
             $this->equipmentRepository,
-            new EquipmentAssetIdValidator()
+            new EquipmentAssetIdValidator(),
+            $this->reservationRepository,
+            $this->connection
         );
+
+        $schemaReadyProperty = new \ReflectionProperty($this->service, 'equipmentSchemaEnsured');
+        $schemaReadyProperty->setAccessible(true);
+        $schemaReadyProperty->setValue($this->service, true);
     }
 
     public function testCreateEquipmentPersistsEquipmentAndReturnsStoredFields(): void
@@ -61,6 +73,40 @@ class EquipmentManagementServiceTest extends TestCase
         $this->assertSame('F123-456-789', $capturedEntity->getAssetId());
         $this->assertSame('Projector', $response->equipmentName);
         $this->assertSame('F123-456-789', $response->assetId);
+    }
+
+    public function testCreateEquipmentGeneratesAssetIdAndBarcodeWhenMissing(): void
+    {
+        $capturedEntity = null;
+
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findHighestGeneratedAssetIdForCategoryPrefix')
+            ->with('PRE')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByBarcode')
+            ->with('TRBC-PRE-0001')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByAssetId')
+            ->with('TR-PRE-0001')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('persistEquipment')
+            ->willReturnCallback(function (EquipmentEntity $entity) use (&$capturedEntity): void {
+                $capturedEntity = $entity;
+            });
+
+        $response = $this->service->createEquipment($this->validRequest(barcode: '', assetId: ''));
+
+        $this->assertInstanceOf(EquipmentEntity::class, $capturedEntity);
+        $this->assertSame('TR-PRE-0001', $capturedEntity->getAssetId());
+        $this->assertSame('TRBC-PRE-0001', $capturedEntity->getBarcode());
+        $this->assertSame('TR-PRE-0001', $response->assetId);
     }
 
     public function testUpdateEquipmentPersistsChangesToExistingEquipment(): void
@@ -189,7 +235,7 @@ class EquipmentManagementServiceTest extends TestCase
             ->method('persistEquipment');
 
         $this->expectException(DomainValidationException::class);
-        $this->expectExceptionMessage('Asset ID must follow the format F123-456-789.');
+        $this->expectExceptionMessage('Asset ID must follow the TechReserve generated format.');
 
         $this->service->createEquipment($this->validRequest(assetId: 'ABC-123'));
     }

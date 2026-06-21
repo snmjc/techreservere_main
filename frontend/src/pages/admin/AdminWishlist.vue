@@ -434,7 +434,7 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>Deny Account Request</h2>
-            <p>Review the request email before confirming denial. This will prevent the account from being invited.</p>
+            <p>Confirm the responsible admin before denying this request. This will prevent the account from being invited.</p>
           </div>
 
           <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">
@@ -470,11 +470,11 @@
           </div>
 
           <label class="admin-wishlist-confirm-field">
-            <span>Type the exact email <strong>{{ denialAccount.emailAddress }}</strong> to confirm denial:</span>
+            <span>Type your admin email <strong>{{ currentAdminEmail || 'from your account' }}</strong> to confirm denial:</span>
             <input
               v-model.trim="denialConfirmEmail"
               type="email"
-              :placeholder="denialAccount.emailAddress"
+              :placeholder="currentAdminEmail || 'admin@techreserve.edu.ph'"
               autocomplete="off"
             />
           </label>

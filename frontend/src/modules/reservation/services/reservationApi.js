@@ -22,6 +22,10 @@ const reservationApi = {
       return response.data;
     } catch (apiError) {
       console.error('Error creating reservation:', apiError);
+      const backendMessage = apiError?.response?.data?.errorMessage || apiError?.response?.data?.message;
+      if (backendMessage) {
+        throw new Error(backendMessage);
+      }
       throw apiError;
     }
   },

@@ -9,20 +9,7 @@
 
     <div class="venue-availability-calendar__date-toolbar">
       <label class="venue-availability-calendar__date-range-field">
-        <span>Start Date</span>
-        <div class="venue-availability-calendar__date-input">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M16 2v4" />
-            <path d="M8 2v4" />
-            <path d="M3 10h18" />
-          </svg>
-          <input :value="selectedDate" type="date" @input="emit('update:selectedDate', $event.target.value)" />
-        </div>
-      </label>
-
-      <label class="venue-availability-calendar__date-range-field">
-        <span>End Date</span>
+        <span>Selected Date</span>
         <div class="venue-availability-calendar__date-input">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -81,11 +68,16 @@
         <span
           v-for="day in monthCells"
           :key="day.key"
+          role="button"
+          tabindex="0"
           class="venue-availability-calendar__month-cell"
           :class="{
             'venue-availability-calendar__month-cell--muted': !day.inCurrentMonth,
             'venue-availability-calendar__month-cell--active': day.isSelected,
           }"
+          @click="emit('update:selectedDate', day.dateValue)"
+          @keydown.enter.prevent="emit('update:selectedDate', day.dateValue)"
+          @keydown.space.prevent="emit('update:selectedDate', day.dateValue)"
         >
           {{ day.dayNumber }}
         </span>
@@ -103,13 +95,14 @@
     </div>
 
     <p class="venue-availability-calendar__note">
-      {{ venues.length }} venue{{ venues.length === 1 ? '' : 's' }} match the current date and status filters.
+      {{ availabilitySummaryCopy }}
     </p>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { deriveVenueAvailabilityForDate } from '@/modules/facility/utils/venueFormValidation.js';
 
 const props = defineProps({
   venues: {
@@ -142,6 +135,41 @@ const monthLabel = computed(() => new Intl.DateTimeFormat('en-US', {
 }).format(selectedDateObject.value));
 
 const monthCells = computed(() => buildCalendarMonth(selectedDateObject.value));
+const venueAvailabilitySummary = computed(() => (
+  (props.venues || []).reduce((summary, venueRecord) => {
+    const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, props.selectedDate);
+    if (availabilityStatus === 'Available') {
+      summary.available += 1;
+    } else {
+      summary.unavailable += 1;
+    }
+
+    if (Array.isArray(venueRecord?.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0) {
+      summary.withReservationBlocks += 1;
+    }
+
+    return summary;
+  }, {
+    available: 0,
+    unavailable: 0,
+    withReservationBlocks: 0,
+  })
+));
+
+const availabilitySummaryCopy = computed(() => {
+  const summary = venueAvailabilitySummary.value;
+  const dateLabel = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(selectedDateObject.value);
+
+  const reservationBlockCopy = summary.withReservationBlocks > 0
+    ? ` ${summary.withReservationBlocks} venue${summary.withReservationBlocks === 1 ? '' : 's'} also show reservation blocks for that date.`
+    : '';
+
+  return `${summary.available} available and ${summary.unavailable} unavailable on ${dateLabel}.${reservationBlockCopy}`;
+});
 
 function shiftSelectedDate(dayOffset) {
   const nextDate = new Date(selectedDateObject.value);
@@ -180,6 +208,7 @@ function buildCalendarMonth(date) {
 function createCalendarCell(date, inCurrentMonth, selectedKey) {
   return {
     key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+    dateValue: formatDateInputValue(date),
     dayNumber: date.getDate(),
     inCurrentMonth,
     isSelected: formatDateInputValue(date) === selectedKey,
@@ -232,7 +261,7 @@ function formatDateInputValue(date) {
 }
 
 .venue-availability-calendar__date-toolbar {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   align-items: end;
   margin-top: 1rem;
@@ -368,6 +397,8 @@ function formatDateInputValue(date) {
   color: #111827;
   font-size: 0.86rem;
   border-radius: 999px;
+  cursor: pointer;
+  outline: none;
 }
 
 .venue-availability-calendar__month-cell--muted {
@@ -378,6 +409,10 @@ function formatDateInputValue(date) {
   color: #ffffff;
   background: #16a34a;
   box-shadow: inset 0 0 0 2px #15803d;
+}
+
+.venue-availability-calendar__month-cell:focus-visible {
+  box-shadow: inset 0 0 0 2px #15803d, 0 0 0 2px rgba(21, 128, 61, 0.2);
 }
 
 .venue-availability-calendar__legend {

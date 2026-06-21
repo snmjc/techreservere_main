@@ -17,16 +17,29 @@ class TaskReadService
         return $rows[0] ?? null;
     }
 
-    public function fetchTaskRows(?int $taskIdentifier = null): array
+    public function fetchTaskRowsByReservation(int $reservationIdentifier): array
+    {
+        return $this->fetchTaskRows(null, $reservationIdentifier);
+    }
+
+    public function fetchTaskRows(?int $taskIdentifier = null, ?int $reservationIdentifier = null): array
     {
         $params = [];
         $types = [];
-        $where = '';
+        $whereParts = [];
         if ($taskIdentifier !== null) {
-            $where = 'WHERE tasks.task_identifier = :taskIdentifier';
+            $whereParts[] = 'tasks.task_identifier = :taskIdentifier';
             $params['taskIdentifier'] = $taskIdentifier;
             $types['taskIdentifier'] = ParameterType::INTEGER;
         }
+
+        if ($reservationIdentifier !== null) {
+            $whereParts[] = 'tasks.reservation_identifier = :reservationIdentifier';
+            $params['reservationIdentifier'] = $reservationIdentifier;
+            $types['reservationIdentifier'] = ParameterType::INTEGER;
+        }
+
+        $where = $whereParts === [] ? '' : ('WHERE ' . implode(' AND ', $whereParts));
 
         $rows = $this->connection->fetchAllAssociative(
             "SELECT tasks.task_identifier,
@@ -41,13 +54,17 @@ class TaskReadService
                     reservations.reservation_code,
                     reservations.organization_name,
                     reservations.event_date_time,
+                    reservations.activity_type,
+                    reservations.venue_identifier,
                     reservations.current_status AS reservation_status,
+                    venues.venue_name,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     COALESCE(staff_info.first_name, accounts.first_name) AS staff_first_name,
                     COALESCE(staff_info.last_name, accounts.last_name) AS staff_last_name,
                     COALESCE(staff_info.role, accounts.department) AS staff_role
              FROM tasks
              LEFT JOIN reservations ON reservations.reservation_identifier = tasks.reservation_identifier
+             LEFT JOIN venues ON venues.venue_identifier = reservations.venue_identifier
              LEFT JOIN accounts ON accounts.account_identifier = tasks.assigned_to_account_id
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              {$where}
@@ -67,6 +84,7 @@ class TaskReadService
             $reservationParts = [
                 $row['reservation_code'] ? (string)$row['reservation_code'] : '#' . $reservationIdentifier,
                 $row['organization_name'] ? (string)$row['organization_name'] : null,
+                $row['venue_name'] ? (string)$row['venue_name'] : null,
             ];
             $reservationLabel = implode(' - ', array_filter($reservationParts));
         }
@@ -78,6 +96,10 @@ class TaskReadService
             'reservationIdentifier' => $reservationIdentifier,
             'reservationLabel' => $reservationLabel,
             'reservationStatus' => $row['reservation_status'] ? (string)$row['reservation_status'] : null,
+            'reservationEventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
+            'reservationActivityType' => $row['activity_type'] ? (string)$row['activity_type'] : null,
+            'venueIdentifier' => $row['venue_identifier'] !== null ? (int)$row['venue_identifier'] : null,
+            'venueName' => $row['venue_name'] ? (string)$row['venue_name'] : null,
             'taskTitle' => (string)$row['task_title'],
             'taskDescription' => $row['task_description'] ? (string)$row['task_description'] : null,
             'taskType' => (string)$row['task_type'],

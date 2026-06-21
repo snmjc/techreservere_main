@@ -128,7 +128,10 @@ class EquipmentController extends AbstractController
             imageUrl: $requestBody['imageUrl'] ?? null,
             barcode: (string) ($requestBody['barcode'] ?? ''),
             assetId: (string) ($requestBody['assetId'] ?? $requestBody['serialNumber'] ?? ''),
-            photoData: $requestBody['photoData'] ?? null
+            photoData: $requestBody['photoData'] ?? null,
+            photoDisplayMode: (string) ($requestBody['photoDisplayMode'] ?? 'contain'),
+            photoPositionX: (int) ($requestBody['photoPositionX'] ?? 50),
+            photoPositionY: (int) ($requestBody['photoPositionY'] ?? 50)
         );
     }
 }

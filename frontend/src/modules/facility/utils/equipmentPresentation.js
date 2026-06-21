@@ -38,3 +38,31 @@ export function resolveEquipmentPhoto(equipmentRecord) {
   return photoData !== '' ? photoData : EQUIPMENT_PLACEHOLDER_IMAGE;
 }
 
+export function resolveEquipmentPhotoDisplayMode(equipmentRecord) {
+  return String(equipmentRecord?.photoDisplayMode || '').trim().toLowerCase() === 'cover' ? 'cover' : 'contain';
+}
+
+export function resolveEquipmentPhotoPosition(equipmentRecord) {
+  return {
+    x: normalizePhotoPosition(equipmentRecord?.photoPositionX),
+    y: normalizePhotoPosition(equipmentRecord?.photoPositionY),
+  };
+}
+
+export function resolveEquipmentPhotoStyle(equipmentRecord) {
+  const { x, y } = resolveEquipmentPhotoPosition(equipmentRecord);
+  return {
+    objectFit: resolveEquipmentPhotoDisplayMode(equipmentRecord),
+    objectPosition: `${x}% ${y}%`,
+  };
+}
+
+function normalizePhotoPosition(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return 50;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+}
+

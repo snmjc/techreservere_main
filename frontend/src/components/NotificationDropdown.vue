@@ -86,65 +86,14 @@ import NotificationIconReservation from '@/components/icons/NotificationIconRese
 import NotificationIconEquipment from '@/components/icons/NotificationIconEquipment.vue';
 import NotificationIconSystem from '@/components/icons/NotificationIconSystem.vue';
 import NotificationIconMaintenance from '@/components/icons/NotificationIconMaintenance.vue';
+import { useNotificationStore } from '@/modules/notification/store/notificationStore.js';
 
 const isDropdownOpen = ref(false);
+const notificationStore = useNotificationStore();
 
-const notifications = ref([
-  {
-    id: 1,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Juan Dela Cruz requested 5 audio tables',
-    timestamp: new Date(Date.now() - 1 * 60000),
-    isRead: false
-  },
-  {
-    id: 2,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Michael Qui requested FOSS',
-    timestamp: new Date(Date.now() - 20 * 60000),
-    isRead: false
-  },
-  {
-    id: 3,
-    type: 'equipment',
-    title: 'Overdue Equipment',
-    description: '2 equipment items are overdue',
-    timestamp: new Date(Date.now() - 21 * 60000),
-    isRead: true
-  },
-  {
-    id: 4,
-    type: 'system',
-    title: 'System Update',
-    description: 'Database backup completed',
-    timestamp: new Date(Date.now() - 3 * 60 * 60000),
-    isRead: true
-  },
-  {
-    id: 5,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Marina Summers requested 2 speakers',
-    timestamp: new Date(Date.now() - 5 * 60 * 60000),
-    isRead: true
-  },
-  {
-    id: 6,
-    type: 'maintenance',
-    title: 'Maintenance Alert',
-    description: 'Chairs are incomplete',
-    timestamp: new Date(Date.now() - 5 * 60 * 60000),
-    isRead: true
-  }
-]);
-
+const notifications = computed(() => notificationStore.notifications || []);
 const displayedNotifications = computed(() => notifications.value.slice(0, 5));
-
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.isRead).length;
-});
+const unreadCount = computed(() => notificationStore.unreadCount || 0);
 
 function toggleDropdown() {
   isDropdownOpen.value = !isDropdownOpen.value;
@@ -154,17 +103,12 @@ function closeDropdown() {
   isDropdownOpen.value = false;
 }
 
-function markAsRead(notificationId) {
-  const notification = notifications.value.find(n => n.id === notificationId);
-  if (notification) {
-    notification.isRead = true;
-  }
+async function markAsRead(notificationId) {
+  await notificationStore.markAsRead(notificationId).catch(() => {});
 }
 
-function markAllAsRead() {
-  notifications.value.forEach(n => {
-    n.isRead = true;
-  });
+async function markAllAsRead() {
+  await notificationStore.markAllAsRead().catch(() => {});
 }
 
 function getNotificationIcon(type) {
@@ -200,6 +144,7 @@ function handleClickOutside(event) {
 }
 
 onMounted(() => {
+  notificationStore.fetchNotifications().catch(() => {});
   document.addEventListener('click', handleClickOutside);
 });
 

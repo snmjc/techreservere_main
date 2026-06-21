@@ -19,7 +19,8 @@
             <div class="borrower-reservation-grid">
               <div class="borrower-reservation-field">
                 <label for="requestDate">Request Date <em>*</em></label>
-                <input id="requestDate" v-model="formState.requestDate" type="date" :min="todayIsoDate" :max="yearEndIsoDate" />
+                <input id="requestDate" v-model="formState.requestDate" type="date" readonly />
+                <small class="borrower-reservation-help">This date is set automatically when you create the request.</small>
                 <small v-if="validationErrors.requestDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.requestDate }}</small>
               </div>
 
@@ -311,6 +312,7 @@ const startTimeDraft = ref(createTimeDraft(formState.value.activityTimeFrom || '
 const endTimeDraft = ref(createTimeDraft(formState.value.activityTimeTo || '07:30'));
 
 onMounted(() => {
+  formState.value.requestDate = todayIsoDate;
   document.addEventListener('mousedown', handleGlobalPointerDown);
 });
 
@@ -474,8 +476,8 @@ function handleNextPage() {
 function validateReservationDetails() {
   clearValidationErrors();
 
-  if (!isWithinAllowedReservationDate(formState.value.requestDate)) {
-    validationErrors.requestDate = 'Request date must be between today and December 31 of the current year.';
+  if (formState.value.requestDate !== todayIsoDate) {
+    validationErrors.requestDate = 'Request date is set automatically to today.';
   }
 
   const participantCount = Number(formState.value.participantCount);

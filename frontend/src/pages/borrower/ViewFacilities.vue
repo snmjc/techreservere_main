@@ -64,6 +64,12 @@
         </div>
       </div>
 
+      <VenueAvailabilityCalendarComponent
+        :venues="venueList"
+        :selected-date="selectedVenueDate"
+        @update:selected-date="selectedVenueDate = $event"
+      />
+
       <p v-if="venueError" class="view-facilities-feedback view-facilities-feedback--error">{{ venueError }}</p>
       <div v-if="venueLoading" class="view-facilities-empty-state">
         <p>Loading venue records...</p>
@@ -106,7 +112,7 @@
               <div class="view-facilities-venue-card-body">
                 <p class="view-facilities-venue-detail"><strong>Location:</strong> {{ venue.venueLocation || 'N/A' }}</p>
                 <p class="view-facilities-venue-detail"><strong>Capacity:</strong> {{ venue.capacityLimit || 'N/A' }}</p>
-                <p class="view-facilities-venue-detail"><strong>Availability Date:</strong> {{ formatDisplayDate(venue.availabilityDate) }}</p>
+                <p class="view-facilities-venue-detail"><strong>Bookable From:</strong> {{ formatDisplayDate(venue.availabilityDate) }}</p>
                 <p class="view-facilities-venue-detail"><strong>Operational Status:</strong> {{ venue.operationalStatus || 'N/A' }}</p>
               </div>
               <span class="view-facilities-venue-link">View Details</span>
@@ -233,8 +239,12 @@ import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
 import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
+import VenueAvailabilityCalendarComponent from '@/modules/facility/components/VenueAvailabilityCalendarComponent.vue';
 import { formatEquipmentStatus, resolveEquipmentPhoto } from '@/modules/facility/utils/equipmentPresentation.js';
-import { resolveVenuePhoto } from '@/modules/facility/utils/venueFormValidation.js';
+import {
+  isVenueFloorPlaceholderRecord,
+  resolveVenuePhoto,
+} from '@/modules/facility/utils/venueFormValidation.js';
 import { formatDisplayDate } from '@/shared/utils/dateTimeDisplay.js';
 
 const activeFacilityTab = ref('venue');
@@ -309,7 +319,7 @@ async function fetchVenues() {
     });
     const venuePayload = response?.data?.venues || response?.venues || [];
     venueList.value = Array.isArray(venuePayload)
-      ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
+      ? venuePayload.map(normalizeVenueRecord).filter(Boolean).filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
       : [];
   } catch (error) {
     venueList.value = [];

@@ -1,5 +1,5 @@
 const PENDING_STATUSES = ['Pending Review', 'Pending'];
-const ACTIVE_STATUSES = ['Deployed', 'Prepared', 'Active'];
+const SCHEDULED_STATUSES = ['Approved', 'Prepared', 'Deployed', 'Active'];
 const PAST_RECORD_STATUSES = ['Completed', 'Rejected', 'Cancelled'];
 
 export function normalizeReservationListResponse(response) {
@@ -22,11 +22,16 @@ export function normalizeReservationListResponse(response) {
   return [];
 }
 
-export function buildReservationBuckets(apiReservations = []) {
+export function buildReservationBuckets(apiReservations = [], taskRecords = []) {
   const buckets = createEmptyReservationBuckets();
+  const taskRecordsByReservation = groupTaskRecordsByReservation(taskRecords);
 
   apiReservations.forEach((reservation) => {
-    addReservationToBucket(buckets, reservation);
+    addReservationToBucket(
+      buckets,
+      reservation,
+      taskRecordsByReservation.get(Number(reservation?.reservationIdentifier || 0)) || [],
+    );
   });
 
   return buckets;
@@ -41,28 +46,47 @@ function createEmptyReservationBuckets() {
   };
 }
 
-function addReservationToBucket(buckets, reservation) {
-  const mappedRecord = mapReservationRecord(reservation);
+function addReservationToBucket(buckets, reservation, linkedTasks = []) {
+  const mappedRecord = mapReservationRecord(reservation, linkedTasks);
   const status = reservation?.currentStatus || '';
+  const scheduleState = resolveReservationScheduleState(reservation);
 
   if (PENDING_STATUSES.includes(status)) {
     buckets.pending.push(mappedRecord);
     return;
   }
 
+  if (SCHEDULED_STATUSES.includes(status)) {
+    if (scheduleState === 'active') {
+      buckets.active.push({
+        ...mappedRecord,
+        assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
+        deploymentStatus: 'Scheduled for Today',
+      });
+      return;
+    }
+
+    if (scheduleState === 'upcoming') {
+      buckets.approved.push({
+        ...mappedRecord,
+        assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
+      });
+      return;
+    }
+
+    if (scheduleState === 'past') {
+      buckets.past.push({
+        ...mappedRecord,
+        recordStatus: status,
+      });
+      return;
+    }
+  }
+
   if (status === 'Approved') {
     buckets.approved.push({
       ...mappedRecord,
-      assignedPersonnel: 'Pending Assignment',
-    });
-    return;
-  }
-
-  if (ACTIVE_STATUSES.includes(status)) {
-    buckets.active.push({
-      ...mappedRecord,
-      facilityName: 'N/A',
-      deploymentStatus: 'Deployed/Released',
+      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
     });
     return;
   }
@@ -75,12 +99,13 @@ function addReservationToBucket(buckets, reservation) {
   }
 }
 
-function mapReservationRecord(reservation) {
+function mapReservationRecord(reservation, linkedTasks = []) {
   const requestedEquipmentList = Array.isArray(reservation?.requestedEquipmentList)
     ? reservation.requestedEquipmentList
     : [];
   const reservationSummary = mapRequestedEquipment(requestedEquipmentList);
   const requestType = resolveRequestType(reservation, requestedEquipmentList);
+  const workflowSummary = buildWorkflowSummary(linkedTasks);
 
   return {
     requestIdentifier: reservation?.reservationIdentifier || 0,
@@ -107,7 +132,48 @@ function mapReservationRecord(reservation) {
     remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
     uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
     reservationSummary,
+    workflowTasks: linkedTasks,
+    workflowTaskCount: linkedTasks.length,
+    workflowSummary,
+    assignedPersonnel: workflowSummary.assignedPersonnel,
+    workflowStatus: workflowSummary.workflowStatus,
+    workflowTaskIdentifier: workflowSummary.taskIdentifier,
+    workflowTaskTitle: workflowSummary.taskTitle,
+    workflowTaskType: workflowSummary.taskType,
+    workflowDueDateTimestamp: workflowSummary.dueDateTimestamp,
+    scheduleBucket: resolveReservationScheduleState(reservation),
   };
+}
+
+function resolveReservationScheduleState(reservation) {
+  const start = parseReservationDate(reservation?.eventDateTime);
+  const end = parseReservationDate(reservation?.endDateTime) || start;
+  if (!start || !end) {
+    return 'upcoming';
+  }
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+  if (start > todayEnd) {
+    return 'upcoming';
+  }
+
+  if (end < todayStart) {
+    return 'past';
+  }
+
+  return 'active';
+}
+
+function parseReservationDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function resolveRequestType(reservation, requestedEquipmentList) {
@@ -152,6 +218,83 @@ function getReservationFacilityName(reservation, requestedEquipmentList) {
   }
 
   return 'N/A';
+}
+
+function buildWorkflowSummary(linkedTasks = []) {
+  if (!Array.isArray(linkedTasks) || linkedTasks.length === 0) {
+    return {
+      taskIdentifier: null,
+      taskTitle: '',
+      taskType: '',
+      workflowStatus: 'Pending Assignment',
+      dueDateTimestamp: '',
+      assignedPersonnel: 'Pending Assignment',
+    };
+  }
+
+  const sortedTasks = [...linkedTasks].sort((left, right) => {
+    const leftPriority = getTaskSortWeight(left);
+    const rightPriority = getTaskSortWeight(right);
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    return Number(right?.taskIdentifier || 0) - Number(left?.taskIdentifier || 0);
+  });
+
+  const primaryTask = sortedTasks[0];
+  const assignedPersonnelLabels = [...new Set(sortedTasks
+    .map((task) => formatTaskAssignedPersonnel(task))
+    .filter((value) => value !== 'Pending Assignment'))];
+
+  return {
+    taskIdentifier: primaryTask?.taskIdentifier || null,
+    taskTitle: primaryTask?.taskTitle || '',
+    taskType: primaryTask?.taskType || '',
+    workflowStatus: primaryTask?.taskStatus || 'Pending Assignment',
+    dueDateTimestamp: primaryTask?.dueDateTimestamp || '',
+    assignedPersonnel: assignedPersonnelLabels.length > 0
+      ? assignedPersonnelLabels.join(', ')
+      : 'Pending Assignment',
+  };
+}
+
+function getTaskSortWeight(task) {
+  const status = String(task?.taskStatus || '').trim().toLowerCase();
+  if (status === 'in progress') return 0;
+  if (status === 'pending') return 1;
+  if (status === 'completed') return 2;
+  if (status === 'cancelled') return 3;
+  return 4;
+}
+
+function formatTaskAssignedPersonnel(task) {
+  const staffName = String(task?.assignedStaffName || '').trim();
+  const staffId = String(task?.assignedStaffIdNumber || '').trim();
+
+  if (staffName !== '' && staffId !== '') {
+    return `${staffName} - ${staffId}`;
+  }
+
+  if (staffName !== '') {
+    return staffName;
+  }
+
+  return 'Pending Assignment';
+}
+
+function groupTaskRecordsByReservation(taskRecords = []) {
+  return (Array.isArray(taskRecords) ? taskRecords : []).reduce((taskMap, taskRecord) => {
+    const reservationIdentifier = Number(taskRecord?.reservationIdentifier || 0);
+    if (reservationIdentifier <= 0) {
+      return taskMap;
+    }
+
+    const existingList = taskMap.get(reservationIdentifier) || [];
+    existingList.push(taskRecord);
+    taskMap.set(reservationIdentifier, existingList);
+    return taskMap;
+  }, new Map());
 }
 
 function mapRequestedEquipment(requestedEquipmentList = []) {

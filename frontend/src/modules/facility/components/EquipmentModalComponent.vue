@@ -73,36 +73,38 @@
           </label>
 
           <label class="equipment-modal-field">
-            <span>Barcode <em>*</em></span>
+            <span>Barcode</span>
             <input
-              v-model.trim="formData.barcode"
+              :value="formData.barcode || generatedInventoryPreview.barcode"
               type="text"
               maxlength="120"
-              placeholder="Enter barcode"
+              readonly
+              placeholder="Generated on save"
             />
-            <small>Unique barcode for this equipment.</small>
+            <small>Automatically generated from the category code and next available sequence.</small>
           </label>
 
           <label class="equipment-modal-field">
-            <span>Asset ID <em>*</em></span>
+            <span>Asset ID</span>
             <input
-              v-model.trim="formData.assetId"
+              :value="formData.assetId || generatedInventoryPreview.assetId"
               type="text"
-              maxlength="13"
-              placeholder="F123-456-789"
+              maxlength="16"
+              readonly
+              placeholder="Generated on save"
             />
-            <small>Use the format F123-456-789.</small>
+            <small>Format: <code>TR-CAT-0001</code>. Existing legacy IDs stay unchanged when editing.</small>
           </label>
 
           <label class="equipment-modal-field equipment-modal-field--full">
-            <span>Photo of Equipment (.jpg only)</span>
+            <span>Photo of Equipment</span>
             <input
               ref="photoInputRef"
               type="file"
-              accept=".jpg,image/jpeg"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               @change="handlePhotoFileChange"
             />
-            <small>Optional. JPG files only.</small>
+            <small>Optional. Accepted formats: JPG, PNG, and WebP. Wider images work best for the equipment cards.</small>
           </label>
 
           <div class="equipment-modal-field equipment-modal-field--full">
@@ -111,7 +113,33 @@
               <img
                 :src="photoPreviewSource"
                 :alt="`${formData.equipmentName || 'Equipment'} photo preview`"
+                :style="photoPreviewStyle"
               />
+            </div>
+          </div>
+
+          <div class="equipment-modal-field equipment-modal-field--full">
+            <span>Photo Display Settings</span>
+            <div class="equipment-modal-photo-controls">
+              <label class="equipment-modal-photo-control">
+                <strong>Card fit</strong>
+                <select v-model="formData.photoDisplayMode">
+                  <option value="contain">Fit whole image</option>
+                  <option value="cover">Fill card</option>
+                </select>
+              </label>
+
+              <label class="equipment-modal-photo-control">
+                <strong>Horizontal focus</strong>
+                <input v-model.number="formData.photoPositionX" type="range" min="0" max="100" step="1" />
+                <small>{{ formData.photoPositionX }}%</small>
+              </label>
+
+              <label class="equipment-modal-photo-control">
+                <strong>Vertical focus</strong>
+                <input v-model.number="formData.photoPositionY" type="range" min="0" max="100" step="1" />
+                <small>{{ formData.photoPositionY }}%</small>
+              </label>
             </div>
           </div>
         </div>
@@ -140,7 +168,10 @@ import {
   validateEquipmentForm,
   validateEquipmentPhotoFile,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
-import { resolveEquipmentPhoto } from '@/modules/facility/utils/equipmentPresentation.js';
+import {
+  resolveEquipmentPhoto,
+  resolveEquipmentPhotoStyle,
+} from '@/modules/facility/utils/equipmentPresentation.js';
 
 const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
 const defaultCategories = [
@@ -180,6 +211,8 @@ const categoryOptions = computed(() => {
   return [...new Set([...defaultCategories, currentCategory].filter(Boolean))];
 });
 
+const generatedInventoryPreview = computed(() => buildGeneratedInventoryPreview(formData.value.equipmentCategory));
+
 const photoPreviewSource = computed(() => {
   if (formData.value.photoData) {
     return formData.value.photoData;
@@ -187,6 +220,8 @@ const photoPreviewSource = computed(() => {
 
   return resolveEquipmentPhoto(props.equipment || formData.value);
 });
+
+const photoPreviewStyle = computed(() => resolveEquipmentPhotoStyle(formData.value));
 
 watch(
   () => props.show,
@@ -288,6 +323,9 @@ function hydrateFromEquipment(equipmentRecord) {
         barcode: equipmentRecord.barcode || '',
         assetId: equipmentRecord.assetId || equipmentRecord.serialNumber || '',
         photoData: equipmentRecord.photoData || null,
+        photoDisplayMode: equipmentRecord.photoDisplayMode || 'contain',
+        photoPositionX: Number(equipmentRecord.photoPositionX ?? 50),
+        photoPositionY: Number(equipmentRecord.photoPositionY ?? 50),
       }
     : createEmptyForm();
 
@@ -305,6 +343,9 @@ function createEmptyForm() {
     barcode: '',
     assetId: '',
     photoData: null,
+    photoDisplayMode: 'contain',
+    photoPositionX: 50,
+    photoPositionY: 50,
   };
 }
 
@@ -328,6 +369,47 @@ function resetPhotoInput() {
   if (photoInputRef.value) {
     photoInputRef.value.value = '';
   }
+}
+
+function buildGeneratedInventoryPreview(category) {
+  const prefix = resolveCategoryPrefix(category);
+  return {
+    assetId: `TR-${prefix}-NEXT`,
+    barcode: `TRBC-${prefix}-NEXT`,
+  };
+}
+
+function resolveCategoryPrefix(category) {
+  const normalizedCategory = String(category || '').trim().toLowerCase();
+
+  switch (normalizedCategory) {
+    case 'audio / microphone':
+    case 'audio':
+      return 'AUD';
+    case 'furniture':
+      return 'FUR';
+    case 'presentation':
+      return 'PRE';
+    case 'accessories':
+      return 'ACC';
+    case 'electrical':
+      return 'ELC';
+    case 'setup':
+      return 'SET';
+    case 'decor':
+      return 'DEC';
+    case 'display':
+      return 'DSP';
+    case 'miscellaneous':
+      return 'MSC';
+    default:
+      return buildFallbackCategoryPrefix(category);
+  }
+}
+
+function buildFallbackCategoryPrefix(category) {
+  const cleanedValue = String(category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return `${cleanedValue}XXX`.slice(0, 3);
 }
 </script>
 
@@ -496,7 +578,32 @@ function resetPhotoInput() {
   width: 100%;
   max-width: 280px;
   height: 160px;
-  object-fit: contain;
+}
+
+.equipment-modal-photo-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.equipment-modal-photo-control {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  background: #f7faf8;
+  border: 1px solid #d8e1db;
+  border-radius: 10px;
+}
+
+.equipment-modal-photo-control strong {
+  color: #42584d;
+  font-size: 0.68rem;
+}
+
+.equipment-modal-photo-control small {
+  color: #6b7f73;
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
 .equipment-modal-error {
@@ -547,6 +654,10 @@ function resetPhotoInput() {
 
 @media (max-width: 720px) {
   .equipment-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-modal-photo-controls {
     grid-template-columns: 1fr;
   }
 }

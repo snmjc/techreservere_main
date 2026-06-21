@@ -183,7 +183,7 @@ class WishlistRequestDecisionService
         }
 
         $status = strtolower(trim((string)($account['status'] ?? 'pending')));
-        if (!in_array($status, ['pending', 'invited'], true)) {
+        if (in_array($status, ['approved', 'accepted'], true)) {
             return false;
         }
 

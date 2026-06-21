@@ -14,6 +14,7 @@
           :src="resolvePhotoSrc(equipmentRecord)"
           :alt="`${resolveTextValue(equipmentRecord.equipmentName)} photo`"
           class="facility-equipment-card-image"
+          :style="resolvePhotoStyle(equipmentRecord)"
         />
       </div>
 
@@ -77,6 +78,7 @@ import {
   formatEquipmentStatus,
   formatEquipmentText,
   resolveEquipmentPhoto,
+  resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
 const props = defineProps({
@@ -108,6 +110,10 @@ const filteredEquipmentRecords = computed(() => {
 
 function resolvePhotoSrc(equipmentRecord) {
   return resolveEquipmentPhoto(equipmentRecord);
+}
+
+function resolvePhotoStyle(equipmentRecord) {
+  return resolveEquipmentPhotoStyle(equipmentRecord);
 }
 
 function resolveTextValue(value) {
@@ -185,7 +191,6 @@ function resolveEquipmentOperationalStatus(equipmentRecord) {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .facility-equipment-card-body {

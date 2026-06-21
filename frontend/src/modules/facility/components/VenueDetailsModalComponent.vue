@@ -91,7 +91,7 @@
               </svg>
             </span>
             <div>
-              <p>Availability Date</p>
+              <p>Reservation Availability Start</p>
               <strong>{{ formatDisplayDate(venue?.availabilityDate) }}</strong>
             </div>
           </article>

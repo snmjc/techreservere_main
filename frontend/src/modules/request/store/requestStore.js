@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import dashboardApi from '@/modules/dashboard/services/dashboardApi.js';
 import reservationApi from '@/modules/reservation/services/reservationApi.js';
+import taskApi from '@/modules/task/services/taskApi.js';
 import {
   buildReservationBuckets,
   normalizeReservationListResponse,
@@ -63,13 +64,24 @@ export const useRequestStore = defineStore('requestStore', () => {
   async function fetchReservations() {
     try {
       isLoadingReservations.value = true;
-      const response = await reservationApi.listReservations();
-      console.log('Raw API response:', response);
+      const [reservationResponse, taskResponse] = await Promise.all([
+        reservationApi.listReservations(),
+        taskApi.listTasks().catch((error) => {
+          console.error('Failed to fetch workflow tasks:', error);
+          return { data: { tasks: [] } };
+        }),
+      ]);
+      console.log('Raw API response:', reservationResponse);
 
-      const apiReservations = normalizeReservationListResponse(response);
+      const apiReservations = normalizeReservationListResponse(reservationResponse);
+      const apiTasks = Array.isArray(taskResponse?.data?.tasks)
+        ? taskResponse.data.tasks
+        : Array.isArray(taskResponse?.tasks)
+          ? taskResponse.tasks
+          : [];
       console.log('Fetched reservations from API:', apiReservations);
 
-      syncReservationsFromAPI(apiReservations);
+      syncReservationsFromAPI(apiReservations, apiTasks);
     } catch (error) {
       console.error('Failed to fetch reservations:', error);
       clearReservationLists();
@@ -104,10 +116,10 @@ export const useRequestStore = defineStore('requestStore', () => {
     }
   }
 
-  function syncReservationsFromAPI(apiReservations) {
+  function syncReservationsFromAPI(apiReservations, taskRecords = []) {
     console.log('Syncing reservations from API:', apiReservations);
 
-    const buckets = buildReservationBuckets(apiReservations);
+    const buckets = buildReservationBuckets(apiReservations, taskRecords);
     pendingRequestsList.value = buckets.pending;
     approvedRequestsList.value = buckets.approved;
     activeReservationsList.value = buckets.active;

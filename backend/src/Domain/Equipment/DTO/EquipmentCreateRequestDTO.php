@@ -14,7 +14,10 @@ class EquipmentCreateRequestDTO
         public ?string $imageUrl = null,
         public string $barcode = '',
         public string $assetId = '',
-        public ?string $photoData = null
+        public ?string $photoData = null,
+        public string $photoDisplayMode = 'contain',
+        public int $photoPositionX = 50,
+        public int $photoPositionY = 50
     ) {
     }
 }

@@ -3,9 +3,11 @@
 namespace App\Domain\Reservation\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
+use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\RoleConstants;
@@ -14,11 +16,20 @@ class ReservationReviewService
 {
     private ReservationRepository $reservationRepository;
     private AccountRepository $accountRepository;
+    private NotificationDispatchService $notificationDispatchService;
+    private VenueRepository $venueRepository;
 
-    public function __construct(ReservationRepository $reservationRepository, AccountRepository $accountRepository)
+    public function __construct(
+        ReservationRepository $reservationRepository,
+        AccountRepository $accountRepository,
+        NotificationDispatchService $notificationDispatchService,
+        VenueRepository $venueRepository
+    )
     {
         $this->reservationRepository = $reservationRepository;
         $this->accountRepository = $accountRepository;
+        $this->notificationDispatchService = $notificationDispatchService;
+        $this->venueRepository = $venueRepository;
     }
 
     // ===== AI GENERATED: getAllReservations =====
@@ -95,6 +106,7 @@ class ReservationReviewService
         }
 
         $this->reservationRepository->persistReservation($entity);
+        $this->notifyBorrowerOfStatusChange($entity, $newStatus, $rejectionReason);
 
         return $this->transformEntityToDTO($entity);
     }
@@ -132,6 +144,7 @@ class ReservationReviewService
         $entity->setRejectionReason($reason ?: 'Cancelled by requester');
 
         $this->reservationRepository->persistReservation($entity);
+        $this->notifyAdminsOfBorrowerCancellation($entity);
 
         return $this->transformEntityToDTO($entity);
     }
@@ -139,6 +152,7 @@ class ReservationReviewService
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
     {
         [$borrowerFirstName, $borrowerLastName, $borrowerFullName] = $this->resolveBorrowerNames($entity);
+        $venueName = $this->resolveVenueName($entity);
 
         return new ReservationResponseDTO(
             reservationIdentifier: $entity->getReservationIdentifier(),
@@ -146,6 +160,7 @@ class ReservationReviewService
             borrowerAccountId: $entity->getBorrowerAccountId(),
             organizationName: $entity->getOrganizationName(),
             venueIdentifier: $entity->getVenueIdentifier(),
+            venueName: $venueName,
             requestedEquipmentList: $entity->getRequestedEquipmentList(),
             requestedQuantity: $entity->getRequestedQuantity(),
             eventDateTime: $entity->getEventDateTime()->format(\DateTime::ATOM),
@@ -162,6 +177,22 @@ class ReservationReviewService
             borrowerLastName: $borrowerLastName,
             borrowerFullName: $borrowerFullName
         );
+    }
+
+    private function resolveVenueName(ReservationEntity $entity): ?string
+    {
+        $venueIdentifier = $entity->getVenueIdentifier();
+        if ($venueIdentifier === null || $venueIdentifier <= 0) {
+            return null;
+        }
+
+        $venue = $this->venueRepository->find($venueIdentifier);
+        if ($venue === null) {
+            return null;
+        }
+
+        $venueName = trim((string)$venue->getVenueName());
+        return $venueName === '' ? null : $venueName;
     }
 
     private function resolveBorrowerNames(ReservationEntity $entity): array
@@ -188,5 +219,82 @@ class ReservationReviewService
         $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
+    }
+
+    private function notifyBorrowerOfStatusChange(ReservationEntity $entity, string $newStatus, ?string $reason): void
+    {
+        $borrowerAccountId = $entity->getBorrowerAccountId();
+        if ($borrowerAccountId <= 0) {
+            return;
+        }
+
+        $title = sprintf('Reservation %s', $newStatus);
+        $message = match ($newStatus) {
+            'Approved' => sprintf(
+                'Your reservation %s was approved for %s.',
+                $entity->getReservationCode(),
+                $entity->getEventDateTime()->format('F j, Y g:i A')
+            ),
+            'Rejected' => sprintf(
+                'Your reservation %s was rejected%s.',
+                $entity->getReservationCode(),
+                $reason ? ': ' . $reason : ''
+            ),
+            'Prepared', 'Deployed' => sprintf(
+                'Your reservation %s is now active for today.',
+                $entity->getReservationCode()
+            ),
+            'Completed' => sprintf(
+                'Your reservation %s has been completed.',
+                $entity->getReservationCode()
+            ),
+            'Cancelled' => sprintf(
+                'Your reservation %s was cancelled%s.',
+                $entity->getReservationCode(),
+                $reason ? ': ' . $reason : ''
+            ),
+            default => sprintf(
+                'Your reservation %s is now marked as %s.',
+                $entity->getReservationCode(),
+                $newStatus
+            ),
+        };
+
+        $this->notificationDispatchService->sendNotification(
+            $borrowerAccountId,
+            $title,
+            $message,
+            'Reservation'
+        );
+    }
+
+    private function notifyAdminsOfBorrowerCancellation(ReservationEntity $entity): void
+    {
+        $adminAccounts = $this->accountRepository->findActiveApprovedAccountsByRoles([RoleConstants::ROLE_ADMIN]);
+        if ($adminAccounts === []) {
+            return;
+        }
+
+        $title = 'Reservation Cancelled';
+        $message = sprintf(
+            '%s cancelled reservation %s scheduled for %s.',
+            $this->resolveBorrowerNames($entity)[2],
+            $entity->getReservationCode(),
+            $entity->getEventDateTime()->format('F j, Y g:i A')
+        );
+
+        foreach ($adminAccounts as $adminAccount) {
+            $recipientAccountId = (int)($adminAccount->getAccountIdentifier() ?? 0);
+            if ($recipientAccountId <= 0) {
+                continue;
+            }
+
+            $this->notificationDispatchService->sendNotification(
+                $recipientAccountId,
+                $title,
+                $message,
+                'Reservation'
+            );
+        }
     }
 }

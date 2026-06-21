@@ -9,7 +9,7 @@
         <div class="admin-ops-header-copy">
           <p class="admin-ops-kicker">Deployment Tracking</p>
           <h1>Active Reservations</h1>
-          <p>Track reservations currently in use, open deployment details, confirm returns, and flag issues when needed.</p>
+          <p>Track reservations happening today or currently ongoing, open deployment details, confirm returns, and flag issues when needed.</p>
         </div>
       </header>
 
