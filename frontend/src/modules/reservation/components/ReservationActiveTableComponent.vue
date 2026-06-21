@@ -64,7 +64,7 @@
               </button>
               <button
                 class="reservation-active-action-icon reservation-active-action-icon--return"
-                aria-label="Return Confirmation"
+                aria-label="Completed"
                 @click="handleReturnConfirmationClick(reservationRecord)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,7 +73,7 @@
               </button>
               <button
                 class="reservation-active-action-icon reservation-active-action-icon--report"
-                aria-label="Report"
+                aria-label="Overdue"
                 @click="handleReportClick(reservationRecord)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

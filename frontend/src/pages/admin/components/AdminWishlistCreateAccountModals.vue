@@ -198,7 +198,7 @@
   </div>
 
   <div v-if="showAddEmployeeModal" class="admin-wishlist-modal-overlay admin-wishlist-modal-overlay--top" @click.self="!isProcessing && closeAddEmployeeModal()">
-    <section class="admin-wishlist-add-employee-modal admin-wishlist-create-modal">
+    <section class="admin-wishlist-add-employee-modal admin-wishlist-create-modal admin-wishlist-create-modal--employee">
       <button class="admin-wishlist-modal-close" type="button" aria-label="Close" :disabled="isProcessing" @click="closeAddEmployeeModal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6 6 18" />
@@ -208,7 +208,7 @@
 
       <div class="admin-wishlist-modal-heading admin-wishlist-modal-heading--employee">
         <h2>Add Staff Account</h2>
-        <p>Create a staff account directly in Manage Accounts.</p>
+        <p>Create an assignment-only staff record in Manage Accounts.</p>
       </div>
 
       <div class="admin-wishlist-add-section-label">
@@ -219,7 +219,7 @@
         Account Information
       </div>
 
-      <form class="admin-wishlist-add-form" @submit.prevent="createEmployeeAccount">
+      <form class="admin-wishlist-add-form admin-wishlist-add-form--employee" @submit.prevent="createEmployeeAccount">
         <label>
           <span>Last Name</span>
           <input v-model.trim="addEmployeeForm.lastName" type="text" placeholder="Dela Cruz" required @input="sanitizeEmployeeNameField('lastName')" />
@@ -230,7 +230,7 @@
         </label>
         <label>
           <span>Phone</span>
-          <input v-model.trim="addEmployeeForm.phone" type="tel" inputmode="numeric" maxlength="10" placeholder="9123456789" required @input="sanitizeEmployeePhone" />
+          <input v-model.trim="addEmployeeForm.phone" type="tel" inputmode="numeric" maxlength="11" placeholder="09123456789" required @input="sanitizeEmployeePhone" />
         </label>
         <label>
           <span>Work ID Number</span>
@@ -241,10 +241,13 @@
           <input v-model="addEmployeeForm.role" type="text" readonly />
         </label>
 
-        <p class="admin-wishlist-add-helper">Default password: <strong>staff123</strong></p>
+        <div class="admin-wishlist-add-helper admin-wishlist-add-helper--employee" role="note" aria-label="Staff assignment note">
+          <strong>Assignment-only staff record</strong>
+          <span>This staff profile will appear in task assignment lists and receive SMS assignment updates. It is not used for sign-in.</span>
+        </div>
         <p v-if="addEmployeeError" class="admin-wishlist-add-error">{{ addEmployeeError }}</p>
 
-        <div class="admin-wishlist-modal-actions">
+        <div class="admin-wishlist-modal-actions admin-wishlist-modal-actions--employee">
           <button class="admin-wishlist-cancel-button" type="button" :disabled="isProcessing" @click="closeAddEmployeeModal">
             Cancel
           </button>
@@ -261,6 +264,7 @@
 import { computed, reactive, ref } from 'vue';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import '../css/AdminWishlist.css';
 import {
   buildAdminAccountPayload,
   buildEmployeeAccountPayload,

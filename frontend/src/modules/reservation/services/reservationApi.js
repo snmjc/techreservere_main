@@ -3,12 +3,12 @@ import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   buildAuthorizationHeaders,
   buildJsonAuthorizationHeaders,
-  getStoredAuthToken,
+  resolveAuthToken,
 } from '@/shared/utils/authToken.js';
 
 const reservationApi = {
   async createReservation(reservationData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
 
     // If the user is logged out, avoid calling protected endpoints.
     if (!authToken) {
@@ -31,7 +31,7 @@ const reservationApi = {
   },
 
   async listReservations() {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
 
     // If the user is logged out, avoid calling protected endpoints.
     if (!authToken) {
@@ -52,7 +52,7 @@ const reservationApi = {
 
   async getReservationById(reservationIdentifier) {
     try {
-      const authToken = getStoredAuthToken();
+      const authToken = await resolveAuthToken();
       const response = await axios.get(apiUrl(`/api/v1/reservations/${reservationIdentifier}`), {
         headers: buildAuthorizationHeaders(authToken)
       });
@@ -63,14 +63,16 @@ const reservationApi = {
     }
   },
 
-  async updateReservationStatus(reservationIdentifier, status, rejectionReason = null) {
+  async updateReservationStatus(reservationIdentifier, status, rejectionReason = null, securityConfirmation = null) {
     try {
-      const authToken = getStoredAuthToken();
+      const authToken = await resolveAuthToken();
       const response = await axios.put(
         apiUrl(`/api/v1/reservations/${reservationIdentifier}/status`),
         {
           currentStatus: status,
-          rejectionReason: rejectionReason
+          rejectionReason: rejectionReason,
+          confirmedAdminEmail: securityConfirmation?.confirmedAdminEmail || '',
+          confirmedAdminPassword: securityConfirmation?.confirmedAdminPassword || '',
         },
         {
           headers: buildJsonAuthorizationHeaders(authToken)

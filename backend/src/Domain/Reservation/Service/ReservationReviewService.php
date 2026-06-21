@@ -100,6 +100,10 @@ class ReservationReviewService
             $rejectionReason = 'Rejected by administrator';
         }
 
+        if ($newStatus === 'Approved') {
+            $this->validateVenueApprovalConflict($entity);
+        }
+
         $entity->setCurrentStatus($newStatus);
         if ($rejectionReason !== null) {
             $entity->setRejectionReason($rejectionReason);
@@ -151,7 +155,7 @@ class ReservationReviewService
 
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
     {
-        [$borrowerFirstName, $borrowerLastName, $borrowerFullName] = $this->resolveBorrowerNames($entity);
+        [$borrowerFirstName, $borrowerLastName, $borrowerFullName, $borrowerEmailAddress, $borrowerContactNumber] = $this->resolveBorrowerDetails($entity);
         $venueName = $this->resolveVenueName($entity);
 
         return new ReservationResponseDTO(
@@ -175,7 +179,9 @@ class ReservationReviewService
             submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM),
             borrowerFirstName: $borrowerFirstName,
             borrowerLastName: $borrowerLastName,
-            borrowerFullName: $borrowerFullName
+            borrowerFullName: $borrowerFullName,
+            borrowerEmailAddress: $borrowerEmailAddress,
+            borrowerContactNumber: $borrowerContactNumber
         );
     }
 
@@ -194,13 +200,14 @@ class ReservationReviewService
         $venueName = trim((string)$venue->getVenueName());
         return $venueName === '' ? null : $venueName;
     }
-
-    private function resolveBorrowerNames(ReservationEntity $entity): array
+    private function resolveBorrowerDetails(ReservationEntity $entity): array
     {
         $borrower = $this->accountRepository->find($entity->getBorrowerAccountId());
         $firstName = trim((string)($borrower?->getFirstName() ?? ''));
         $lastName = trim((string)($borrower?->getLastName() ?? ''));
         $fullName = trim(sprintf('%s %s', $firstName, $lastName));
+        $emailAddress = $borrower?->getEmailAddress();
+        $contactNumber = $borrower?->getContactNumber();
 
         if ($fullName === '') {
             $fullName = trim($entity->getOrganizationName());
@@ -210,7 +217,7 @@ class ReservationReviewService
             $fullName = 'User';
         }
 
-        return [$firstName, $lastName, $fullName];
+        return [$firstName, $lastName, $fullName, $emailAddress, $contactNumber];
     }
 
     private function buildActivityTimeRange(ReservationEntity $entity): string
@@ -296,5 +303,41 @@ class ReservationReviewService
                 'Reservation'
             );
         }
+    }
+
+    private function validateVenueApprovalConflict(ReservationEntity $entity): void
+    {
+        $venueIdentifier = $entity->getVenueIdentifier();
+        if ($venueIdentifier === null) {
+            return;
+        }
+
+        $rangeStart = $entity->getEventDateTime();
+        $rangeEnd = $entity->getEndDateTime() ?? $rangeStart;
+        if ($rangeEnd <= $rangeStart) {
+            $rangeEnd = (clone $rangeStart)->modify('+1 minute');
+        }
+
+        $overlappingReservations = $this->reservationRepository->findAcceptedVenueReservationsOverlappingRange(
+            $venueIdentifier,
+            $rangeStart,
+            $rangeEnd,
+            $entity->getReservationIdentifier()
+        );
+
+        if ($overlappingReservations === []) {
+            return;
+        }
+
+        $conflict = $overlappingReservations[0];
+        $conflictEndDateTime = $conflict->getEndDateTime() ?? $conflict->getEventDateTime();
+
+        throw new DomainValidationException(sprintf(
+            'This venue is already approved for Reservation %s on %s from %s to %s.',
+            $conflict->getReservationCode(),
+            $conflict->getEventDateTime()->format('F j, Y'),
+            $conflict->getEventDateTime()->format('g:i A'),
+            $conflictEndDateTime->format('g:i A')
+        ));
     }
 }

@@ -72,6 +72,8 @@ class TaskManagementService
         $entity->setReservationIdentifier($request->reservationIdentifier);
         $entity->setAssignedToAccountId($request->assignedToAccountId);
         $entity->setDueDateTimestamp($this->taskValidationService->parseDueDate($request->dueDateTimestamp));
+        $entity->setPreparationStartTimestamp($this->taskValidationService->parseDateTime($request->preparationStartTimestamp, 'Preparation start time is invalid.'));
+        $entity->setPreparationEndTimestamp($this->taskValidationService->parseDateTime($request->preparationEndTimestamp, 'Preparation end time is invalid.'));
     }
 
     private function saveMutation(TaskEntity $entity, TaskMutationRequestDTO $request): TaskResponseDTO

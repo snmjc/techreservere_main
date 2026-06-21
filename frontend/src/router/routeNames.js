@@ -1,4 +1,5 @@
 export const ROUTE_NAMES = Object.freeze({
+  landing: 'landingPage',
   login: 'loginPage',
   signUp: 'signUpPage',
   clerkLogin: 'clerkLoginPage',

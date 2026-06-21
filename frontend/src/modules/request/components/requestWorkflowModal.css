@@ -1,264 +1,248 @@
-/* ===== AI GENERATED: RequestWorkflowModal Styles ===== */
-/* Purpose: Styles for the workflow view modal overlay and content */
-/* Scope: RequestWorkflowModalComponent.vue */
-
-/* ========================================= */
-/* OVERLAY                                   */
-/* ========================================= */
-
 .request-workflow-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
   padding: 1rem;
+  background: rgba(15, 23, 42, 0.52);
 }
-
-/* ========================================= */
-/* CONTAINER                                 */
-/* ========================================= */
 
 .request-workflow-modal-container {
   position: relative;
-  width: 100%;
-  max-width: 700px;
-  max-height: 90vh;
+  width: min(980px, 100%);
+  max-height: calc(100vh - 2rem);
   overflow-y: auto;
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 2rem 2.5rem;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
-  animation: workflowModalFadeIn 0.2s ease;
+  padding: 2.15rem 2.9rem 2.25rem;
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 22px;
+  box-shadow: 0 26px 54px rgba(15, 23, 42, 0.2);
 }
-
-@keyframes workflowModalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ========================================= */
-/* CLOSE BUTTON                              */
-/* ========================================= */
 
 .request-workflow-modal-close-button {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  display: flex;
+  top: 1.1rem;
+  right: 1.1rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  color: #888888;
+  width: 36px;
+  height: 36px;
+  color: #7f8b86;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .request-workflow-modal-close-button:hover {
-  background-color: #f0f0f0;
-  color: #333333;
+  color: #31453a;
+  background: #eef3f0;
 }
-
-/* ========================================= */
-/* HEADING                                   */
-/* ========================================= */
 
 .request-workflow-modal-heading {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #d97706;
-  margin-bottom: 1.25rem;
+  margin: 0 0 1.9rem;
+  color: #e67e00;
+  font-size: clamp(1.9rem, 2.9vw, 2.45rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
 }
-
-/* ========================================= */
-/* DETAILS                                   */
-/* ========================================= */
 
 .request-workflow-modal-details {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 1.5rem;
+  gap: 1.3rem;
 }
 
 .request-workflow-modal-row {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
 }
 
 .request-workflow-modal-row--split {
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 1rem;
 }
 
-.request-workflow-modal-info-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+.request-workflow-modal-meta-list {
+  display: grid;
+  gap: 0.7rem;
 }
 
 .request-workflow-modal-field {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: baseline;
+  line-height: 1.45;
 }
 
-.request-workflow-modal-field--right {
-  text-align: right;
-}
-
-.request-workflow-modal-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #333333;
-  white-space: nowrap;
+.request-workflow-modal-label,
+.request-workflow-modal-section-label {
+  color: #27343c;
+  font-size: 0.92rem;
+  font-weight: 900;
 }
 
 .request-workflow-modal-value {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: #555555;
+  color: #5a6573;
+  font-size: 0.92rem;
+  font-weight: 500;
 }
 
 .request-workflow-modal-value--status {
   color: #16a34a;
-  font-weight: 600;
+  font-weight: 800;
+}
+
+.request-workflow-modal-type-card {
+  min-width: 220px;
+  display: grid;
+  justify-items: end;
+  gap: 0.55rem;
+  padding: 0.2rem 0;
+}
+
+.request-workflow-modal-type-value {
+  color: #5a6573;
+  font-size: 0.98rem;
+  font-weight: 500;
 }
 
 .request-workflow-modal-divider {
   height: 1px;
-  background-color: #e5e5e5;
-  margin: 0.5rem 0;
+  background: #e7eaee;
 }
 
-/* ========================================= */
-/* SECTION + SUMMARY TABLE                   */
-/* ========================================= */
+.request-workflow-modal-flow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1rem 2rem;
+}
+
+.request-workflow-modal-flow-column {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+}
+
+.request-workflow-modal-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.request-workflow-modal-remarks {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.request-workflow-modal-remarks-box {
+  min-height: 80px;
+  padding: 0.15rem 0;
+  color: #5a6573;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
 
 .request-workflow-modal-section {
-  margin-top: 0.25rem;
-}
-
-.request-workflow-modal-section-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #333333;
-  margin-bottom: 0.4rem;
+  display: grid;
+  gap: 0.75rem;
 }
 
 .request-workflow-modal-summary-table {
   width: 100%;
-  max-width: 320px;
   border-collapse: collapse;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
+  border-top: 1px solid #e7eaee;
+  border-bottom: 1px solid #e7eaee;
 }
 
 .request-workflow-modal-summary-cell {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.78rem;
-  color: #444444;
-  border-bottom: 1px solid #eeeeee;
+  padding: 0.8rem 0.1rem;
+  color: #5a6573;
+  font-size: 0.92rem;
+  border-bottom: 1px solid #edf0f3;
 }
 
 .request-workflow-modal-summary-cell--count {
+  width: 80px;
   text-align: right;
-  font-weight: 600;
-  width: 60px;
+  font-weight: 800;
+  color: #27343c;
 }
-
-/* ========================================= */
-/* ACTION BUTTONS                            */
-/* ========================================= */
 
 .request-workflow-modal-actions {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
   justify-content: center;
+  gap: 1rem;
   flex-wrap: wrap;
+  margin-top: 1.5rem;
 }
 
 .request-workflow-modal-action-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1.1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  justify-content: center;
+  gap: 0.55rem;
+  min-width: 182px;
+  min-height: 50px;
+  padding: 0 1.35rem;
   color: #ffffff;
-  border: none;
-  border-radius: 8px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 900;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  white-space: nowrap;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
-.request-workflow-modal-action-button:active {
-  transform: scale(0.97);
+.request-workflow-modal-action-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
 }
 
-/* Deploy/Release — green */
 .request-workflow-modal-action-button--deploy {
-  background-color: #16a34a;
+  background: #16a34a;
+  box-shadow: 0 16px 28px rgba(22, 163, 74, 0.24);
 }
 
-.request-workflow-modal-action-button--deploy:hover {
-  background-color: #15803d;
-}
-
-/* Edit Workflow — dark gray */
 .request-workflow-modal-action-button--edit {
-  background-color: #444444;
+  background: #404040;
+  box-shadow: 0 16px 28px rgba(64, 64, 64, 0.2);
 }
 
-.request-workflow-modal-action-button--edit:hover {
-  background-color: #333333;
-}
-
-/* Cancel — red */
 .request-workflow-modal-action-button--cancel {
-  background-color: #dc2626;
+  background: #ef2f2f;
+  box-shadow: 0 16px 28px rgba(239, 47, 47, 0.22);
 }
 
-.request-workflow-modal-action-button--cancel:hover {
-  background-color: #b91c1c;
-}
-
-/* ========================================= */
-/* RESPONSIVE                                */
-/* ========================================= */
-
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .request-workflow-modal-container {
-    padding: 1.5rem;
-    max-width: 95%;
+    padding: 1.5rem 1.2rem 1.35rem;
+    border-radius: 18px;
   }
 
-  .request-workflow-modal-row--split {
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
+  .request-workflow-modal-row--split,
   .request-workflow-modal-actions {
     flex-direction: column;
   }
 
+  .request-workflow-modal-type-card {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .request-workflow-modal-flow-grid {
+    grid-template-columns: 1fr;
+  }
+
   .request-workflow-modal-action-button {
     width: 100%;
-    justify-content: center;
   }
 }

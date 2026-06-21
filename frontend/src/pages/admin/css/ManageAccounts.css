@@ -86,11 +86,13 @@
 
 .manage-accounts-toast {
   position: fixed;
-  top: 4.1rem;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 50%;
   z-index: 1200;
+  width: max-content;
   min-width: 250px;
-  padding: 0.72rem 1.25rem;
+  max-width: min(520px, calc(100vw - 2rem));
+  padding: 0.78rem 1.25rem;
   color: #ffffff;
   background: #158354;
   border-radius: 999px;
@@ -99,6 +101,9 @@
   transform: translateX(-50%);
   font-size: 1rem;
   font-weight: 900;
+  line-height: 1.2;
+  white-space: normal;
+  pointer-events: none;
 }
 
 .manage-accounts-error {

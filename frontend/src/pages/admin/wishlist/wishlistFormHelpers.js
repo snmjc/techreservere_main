@@ -1,4 +1,11 @@
-import { isAllowedAdminEmail, isAllowedRequestHubUserEmail, normalizeIdNumber, validatePersonName, validateRequiredIdNumber } from './wishlistTextHelpers.js';
+import {
+  isAllowedAdminEmail,
+  isAllowedRequestHubUserEmail,
+  normalizeIdNumber,
+  normalizeStaffPhoneNumber,
+  validatePersonName,
+  validateRequiredIdNumber,
+} from './wishlistTextHelpers.js';
 import { getStatusLabel } from './wishlistStatusHelpers.js';
 
 export function validateAdminAccountForm(form) {
@@ -109,7 +116,8 @@ export function buildUserAccountPayload(form) {
 export function validateEmployeeAccountForm(form) {
   const lastName = form.lastName.trim();
   const firstName = form.firstName.trim();
-  const phone = form.phone.trim();
+  const rawPhone = form.phone.trim();
+  const phone = normalizeStaffPhoneNumber(rawPhone);
   const idNumber = form.idNumber.trim();
 
   if (!validatePersonName(lastName)) {
@@ -128,8 +136,8 @@ export function validateEmployeeAccountForm(form) {
     return 'Work ID number must be exactly 10 digits.';
   }
 
-  if (!/^9\d{9}$/.test(phone)) {
-    return 'Phone number must be exactly 10 digits and begin with 9.';
+  if (!/^(09\d{9}|9\d{9})$/.test(rawPhone) || !/^9\d{9}$/.test(phone)) {
+    return 'Phone number must be 11 digits starting with 09, or 10 digits starting with 9.';
   }
 
   return '';
@@ -154,7 +162,7 @@ export function buildEmployeeAccountPayload(form) {
   return {
     lastName: form.lastName,
     firstName: form.firstName,
-    phone: form.phone,
+    phone: normalizeStaffPhoneNumber(form.phone),
     idNumber: form.idNumber,
     role: form.role,
   };
@@ -182,7 +190,8 @@ function wishlistEmailExists(accounts, emailAddress) {
 }
 
 function wishlistPhoneNumberExists(accounts, phone) {
-  return accounts.some((account) => String(account.contactNumber || '').replace(/\D/g, '') === phone);
+  const normalizedPhone = normalizeStaffPhoneNumber(phone);
+  return accounts.some((account) => normalizeStaffPhoneNumber(account.contactNumber || '') === normalizedPhone);
 }
 
 function filterEmailAddress(emailAddress) {

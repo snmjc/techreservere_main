@@ -182,6 +182,7 @@ async function handleSubmitReservationRequest() {
       requestedEquipmentList: (reservationFormStore.selectedEquipmentItems || []).map((item) => ({
         equipmentIdentifier: item.equipmentIdentifier,
         name: item.equipmentName,
+        selectedQuantity: item.selectedQuantity,
         quantity: item.selectedQuantity,
       })),
       requestedQuantity: Number(reservationFormStore.participantCount),

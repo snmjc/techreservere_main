@@ -35,14 +35,9 @@ class UserRegistrationWorkflowService
             return $this->error('AuthRequired', 'Authorization header required.', 401);
         }
 
-        $clerkUserId = $this->resolveClerkUserId(substr($authorizationHeader, 7));
-        if (($clerkUserId['success'] ?? false) !== true) {
-            return $clerkUserId;
-        }
-
-        $account = $this->accountRepository->findOneByClerkUserId((string)$clerkUserId['data']['clerkUserId']);
+        $account = $this->resolveAccountFromToken(substr($authorizationHeader, 7));
         if ($account === null) {
-            return $this->error('AccountNotFound', 'No account registered for this Clerk user.', 404);
+            return $this->error('AccountNotFound', 'No account registered for this authenticated user.', 404);
         }
 
         $profilePhotoData = $this->connection->fetchOne(
@@ -67,6 +62,31 @@ class UserRegistrationWorkflowService
                 'createdTimestamp'  => $account->getCreatedTimestamp()->format('Y-m-d H:i:s'),
             ],
         ]);
+    }
+
+    private function resolveAccountFromToken(string $bearerToken): ?\App\Domain\Account\Entity\AccountEntity
+    {
+        $localPayload = json_decode(base64_decode($bearerToken, true) ?: '', true);
+        if (is_array($localPayload)) {
+            if (isset($localPayload['exp']) && (int)$localPayload['exp'] < time()) {
+                return null;
+            }
+
+            $accountIdentifier = (int)($localPayload['accountId'] ?? $localPayload['accountIdentifier'] ?? 0);
+            if ($accountIdentifier > 0) {
+                $localAccount = $this->accountRepository->find($accountIdentifier);
+                if ($localAccount !== null) {
+                    return $localAccount;
+                }
+            }
+        }
+
+        $clerkUserId = $this->resolveClerkUserId($bearerToken);
+        if (($clerkUserId['success'] ?? false) !== true) {
+            return null;
+        }
+
+        return $this->accountRepository->findOneByClerkUserId((string)$clerkUserId['data']['clerkUserId']);
     }
 
     public function listPendingUsers(): array

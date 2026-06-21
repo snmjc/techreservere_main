@@ -31,7 +31,7 @@ class InvitationAcceptanceService
             return $this->error('InvitationExpired', 'This invitation link has expired. Please request a new invite.', 410);
         }
 
-        $account = $this->accountRepository->findOneByEmailAddress((string)$invitation['email']);
+        $account = $this->resolveInvitationAccount($invitation);
         if ($account === null) {
             return $this->error('AccountNotFound', 'No account is linked to this invitation.', 404);
         }
@@ -57,7 +57,7 @@ class InvitationAcceptanceService
     private function findInvitationByToken(string $invitationToken): ?array
     {
         $invitation = $this->connection->fetchAssociative(
-            'SELECT id, email, status, expires_at, accepted_at
+            'SELECT id, email, status, expires_at, accepted_at, created_at
              FROM invitations
              WHERE invitation_token = :invitationToken
              LIMIT 1',
@@ -66,6 +66,77 @@ class InvitationAcceptanceService
         );
 
         return $invitation ?: null;
+    }
+
+    private function resolveInvitationAccount(array $invitation): ?AccountEntity
+    {
+        $emailAddress = strtolower(trim((string)($invitation['email'] ?? '')));
+        if ($emailAddress === '') {
+            return null;
+        }
+
+        $invitedAt = $this->normalizeInvitationCreatedAt($invitation['created_at'] ?? null);
+        if ($invitedAt !== null) {
+            $matchingAccountIdentifier = $this->connection->fetchOne(
+                'SELECT account_identifier
+                 FROM accounts
+                 WHERE LOWER(email_address) = :emailAddress
+                   AND invited_at = :invitedAt
+                 ORDER BY account_identifier DESC
+                 LIMIT 1',
+                [
+                    'emailAddress' => $emailAddress,
+                    'invitedAt' => $invitedAt,
+                ],
+                [
+                    'emailAddress' => ParameterType::STRING,
+                    'invitedAt' => ParameterType::STRING,
+                ]
+            );
+
+            if ((int)$matchingAccountIdentifier > 0) {
+                return $this->accountRepository->find((int)$matchingAccountIdentifier);
+            }
+        }
+
+        $fallbackAccountIdentifier = $this->connection->fetchOne(
+            "SELECT account_identifier
+             FROM accounts
+             WHERE LOWER(email_address) = :emailAddress
+             ORDER BY
+               CASE
+                 WHEN invitation_status = 'sent' THEN 0
+                 WHEN invitation_status = 'accepted' THEN 1
+                 WHEN status IN ('invited', 'verified') THEN 2
+                 WHEN status IN ('active', 'approved', 'accepted') THEN 3
+                 ELSE 4
+               END,
+               COALESCE(invited_at, approved_at, updated_timestamp, created_timestamp) DESC,
+               account_identifier DESC
+             LIMIT 1",
+            ['emailAddress' => $emailAddress],
+            ['emailAddress' => ParameterType::STRING]
+        );
+
+        if ((int)$fallbackAccountIdentifier <= 0) {
+            return null;
+        }
+
+        return $this->accountRepository->find((int)$fallbackAccountIdentifier);
+    }
+
+    private function normalizeInvitationCreatedAt(mixed $createdAt): ?string
+    {
+        $value = trim((string)($createdAt ?? ''));
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return (new \DateTimeImmutable($value))->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function isInvitationExpired(array $invitation): bool

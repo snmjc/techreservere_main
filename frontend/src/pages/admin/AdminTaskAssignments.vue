@@ -4,6 +4,10 @@
     :navigation-items="adminNavigationItems"
   >
     <section class="admin-task-assignments-page">
+      <div v-if="taskToastMessage" class="admin-task-assignments-toast">
+        {{ taskToastMessage }}
+      </div>
+
       <header class="admin-task-assignments-header">
         <div class="admin-task-assignments-header-copy">
           <p class="admin-task-assignments-kicker">Operations Workspace</p>
@@ -66,6 +70,16 @@
           </label>
 
           <label>
+            <span>Sort</span>
+            <select v-model="sortFilter">
+              <option value="latest">Latest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="status">Status</option>
+              <option value="reservation">Reservation ID</option>
+            </select>
+          </label>
+
+          <label>
             <span>From</span>
             <input v-model="dateFilterStart" type="date" />
           </label>
@@ -92,11 +106,9 @@
               <thead>
                 <tr>
                   <th>Reservation ID</th>
-                  <th>Reservation Details</th>
+                  <th>Task Details</th>
                   <th>Assigned To</th>
-                  <th>Schedule</th>
                   <th>Status</th>
-                  <th>Progress</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -111,16 +123,12 @@
                     <strong>{{ task.reservationLabel || formatReservationLabel(task.reservationIdentifier) }}</strong>
                     <span>{{ task.taskTitle }}</span>
                     <small>{{ task.taskDescription || task.taskType }}</small>
+                    <small>{{ formatTaskSchedule(task) }}</small>
                   </td>
 
                   <td class="admin-task-cell-staff">
                     <strong>{{ formatStaffLabel(task) }}</strong>
                     <small>{{ task.assignedStaffRole || 'Technician' }}</small>
-                  </td>
-
-                  <td class="admin-task-cell-schedule">
-                    <strong>{{ formatScheduleDate(task.dueDateTimestamp || task.createdTimestamp) }}</strong>
-                    <small>{{ formatScheduleTime(task.dueDateTimestamp || task.createdTimestamp) }}</small>
                   </td>
 
                   <td>
@@ -132,27 +140,21 @@
                     </span>
                   </td>
 
-                  <td class="admin-task-cell-progress">
-                    <div class="admin-task-progress-copy">
-                      <strong>{{ getProgressValue(task) }}%</strong>
-                      <small>{{ getProgressCaption(task) }}</small>
-                    </div>
-                    <div class="admin-task-progress-bar" aria-hidden="true">
-                      <span
-                        class="admin-task-progress-fill"
-                        :class="`admin-task-progress-fill--${getStatusTone(task)}`"
-                        :style="{ width: `${getProgressValue(task)}%` }"
-                      />
-                    </div>
-                  </td>
-
                   <td>
                     <div class="admin-task-actions">
-                      <button type="button" class="admin-task-action admin-task-action--edit" @click="openUpdateModal(task)">
-                        Edit
+                      <button type="button" class="admin-task-action admin-task-action--view" @click="openViewModal(task)">
+                        View
                       </button>
-                      <button type="button" class="admin-task-action admin-task-action--delete" @click="openDeleteModal(task)">
-                        Delete
+                      <button type="button" class="admin-task-action admin-task-action--edit" @click="openUpdateModal(task)">
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        class="admin-task-action admin-task-action--verify"
+                        :disabled="!canVerifyTask(task)"
+                        @click="openVerifyModal(task)"
+                      >
+                        Verify
                       </button>
                     </div>
                   </td>
@@ -192,6 +194,32 @@
         </template>
       </section>
     </section>
+
+    <div v-if="viewTask" class="admin-task-assignments-modal-overlay" @click.self="closeViewModal">
+      <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
+        <header class="admin-task-assignments-modal-header">
+          <div>
+            <h2>View Task Assignment</h2>
+            <p>Review the task assignment details.</p>
+          </div>
+          <button type="button" aria-label="Close" @click="closeViewModal">x</button>
+        </header>
+
+        <div class="admin-task-assignments-delete-summary">
+          <p><strong>Reservation ID</strong><span>{{ getReservationCode(viewTask) }}</span></p>
+          <p><strong>Reservation</strong><span>{{ viewTask.reservationLabel || formatReservationLabel(viewTask.reservationIdentifier) }}</span></p>
+          <p><strong>Task Name</strong><span>{{ viewTask.taskTitle || 'N/A' }}</span></p>
+          <p><strong>Description</strong><span>{{ viewTask.taskDescription || viewTask.taskType || 'N/A' }}</span></p>
+          <p><strong>Assigned To</strong><span>{{ formatStaffLabel(viewTask) }}</span></p>
+          <p><strong>Status</strong><span>{{ getStatusLabel(viewTask) }}</span></p>
+          <p><strong>Schedule</strong><span>{{ formatTaskSchedule(viewTask) }}</span></p>
+        </div>
+
+        <footer class="admin-task-assignments-modal-actions">
+          <button type="button" class="admin-task-assignments-secondary" @click="closeViewModal">Close</button>
+        </footer>
+      </section>
+    </div>
 
     <div v-if="showTaskModal" class="admin-task-assignments-modal-overlay" @click.self="closeTaskModal">
       <section class="admin-task-assignments-modal">
@@ -273,6 +301,13 @@
           </section>
 
           <footer class="admin-task-assignments-modal-actions">
+            <p
+              v-if="taskSubmissionFeedback.message"
+              class="admin-task-assignments-submit-feedback"
+              :class="`admin-task-assignments-submit-feedback--${taskSubmissionFeedback.tone}`"
+            >
+              {{ taskSubmissionFeedback.message }}
+            </p>
             <button type="button" class="admin-task-assignments-secondary" :disabled="isSubmitting" @click="closeTaskModal">Cancel</button>
             <button type="submit" class="admin-task-assignments-primary" :disabled="isSubmitting">
               {{ isSubmitting ? (taskModalMode === 'create' ? 'Creating...' : 'Saving...') : (taskModalMode === 'create' ? 'Create' : 'Save Changes') }}
@@ -282,21 +317,21 @@
       </section>
     </div>
 
-    <div v-if="deleteTask" class="admin-task-assignments-modal-overlay" @click.self="closeDeleteModal">
+    <div v-if="verifyTask" class="admin-task-assignments-modal-overlay" @click.self="closeVerifyModal">
       <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
         <header class="admin-task-assignments-modal-header">
           <div>
-            <h2>Delete Task Assignment</h2>
-            <p>This action will permanently delete the selected task assignment.</p>
+            <h2>Verify Task Assignment</h2>
+            <p>Confirm this task assignment to mark it as completed.</p>
           </div>
-          <button type="button" aria-label="Close" @click="closeDeleteModal">x</button>
+          <button type="button" aria-label="Close" @click="closeVerifyModal">x</button>
         </header>
 
         <div class="admin-task-assignments-delete-summary">
-          <p><strong>Task Name</strong><span>{{ deleteTask.taskTitle }}</span></p>
-          <p><strong>Assigned Staff</strong><span>{{ formatStaffLabel(deleteTask) }}</span></p>
-          <p><strong>Reservation</strong><span>{{ deleteTask.reservationLabel || formatReservationLabel(deleteTask.reservationIdentifier) }}</span></p>
-          <p><strong>Status</strong><span>{{ deleteTask.taskStatus }}</span></p>
+          <p><strong>Task Name</strong><span>{{ verifyTask.taskTitle }}</span></p>
+          <p><strong>Assigned Staff</strong><span>{{ formatStaffLabel(verifyTask) }}</span></p>
+          <p><strong>Reservation</strong><span>{{ verifyTask.reservationLabel || formatReservationLabel(verifyTask.reservationIdentifier) }}</span></p>
+          <p><strong>Status</strong><span>{{ getStatusLabel(verifyTask) }}</span></p>
         </div>
 
         <p v-if="modalError" class="admin-task-assignments-error">{{ modalError }}</p>
@@ -313,9 +348,9 @@
         </div>
 
         <footer class="admin-task-assignments-modal-actions">
-          <button type="button" class="admin-task-assignments-secondary" :disabled="isSubmitting" @click="closeDeleteModal">Cancel</button>
-          <button type="button" class="admin-task-assignments-danger" :disabled="!canDelete || isSubmitting" @click="confirmDeleteTask">
-            {{ isSubmitting ? 'Deleting...' : 'Delete' }}
+          <button type="button" class="admin-task-assignments-secondary" :disabled="isSubmitting" @click="closeVerifyModal">Cancel</button>
+          <button type="button" class="admin-task-assignments-primary" :disabled="!canVerifySubmit || isSubmitting" @click="confirmVerifyTask">
+            {{ isSubmitting ? 'Verifying...' : 'Verify' }}
           </button>
         </footer>
       </section>
@@ -337,17 +372,24 @@ const isLoading = ref(false);
 const isSubmitting = ref(false);
 const loadError = ref('');
 const modalError = ref('');
+const taskToastMessage = ref('');
+const taskSubmissionFeedback = reactive({
+  message: '',
+  tone: 'success',
+});
 const tasks = ref([]);
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
 const showTaskModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
-const deleteTask = ref(null);
+const viewTask = ref(null);
+const verifyTask = ref(null);
 
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const personnelFilter = ref('all');
+const sortFilter = ref('latest');
 const dateFilterStart = ref('');
 const dateFilterEnd = ref('');
 const currentPage = ref(1);
@@ -379,7 +421,7 @@ const currentAdminEmail = computed(() => {
   return String(account.emailAddress || account.email || '').trim();
 });
 
-const canDelete = computed(() => deleteForm.confirmedAdminEmail.trim() !== '' && deleteForm.confirmedAdminPassword.trim() !== '');
+const canVerifySubmit = computed(() => deleteForm.confirmedAdminEmail.trim() !== '' && deleteForm.confirmedAdminPassword.trim() !== '');
 
 const summaryCards = computed(() => {
   const totalAssignments = tasks.value.length;
@@ -428,37 +470,41 @@ const staffFilterOptions = computed(() => tasks.value
   .filter((staff, index, list) => list.findIndex((entry) => entry.value === staff.value) === index)
   .sort((first, second) => first.label.localeCompare(second.label)));
 
-const filteredTasks = computed(() => tasks.value.filter((task) => {
-  const query = searchQuery.value.trim().toLowerCase();
-  const staffId = String(task.assignedToAccountId || '');
-  const searchableText = [
-    task.taskTitle,
-    task.taskDescription,
-    task.taskType,
-    task.reservationLabel,
-    getReservationCode(task),
-    formatStaffLabel(task),
-    task.assignedStaffRole,
-  ].filter(Boolean).join(' ').toLowerCase();
+const filteredTasks = computed(() => {
+  const filteredList = tasks.value.filter((task) => {
+    const query = searchQuery.value.trim().toLowerCase();
+    const staffId = String(task.assignedToAccountId || '');
+    const searchableText = [
+      task.taskTitle,
+      task.taskDescription,
+      task.taskType,
+      task.reservationLabel,
+      getReservationCode(task),
+      formatStaffLabel(task),
+      task.assignedStaffRole,
+    ].filter(Boolean).join(' ').toLowerCase();
 
-  if (query && !searchableText.includes(query)) return false;
+    if (query && !searchableText.includes(query)) return false;
 
-  if (statusFilter.value !== 'all') {
-    if (statusFilter.value === 'Overdue') {
-      if (!isTaskOverdue(task)) return false;
-    } else if (normalizeStatus(task.taskStatus) !== normalizeStatus(statusFilter.value)) {
-      return false;
+    if (statusFilter.value !== 'all') {
+      if (statusFilter.value === 'Overdue') {
+        if (!isTaskOverdue(task)) return false;
+      } else if (normalizeStatus(task.taskStatus) !== normalizeStatus(statusFilter.value)) {
+        return false;
+      }
     }
-  }
 
-  if (personnelFilter.value !== 'all' && personnelFilter.value !== staffId) return false;
+    if (personnelFilter.value !== 'all' && personnelFilter.value !== staffId) return false;
 
-  const taskDate = getComparableTaskDate(task);
-  if (dateFilterStart.value && (!taskDate || taskDate < startOfDay(dateFilterStart.value))) return false;
-  if (dateFilterEnd.value && (!taskDate || taskDate > endOfDay(dateFilterEnd.value))) return false;
+    const taskDate = getComparableTaskDate(task);
+    if (dateFilterStart.value && (!taskDate || taskDate < startOfDay(dateFilterStart.value))) return false;
+    if (dateFilterEnd.value && (!taskDate || taskDate > endOfDay(dateFilterEnd.value))) return false;
 
-  return true;
-}));
+    return true;
+  });
+
+  return filteredList.slice().sort((firstTask, secondTask) => compareTasks(firstTask, secondTask));
+});
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredTasks.value.length / pageSize)));
 
@@ -478,7 +524,7 @@ const visiblePageNumbers = computed(() => {
   return pages;
 });
 
-watch([searchQuery, statusFilter, personnelFilter, dateFilterStart, dateFilterEnd], () => {
+watch([searchQuery, statusFilter, personnelFilter, sortFilter, dateFilterStart, dateFilterEnd], () => {
   currentPage.value = 1;
 });
 
@@ -529,6 +575,10 @@ function openCreateModal() {
   showTaskModal.value = true;
 }
 
+function openViewModal(task) {
+  viewTask.value = task;
+}
+
 function openUpdateModal(task) {
   resetTaskForm();
   taskModalMode.value = 'update';
@@ -543,10 +593,18 @@ function openUpdateModal(task) {
   showTaskModal.value = true;
 }
 
-function openDeleteModal(task) {
-  deleteTask.value = task;
+function openVerifyModal(task) {
+  if (!canVerifyTask(task)) {
+    return;
+  }
+
+  verifyTask.value = task;
   resetDeleteForm();
   modalError.value = '';
+}
+
+function closeViewModal() {
+  viewTask.value = null;
 }
 
 function closeTaskModal() {
@@ -556,8 +614,8 @@ function closeTaskModal() {
   modalError.value = '';
 }
 
-function closeDeleteModal() {
-  deleteTask.value = null;
+function closeVerifyModal() {
+  verifyTask.value = null;
   resetDeleteForm();
   modalError.value = '';
 }
@@ -573,6 +631,7 @@ async function submitTaskForm() {
 
   isSubmitting.value = true;
   modalError.value = '';
+  resetTaskSubmissionFeedback();
   const payload = buildTaskPayload();
   const endpoint = taskModalMode.value === 'create'
     ? '/api/v1/tasks'
@@ -586,31 +645,47 @@ async function submitTaskForm() {
     return;
   }
 
-  closeTaskModal();
   await loadPageData();
+  const feedback = buildTaskSubmissionFeedback(result.data?.warning);
+  taskSubmissionFeedback.message = feedback.message;
+  taskSubmissionFeedback.tone = feedback.tone;
+  showTaskToast(feedback.message);
+  window.clearTimeout(submitTaskForm.closeTimeoutId);
+  submitTaskForm.closeTimeoutId = window.setTimeout(() => {
+    if (taskSubmissionFeedback.message === feedback.message) {
+      closeTaskModal();
+    }
+  }, feedback.tone === 'warning' ? 2600 : 1800);
 }
 
-async function confirmDeleteTask() {
-  if (!deleteTask.value || isSubmitting.value || !canDelete.value) return;
+async function confirmVerifyTask() {
+  if (!verifyTask.value || isSubmitting.value || !canVerifySubmit.value) return;
 
   isSubmitting.value = true;
   modalError.value = '';
-  const result = await requestJson(`/api/v1/tasks/${deleteTask.value.taskIdentifier}`, {
-    method: 'DELETE',
+
+  if (normalizeEmailForConfirmation(deleteForm.confirmedAdminEmail) !== normalizeEmailForConfirmation(currentAdminEmail.value)) {
+    isSubmitting.value = false;
+    modalError.value = 'Please enter the exact admin email before verifying this task.';
+    return;
+  }
+
+  const result = await requestJson(`/api/v1/tasks/${verifyTask.value.taskIdentifier}/status`, {
+    method: 'PUT',
     body: JSON.stringify({
-      confirmedAdminEmail: normalizeEmailForConfirmation(deleteForm.confirmedAdminEmail),
-      confirmedAdminPassword: deleteForm.confirmedAdminPassword,
+      taskStatus: 'Completed',
     }),
   });
   isSubmitting.value = false;
 
   if (!result.success) {
-    modalError.value = result.error || 'Unable to delete task assignment.';
+    modalError.value = result.error || 'Unable to verify task assignment.';
     return;
   }
 
-  closeDeleteModal();
+  closeVerifyModal();
   await loadPageData();
+  showTaskToast('Task assignment verified successfully.');
 }
 
 function validateTaskForm() {
@@ -727,6 +802,12 @@ function getReservationCode(task) {
   return task.reservationIdentifier ? `RES-${String(task.reservationIdentifier).padStart(4, '0')}` : `TASK-${String(task.taskIdentifier).padStart(4, '0')}`;
 }
 
+function formatTaskSchedule(task) {
+  const rawValue = task.dueDateTimestamp || task.createdTimestamp;
+  if (!rawValue) return 'No schedule set';
+  return `${formatScheduleDate(rawValue)} - ${formatScheduleTime(rawValue)}`;
+}
+
 function normalizeStatus(status) {
   return String(status || '').trim().toLowerCase().replace(/\s+/g, '_');
 }
@@ -751,23 +832,26 @@ function getStatusTone(task) {
   return 'pending';
 }
 
-function getProgressValue(task) {
-  if (isTaskOverdue(task)) return 15;
-
+function canVerifyTask(task) {
+  if (isTaskOverdue(task)) return false;
   const status = normalizeStatus(task.taskStatus);
-  if (status === 'completed') return 100;
-  if (status === 'in_progress') return 60;
-  if (status === 'cancelled') return 0;
-  return 0;
+  return status === 'pending' || status === 'in_progress';
 }
 
-function getProgressCaption(task) {
-  const status = normalizeStatus(task.taskStatus);
-  if (isTaskOverdue(task)) return 'Past due';
-  if (status === 'completed') return 'Task closed';
-  if (status === 'in_progress') return 'Work ongoing';
-  if (status === 'cancelled') return 'Cancelled';
-  return 'Awaiting start';
+function compareTasks(firstTask, secondTask) {
+  if (sortFilter.value === 'reservation') {
+    return getReservationCode(firstTask).localeCompare(getReservationCode(secondTask));
+  }
+
+  if (sortFilter.value === 'status') {
+    return getStatusLabel(firstTask).localeCompare(getStatusLabel(secondTask));
+  }
+
+  const firstDate = getComparableTaskDate(firstTask)?.getTime() || 0;
+  const secondDate = getComparableTaskDate(secondTask)?.getTime() || 0;
+  return sortFilter.value === 'oldest'
+    ? firstDate - secondDate
+    : secondDate - firstDate;
 }
 
 function getComparableTaskDate(task) {
@@ -832,7 +916,41 @@ function normalizeEmailForConfirmation(value) {
   return String(value || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, '').trim().toLowerCase();
 }
 
+function showTaskToast(message) {
+  taskToastMessage.value = message;
+  window.clearTimeout(showTaskToast.timeoutId);
+  showTaskToast.timeoutId = window.setTimeout(() => {
+    if (taskToastMessage.value === message) {
+      taskToastMessage.value = '';
+    }
+  }, 3200);
+}
+
+showTaskToast.timeoutId = null;
+submitTaskForm.closeTimeoutId = null;
+
+function buildTaskSubmissionFeedback(warning) {
+  const normalizedWarning = typeof warning === 'string' ? warning.trim() : '';
+  if (normalizedWarning !== '') {
+    return {
+      message: normalizedWarning,
+      tone: 'warning',
+    };
+  }
+
+  return {
+    message: 'Task assignment saved and SMS sent to assigned staff.',
+    tone: 'success',
+  };
+}
+
+function resetTaskSubmissionFeedback() {
+  taskSubmissionFeedback.message = '';
+  taskSubmissionFeedback.tone = 'success';
+}
+
 function resetTaskForm() {
+  window.clearTimeout(submitTaskForm.closeTimeoutId);
   taskForm.taskTitle = '';
   taskForm.taskDescription = '';
   taskForm.taskType = 'Preparation';
@@ -843,6 +961,7 @@ function resetTaskForm() {
   taskForm.emergencyOverride = false;
   taskForm.confirmedAdminEmail = '';
   taskForm.confirmedAdminPassword = '';
+  resetTaskSubmissionFeedback();
 }
 
 function resetDeleteForm() {
@@ -858,6 +977,17 @@ function resetDeleteForm() {
   margin: 0;
   padding: 0.4rem 0 2rem;
   color: #14261f;
+}
+
+.admin-task-assignments-toast {
+  margin-bottom: 0.9rem;
+  padding: 0.82rem 0.95rem;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .admin-task-assignments-header {
@@ -910,6 +1040,10 @@ function resetDeleteForm() {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.admin-task-assignments-modal-actions {
+  align-items: center;
 }
 
 .admin-task-assignments-primary,
@@ -1036,7 +1170,7 @@ button:disabled {
 
 .admin-task-assignments-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1.5fr) repeat(4, minmax(130px, 0.7fr));
+  grid-template-columns: minmax(260px, 1.5fr) repeat(5, minmax(130px, 0.7fr));
   gap: 0.8rem;
   margin-bottom: 1rem;
   align-items: end;
@@ -1072,6 +1206,13 @@ button:disabled {
   border-radius: 12px;
 }
 
+.admin-task-assignments-form input,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  min-height: 40px;
+  padding: 0.58rem 0.78rem;
+}
+
 .admin-task-assignments-search input {
   padding-left: 0.92rem;
 }
@@ -1085,6 +1226,27 @@ button:disabled {
   border-radius: 12px;
   font-size: 0.86rem;
   font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0.78rem 0.92rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback--success {
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.admin-task-assignments-submit-feedback--warning {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
 }
 
 .admin-task-assignments-state {
@@ -1102,7 +1264,7 @@ button:disabled {
 
 .admin-task-assignments-table {
   width: 100%;
-  min-width: 1030px;
+  min-width: 860px;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -1146,8 +1308,7 @@ button:disabled {
 .admin-task-cell-details span,
 .admin-task-cell-details small,
 .admin-task-cell-staff small,
-.admin-task-cell-schedule small,
-.admin-task-progress-copy small {
+.admin-task-cell-schedule small {
   display: block;
   margin-top: 0.24rem;
   color: #688072;
@@ -1196,49 +1357,6 @@ button:disabled {
   background: #e5e7eb;
 }
 
-.admin-task-cell-progress {
-  min-width: 180px;
-}
-
-.admin-task-progress-copy {
-  margin-bottom: 0.48rem;
-}
-
-.admin-task-progress-bar {
-  position: relative;
-  width: 100%;
-  height: 8px;
-  background: #e8efea;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.admin-task-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.admin-task-progress-fill--pending {
-  background: #f59e0b;
-}
-
-.admin-task-progress-fill--progress {
-  background: #3b82f6;
-}
-
-.admin-task-progress-fill--completed {
-  background: #16a34a;
-}
-
-.admin-task-progress-fill--overdue {
-  background: #ef4444;
-}
-
-.admin-task-progress-fill--neutral {
-  background: #9ca3af;
-}
-
 .admin-task-actions {
   display: flex;
   gap: 0.55rem;
@@ -1258,10 +1376,16 @@ button:disabled {
   border-color: #99f6e4;
 }
 
-.admin-task-action--delete {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #fecaca;
+.admin-task-action--view {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.admin-task-action--verify {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
 }
 
 .admin-task-assignments-footer {
@@ -1397,6 +1521,14 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.admin-task-assignments-form textarea {
+  min-height: 88px;
+  max-height: 120px;
+  padding: 0.72rem 0.78rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .admin-task-assignments-checkbox {
   display: flex !important;
   align-items: center;
@@ -1490,6 +1622,50 @@ button:disabled {
 
   .admin-task-assignments-panel {
     padding: 0.9rem;
+  }
+
+  .admin-task-actions {
+    flex-direction: column;
+  }
+
+  .admin-task-action,
+  .admin-task-assignments-header-actions > button,
+  .admin-task-assignments-modal-actions > button {
+    width: 100%;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-task-assignments-header,
+  .admin-task-summary-card,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    border-radius: 16px;
+  }
+
+  .admin-task-assignments-header,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    padding: 0.9rem;
+  }
+
+  .admin-task-assignments-header h1,
+  .admin-task-assignments-modal-header h2 {
+    font-size: 1.55rem;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 640px;
+  }
+
+  .admin-task-assignments-pagination {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
   }
 }
 </style>

@@ -50,9 +50,12 @@ class TaskReadService
                     tasks.task_status,
                     tasks.assigned_to_account_id,
                     tasks.due_date_timestamp,
+                    tasks.preparation_start_timestamp,
+                    tasks.preparation_end_timestamp,
                     tasks.created_timestamp,
                     reservations.reservation_code,
                     reservations.organization_name,
+                    reservations.end_date_time,
                     reservations.event_date_time,
                     reservations.activity_type,
                     reservations.venue_identifier,
@@ -61,7 +64,8 @@ class TaskReadService
                     staff_info.employee_id_number AS staff_employee_id_number,
                     COALESCE(staff_info.first_name, accounts.first_name) AS staff_first_name,
                     COALESCE(staff_info.last_name, accounts.last_name) AS staff_last_name,
-                    COALESCE(staff_info.role, accounts.department) AS staff_role
+                    COALESCE(staff_info.role, accounts.department) AS staff_role,
+                    COALESCE(staff_info.phone_number, accounts.contact_number) AS staff_phone_number
              FROM tasks
              LEFT JOIN reservations ON reservations.reservation_identifier = tasks.reservation_identifier
              LEFT JOIN venues ON venues.venue_identifier = reservations.venue_identifier
@@ -100,6 +104,9 @@ class TaskReadService
             'reservationActivityType' => $row['activity_type'] ? (string)$row['activity_type'] : null,
             'venueIdentifier' => $row['venue_identifier'] !== null ? (int)$row['venue_identifier'] : null,
             'venueName' => $row['venue_name'] ? (string)$row['venue_name'] : null,
+            'reservationCode' => $row['reservation_code'] ? (string)$row['reservation_code'] : null,
+            'facilityName' => $row['venue_name'] ? (string)$row['venue_name'] : null,
+            'organizationName' => $row['organization_name'] ? (string)$row['organization_name'] : null,
             'taskTitle' => (string)$row['task_title'],
             'taskDescription' => $row['task_description'] ? (string)$row['task_description'] : null,
             'taskType' => (string)$row['task_type'],
@@ -108,7 +115,12 @@ class TaskReadService
             'assignedStaffName' => $staffName !== '' ? $staffName : null,
             'assignedStaffIdNumber' => $row['staff_employee_id_number'] ? (string)$row['staff_employee_id_number'] : null,
             'assignedStaffRole' => $row['staff_role'] ? (string)$row['staff_role'] : null,
+            'assignedStaffPhone' => $row['staff_phone_number'] ? (string)$row['staff_phone_number'] : null,
+            'eventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
+            'endDateTime' => $row['end_date_time'] ? (string)$row['end_date_time'] : null,
             'dueDateTimestamp' => $row['due_date_timestamp'] ? (string)$row['due_date_timestamp'] : null,
+            'preparationStartTimestamp' => $row['preparation_start_timestamp'] ? (string)$row['preparation_start_timestamp'] : null,
+            'preparationEndTimestamp' => $row['preparation_end_timestamp'] ? (string)$row['preparation_end_timestamp'] : null,
             'createdTimestamp' => (string)$row['created_timestamp'],
         ];
     }

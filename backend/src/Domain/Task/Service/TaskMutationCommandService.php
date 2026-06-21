@@ -12,7 +12,8 @@ class TaskMutationCommandService
         private readonly TaskManagementService $taskManagementService,
         private readonly TaskReadService $taskReadService,
         private readonly TaskHistoryLogService $taskHistoryLogService,
-        private readonly TaskMutationPayloadService $taskMutationPayloadService
+        private readonly TaskMutationPayloadService $taskMutationPayloadService,
+        private readonly TaskAssignmentSmsService $taskAssignmentSmsService
     ) {
     }
 
@@ -33,9 +34,14 @@ class TaskMutationCommandService
                 $linkedRecords->reservationIdentifier,
                 $linkedRecords->assignedToAccountId
             );
+            $task = $this->taskReadService->fetchTaskById($dto->taskIdentifier);
+            $warning = is_array($task)
+                ? $this->taskAssignmentSmsService->notifyOnAssignmentChange(null, $task)
+                : null;
 
             return $this->success([
-                'task' => $this->taskReadService->fetchTaskById($dto->taskIdentifier),
+                'task' => $task,
+                'warning' => $warning,
             ], 201);
         } catch (DomainValidationException $exception) {
             return $this->error('TaskValidationFailed', $exception->getMessage(), 422);
@@ -50,6 +56,7 @@ class TaskMutationCommandService
         }
 
         try {
+            $previousTask = $this->taskReadService->fetchTaskById($taskIdentifier);
             $linkedRecords = $this->taskMutationPayloadService->resolveLinkedRecords($body);
             $dto = $this->taskManagementService->updateTask(
                 $taskIdentifier,
@@ -60,9 +67,14 @@ class TaskMutationCommandService
                 $linkedRecords->reservationIdentifier,
                 $linkedRecords->assignedToAccountId
             );
+            $task = $this->taskReadService->fetchTaskById($dto->taskIdentifier);
+            $warning = is_array($task)
+                ? $this->taskAssignmentSmsService->notifyOnAssignmentChange($previousTask, $task)
+                : null;
 
             return $this->success([
-                'task' => $this->taskReadService->fetchTaskById($dto->taskIdentifier),
+                'task' => $task,
+                'warning' => $warning,
             ]);
         } catch (DomainNotFoundException $exception) {
             return $this->error('TaskNotFound', $exception->getMessage(), 404);

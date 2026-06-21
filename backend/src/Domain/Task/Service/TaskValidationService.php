@@ -35,14 +35,19 @@ class TaskValidationService
 
     public function parseDueDate(?string $dueDateTimestamp): ?\DateTimeInterface
     {
-        if ($dueDateTimestamp === null) {
+        return $this->parseDateTime($dueDateTimestamp, 'Due date is invalid.');
+    }
+
+    public function parseDateTime(?string $dateTimeValue, string $errorMessage): ?\DateTimeInterface
+    {
+        if ($dateTimeValue === null) {
             return null;
         }
 
         try {
-            return new \DateTime($dueDateTimestamp);
+            return new \DateTime($dateTimeValue);
         } catch (\Throwable) {
-            throw new DomainValidationException('Due date is invalid.');
+            throw new DomainValidationException($errorMessage);
         }
     }
 

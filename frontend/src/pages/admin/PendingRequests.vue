@@ -66,7 +66,7 @@
       <section class="pending-request-action-card">
         <header class="pending-request-action-header">
           <div>
-            <h2>Approve Request</h2>
+            <h2>Approval Confirmation</h2>
             <p>Please review the request details and provide your confirmation to approve.</p>
           </div>
           <button class="pending-request-action-close" type="button" aria-label="Close" @click="closeApproveModal">&times;</button>
@@ -100,7 +100,7 @@
 
               <div class="pending-request-summary-metric">
                 <span>Requested On</span>
-                <strong>{{ formatRequestDate(approveRequestRecord.requestSchedule) }}</strong>
+                <strong>{{ formatRequestDate(approveRequestRecord.requestedDate) }}</strong>
               </div>
             </div>
 
@@ -121,8 +121,8 @@
               <div class="pending-request-summary-item">
                 <span>Schedule</span>
                 <strong class="pending-request-summary-stack">
-                  <em>{{ formatRequestDate(approveRequestRecord.requestSchedule) }}</em>
-                  <em>{{ formatRequestTime(approveRequestRecord.requestSchedule) }}</em>
+                  <em>{{ formatScheduleDateRange(approveRequestRecord.requestScheduleStart, approveRequestRecord.requestScheduleEnd) }}</em>
+                  <em>{{ formatScheduleTimeRange(approveRequestRecord.requestScheduleStart, approveRequestRecord.requestScheduleEnd) }}</em>
                 </strong>
               </div>
 
@@ -154,12 +154,16 @@
               <small>This helps us verify your identity before processing the approval.</small>
             </label>
           </div>
+
+          <p v-if="approveModalError" class="pending-request-action-feedback pending-request-action-feedback--error">
+            {{ approveModalError }}
+          </p>
         </div>
 
         <footer class="pending-request-action-footer">
-          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" @click="closeApproveModal">Cancel</button>
-          <button class="pending-request-action-button pending-request-action-button--approve" type="button" @click="confirmApproveRequest">
-            Confirm Approval
+          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" :disabled="isApprovingRequest" @click="closeApproveModal">Cancel</button>
+          <button class="pending-request-action-button pending-request-action-button--approve" type="button" :disabled="isApprovingRequest" @click="confirmApproveRequest">
+            {{ isApprovingRequest ? 'Confirming...' : 'Confirm Approval' }}
           </button>
         </footer>
       </section>
@@ -169,8 +173,8 @@
       <section class="pending-request-action-card pending-request-action-card--delete">
         <header class="pending-request-action-header">
           <div>
-            <h2>Delete Request</h2>
-            <p>You are about to delete this request. This action cannot be undone.</p>
+            <h2>Deny Request</h2>
+            <p>You are about to deny this request. This action cannot be undone.</p>
           </div>
           <button class="pending-request-action-close" type="button" aria-label="Close" @click="closeDeleteModal">&times;</button>
         </header>
@@ -203,7 +207,7 @@
 
               <div class="pending-request-summary-metric">
                 <span>Requested On</span>
-                <strong>{{ formatRequestDate(deleteRequestRecord.requestSchedule) }}</strong>
+                <strong>{{ formatRequestDate(deleteRequestRecord.requestedDate) }}</strong>
               </div>
             </div>
 
@@ -224,8 +228,8 @@
               <div class="pending-request-summary-item">
                 <span>Schedule</span>
                 <strong class="pending-request-summary-stack">
-                  <em>{{ formatRequestDate(deleteRequestRecord.requestSchedule) }}</em>
-                  <em>{{ formatRequestTime(deleteRequestRecord.requestSchedule) }}</em>
+                  <em>{{ formatScheduleDateRange(deleteRequestRecord.requestScheduleStart, deleteRequestRecord.requestScheduleEnd) }}</em>
+                  <em>{{ formatScheduleTimeRange(deleteRequestRecord.requestScheduleStart, deleteRequestRecord.requestScheduleEnd) }}</em>
                 </strong>
               </div>
 
@@ -242,7 +246,7 @@
               v-model.trim="deleteForm.remarks"
               maxlength="500"
               rows="4"
-              placeholder="Enter the reason for deleting this request..."
+              placeholder="Enter the reason for denying this request..."
             />
             <small>{{ deleteForm.remarks.length }} / 500</small>
           </label>
@@ -254,7 +258,7 @@
             <div class="pending-request-action-grid">
               <label class="pending-request-action-field">
                 <span>Admin Email</span>
-                <input v-model.trim="deleteForm.adminEmail" type="email" placeholder="Enter your admin email" />
+                <input v-model.trim="deleteForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
 
               <label class="pending-request-action-field">
@@ -263,14 +267,14 @@
               </label>
             </div>
 
-            <p class="pending-request-action-help">This helps us verify your identity before processing the deletion.</p>
+            <p class="pending-request-action-help">This helps us verify your identity before processing the denial.</p>
           </div>
         </div>
 
         <footer class="pending-request-action-footer">
           <button class="pending-request-action-button pending-request-action-button--ghost" type="button" @click="closeDeleteModal">Cancel</button>
           <button class="pending-request-action-button pending-request-action-button--delete" type="button" @click="confirmDeleteRequest">
-            Delete Request
+            Deny Request
           </button>
         </footer>
       </section>
@@ -279,76 +283,87 @@
     <div v-if="selectedRequestRecord" class="pending-request-details-overlay" @click.self="handleCloseRequestModal">
       <section class="pending-request-details-card">
         <header class="pending-request-details-header">
-          <h2>Request Details</h2>
+          <h2>Workflow</h2>
           <button class="pending-request-details-close" type="button" aria-label="Close" @click="handleCloseRequestModal">&times;</button>
         </header>
 
         <div class="pending-request-details-body">
-          <div class="pending-request-details-section-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v8" />
-              <path d="M12 16h.01" />
-            </svg>
-            <span>Request Information</span>
-          </div>
-
-          <div class="pending-request-details-grid">
-            <div class="pending-request-details-column">
-              <div class="pending-request-details-item">
-                <dt>Request ID</dt>
-                <dd>{{ selectedRequestRecord.requestDisplayIdentifier || selectedRequestRecord.requestIdentifier }}</dd>
+          <div class="pending-request-details-topline">
+            <div class="pending-request-details-meta-list">
+              <div class="pending-request-details-inline">
+                <strong>Request ID:</strong>
+                <span>{{ selectedRequestRecord.requestDisplayIdentifier || selectedRequestRecord.requestIdentifier }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Requester</dt>
-                <dd>{{ selectedRequestRecord.requesterFullName || 'N/A' }}</dd>
-                <small>ID: {{ selectedRequestRecord.requesterId || selectedRequestRecord.requestIdentifier || 'N/A' }}</small>
+              <div class="pending-request-details-inline">
+                <strong>Requester:</strong>
+                <span>{{ selectedRequestRecord.requesterFullName || 'N/A' }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Role</dt>
-                <dd>{{ selectedRequestRecord.requesterRole || 'N/A' }}</dd>
+              <div class="pending-request-details-inline">
+                <strong>Role:</strong>
+                <span>{{ selectedRequestRecord.requesterRole || 'N/A' }}</span>
               </div>
-
-              <div class="pending-request-details-item">
-                <dt>Contact</dt>
-                <dd>{{ selectedRequestRecord.contactEmail || selectedRequestRecord.requesterDepartment || 'N/A' }}</dd>
-                <small>{{ selectedRequestRecord.contactNumber || 'No contact number provided' }}</small>
+              <div class="pending-request-details-inline">
+                <strong>Department:</strong>
+                <span>{{ selectedRequestRecord.requesterDepartment || 'N/A' }}</span>
+              </div>
+              <div class="pending-request-details-inline">
+                <strong>Requested Date:</strong>
+                <span>{{ selectedRequestRecord.requestedDate || 'N/A' }}</span>
               </div>
             </div>
 
-            <div class="pending-request-details-column">
-              <div class="pending-request-details-item">
-                <dt>Type</dt>
-                <dd>{{ selectedRequestRecord.requestType || 'N/A' }}</dd>
-              </div>
+            <div class="pending-request-details-type-card">
+              <strong>Request Type:</strong>
+              <span>{{ selectedRequestRecord.requestType || 'N/A' }}</span>
+            </div>
+          </div>
 
-              <div class="pending-request-details-item">
-                <dt>Facility</dt>
-                <dd class="pending-request-details-facility">
-                  <img :src="buildFacilityPlaceholder(selectedRequestRecord.facilityName)" alt="Facility preview" />
-                  <span>{{ selectedRequestRecord.facilityName || 'N/A' }}</span>
-                </dd>
-              </div>
+          <div class="pending-request-details-divider"></div>
 
-              <div class="pending-request-details-item">
-                <dt>Schedule</dt>
-                <dd class="pending-request-details-stack">
-                  <span>{{ formatRequestDate(selectedRequestRecord.requestSchedule) }}</span>
-                  <span>{{ formatRequestTime(selectedRequestRecord.requestSchedule) }}</span>
-                </dd>
+          <div class="pending-request-details-grid">
+            <div class="pending-request-details-panel">
+              <strong>Facility</strong>
+              <div class="pending-request-details-facility">
+                <img :src="buildFacilityPlaceholder(selectedRequestRecord.facilityName)" alt="Facility preview" />
+                <span>{{ selectedRequestRecord.facilityName || 'N/A' }}</span>
               </div>
+            </div>
 
-              <div class="pending-request-details-item">
-                <dt>Quantity</dt>
-                <dd>{{ selectedRequestRecord.requestQuantity || 0 }}</dd>
+            <div class="pending-request-details-panel">
+              <strong>Schedule</strong>
+              <div class="pending-request-details-stack">
+                <span>{{ formatScheduleDateRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
+                <span>{{ formatScheduleTimeRange(selectedRequestRecord.requestScheduleStart, selectedRequestRecord.requestScheduleEnd) }}</span>
               </div>
+            </div>
 
-              <div class="pending-request-details-item">
-                <dt>Purpose</dt>
-                <dd>{{ selectedRequestRecord.requestPurpose || 'N/A' }}</dd>
-              </div>
+            <div class="pending-request-details-panel pending-request-details-panel--wide">
+              <strong>Activity Name/Title</strong>
+              <span>{{ selectedRequestRecord.activityNameTitle || 'N/A' }}</span>
+            </div>
+
+            <div class="pending-request-details-panel pending-request-details-panel--wide">
+              <strong>Purpose</strong>
+              <span>{{ selectedRequestRecord.requestPurpose || 'N/A' }}</span>
+            </div>
+
+            <div class="pending-request-details-panel">
+              <strong>No. of Participants</strong>
+              <span>{{ selectedRequestRecord.participantCount || 0 }}</span>
+            </div>
+
+            <div class="pending-request-details-panel">
+              <strong>Status</strong>
+              <span class="pending-request-details-status">{{ selectedRequestRecord.requestStatus || 'N/A' }}</span>
+            </div>
+          </div>
+
+          <div class="pending-request-details-divider"></div>
+
+          <div class="pending-request-details-remarks">
+            <strong>Remarks:</strong>
+            <div class="pending-request-details-remarks-box">
+              {{ selectedRequestRecord.remarks || 'No remarks added yet.' }}
             </div>
           </div>
         </div>
@@ -369,8 +384,10 @@ import './css/PendingRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
@@ -381,6 +398,8 @@ const approveForm = reactive({
   remarks: '',
   adminEmail: '',
 });
+const approveModalError = ref('');
+const isApprovingRequest = ref(false);
 const deleteForm = reactive({
   remarks: '',
   adminEmail: '',
@@ -388,6 +407,10 @@ const deleteForm = reactive({
 });
 
 const pendingRequestsList = computed(() => requestStore.pendingRequestsList || []);
+const currentAdminEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim().toLowerCase();
+});
 
 onMounted(async () => {
   try {
@@ -449,29 +472,66 @@ function handleRejectRequest(requestRecord) {
 }
 
 async function confirmApproveRequest() {
-  if (!approveRequestRecord.value || !approveForm.adminEmail.trim()) {
+  if (!approveRequestRecord.value || isApprovingRequest.value) {
     return;
   }
 
-  await requestStore.approvePendingRequest(approveRequestRecord.value);
-  closeApproveModal();
-  selectedRequestRecord.value = null;
+  const emailError = validateAdminEmailConfirmation(approveForm.adminEmail, 'approve');
+  if (emailError) {
+    approveModalError.value = emailError;
+    return;
+  }
+
+  isApprovingRequest.value = true;
+  approveModalError.value = '';
+
+  try {
+    await requestStore.approvePendingRequest(approveRequestRecord.value, {
+      confirmedAdminEmail: normalizeEmailForConfirmation(approveForm.adminEmail),
+    });
+    closeApproveModal();
+    selectedRequestRecord.value = null;
+  } catch (error) {
+    approveModalError.value = error?.message || 'Unable to approve this request.';
+  } finally {
+    isApprovingRequest.value = false;
+  }
 }
 
 async function confirmDeleteRequest() {
-  if (!deleteRequestRecord.value || !deleteForm.remarks.trim() || !deleteForm.adminEmail.trim() || !deleteForm.password.trim()) {
+  if (!deleteRequestRecord.value || !deleteForm.remarks.trim()) {
     return;
   }
 
-  await requestStore.rejectPendingRequest(deleteRequestRecord.value, deleteForm.remarks.trim());
-  closeDeleteModal();
-  selectedRequestRecord.value = null;
+  const emailError = validateAdminEmailConfirmation(deleteForm.adminEmail, 'deny');
+  if (emailError) {
+    window.alert(emailError);
+    return;
+  }
+
+  if (deleteForm.password.trim() === '') {
+    window.alert('Please type your admin password before denying this request.');
+    return;
+  }
+
+  try {
+    await requestStore.rejectPendingRequest(deleteRequestRecord.value, deleteForm.remarks.trim(), {
+      confirmedAdminEmail: normalizeEmailForConfirmation(deleteForm.adminEmail),
+      confirmedAdminPassword: deleteForm.password,
+    });
+    closeDeleteModal();
+    selectedRequestRecord.value = null;
+  } catch (error) {
+    window.alert(error?.message || 'Unable to deny this request.');
+  }
 }
 
 function closeApproveModal() {
   approveRequestRecord.value = null;
   approveForm.remarks = '';
   approveForm.adminEmail = '';
+  approveModalError.value = '';
+  isApprovingRequest.value = false;
 }
 
 function closeDeleteModal() {
@@ -504,6 +564,66 @@ function formatRequestTime(value) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(parsedDate);
+}
+
+function formatScheduleDateRange(startValue, endValue) {
+  const startDate = parseValidDate(startValue);
+  const endDate = parseValidDate(endValue);
+
+  if (!startDate && !endDate) {
+    return 'Date not available';
+  }
+
+  if (!startDate || !endDate) {
+    return formatRequestDate(startValue || endValue);
+  }
+
+  if (startDate.toDateString() === endDate.toDateString()) {
+    return formatRequestDate(startValue);
+  }
+
+  return `${formatRequestDate(startValue)} - ${formatRequestDate(endValue)}`;
+}
+
+function formatScheduleTimeRange(startValue, endValue) {
+  const startDate = parseValidDate(startValue);
+  const endDate = parseValidDate(endValue);
+
+  if (!startDate && !endDate) {
+    return 'Time not available';
+  }
+
+  if (!startDate || !endDate) {
+    return formatRequestTime(startValue || endValue);
+  }
+
+  return `${formatRequestTime(startValue)} - ${formatRequestTime(endValue)}`;
+}
+
+function parseValidDate(value) {
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function validateAdminEmailConfirmation(emailValue, actionName) {
+  const normalizedEmail = normalizeEmailForConfirmation(emailValue);
+  if (normalizedEmail === '') {
+    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'denying'} this request.`;
+  }
+
+  if (currentAdminEmail.value === '') {
+    return 'Unable to verify the admin in charge. Please sign in again.';
+  }
+
+  if (normalizedEmail !== currentAdminEmail.value) {
+    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'denying'} this request.`;
+  }
+
+  return '';
+}
+
+function normalizeEmailForConfirmation(emailValue) {
+  return String(emailValue || '').trim().toLowerCase();
 }
 
 function buildFacilityPlaceholder(facilityName) {

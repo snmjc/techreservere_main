@@ -100,13 +100,14 @@
 
 .admin-wishlist-toast {
   position: fixed;
-  top: 1.4rem;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 50%;
   z-index: 1200;
   transform: translateX(-50%);
+  width: max-content;
   min-width: 260px;
-  max-width: min(480px, calc(100vw - 2rem));
-  padding: 0.75rem 1rem;
+  max-width: min(520px, calc(100vw - 2rem));
+  padding: 0.78rem 1rem;
   color: #ffffff;
   background: var(--tr-green-700);
   border-radius: 999px;
@@ -114,6 +115,9 @@
   text-align: center;
   font-size: 0.82rem;
   font-weight: 850;
+  line-height: 1.25;
+  white-space: normal;
+  pointer-events: none;
 }
 
 .admin-wishlist-error-banner {
@@ -490,6 +494,10 @@
   width: min(720px, 100%);
   max-height: calc(100vh - 6rem);
   background: #ffffff;
+}
+
+.admin-wishlist-add-employee-modal {
+  width: min(640px, 100%);
 }
 
 .admin-wishlist-modal-close {
@@ -892,6 +900,10 @@
   gap: 0.85rem 1rem;
 }
 
+.admin-wishlist-create-modal--employee .admin-wishlist-add-form {
+  gap: 0.8rem 0.9rem;
+}
+
 .admin-wishlist-create-modal .admin-wishlist-field-wide,
 .admin-wishlist-create-modal .admin-wishlist-add-form .admin-wishlist-add-error,
 .admin-wishlist-create-modal .admin-wishlist-add-form .admin-wishlist-modal-actions {
@@ -992,8 +1004,35 @@
   font-weight: 800;
 }
 
+.admin-wishlist-add-helper--employee {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.85rem 0.95rem;
+  color: #14532d;
+  background: linear-gradient(180deg, #f4fbf7 0%, #edf8f1 100%);
+  border: 1px solid #b7dfc6;
+  border-radius: 14px;
+}
+
+.admin-wishlist-add-helper--employee strong {
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.admin-wishlist-add-helper--employee span {
+  color: #3f5d4b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .admin-wishlist-create-modal .admin-wishlist-modal-actions {
   margin-top: 0.35rem;
+}
+
+.admin-wishlist-modal-actions--employee {
+  justify-content: flex-end;
+  padding-top: 0.1rem;
 }
 
 @media (hover: hover) {

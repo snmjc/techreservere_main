@@ -59,6 +59,16 @@
                 </svg>
               </button>
               <button
+                class="request-approved-action-icon request-approved-action-icon--edit"
+                aria-label="Edit Workflow"
+                @click="handleEditWorkflowClick(requestRecord)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button
                 class="request-approved-action-icon request-approved-action-icon--deploy"
                 aria-label="Deploy/Release"
                 @click="handleDeployReleaseClick(requestRecord)"
@@ -112,6 +122,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'viewWorkflowDetails',
+  'editWorkflowRecord',
   'deployReleaseRecord',
   'cancelRequestRecord',
 ]);
@@ -167,6 +178,10 @@ function handleViewWorkflowClick(requestRecord) {
  */
 function handleDeployReleaseClick(requestRecord) {
   emit('deployReleaseRecord', requestRecord);
+}
+
+function handleEditWorkflowClick(requestRecord) {
+  emit('editWorkflowRecord', requestRecord);
 }
 
 /**

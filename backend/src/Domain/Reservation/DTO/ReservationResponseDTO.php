@@ -15,6 +15,8 @@ class ReservationResponseDTO
     public string $borrowerFirstName;
     public string $borrowerLastName;
     public string $borrowerFullName;
+    public ?string $borrowerEmailAddress;
+    public ?string $borrowerContactNumber;
     public string $organizationName;
     public ?int $venueIdentifier;
     public ?string $venueName;
@@ -52,7 +54,9 @@ class ReservationResponseDTO
         string $submissionTimestamp,
         string $borrowerFirstName = '',
         string $borrowerLastName = '',
-        string $borrowerFullName = ''
+        string $borrowerFullName = '',
+        ?string $borrowerEmailAddress = null,
+        ?string $borrowerContactNumber = null
     ) {
         $this->reservationIdentifier = $reservationIdentifier;
         $this->reservationCode = $reservationCode;
@@ -60,6 +64,8 @@ class ReservationResponseDTO
         $this->borrowerFirstName = $borrowerFirstName;
         $this->borrowerLastName = $borrowerLastName;
         $this->borrowerFullName = $borrowerFullName;
+        $this->borrowerEmailAddress = $borrowerEmailAddress;
+        $this->borrowerContactNumber = $borrowerContactNumber;
         $this->organizationName = $organizationName;
         $this->venueIdentifier = $venueIdentifier;
         $this->venueName = $venueName;
@@ -86,6 +92,8 @@ class ReservationResponseDTO
             'borrowerFirstName' => $this->borrowerFirstName,
             'borrowerLastName' => $this->borrowerLastName,
             'borrowerFullName' => $this->borrowerFullName,
+            'borrowerEmailAddress' => $this->borrowerEmailAddress,
+            'borrowerContactNumber' => $this->borrowerContactNumber,
             'organizationName' => $this->organizationName,
             'venueIdentifier' => $this->venueIdentifier,
             'venueName' => $this->venueName,

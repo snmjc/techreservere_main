@@ -9,11 +9,11 @@ use Doctrine\DBAL\ParameterType;
 class WishlistEmployeeAccountService
 {
     private const STAFF_ROLE_LABEL = 'Maintenance Staff';
-    private const DEFAULT_STAFF_PASSWORD = 'staff123';
 
     public function __construct(
         private readonly Connection $connection,
         private readonly AccountConflictLookupService $accountConflictLookupService,
+        private readonly StaffInfoWriterService $staffInfoWriterService,
         private readonly AccountInputValidationService $accountInputValidationService
     ) {
     }
@@ -49,7 +49,9 @@ class WishlistEmployeeAccountService
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => $emailAddress,
             'username' => AccountUsername::fromEmail($emailAddress),
-            'phone' => preg_replace('/\D+/', '', trim($requestBody['phone'] ?? $requestBody['phoneNumber'] ?? $requestBody['phone_number'] ?? $requestBody['contactNumber'] ?? '')),
+            'phone' => $this->normalizeStaffPhone(
+                preg_replace('/\D+/', '', trim($requestBody['phone'] ?? $requestBody['phoneNumber'] ?? $requestBody['phone_number'] ?? $requestBody['contactNumber'] ?? ''))
+            ),
             'idNumber' => $idNumber,
             'role' => self::STAFF_ROLE_LABEL,
         ];
@@ -101,20 +103,37 @@ class WishlistEmployeeAccountService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         try {
-            $this->connection->executeStatement(
-                'INSERT INTO accounts
-                    (last_name, first_name, email_address, username, role_designation, id_number, department,
-                     contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
-                     failed_login_attempts, created_timestamp, updated_timestamp)
-                 VALUES
-                    (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
-                     :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
-                     :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
-                $this->buildInsertParameters($payload, $now),
-                $this->buildInsertTypes()
-            );
+            $accountIdentifier = $this->connection->transactional(function () use ($payload, $now): int {
+                $this->connection->executeStatement(
+                    'INSERT INTO accounts
+                        (last_name, first_name, email_address, username, role_designation, id_number, department,
+                         contact_number, clerk_user_id, password_hash, status, is_approved, is_active,
+                         failed_login_attempts, created_timestamp, updated_timestamp)
+                     VALUES
+                        (:lastName, :firstName, :emailAddress, :username, :roleDesignation, :idNumber, :department,
+                         :contactNumber, :clerkUserId, :passwordHash, :status, :isApproved, :isActive,
+                         :failedLoginAttempts, :createdTimestamp, :updatedTimestamp)',
+                    $this->buildInsertParameters($payload, $now),
+                    $this->buildInsertTypes()
+                );
 
-            $accountIdentifier = (int)$this->connection->lastInsertId();
+                $accountIdentifier = (int)$this->connection->lastInsertId();
+                if ($accountIdentifier <= 0) {
+                    throw new \RuntimeException('Unable to determine the new staff account identifier.');
+                }
+
+                $this->staffInfoWriterService->upsertStaffInfo(
+                    $accountIdentifier,
+                    $payload['idNumber'],
+                    $payload['firstName'],
+                    $payload['lastName'],
+                    $payload['phone'],
+                    $payload['role'],
+                    null
+                );
+
+                return $accountIdentifier;
+            });
 
             return $this->success([
                 'accountIdentifier' => $accountIdentifier,
@@ -129,11 +148,12 @@ class WishlistEmployeeAccountService
                 'accountType' => 'Employee',
                 'accountStatus' => 'approved',
                 'isApproved' => true,
+                'loginEnabled' => false,
+                'assignmentOnly' => true,
                 'registeredAt' => $now,
                 'inviteSentAt' => null,
                 'inviteExpiresAt' => null,
                 'inviteAcceptedAt' => null,
-                'defaultPassword' => self::DEFAULT_STAFF_PASSWORD,
             ], 201);
         } catch (\Throwable $exception) {
             return $this->error(
@@ -156,7 +176,7 @@ class WishlistEmployeeAccountService
             'department' => $payload['role'],
             'contactNumber' => $payload['phone'],
             'clerkUserId' => null,
-            'passwordHash' => password_hash(self::DEFAULT_STAFF_PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]),
+            'passwordHash' => null,
             'status' => 'approved',
             'isApproved' => true,
             'isActive' => true,
@@ -178,7 +198,7 @@ class WishlistEmployeeAccountService
             'department' => ParameterType::STRING,
             'contactNumber' => ParameterType::STRING,
             'clerkUserId' => ParameterType::NULL,
-            'passwordHash' => ParameterType::STRING,
+            'passwordHash' => ParameterType::NULL,
             'status' => ParameterType::STRING,
             'isApproved' => ParameterType::BOOLEAN,
             'isActive' => ParameterType::BOOLEAN,
@@ -204,6 +224,15 @@ class WishlistEmployeeAccountService
         $letterCount = preg_match_all('/[A-Za-z]/', $normalizedName);
 
         return $letterCount >= 2 && preg_match('/^[A-Za-z ]+$/', $normalizedName) === 1;
+    }
+
+    private function normalizeStaffPhone(string $phone): string
+    {
+        if (preg_match('/^09\d{9}$/', $phone) === 1) {
+            return substr($phone, 1);
+        }
+
+        return $phone;
     }
 
     private function buildStaffEmailAddress(string $idNumber): string

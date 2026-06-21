@@ -1,4 +1,8 @@
-import { readStoredToken, removeStoredToken } from '@/modules/authentication/utils/authStorage.js';
+import {
+  readStoredToken,
+  removeStoredToken,
+  writeStoredToken,
+} from '@/modules/authentication/utils/authStorage.js';
 
 const LEGACY_TOKEN_KEY = 'authToken';
 
@@ -62,6 +66,32 @@ export function getStoredAuthToken() {
   localStorage.removeItem(LEGACY_TOKEN_KEY);
   sessionStorage.removeItem(LEGACY_TOKEN_KEY);
   return null;
+}
+
+export async function resolveAuthToken() {
+  const storedToken = getStoredAuthToken();
+  if (storedToken) {
+    return storedToken;
+  }
+
+  const clerkSession = window?.Clerk?.session;
+  if (!clerkSession || typeof clerkSession.getToken !== 'function') {
+    return null;
+  }
+
+  try {
+    const clerkToken = normalizeAuthToken(await clerkSession.getToken());
+    if (!clerkToken) {
+      return null;
+    }
+
+    // Mirror the live Clerk token into session storage so immediate follow-up
+    // API calls work even if the Pinia auth state is already present.
+    writeStoredToken(clerkToken, false);
+    return clerkToken;
+  } catch {
+    return null;
+  }
 }
 
 export function buildAuthorizationHeaders(token = getStoredAuthToken()) {

@@ -1,309 +1,237 @@
-/* ===== AI GENERATED: RequestViewModal Styles ===== */
-/* Purpose: Styles for the request view modal overlay and content */
-/* Scope: RequestViewModalComponent.vue */
-
-/* ========================================= */
-/* OVERLAY                                   */
-/* ========================================= */
-
 .request-view-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
   padding: 1rem;
+  background: rgba(15, 23, 42, 0.56);
 }
-
-/* ========================================= */
-/* CONTAINER                                 */
-/* ========================================= */
 
 .request-view-modal-container {
   position: relative;
-  width: 100%;
-  max-width: 720px;
-  max-height: 90vh;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 2rem);
   overflow-y: auto;
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 2rem 2.5rem;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
-  animation: requestModalFadeIn 0.2s ease;
+  padding: 2rem 2.3rem 1.85rem;
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 24px;
+  box-shadow: 0 30px 64px rgba(15, 23, 42, 0.22);
 }
-
-@keyframes requestModalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ========================================= */
-/* CLOSE BUTTON                              */
-/* ========================================= */
 
 .request-view-modal-close-button {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  color: #888888;
+  width: 34px;
+  height: 34px;
+  color: #7a8695;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
-
-.request-view-modal-close-button:hover {
-  background-color: #f0f0f0;
-  color: #333333;
-}
-
-/* ========================================= */
-/* HEADING                                   */
-/* ========================================= */
 
 .request-view-modal-heading {
-  font-size: 1.4rem;
-  font-weight: 700;
+  margin: 0 0 1.3rem;
   color: #d97706;
-  margin-bottom: 1.25rem;
+  font-size: clamp(1.6rem, 2.5vw, 2.15rem);
+  font-weight: 900;
 }
-
-/* ========================================= */
-/* DETAILS                                   */
-/* ========================================= */
 
 .request-view-modal-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin-bottom: 1.5rem;
+  display: grid;
+  gap: 1.15rem;
 }
 
-.request-view-modal-row {
+.request-view-modal-topline {
   display: flex;
-  align-items: baseline;
-}
-
-.request-view-modal-row--split {
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 1rem;
 }
 
-.request-view-modal-row--split-bottom {
-  display: flex;
-  gap: 2rem;
-  margin-top: 0.5rem;
+.request-view-modal-topline-copy {
+  display: grid;
+  gap: 0.25rem;
 }
 
-.request-view-modal-field {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.request-view-modal-field--right {
-  text-align: right;
-}
-
-.request-view-modal-label {
+.request-view-modal-kicker,
+.request-view-modal-label,
+.request-view-modal-section-label,
+.request-view-modal-resource-type {
+  color: #344054;
   font-size: 0.82rem;
-  font-weight: 700;
-  color: #333333;
+  font-weight: 800;
+}
+
+.request-view-modal-topline-copy strong,
+.request-view-modal-emphasis {
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.request-view-modal-topline-copy small,
+.request-view-modal-copy,
+.request-view-modal-panel p,
+.request-view-modal-resource-card small,
+.request-view-modal-doc-card small,
+.request-view-modal-empty-state {
+  color: #667085;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.request-view-modal-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 0.85rem;
+  color: #9a6700;
+  background: #fff3d1;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
   white-space: nowrap;
-}
-
-.request-view-modal-value {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: #555555;
-}
-
-.request-view-modal-value--status {
-  color: #d97706;
-  font-weight: 600;
 }
 
 .request-view-modal-divider {
   height: 1px;
-  background-color: #e5e5e5;
-  margin: 0.5rem 0;
+  background: #e7eaee;
 }
 
-/* ========================================= */
-/* RESERVATION SUMMARY TABLE                 */
-/* ========================================= */
-
-.request-view-modal-section-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #333333;
-  margin-bottom: 0.4rem;
+.request-view-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
 }
 
-.request-view-modal-reservation-summary {
-  flex: 1;
+.request-view-modal-panel {
+  display: grid;
+  gap: 0.38rem;
+  padding: 1rem 1.05rem;
+  background: #fafbfc;
+  border: 1px solid #e7eaee;
+  border-radius: 16px;
 }
 
-.request-view-modal-summary-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
+.request-view-modal-panel--wide {
+  grid-column: 1 / -1;
 }
 
-.request-view-modal-summary-cell {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.78rem;
-  color: #444444;
-  border-bottom: 1px solid #eeeeee;
+.request-view-modal-section {
+  display: grid;
+  gap: 0.7rem;
 }
 
-.request-view-modal-summary-cell--count {
-  text-align: right;
-  font-weight: 600;
-  width: 60px;
+.request-view-modal-resource-grid,
+.request-view-modal-doc-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
-/* ========================================= */
-/* UPLOADED DOCUMENTS                        */
-/* ========================================= */
-
-.request-view-modal-uploaded-docs {
-  flex: 1;
+.request-view-modal-resource-card,
+.request-view-modal-doc-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 1.05rem;
+  background: #ffffff;
+  border: 1px solid #e7eaee;
+  border-radius: 16px;
 }
 
-.request-view-modal-doc-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.request-view-modal-doc-item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: #1a8a4a;
-  cursor: pointer;
-}
-
-.request-view-modal-doc-item:hover {
-  text-decoration: underline;
-}
-
-.request-view-modal-doc-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #16a34a;
-  flex-shrink: 0;
-}
-
+.request-view-modal-resource-card strong,
 .request-view-modal-doc-name {
-  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.92rem;
+  font-weight: 800;
+  word-break: break-word;
 }
 
-/* ========================================= */
-/* ACTION BUTTONS                            */
-/* ========================================= */
+.request-view-modal-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 0.65rem;
+  color: #155eef;
+  background: #dbeafe;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
 
 .request-view-modal-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   justify-content: center;
+  gap: 0.8rem;
   flex-wrap: wrap;
+  margin-top: 1.5rem;
 }
 
 .request-view-modal-action-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1.1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 172px;
+  min-height: 48px;
+  padding: 0 1.1rem;
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  white-space: nowrap;
 }
 
-.request-view-modal-action-button:active {
-  transform: scale(0.97);
+.request-view-modal-action-button:disabled,
+.request-view-modal-action-button--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.2);
 }
 
-/* Approve — green */
 .request-view-modal-action-button--approve {
-  background-color: #16a34a;
+  background: #16a34a;
 }
 
-.request-view-modal-action-button--approve:hover {
-  background-color: #15803d;
-}
-
-/* Request Revisions — orange */
 .request-view-modal-action-button--revisions {
-  background-color: #d97706;
+  background: #d97706;
 }
 
-.request-view-modal-action-button--revisions:hover {
-  background-color: #b45309;
-}
-
-/* Reject — red */
 .request-view-modal-action-button--reject {
-  background-color: #dc2626;
+  background: #dc2626;
 }
 
-.request-view-modal-action-button--reject:hover {
-  background-color: #b91c1c;
-}
-
-/* ========================================= */
-/* RESPONSIVE                                */
-/* ========================================= */
-
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .request-view-modal-container {
-    padding: 1.5rem;
-    max-width: 95%;
+    padding: 1.5rem 1.15rem 1.2rem;
   }
 
-  .request-view-modal-row--split {
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .request-view-modal-row--split-bottom {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
+  .request-view-modal-topline,
   .request-view-modal-actions {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .request-view-modal-grid,
+  .request-view-modal-resource-grid,
+  .request-view-modal-doc-preview-grid {
+    grid-template-columns: 1fr;
   }
 
   .request-view-modal-action-button {
     width: 100%;
-    justify-content: center;
   }
 }

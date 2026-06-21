@@ -100,8 +100,12 @@
   width: 46px;
   height: 46px;
   border-radius: 16px;
-  font-size: 1.25rem;
-  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.admin-past-records-stat-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
 }
 
 .admin-past-records-stat-card p,
@@ -152,7 +156,7 @@
 
 .admin-past-records-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(340px, 0.9fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(292px, 0.76fr);
   gap: 20px;
   margin-top: 20px;
   align-items: start;
@@ -402,10 +406,10 @@
 .admin-past-records-detail-card {
   align-self: start;
   border-radius: 28px;
-  padding: 24px;
+  padding: 18px;
   position: sticky;
   top: 18px;
-  min-height: 640px;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
 }
@@ -442,39 +446,39 @@
 .admin-past-records-detail-empty h2 {
   margin: 8px 0 0;
   color: #132238;
-  font-size: 1.65rem;
+  font-size: 1.4rem;
   font-weight: 900;
 }
 
 .admin-past-records-detail-close {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 1px solid #d8e3dd;
   border-radius: 50%;
   background: #fff;
   color: var(--admin-records-ink);
   font: inherit;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
 }
 
 .admin-past-records-detail-statusbar {
-  margin-top: 20px;
-  padding-bottom: 18px;
+  margin-top: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid rgba(24, 47, 84, 0.08);
   align-items: center;
 }
 
 .admin-past-records-detail-statusbar strong {
-  font-size: 1.05rem;
+  font-size: 0.96rem;
 }
 
 .admin-past-records-detail-section,
 .admin-past-records-detail-empty {
   border: 1px solid rgba(220, 231, 225, 0.9);
   border-radius: 18px;
-  padding: 18px;
+  padding: 14px;
   background: rgba(255, 255, 255, 0.84);
 }
 
@@ -490,13 +494,13 @@
 }
 
 .admin-past-records-detail-section {
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .admin-past-records-detail-section h3 {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   color: #132238;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   font-weight: 850;
 }
 
@@ -507,15 +511,15 @@
 
 .admin-past-records-detail-list {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .admin-past-records-detail-item {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 94px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-  padding: 12px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(24, 47, 84, 0.08);
 }
 
@@ -525,7 +529,7 @@
 }
 
 .admin-past-records-detail-section dt {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   font-weight: 700;
@@ -533,18 +537,19 @@
 
 .admin-past-records-detail-section dd {
   color: var(--admin-records-ink);
-  line-height: 1.55;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .admin-past-records-detail-borrower {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .admin-past-records-detail-borrower img {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -568,7 +573,7 @@
   margin: 0;
   padding: 4px 0 0;
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .admin-past-records-timeline li {
@@ -583,7 +588,7 @@
   position: absolute;
   left: 5px;
   top: 20px;
-  bottom: -20px;
+  bottom: -16px;
   width: 2px;
   background: rgba(20, 184, 110, 0.2);
 }
@@ -604,18 +609,19 @@
 }
 
 .admin-past-records-timeline strong {
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .admin-past-records-timeline small {
   margin-top: 4px;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
 }
 
 .admin-past-records-timeline p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--admin-records-ink);
-  line-height: 1.5;
+  font-size: 0.82rem;
+  line-height: 1.42;
 }
 
 .admin-past-records-detail-download {

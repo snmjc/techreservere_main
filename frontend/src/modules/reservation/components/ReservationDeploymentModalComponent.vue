@@ -2,7 +2,6 @@
 <template>
   <div v-if="reservationRecord" class="reservation-deployment-modal-overlay" @click.self="handleCloseModal">
     <div class="reservation-deployment-modal-container">
-      <!-- Close Button -->
       <button class="reservation-deployment-modal-close-button" aria-label="Close" @click="handleCloseModal">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -10,83 +9,94 @@
         </svg>
       </button>
 
-      <!-- Modal Heading -->
-      <h2 class="reservation-deployment-modal-heading">Process Deployment</h2>
+      <h2 class="reservation-deployment-modal-heading">Workflow</h2>
 
-      <!-- DEFAULT VIEW: Deployment Details -->
       <template v-if="!showReturnForm">
         <div class="reservation-deployment-modal-details">
-          <!-- Top Row: Request ID + Request Type -->
           <div class="reservation-deployment-modal-row reservation-deployment-modal-row--split">
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Request ID:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requestIdentifier }}</span>
+            <div class="reservation-deployment-modal-meta-list">
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Request ID:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestDisplayIdentifier || reservationRecord.requestIdentifier }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Requester:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterFullName }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Role:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterRole }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Department:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterDepartment }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Requested Date:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestedDate }}</span>
+              </div>
             </div>
-            <div class="reservation-deployment-modal-field reservation-deployment-modal-field--right">
+
+            <div class="reservation-deployment-modal-type-card">
               <span class="reservation-deployment-modal-label">Request Type:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requestType }}</span>
+              <strong class="reservation-deployment-modal-type-value">{{ reservationRecord.requestType }}</strong>
             </div>
           </div>
 
-          <!-- Requester Info -->
-          <div class="reservation-deployment-modal-info-block">
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Requester:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterFullName }}</span>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Role:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterRole }}</span>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Department:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requesterDepartment }}</span>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Requested Date:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requestedDate }}</span>
-            </div>
-          </div>
-
-          <!-- Divider -->
           <div class="reservation-deployment-modal-divider"></div>
 
-          <!-- Activity Info -->
-          <div class="reservation-deployment-modal-info-block">
-            <div class="reservation-deployment-modal-row">
+          <div class="reservation-deployment-modal-flow-grid">
+            <div class="reservation-deployment-modal-flow-column">
               <div class="reservation-deployment-modal-field">
                 <span class="reservation-deployment-modal-label">Activity Date:</span>
                 <span class="reservation-deployment-modal-value">{{ reservationRecord.activityDate }}</span>
               </div>
-              <div class="reservation-deployment-modal-field" style="margin-left: 1.5rem;">
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Activity Name/Title:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityNameTitle }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Purpose:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestPurpose }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">No. of Participants:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.participantCount }}</span>
+              </div>
+            </div>
+
+            <div class="reservation-deployment-modal-flow-column">
+              <div class="reservation-deployment-modal-field">
                 <span class="reservation-deployment-modal-label">Activity Time:</span>
                 <span class="reservation-deployment-modal-value">{{ reservationRecord.activityEndTime }}</span>
               </div>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Activity Name/Title:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.activityNameTitle }}</span>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">Purpose:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.requestPurpose }}</span>
-            </div>
-            <div class="reservation-deployment-modal-field">
-              <span class="reservation-deployment-modal-label">No. of Participants:</span>
-              <span class="reservation-deployment-modal-value">{{ reservationRecord.participantCount }}</span>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Schedule:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestSchedule }}</span>
+              </div>
+              <div class="reservation-deployment-modal-field">
+                <span class="reservation-deployment-modal-label">Facility:</span>
+                <span class="reservation-deployment-modal-value">{{ reservationRecord.facilityName }}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Divider -->
           <div class="reservation-deployment-modal-divider"></div>
 
-          <!-- Status -->
-          <div class="reservation-deployment-modal-field">
-            <span class="reservation-deployment-modal-label">Status:</span>
-            <span class="reservation-deployment-modal-value reservation-deployment-modal-value--status">{{ reservationRecord.deploymentStatus }}</span>
+          <div class="reservation-deployment-modal-status-row">
+            <div class="reservation-deployment-modal-field">
+              <span class="reservation-deployment-modal-label">Status:</span>
+              <span class="reservation-deployment-modal-value reservation-deployment-modal-value--status">{{ reservationRecord.deploymentStatus }}</span>
+            </div>
           </div>
 
-          <!-- Reservation Summary -->
+          <div class="reservation-deployment-modal-remarks">
+            <p class="reservation-deployment-modal-section-label">Remarks:</p>
+            <div class="reservation-deployment-modal-remarks-box">
+              {{ reservationRecord.remarks || 'No remarks added yet.' }}
+            </div>
+          </div>
+
           <div class="reservation-deployment-modal-section">
             <p class="reservation-deployment-modal-section-label">Reservation Summary:</p>
             <table class="reservation-deployment-modal-summary-table">
@@ -105,23 +115,20 @@
             </table>
           </div>
 
-          <!-- Divider -->
           <div class="reservation-deployment-modal-divider"></div>
 
-          <!-- Assigned FO Personnel -->
           <div class="reservation-deployment-modal-field">
             <span class="reservation-deployment-modal-label">Assigned FO Personnel:</span>
             <span class="reservation-deployment-modal-value">{{ reservationRecord.assignedPersonnel }}</span>
           </div>
         </div>
 
-        <!-- Action Buttons -->
         <div class="reservation-deployment-modal-actions">
           <button class="reservation-deployment-modal-action-button reservation-deployment-modal-action-button--return" @click="handleShowReturnForm">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
-            Return Confirmation
+            Completed
           </button>
           <button class="reservation-deployment-modal-action-button reservation-deployment-modal-action-button--report" @click="handleReportClick">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -129,12 +136,11 @@
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            Report
+            Overdue
           </button>
         </div>
       </template>
 
-      <!-- RETURN FORM VIEW: Record Equipment Return -->
       <template v-else>
         <div class="reservation-deployment-return-section">
           <h3 class="reservation-deployment-return-heading">Record Equipment Return</h3>
