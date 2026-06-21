@@ -157,15 +157,23 @@ function routeWithBackendAccount({ authStore, router, token, backendAccount, cle
 }
 
 function buildClerkAuthAccount(backendAccount, clerkUser, emailAddress, roleDesignation, backendStatus) {
+  const resolvedFirstName = backendAccount?.firstName || clerkUser.firstName || '';
+  const resolvedLastName = backendAccount?.lastName || clerkUser.lastName || '';
+  const resolvedEmailAddress = backendAccount?.emailAddress || emailAddress || '';
+  const resolvedContactNumber = backendAccount?.contactNumber
+    || clerkUser.publicMetadata?.contactNumber
+    || clerkUser.publicMetadata?.techreserve_contact_number
+    || '';
+
   return {
     ...backendAccount,
     accountIdentifier: backendAccount?.accountIdentifier || clerkUser.id,
     clerkUserId: clerkUser.id,
-    firstName: backendStatus === 'disabled' ? backendAccount?.firstName || clerkUser.firstName || '' : clerkUser.firstName || '',
-    lastName: backendStatus === 'disabled' ? backendAccount?.lastName || clerkUser.lastName || '' : clerkUser.lastName || '',
-    emailAddress,
+    firstName: resolvedFirstName,
+    lastName: resolvedLastName,
+    emailAddress: resolvedEmailAddress,
     roleDesignation: backendAccount?.roleDesignation || roleDesignation,
-    contactNumber: clerkUser.publicMetadata?.contactNumber || '',
+    contactNumber: resolvedContactNumber,
     status: backendStatus,
     isApproved: backendAccount.isApproved === true,
     isVerified: backendStatus === 'active' || backendStatus === 'verified' || backendAccount?.isVerified === true,

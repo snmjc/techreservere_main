@@ -96,7 +96,7 @@ export function clearStoredClerkAccount() {
 }
 
 async function fetchCurrentAccount(token) {
-  const response = await fetch(buildApiUrl('/api/v1/accounts/me'), {
+  const response = await fetch(buildApiUrl('/api/v1/users/me'), {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
