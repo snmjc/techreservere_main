@@ -6,7 +6,7 @@
   >
     <!-- Page Header -->
     <div class="borrower-sublist-page-header">
-      <h2 class="borrower-sublist-page-heading">Active Reservations</h2>
+      <h2 class="borrower-sublist-page-heading">Today's Active Reservations</h2>
       <span class="borrower-sublist-go-back-link" @click="navigateBackToMyReservations">Go Back</span>
     </div>
 

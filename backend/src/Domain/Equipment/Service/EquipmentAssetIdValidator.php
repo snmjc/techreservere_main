@@ -4,10 +4,13 @@ namespace App\Domain\Equipment\Service;
 
 class EquipmentAssetIdValidator
 {
-    private const ASSET_ID_PATTERN = '/^F\d{3}-\d{3}-\d{3}$/';
+    private const LEGACY_ASSET_ID_PATTERN = '/^F\d{3}-\d{3}-\d{3}$/';
+    private const GENERATED_ASSET_ID_PATTERN = '/^TR-[A-Z]{3}-\d{4}$/';
 
     public function isValid(string $assetId): bool
     {
-        return preg_match(self::ASSET_ID_PATTERN, trim($assetId)) === 1;
+        $normalizedAssetId = trim($assetId);
+        return preg_match(self::LEGACY_ASSET_ID_PATTERN, $normalizedAssetId) === 1
+            || preg_match(self::GENERATED_ASSET_ID_PATTERN, $normalizedAssetId) === 1;
     }
 }

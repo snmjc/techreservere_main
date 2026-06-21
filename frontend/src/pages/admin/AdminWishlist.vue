@@ -434,7 +434,7 @@
 
           <div class="admin-wishlist-modal-heading">
             <h2>Deny Account Request</h2>
-            <p>Review the request email before confirming denial. This will prevent the account from being invited.</p>
+            <p>Confirm the responsible admin before denying this request. This will prevent the account from being invited.</p>
           </div>
 
           <div class="admin-wishlist-approval-profile admin-wishlist-denial-profile">

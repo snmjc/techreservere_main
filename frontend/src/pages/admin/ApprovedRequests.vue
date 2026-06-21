@@ -9,7 +9,7 @@
         <div class="admin-ops-header-copy">
           <p class="admin-ops-kicker">Release Workflow</p>
           <h1>Approved Requests</h1>
-          <p>Monitor approved reservations, review workflow details, and move requests forward to deployment or cancellation.</p>
+          <p>Monitor approved reservations scheduled for future dates, review workflow details, and move requests forward before their reservation day.</p>
         </div>
       </header>
 
@@ -345,7 +345,6 @@
                 <span>Admin Email</span>
                 <input v-model.trim="deployForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
-
             </div>
           </div>
         </div>
@@ -440,7 +439,6 @@
                 <span>Admin Email</span>
                 <input v-model.trim="cancelForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
               </label>
-
             </div>
           </div>
         </div>
@@ -457,7 +455,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';

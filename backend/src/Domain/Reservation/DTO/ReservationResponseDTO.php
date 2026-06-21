@@ -19,6 +19,7 @@ class ReservationResponseDTO
     public ?string $borrowerContactNumber;
     public string $organizationName;
     public ?int $venueIdentifier;
+    public ?string $venueName;
     public array $requestedEquipmentList;
     public int $requestedQuantity;
     public string $eventDateTime;
@@ -38,6 +39,7 @@ class ReservationResponseDTO
         int $borrowerAccountId,
         string $organizationName,
         ?int $venueIdentifier,
+        ?string $venueName,
         array $requestedEquipmentList,
         int $requestedQuantity,
         string $eventDateTime,
@@ -66,6 +68,7 @@ class ReservationResponseDTO
         $this->borrowerContactNumber = $borrowerContactNumber;
         $this->organizationName = $organizationName;
         $this->venueIdentifier = $venueIdentifier;
+        $this->venueName = $venueName;
         $this->requestedEquipmentList = $requestedEquipmentList;
         $this->requestedQuantity = $requestedQuantity;
         $this->eventDateTime = $eventDateTime;
@@ -93,6 +96,7 @@ class ReservationResponseDTO
             'borrowerContactNumber' => $this->borrowerContactNumber,
             'organizationName' => $this->organizationName,
             'venueIdentifier' => $this->venueIdentifier,
+            'venueName' => $this->venueName,
             'requestedEquipmentList' => $this->requestedEquipmentList,
             'requestedQuantity' => $this->requestedQuantity,
             'eventDateTime' => $this->eventDateTime,

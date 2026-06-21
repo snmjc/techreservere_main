@@ -55,6 +55,17 @@ class EquipmentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    public function findHighestGeneratedAssetIdForCategoryPrefix(string $categoryPrefix): ?EquipmentEntity
+    {
+        return $this->createQueryBuilder('equip')
+            ->where('equip.assetId LIKE :assetPrefix')
+            ->setParameter('assetPrefix', sprintf('TR-%s-%%', strtoupper(trim($categoryPrefix))))
+            ->orderBy('equip.assetId', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function persistEquipment(EquipmentEntity $equipmentEntity): void
     {
         $entityManager = $this->getEntityManager();

@@ -43,8 +43,9 @@
           </label>
 
           <label class="venue-modal-form-group">
-            <span class="venue-modal-label">Availability Date <em>*</em></span>
+            <span class="venue-modal-label">Reservation Availability Start Date <em>*</em></span>
             <input v-model="formData.availabilityDate" type="date" class="venue-modal-input" />
+            <small class="venue-modal-hint">Set the first date this venue may accept reservations.</small>
           </label>
 
           <label class="venue-modal-form-group">

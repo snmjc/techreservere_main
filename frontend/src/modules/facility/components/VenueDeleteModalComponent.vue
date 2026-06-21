@@ -42,7 +42,7 @@
             <strong>{{ formatVenueCapacity(venue?.capacityLimit) }}</strong>
           </div>
           <div>
-            <span>Availability Date</span>
+            <span>Reservation Availability Start</span>
             <strong>{{ formatDisplayDate(venue?.availabilityDate) }}</strong>
           </div>
           <div>

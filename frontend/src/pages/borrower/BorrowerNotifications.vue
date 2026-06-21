@@ -5,7 +5,6 @@
     :navigation-items="borrowerNavigationItems"
   >
     <div class="borrower-notifications-page">
-      <!-- Header Section -->
       <div class="notifications-header">
         <h1 class="notifications-title">Notifications</h1>
         <button @click="markAllAsRead" class="mark-all-read-btn">
@@ -13,7 +12,6 @@
         </button>
       </div>
 
-      <!-- Search and Filter Section -->
       <div class="notifications-controls">
         <div class="search-group">
           <label for="searchInput">Search:</label>
@@ -36,7 +34,6 @@
         </div>
       </div>
 
-      <!-- Filter Tabs -->
       <div class="filter-tabs">
         <button
           v-for="tab in filterTabs"
@@ -48,7 +45,6 @@
         </button>
       </div>
 
-      <!-- Notifications List -->
       <div class="notifications-list">
         <div v-if="filteredNotifications.length === 0" class="empty-state">
           <p>No notifications</p>
@@ -60,37 +56,24 @@
           class="notification-item"
           :class="{ unread: !notification.isRead }"
         >
-          <!-- Icon -->
           <div class="notification-icon">
             <component :is="getNotificationIcon(notification.type)" />
           </div>
 
-          <!-- Content -->
           <div class="notification-content">
             <h3 class="notification-title">{{ notification.title }}</h3>
             <p class="notification-description">{{ notification.description }}</p>
           </div>
 
-          <!-- Time -->
           <div class="notification-time">
             {{ formatTime(notification.timestamp) }}
           </div>
 
-          <!-- Unread Indicator -->
           <div
             v-if="!notification.isRead"
             class="unread-dot"
             @click="markAsRead(notification.id)"
           ></div>
-
-          <!-- Delete Button -->
-          <button
-            @click="deleteNotification(notification.id)"
-            class="delete-btn"
-            title="Delete notification"
-          >
-            🗑️
-          </button>
         </div>
       </div>
     </div>
@@ -98,17 +81,19 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import NotificationIconReservation from '@/components/icons/NotificationIconReservation.vue';
 import NotificationIconEquipment from '@/components/icons/NotificationIconEquipment.vue';
 import NotificationIconSystem from '@/components/icons/NotificationIconSystem.vue';
 import NotificationIconMaintenance from '@/components/icons/NotificationIconMaintenance.vue';
+import { useNotificationStore } from '@/modules/notification/store/notificationStore.js';
 
 const searchQuery = ref('');
 const activeFilter = ref('all');
 const sortBy = ref('all');
+const notificationStore = useNotificationStore();
 
 const filterTabs = [
   { label: 'All', value: 'all' },
@@ -117,112 +102,47 @@ const filterTabs = [
   { label: 'System', value: 'system' }
 ];
 
-const notifications = ref([
-  {
-    id: 1,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Juan Dela Cruz requested 5 white tables.',
-    timestamp: new Date(Date.now() - 1 * 60000),
-    isRead: false
-  },
-  {
-    id: 2,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Michael Que requested F503.',
-    timestamp: new Date(Date.now() - 20 * 60000),
-    isRead: false
-  },
-  {
-    id: 3,
-    type: 'equipment',
-    title: 'Overdue Equipment',
-    description: '2 equipment items are overdue.',
-    timestamp: new Date(Date.now() - 21 * 60000),
-    isRead: false
-  },
-  {
-    id: 4,
-    type: 'system',
-    title: 'System Update',
-    description: 'Database backup completed.',
-    timestamp: new Date(Date.now() - 3 * 60 * 60000),
-    isRead: false
-  },
-  {
-    id: 5,
-    type: 'reservation',
-    title: 'New Reservation Request',
-    description: 'Marina Summers requested 2 speakers.',
-    timestamp: new Date(Date.now() - 5 * 60 * 60000),
-    isRead: true
-  },
-  {
-    id: 6,
-    type: 'maintenance',
-    title: 'Maintenance Alert',
-    description: 'Chairs are incomplete.',
-    timestamp: new Date(Date.now() - 5 * 60 * 60000),
-    isRead: true
-  },
-  {
-    id: 7,
-    type: 'equipment',
-    title: 'Overdue Equipment',
-    description: '1 equipment item is overdue.',
-    timestamp: new Date(Date.now() - 6 * 60 * 60000),
-    isRead: true
-  }
-]);
+const notifications = computed(() => notificationStore.notifications || []);
+
+onMounted(() => {
+  notificationStore.fetchNotifications().catch(() => {});
+});
 
 const filteredNotifications = computed(() => {
-  let filtered = notifications.value;
+  let filtered = [...notifications.value];
 
-  // Apply filter tab
   if (activeFilter.value !== 'all') {
     if (activeFilter.value === 'unread') {
-      filtered = filtered.filter(n => !n.isRead);
+      filtered = filtered.filter((notification) => !notification.isRead);
     } else {
-      filtered = filtered.filter(n => n.type === activeFilter.value);
+      filtered = filtered.filter((notification) => notification.type === activeFilter.value);
     }
   }
 
-  // Apply search
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(
-      n =>
-        n.title.toLowerCase().includes(query) ||
-        n.description.toLowerCase().includes(query)
+      (notification) =>
+        notification.title.toLowerCase().includes(query)
+        || notification.description.toLowerCase().includes(query)
     );
   }
 
-  // Apply sorting
   if (sortBy.value === 'newest') {
-    filtered.sort((a, b) => b.timestamp - a.timestamp);
+    filtered.sort((first, second) => second.timestamp - first.timestamp);
   } else if (sortBy.value === 'oldest') {
-    filtered.sort((a, b) => a.timestamp - b.timestamp);
+    filtered.sort((first, second) => first.timestamp - second.timestamp);
   }
 
   return filtered;
 });
 
-const markAllAsRead = () => {
-  notifications.value.forEach(n => {
-    n.isRead = true;
-  });
+const markAllAsRead = async () => {
+  await notificationStore.markAllAsRead().catch(() => {});
 };
 
-const markAsRead = (notificationId) => {
-  const notification = notifications.value.find(n => n.id === notificationId);
-  if (notification) {
-    notification.isRead = true;
-  }
-};
-
-const deleteNotification = (notificationId) => {
-  notifications.value = notifications.value.filter(n => n.id !== notificationId);
+const markAsRead = async (notificationId) => {
+  await notificationStore.markAsRead(notificationId).catch(() => {});
 };
 
 const getNotificationIcon = (type) => {
@@ -455,19 +375,6 @@ const formatTime = (timestamp) => {
 
 .unread-dot:hover {
   background-color: #145a30;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: 0.25rem 0.5rem;
-  transition: opacity 0.2s ease;
-}
-
-.delete-btn:hover {
-  opacity: 0.7;
 }
 
 @media (max-width: 768px) {

@@ -17,16 +17,29 @@ class TaskReadService
         return $rows[0] ?? null;
     }
 
-    public function fetchTaskRows(?int $taskIdentifier = null): array
+    public function fetchTaskRowsByReservation(int $reservationIdentifier): array
+    {
+        return $this->fetchTaskRows(null, $reservationIdentifier);
+    }
+
+    public function fetchTaskRows(?int $taskIdentifier = null, ?int $reservationIdentifier = null): array
     {
         $params = [];
         $types = [];
-        $where = '';
+        $whereParts = [];
         if ($taskIdentifier !== null) {
-            $where = 'WHERE tasks.task_identifier = :taskIdentifier';
+            $whereParts[] = 'tasks.task_identifier = :taskIdentifier';
             $params['taskIdentifier'] = $taskIdentifier;
             $types['taskIdentifier'] = ParameterType::INTEGER;
         }
+
+        if ($reservationIdentifier !== null) {
+            $whereParts[] = 'tasks.reservation_identifier = :reservationIdentifier';
+            $params['reservationIdentifier'] = $reservationIdentifier;
+            $types['reservationIdentifier'] = ParameterType::INTEGER;
+        }
+
+        $where = $whereParts === [] ? '' : ('WHERE ' . implode(' AND ', $whereParts));
 
         $rows = $this->connection->fetchAllAssociative(
             "SELECT tasks.task_identifier,
@@ -44,6 +57,7 @@ class TaskReadService
                     reservations.organization_name,
                     reservations.end_date_time,
                     reservations.event_date_time,
+                    reservations.activity_type,
                     reservations.venue_identifier,
                     reservations.current_status AS reservation_status,
                     venues.venue_name,
@@ -74,6 +88,7 @@ class TaskReadService
             $reservationParts = [
                 $row['reservation_code'] ? (string)$row['reservation_code'] : '#' . $reservationIdentifier,
                 $row['organization_name'] ? (string)$row['organization_name'] : null,
+                $row['venue_name'] ? (string)$row['venue_name'] : null,
             ];
             $reservationLabel = implode(' - ', array_filter($reservationParts));
         }
@@ -85,6 +100,10 @@ class TaskReadService
             'reservationIdentifier' => $reservationIdentifier,
             'reservationLabel' => $reservationLabel,
             'reservationStatus' => $row['reservation_status'] ? (string)$row['reservation_status'] : null,
+            'reservationEventDateTime' => $row['event_date_time'] ? (string)$row['event_date_time'] : null,
+            'reservationActivityType' => $row['activity_type'] ? (string)$row['activity_type'] : null,
+            'venueIdentifier' => $row['venue_identifier'] !== null ? (int)$row['venue_identifier'] : null,
+            'venueName' => $row['venue_name'] ? (string)$row['venue_name'] : null,
             'reservationCode' => $row['reservation_code'] ? (string)$row['reservation_code'] : null,
             'facilityName' => $row['venue_name'] ? (string)$row['venue_name'] : null,
             'organizationName' => $row['organization_name'] ? (string)$row['organization_name'] : null,

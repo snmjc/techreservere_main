@@ -57,6 +57,15 @@ class EquipmentEntity
     #[ORM\Column(name: 'photo_data', type: Types::TEXT, nullable: true)]
     private ?string $photoData = null;
 
+    #[ORM\Column(name: 'photo_display_mode', type: Types::STRING, length: 20, options: ['default' => 'contain'])]
+    private string $photoDisplayMode = 'contain';
+
+    #[ORM\Column(name: 'photo_position_x', type: Types::INTEGER, options: ['default' => 50])]
+    private int $photoPositionX = 50;
+
+    #[ORM\Column(name: 'photo_position_y', type: Types::INTEGER, options: ['default' => 50])]
+    private int $photoPositionY = 50;
+
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdTimestamp;
 
@@ -106,6 +115,12 @@ class EquipmentEntity
     public function setSerialNumber(string $serialNumber): self { $this->assetId = $serialNumber; return $this; }
     public function getPhotoData(): ?string { return $this->photoData; }
     public function setPhotoData(?string $photoData): self { $this->photoData = $photoData; return $this; }
+    public function getPhotoDisplayMode(): string { return $this->photoDisplayMode; }
+    public function setPhotoDisplayMode(string $photoDisplayMode): self { $this->photoDisplayMode = $photoDisplayMode; return $this; }
+    public function getPhotoPositionX(): int { return $this->photoPositionX; }
+    public function setPhotoPositionX(int $photoPositionX): self { $this->photoPositionX = $photoPositionX; return $this; }
+    public function getPhotoPositionY(): int { return $this->photoPositionY; }
+    public function setPhotoPositionY(int $photoPositionY): self { $this->photoPositionY = $photoPositionY; return $this; }
     public function getCreatedTimestamp(): \DateTimeInterface { return $this->createdTimestamp; }
     public function getUpdatedTimestamp(): \DateTimeInterface { return $this->updatedTimestamp; }
 }

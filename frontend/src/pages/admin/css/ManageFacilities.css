@@ -613,6 +613,57 @@ body {
   width: 100%;
 }
 
+.manage-facilities-dispatch-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.manage-facilities-dispatch-summary-card,
+.manage-facilities-dispatch-summary-list {
+  padding: 1rem 1.1rem;
+  background: #ffffff;
+  border: 1px solid var(--manage-facilities-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(17, 34, 23, 0.05);
+}
+
+.manage-facilities-dispatch-summary-list h3 {
+  margin: 0 0 0.65rem;
+  color: var(--manage-facilities-ink-900);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.manage-facilities-dispatch-summary-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manage-facilities-dispatch-summary-list li {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.7rem 0.75rem;
+  background: var(--manage-facilities-surface-alt);
+  border: 1px solid var(--manage-facilities-border);
+  border-radius: 12px;
+}
+
+.manage-facilities-dispatch-summary-list li strong {
+  color: var(--manage-facilities-ink-900);
+  font-size: 0.82rem;
+}
+
+.manage-facilities-dispatch-summary-list li span {
+  color: var(--manage-facilities-ink-700);
+  font-size: 0.77rem;
+  line-height: 1.45;
+}
+
 /* ========================================= */
 /* FOOTER                                    */
 /* ========================================= */
@@ -1048,7 +1099,8 @@ body {
   }
 
   .manage-facilities-summary-grid,
-  .manage-facilities-venue-layout {
+  .manage-facilities-venue-layout,
+  .manage-facilities-dispatch-summary {
     grid-template-columns: 1fr;
   }
 

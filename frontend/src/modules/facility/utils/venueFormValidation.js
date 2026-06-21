@@ -1,5 +1,6 @@
 const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
 const PHOTO_FILE_EXTENSION_PATTERN = /\.jpe?g$/i;
+const FLOOR_CATEGORY_PATTERN = /^(?:\d+(?:st|nd|rd|th)\s+Floor|GF \/ 1st Floor|MH Floor|Pool|Outdoor)$/i;
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const MAX_VENUE_IMAGE_DATA_URL_LENGTH = 1_500_000;
 const VENUE_PHOTO_COMPRESSION_STEPS = [
@@ -174,6 +175,21 @@ export function deriveVenueAvailabilityForDate(venueRecord, selectedDate) {
   }
 
   return normalizedDate >= availableDate ? 'Available' : 'Unavailable';
+}
+
+export function isVenueFloorPlaceholderRecord(venueRecord) {
+  const venueName = String(venueRecord?.venueName || '').trim();
+  const floorLevel = String(venueRecord?.floorLevel || '').trim();
+
+  if (venueName === '') {
+    return false;
+  }
+
+  const normalizedVenueName = venueName.toLowerCase();
+  const normalizedFloorLevel = floorLevel.toLowerCase();
+
+  return FLOOR_CATEGORY_PATTERN.test(venueName)
+    && (normalizedFloorLevel === '' || normalizedVenueName === normalizedFloorLevel);
 }
 
 function normalizeOptionalPhotoData(photoData) {

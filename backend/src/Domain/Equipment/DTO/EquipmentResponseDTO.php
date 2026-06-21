@@ -18,6 +18,11 @@ class EquipmentResponseDTO
         public string $barcode,
         public string $assetId,
         public ?string $photoData,
+        public string $photoDisplayMode,
+        public int $photoPositionX,
+        public int $photoPositionY,
+        public int $dispatchedTodayQuantity,
+        public int $dispatchedTodayReservationCount,
         public string $createdTimestamp,
         public string $updatedTimestamp
     ) {
@@ -40,6 +45,11 @@ class EquipmentResponseDTO
             'assetId' => $this->assetId,
             'serialNumber' => $this->assetId,
             'photoData' => $this->photoData,
+            'photoDisplayMode' => $this->photoDisplayMode,
+            'photoPositionX' => $this->photoPositionX,
+            'photoPositionY' => $this->photoPositionY,
+            'dispatchedTodayQuantity' => $this->dispatchedTodayQuantity,
+            'dispatchedTodayReservationCount' => $this->dispatchedTodayReservationCount,
             'createdTimestamp' => $this->createdTimestamp,
             'updatedTimestamp' => $this->updatedTimestamp,
             'categoryName' => $this->equipmentCategory,

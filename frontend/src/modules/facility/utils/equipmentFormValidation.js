@@ -1,6 +1,8 @@
-const JPG_DATA_URL_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/=\r\n]+$/;
-const PHOTO_FILE_EXTENSION_PATTERN = /\.jpg$/i;
-const ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
+const PHOTO_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\r\n]+$/i;
+const PHOTO_FILE_EXTENSION_PATTERN = /\.(jpg|jpeg|png|webp)$/i;
+const GENERATED_ASSET_ID_PATTERN = /^TR-[A-Z]{3}-\d{4}$/;
+const LEGACY_ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
+const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 const EQUIPMENT_FORM_VALIDATORS = [
   {
@@ -28,20 +30,12 @@ const EQUIPMENT_FORM_VALIDATORS = [
     message: 'Description is required.',
   },
   {
-    isInvalid: (form) => form.barcode === '',
-    message: 'Barcode is required.',
+    isInvalid: (form) => Boolean(form.assetId) && !isSupportedAssetId(form.assetId),
+    message: 'Asset ID must match the generated TechReserve format.',
   },
   {
-    isInvalid: (form) => form.assetId === '',
-    message: 'Asset ID is required.',
-  },
-  {
-    isInvalid: (form) => ASSET_ID_PATTERN.test(form.assetId) !== true,
-    message: 'Asset ID must follow the format F123-456-789.',
-  },
-  {
-    isInvalid: (form) => Boolean(form.photoData) && JPG_DATA_URL_PATTERN.test(form.photoData) !== true,
-    message: 'Equipment photo must be a valid JPG image.',
+    isInvalid: (form) => Boolean(form.photoData) && PHOTO_DATA_URL_PATTERN.test(form.photoData) !== true,
+    message: 'Equipment photo must be a valid JPG, PNG, or WebP image.',
   },
 ];
 
@@ -61,6 +55,9 @@ export function normalizeEquipmentForm(form) {
     assetId: normalizedAssetId,
     serialNumber: normalizedAssetId,
     photoData: normalizeOptionalPhotoData(form?.photoData),
+    photoDisplayMode: normalizePhotoDisplayMode(form?.photoDisplayMode),
+    photoPositionX: normalizePhotoPosition(form?.photoPositionX),
+    photoPositionY: normalizePhotoPosition(form?.photoPositionY),
   };
 }
 
@@ -76,7 +73,7 @@ export function validateEquipmentPhotoFile(file) {
   }
 
   if (!isJpgPhotoFile(file)) {
-    return 'Equipment photo must be a .jpg image only.';
+    return 'Equipment photo must be a JPG, PNG, or WebP image.';
   }
 
   return '';
@@ -98,5 +95,22 @@ function normalizeOptionalPhotoData(photoData) {
 
 function isJpgPhotoFile(file) {
   const fileName = String(file?.name || '');
-  return PHOTO_FILE_EXTENSION_PATTERN.test(fileName) && file?.type === 'image/jpeg';
+  return PHOTO_FILE_EXTENSION_PATTERN.test(fileName) && ALLOWED_PHOTO_MIME_TYPES.has(String(file?.type || '').toLowerCase());
+}
+
+function isSupportedAssetId(assetId) {
+  return GENERATED_ASSET_ID_PATTERN.test(assetId) || LEGACY_ASSET_ID_PATTERN.test(assetId);
+}
+
+function normalizePhotoDisplayMode(value) {
+  return String(value || '').trim().toLowerCase() === 'cover' ? 'cover' : 'contain';
+}
+
+function normalizePhotoPosition(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return 50;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
 }

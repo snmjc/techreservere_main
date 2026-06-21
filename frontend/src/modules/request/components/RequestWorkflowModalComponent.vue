@@ -113,6 +113,26 @@
 
         <div class="request-workflow-modal-divider"></div>
 
+        <div class="request-workflow-modal-info-block">
+          <div class="request-workflow-modal-field">
+            <span class="request-workflow-modal-label">Facility:</span>
+            <span class="request-workflow-modal-value">{{ requestRecord.facilityName || 'N/A' }}</span>
+          </div>
+          <div class="request-workflow-modal-field">
+            <span class="request-workflow-modal-label">Workflow Status:</span>
+            <span class="request-workflow-modal-value">{{ requestRecord.workflowStatus || 'Pending Assignment' }}</span>
+          </div>
+          <div class="request-workflow-modal-field">
+            <span class="request-workflow-modal-label">Task Type:</span>
+            <span class="request-workflow-modal-value">{{ requestRecord.workflowTaskType || 'Not yet assigned' }}</span>
+          </div>
+          <div class="request-workflow-modal-field">
+            <span class="request-workflow-modal-label">Due Schedule:</span>
+            <span class="request-workflow-modal-value">{{ requestRecord.workflowDueDateTimestamp || 'Not yet scheduled' }}</span>
+          </div>
+        </div>
+        <div class="request-workflow-modal-divider"></div>
+
         <div class="request-workflow-modal-field">
           <span class="request-workflow-modal-label">Assigned FO Personnel:</span>
           <span class="request-workflow-modal-value">{{ requestRecord.assignedPersonnel }}</span>
@@ -132,7 +152,7 @@
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-          Edit Workflow
+          {{ Number(requestRecord.workflowTaskCount || 0) > 0 ? 'Edit Workflow' : 'Create Workflow' }}
         </button>
         <button class="request-workflow-modal-action-button request-workflow-modal-action-button--cancel" @click="handleCancelClick">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

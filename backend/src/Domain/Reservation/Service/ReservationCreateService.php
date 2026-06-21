@@ -2,11 +2,14 @@
 
 namespace App\Domain\Reservation\Service;
 
+use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\RoleConstants;
 use Doctrine\DBAL\Connection;
 
 class ReservationCreateService
@@ -14,8 +17,13 @@ class ReservationCreateService
     private ReservationRepository $reservationRepository;
     private bool $reservationSchemaEnsured = false;
 
-    public function __construct(ReservationRepository $reservationRepository, private readonly Connection $connection)
-    {
+    public function __construct(
+        ReservationRepository $reservationRepository,
+        private readonly Connection $connection,
+        private readonly ReservationBookingPolicyService $reservationBookingPolicyService,
+        private readonly NotificationDispatchService $notificationDispatchService,
+        private readonly AccountRepository $accountRepository
+    ) {
         $this->reservationRepository = $reservationRepository;
     }
 
@@ -33,7 +41,6 @@ class ReservationCreateService
     {
         $this->ensureReservationSchemaReady();
         $today = new \DateTimeImmutable('today');
-        $currentYearEnd = new \DateTimeImmutable($today->format('Y') . '-12-31 23:59:59');
 
         if (empty($requestDTO->organizationName)) {
             throw new DomainValidationException('Organization name is required.');
@@ -63,9 +70,7 @@ class ReservationCreateService
             throw new DomainValidationException('Reservation dates must not be earlier than today.');
         }
 
-        if ($eventDateTime > $currentYearEnd || $endDateTime > $currentYearEnd) {
-            throw new DomainValidationException('Reservation dates must be within the current year.');
-        }
+        $this->reservationBookingPolicyService->validateReservationWindow($requestDTO, $eventDateTime, $endDateTime);
 
         foreach ($requestDTO->requestedEquipmentList as $equipmentItem) {
             $requestedQuantity = (int)($equipmentItem['quantity'] ?? 0);
@@ -91,6 +96,7 @@ class ReservationCreateService
         $entity->setSupportingDocuments($requestDTO->supportingDocuments);
 
         $this->reservationRepository->persistReservation($entity);
+        $this->notifyAdminsOfSubmittedReservation($entity);
 
         return $this->transformEntityToDTO($entity);
     }
@@ -132,15 +138,115 @@ class ReservationCreateService
             return;
         }
 
-        $schemaManager = $this->connection->createSchemaManager();
-        if (!$schemaManager->tablesExist(['reservations'])) {
+        $columns = $this->connection->fetchAllAssociative(
+            "SELECT column_name, data_type
+             FROM information_schema.columns
+             WHERE table_schema = CURRENT_SCHEMA()
+               AND table_name = 'reservations'"
+        );
+
+        if ($columns === []) {
             $this->reservationSchemaEnsured = true;
             return;
         }
 
-        $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN IF NOT EXISTS end_date_time TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $columnsByName = [];
+        foreach ($columns as $column) {
+            $columnName = (string)($column['column_name'] ?? '');
+            if ($columnName === '') {
+                continue;
+            }
+
+            $columnsByName[$columnName] = strtolower((string)($column['data_type'] ?? ''));
+        }
+
+        if (!isset($columnsByName['end_date_time'])) {
+            $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN end_date_time TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        }
+
         $this->connection->executeStatement("UPDATE reservations SET end_date_time = event_date_time + INTERVAL '30 minutes' WHERE end_date_time IS NULL");
 
+        if (!isset($columnsByName['updated_timestamp'])) {
+            $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN updated_timestamp TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP');
+        }
+
+        $this->connection->executeStatement('UPDATE reservations SET updated_timestamp = COALESCE(updated_timestamp, submission_timestamp, CURRENT_TIMESTAMP)');
+
+        if (isset($columnsByName['supporting_documents']) && $columnsByName['supporting_documents'] !== 'json') {
+            $this->connection->executeStatement(
+                "ALTER TABLE reservations
+                 ALTER COLUMN supporting_documents TYPE JSON
+                 USING CASE
+                   WHEN supporting_documents IS NULL THEN NULL
+                   WHEN TRIM(supporting_documents::text) = '' THEN NULL
+                   ELSE supporting_documents::json
+                 END"
+            );
+        }
+
         $this->reservationSchemaEnsured = true;
+    }
+
+    private function notifyAdminsOfSubmittedReservation(ReservationEntity $reservation): void
+    {
+        $adminAccounts = $this->accountRepository->findActiveApprovedAccountsByRoles([RoleConstants::ROLE_ADMIN]);
+        if ($adminAccounts === []) {
+            return;
+        }
+
+        $title = 'New Reservation Request';
+        $message = sprintf(
+            '%s submitted %s scheduled for %s.',
+            $this->resolveBorrowerDisplayName($reservation->getBorrowerAccountId()),
+            $this->describeReservationResources($reservation),
+            $reservation->getEventDateTime()->format('F j, Y g:i A')
+        );
+
+        foreach ($adminAccounts as $adminAccount) {
+            $recipientAccountId = (int)($adminAccount->getAccountIdentifier() ?? 0);
+            if ($recipientAccountId <= 0) {
+                continue;
+            }
+
+            $this->notificationDispatchService->sendNotification(
+                $recipientAccountId,
+                $title,
+                $message,
+                'Reservation'
+            );
+        }
+    }
+
+    private function describeReservationResources(ReservationEntity $reservation): string
+    {
+        $hasVenue = $reservation->getVenueIdentifier() !== null;
+        $equipmentItems = $reservation->getRequestedEquipmentList();
+        $hasEquipment = is_array($equipmentItems) && $equipmentItems !== [];
+
+        if ($hasVenue && $hasEquipment) {
+            return 'a venue and equipment request';
+        }
+
+        if ($hasVenue) {
+            return 'a venue request';
+        }
+
+        if ($hasEquipment) {
+            return 'an equipment request';
+        }
+
+        return 'a reservation request';
+    }
+
+    private function resolveBorrowerDisplayName(int $borrowerAccountId): string
+    {
+        $borrowerAccount = $this->accountRepository->find($borrowerAccountId);
+        $borrowerName = trim(sprintf(
+            '%s %s',
+            (string)($borrowerAccount?->getFirstName() ?? ''),
+            (string)($borrowerAccount?->getLastName() ?? '')
+        ));
+
+        return $borrowerName !== '' ? $borrowerName : 'A borrower';
     }
 }

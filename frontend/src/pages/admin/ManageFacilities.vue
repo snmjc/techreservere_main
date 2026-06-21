@@ -153,6 +153,29 @@
     <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
     <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <section v-else-if="activeFacilityTab === 'equipment'" class="manage-facilities-equipment-section">
+      <div class="manage-facilities-dispatch-summary">
+        <div class="manage-facilities-dispatch-summary-card">
+          <span class="manage-facilities-summary-label">Dispatched today</span>
+          <strong class="manage-facilities-summary-value">{{ dispatchedEquipmentCount }}</strong>
+          <p class="manage-facilities-summary-note">Equipment items currently out for today's prepared or deployed reservations.</p>
+        </div>
+        <div class="manage-facilities-dispatch-summary-card">
+          <span class="manage-facilities-summary-label">Units to surrender</span>
+          <strong class="manage-facilities-summary-value">{{ dispatchedEquipmentUnits }}</strong>
+          <p class="manage-facilities-summary-note">Total equipment quantity expected to be surrendered after today's activities.</p>
+        </div>
+        <div class="manage-facilities-dispatch-summary-list">
+          <h3>Needs surrender monitoring</h3>
+          <p v-if="dispatchSummaryRecords.length === 0" class="manage-facilities-summary-note">No equipment is marked as dispatched for today.</p>
+          <ul v-else>
+            <li v-for="equipmentRecord in dispatchSummaryRecords" :key="equipmentRecord.equipmentIdentifier">
+              <strong>{{ formatEquipmentText(equipmentRecord.equipmentName) }}</strong>
+              <span>{{ equipmentRecord.dispatchedTodayQuantity }} unit<span v-if="equipmentRecord.dispatchedTodayQuantity !== 1">s</span> across {{ equipmentRecord.dispatchedTodayReservationCount }} reservation<span v-if="equipmentRecord.dispatchedTodayReservationCount !== 1">s</span></span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <FacilityEquipmentGridComponent
         :equipment-records="filteredEquipmentRecords"
         :availability-filter="availabilityFilter"
@@ -243,6 +266,7 @@
               :src="resolveEquipmentPhoto(deleteEquipmentRecord)"
               :alt="`${formatEquipmentText(deleteEquipmentRecord.equipmentName)} photo`"
               class="manage-facilities-equipment-photo"
+              :style="resolveEquipmentPhotoStyle(deleteEquipmentRecord)"
             />
           </div>
 
@@ -326,12 +350,14 @@ import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import {
   deriveVenueAvailabilityForDate,
+  isVenueFloorPlaceholderRecord,
 } from '@/modules/facility/utils/venueFormValidation.js';
 import {
   formatEquipmentQuantity,
   formatEquipmentStatus,
   formatEquipmentText,
   resolveEquipmentPhoto,
+  resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
 const authStore = useAuthenticationStore();
@@ -494,6 +520,12 @@ const availableManagedCount = computed(() => (
 ));
 
 const unavailableManagedCount = computed(() => Math.max(totalManagedCount.value - availableManagedCount.value, 0));
+const dispatchSummaryRecords = computed(() => [...equipmentList.value]
+  .filter((equipmentRecord) => Number(equipmentRecord.dispatchedTodayQuantity ?? 0) > 0)
+  .sort((left, right) => Number(right.dispatchedTodayQuantity ?? 0) - Number(left.dispatchedTodayQuantity ?? 0)));
+const dispatchedEquipmentCount = computed(() => dispatchSummaryRecords.value.length);
+const dispatchedEquipmentUnits = computed(() => dispatchSummaryRecords.value
+  .reduce((totalUnits, equipmentRecord) => totalUnits + Number(equipmentRecord.dispatchedTodayQuantity ?? 0), 0));
 
 const currentGroupingCount = computed(() => (
   activeFacilityTab.value === 'venue'
@@ -639,7 +671,7 @@ async function fetchVenues() {
     });
     const venuePayload = response?.data?.venues || response?.venues || [];
     venuesList.value = Array.isArray(venuePayload)
-      ? venuePayload.map(normalizeVenueRecord).filter(Boolean)
+      ? venuePayload.map(normalizeVenueRecord).filter(Boolean).filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
       : [];
   } catch (error) {
     venuesList.value = [];

@@ -76,6 +76,33 @@ class AccountRepository extends ServiceEntityRepository
         return $this->findAll();
     }
 
+    /**
+     * @param string[] $roleDesignations
+     * @return AccountEntity[]
+     */
+    public function findActiveApprovedAccountsByRoles(array $roleDesignations): array
+    {
+        $normalizedRoles = array_values(array_filter(array_map(
+            static fn (mixed $role): string => strtoupper(trim((string)$role)),
+            $roleDesignations
+        )));
+
+        if ($normalizedRoles === []) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('account')
+            ->where('UPPER(account.roleDesignation) IN (:roles)')
+            ->andWhere('account.isActive = :isActive')
+            ->andWhere('account.isApproved = :isApproved')
+            ->setParameter('roles', $normalizedRoles)
+            ->setParameter('isActive', true)
+            ->setParameter('isApproved', true)
+            ->orderBy('account.accountIdentifier', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     // ===== AI GENERATED: persistAccount =====
     // Purpose: Persist a new or updated account entity
     // Inputs: accountEntity (AccountEntity)

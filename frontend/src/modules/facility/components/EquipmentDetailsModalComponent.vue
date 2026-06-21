@@ -21,6 +21,7 @@
             :src="resolveEquipmentPhoto(equipment)"
             :alt="`${formatEquipmentText(equipment?.equipmentName)} photo`"
             class="equipment-details-modal-photo"
+            :style="resolveEquipmentPhotoStyle(equipment)"
           />
         </div>
 
@@ -62,6 +63,7 @@ import {
   formatEquipmentStatus,
   formatEquipmentText,
   resolveEquipmentPhoto,
+  resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
 defineProps({
@@ -185,10 +187,10 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-photo {
   width: 100%;
+  min-height: 220px;
   border-radius: 16px;
   border: 1px solid #d9e3dd;
   background: #f7faf8;
-  object-fit: cover;
 }
 
 .equipment-details-modal-grid {

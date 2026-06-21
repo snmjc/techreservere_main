@@ -240,6 +240,8 @@ import './css/CreateReservationVenue.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
+import { MAX_EQUIPMENT_SELECTION_COUNT } from '@/modules/reservation/utils/reservationWizard.js';
+import { isVenueFloorPlaceholderRecord } from '@/modules/facility/utils/venueFormValidation.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
@@ -291,12 +293,14 @@ const showEquipmentSection = computed(() => ['Equipment', 'Both'].includes(reser
 const isVenueTab = computed(() => showVenueSection.value && (!showEquipmentSection.value || activeTab.value === 'venue'));
 const isEquipmentTab = computed(() => showEquipmentSection.value && (!showVenueSection.value || activeTab.value === 'equipment'));
 
-const normalizedVenueRecords = computed(() => venueList.value.map((venue) => ({
-  ...venue,
-  floorLabel: String(venue.floorLevel || 'No Floor'),
-  venueType: inferVenueType(venue),
-  venueAvailable: venue.availabilityStatus === 'Available',
-})));
+const normalizedVenueRecords = computed(() => venueList.value
+  .filter((venue) => !isVenueFloorPlaceholderRecord(venue))
+  .map((venue) => ({
+    ...venue,
+    floorLabel: String(venue.floorLevel || 'No Floor'),
+    venueType: inferVenueType(venue),
+    venueAvailable: venue.availabilityStatus === 'Available',
+  })));
 
 const venueFloorOptions = computed(() => [...new Set(normalizedVenueRecords.value.map((venue) => venue.floorLabel))]);
 
