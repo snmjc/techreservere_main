@@ -129,7 +129,7 @@ const portalLabel = computed(() => {
  *              Falls back to the roleLabel prop when no account is available.
  */
 const displayedNameLabel = computed(() => {
-  const account = authStore.accountData;
+  const account = authStore.accountData || authStore.clerkAccountData;
   if (account && (account.lastName || account.firstName)) {
     const lastName = (account.lastName || '').toUpperCase();
     const firstName = (account.firstName || '').toUpperCase();

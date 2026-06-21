@@ -1,7 +1,9 @@
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useAuth } from '@clerk/vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { getClerkToken } from '@/modules/authentication/utils/clerkAuthUtils.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   AUTH_STORAGE_KEYS,
@@ -11,6 +13,7 @@ import {
 
 export function useSettingsPage() {
   const authStore = useAuthenticationStore();
+  const { getToken } = useAuth();
   const activeTab = ref('account');
   const isLoadingProfile = ref(false);
   const isSavingAccount = ref(false);
@@ -53,7 +56,10 @@ export function useSettingsPage() {
     special: /[^A-Za-z\d]/.test(passwordForm.newPassword),
   }));
 
-  onMounted(loadAccountSettings);
+  onMounted(() => {
+    seedAccountProfileFromSession();
+    loadAccountSettings();
+  });
 
   function selectTab(tabValue) {
     if (tabValue === activeTab.value) return;
@@ -72,7 +78,7 @@ export function useSettingsPage() {
     loadError.value = '';
 
     try {
-      const payload = await requestJson('/api/v1/accounts/me/settings', { headers: buildAuthHeaders() });
+      const payload = await requestJson('/api/v1/accounts/me/settings', { headers: await buildAuthHeaders() });
       applyAccountProfile(payload.data?.account || {});
       fillAccountFormFromProfile();
       await loadEmployeeWorkLogs();
@@ -99,7 +105,7 @@ export function useSettingsPage() {
     try {
       const payload = await requestJson('/api/v1/accounts/me/settings', {
         method: 'PUT',
-        headers: buildAuthHeaders(),
+        headers: await buildAuthHeaders(),
         body: JSON.stringify(buildAccountSettingsBody(accountForm)),
       });
 
@@ -130,7 +136,7 @@ export function useSettingsPage() {
     try {
       await requestJson('/api/v1/accounts/me/password', {
         method: 'PUT',
-        headers: buildAuthHeaders(),
+        headers: await buildAuthHeaders(),
         body: JSON.stringify(passwordForm),
       });
 
@@ -153,7 +159,7 @@ export function useSettingsPage() {
 
     workLogsLoading.value = true;
     try {
-      const payload = await requestJson('/api/v1/accounts/me/work-logs', { headers: buildAuthHeaders() });
+      const payload = await requestJson('/api/v1/accounts/me/work-logs', { headers: await buildAuthHeaders() });
       employeeWorkLogs.value = payload.data?.workLogs || [];
     } catch (error) {
       workLogsError.value = error.message || 'Unable to load work logs.';
@@ -218,12 +224,32 @@ export function useSettingsPage() {
     passwordError.value = '';
   }
 
-  function buildAuthHeaders() {
+  async function buildAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
-    if (authStore.authToken) {
-      headers.Authorization = `Bearer ${authStore.authToken}`;
+    const resolvedToken = await resolveCurrentAuthToken();
+    if (resolvedToken) {
+      headers.Authorization = `Bearer ${resolvedToken}`;
     }
     return headers;
+  }
+
+  async function resolveCurrentAuthToken() {
+    const clerkToken = await getClerkToken(getToken).catch(() => null);
+    if (clerkToken) {
+      return clerkToken;
+    }
+
+    return authStore.authToken || null;
+  }
+
+  function seedAccountProfileFromSession() {
+    const sessionAccount = authStore.accountData || authStore.clerkAccountData;
+    if (!sessionAccount) {
+      return;
+    }
+
+    applyAccountProfile(sessionAccount);
+    fillAccountFormFromProfile();
   }
 
   function applyAccountProfile(account) {
