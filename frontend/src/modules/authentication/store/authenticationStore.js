@@ -27,9 +27,10 @@ export const useAuthenticationStore = defineStore('authentication', () => {
   const accountData = ref(accountDataValue);
   const clerkAccountData = ref(resolveInitialClerkAccount(accountDataValue));
 
-  const isAuthenticated = computed(() => isActiveSession(accountData.value, authToken.value));
-  const userRole = computed(() => getAccountRole(accountData.value));
-  const userFullName = computed(() => getAccountFullName(accountData.value));
+  const activeAccount = computed(() => accountData.value || clerkAccountData.value);
+  const isAuthenticated = computed(() => isActiveSession(activeAccount.value, authToken.value));
+  const userRole = computed(() => getAccountRole(activeAccount.value));
+  const userFullName = computed(() => getAccountFullName(activeAccount.value));
   const clerkIsSignedIn = computed(() => clerkAccountData.value !== null);
   const clerkAccountStatus = computed(() => clerkAccountData.value?.status ?? null);
   const clerkUserRole = computed(() => clerkAccountData.value?.roleDesignation ?? null);
@@ -107,6 +108,7 @@ export const useAuthenticationStore = defineStore('authentication', () => {
 
   return {
     authToken,
+    activeAccount,
     accountData,
     isAuthenticated,
     userRole,
