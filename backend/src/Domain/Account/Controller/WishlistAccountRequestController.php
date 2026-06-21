@@ -31,11 +31,19 @@ class WishlistAccountRequestController
     #[Route('/wishlist', name: 'list_wishlist_users', methods: ['GET'])]
     public function listWishlistUsers(): JsonResponse
     {
-        return $this->serviceResultResponse(
-            $this->workflowService->listWishlistUsers(),
-            'WishlistUsersFailed',
-            'Unable to load wishlist users.'
-        );
+        try {
+            return $this->serviceResultResponse(
+                $this->workflowService->listWishlistUsers(),
+                'WishlistUsersFailed',
+                'Unable to load wishlist users.'
+            );
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse(
+                'WishlistUsersCrashed',
+                'Unable to load wishlist users: ' . $exception->getMessage(),
+                500
+            );
+        }
     }
 
     #[Route('/wishlist/admin-accounts', name: 'create_wishlist_admin_account', methods: ['POST'])]
@@ -143,29 +151,36 @@ class WishlistAccountRequestController
     #[Route('/{accountIdentifier}/supporting-document', name: 'download_wishlist_supporting_document', methods: ['GET'])]
     public function downloadSupportingDocument(int $accountIdentifier): BinaryFileResponse|JsonResponse
     {
-        $document = $this->accountSupportingDocumentService->getSupportingDocumentByAccountIdentifier($accountIdentifier);
-        if (!$document) {
+        try {
+            $document = $this->accountSupportingDocumentService->getSupportingDocumentByAccountIdentifier($accountIdentifier);
+            if (!$document) {
+                return new JsonResponse([
+                    'errorCode' => 'SupportingDocumentNotFound',
+                    'errorMessage' => 'Supporting document not found.',
+                ], 404);
+            }
+
+            $absolutePath = $this->accountSupportingDocumentService->resolveAbsoluteFilePath($document);
+            if ($absolutePath === null) {
+                return new JsonResponse([
+                    'errorCode' => 'SupportingDocumentMissing',
+                    'errorMessage' => 'Supporting document file is no longer available.',
+                ], 404);
+            }
+
+            $response = new BinaryFileResponse($absolutePath);
+            $response->headers->set('Content-Type', (string)($document['signup_supporting_document_mime_type'] ?? 'application/octet-stream'));
+            $response->setContentDisposition(
+                ResponseHeaderBag::DISPOSITION_INLINE,
+                (string)($document['signup_supporting_document_name'] ?? 'supporting-document')
+            );
+
+            return $response;
+        } catch (\Throwable $exception) {
             return new JsonResponse([
-                'errorCode' => 'SupportingDocumentNotFound',
-                'errorMessage' => 'Supporting document not found.',
-            ], 404);
+                'errorCode' => 'SupportingDocumentLoadFailed',
+                'errorMessage' => 'Unable to load supporting document: ' . $exception->getMessage(),
+            ], 500);
         }
-
-        $absolutePath = $this->accountSupportingDocumentService->resolveAbsoluteFilePath($document);
-        if ($absolutePath === null) {
-            return new JsonResponse([
-                'errorCode' => 'SupportingDocumentMissing',
-                'errorMessage' => 'Supporting document file is no longer available.',
-            ], 404);
-        }
-
-        $response = new BinaryFileResponse($absolutePath);
-        $response->headers->set('Content-Type', (string)($document['signup_supporting_document_mime_type'] ?? 'application/octet-stream'));
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_INLINE,
-            (string)($document['signup_supporting_document_name'] ?? 'supporting-document')
-        );
-
-        return $response;
     }
 }

@@ -24,7 +24,7 @@ class WishlistAccountReadService
                     accounts.verification_status, accounts.invitation_status, accounts.clerk_user_id, accounts.invited_at, accounts.approved_at,
                     accounts.created_timestamp, accounts.updated_timestamp,
                     accounts.signup_supporting_document_name, accounts.signup_supporting_document_mime_type,
-                    accounts.signup_supporting_document_data, accounts.signup_supporting_document_path,
+                    accounts.signup_supporting_document_path,
                     staff_info.employee_id_number AS staff_employee_id_number,
                     staff_info.first_name AS staff_first_name,
                     staff_info.last_name AS staff_last_name,
@@ -112,7 +112,7 @@ class WishlistAccountReadService
             'supportingDocumentMimeType' => $supportingDocumentPath !== null && $row['signup_supporting_document_mime_type']
                 ? (string)$row['signup_supporting_document_mime_type']
                 : null,
-            'supportingDocumentData' => $row['signup_supporting_document_data'] ? (string)$row['signup_supporting_document_data'] : null,
+            'supportingDocumentData' => null,
             'supportingDocumentPath' => $supportingDocumentPath,
             'registeredAt' => (string)$row['created_timestamp'],
             'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
@@ -192,8 +192,13 @@ class WishlistAccountReadService
             return null;
         }
 
-        return $this->signupSupportingDocumentStorageService->fileExists($relativePath)
-            ? $relativePath
-            : null;
+        try {
+            return $this->signupSupportingDocumentStorageService->fileExists($relativePath)
+                ? $relativePath
+                : null;
+        } catch (\Throwable) {
+            // Invalid legacy file paths should not block the wishlist page.
+            return null;
+        }
     }
 }
