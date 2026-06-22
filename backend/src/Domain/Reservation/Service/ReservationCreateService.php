@@ -176,31 +176,39 @@ class ReservationCreateService
 
     private function notifyAdminsOfSubmittedReservation(ReservationEntity $reservation): void
     {
-        $adminAccounts = $this->accountRepository->findActiveApprovedAccountsByRoles([RoleConstants::ROLE_ADMIN]);
-        if ($adminAccounts === []) {
-            return;
-        }
-
-        $title = 'New Reservation Request';
-        $message = sprintf(
-            '%s submitted %s scheduled for %s.',
-            $this->resolveBorrowerDisplayName($reservation->getBorrowerAccountId()),
-            $this->describeReservationResources($reservation),
-            $reservation->getEventDateTime()->format('F j, Y g:i A')
-        );
-
-        foreach ($adminAccounts as $adminAccount) {
-            $recipientAccountId = (int)($adminAccount->getAccountIdentifier() ?? 0);
-            if ($recipientAccountId <= 0) {
-                continue;
+        try {
+            $adminAccounts = $this->accountRepository->findActiveApprovedAccountsByRoles([RoleConstants::ROLE_ADMIN]);
+            if ($adminAccounts === []) {
+                return;
             }
 
-            $this->notificationDispatchService->sendNotification(
-                $recipientAccountId,
-                $title,
-                $message,
-                'Reservation'
+            $title = 'New Reservation Request';
+            $message = sprintf(
+                '%s submitted %s scheduled for %s.',
+                $this->resolveBorrowerDisplayName($reservation->getBorrowerAccountId()),
+                $this->describeReservationResources($reservation),
+                $reservation->getEventDateTime()->format('F j, Y g:i A')
             );
+
+            foreach ($adminAccounts as $adminAccount) {
+                $recipientAccountId = (int)($adminAccount->getAccountIdentifier() ?? 0);
+                if ($recipientAccountId <= 0) {
+                    continue;
+                }
+
+                $this->notificationDispatchService->sendNotification(
+                    $recipientAccountId,
+                    $title,
+                    $message,
+                    'Reservation'
+                );
+            }
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Admin notification skipped [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
         }
     }
 

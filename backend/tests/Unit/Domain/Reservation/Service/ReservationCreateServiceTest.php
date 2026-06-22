@@ -160,6 +160,41 @@ class ReservationCreateServiceTest extends TestCase
         $this->assertSame('TR-2026-001', $response->reservationCode);
     }
 
+    public function testCreateReservationStillSucceedsWhenAdminNotificationFails(): void
+    {
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('generateReservationCode')
+            ->willReturn('TR-2026-001');
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('persistReservation');
+
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('findActiveApprovedAccountsByRoles')
+            ->willThrowException(new \RuntimeException('accounts.is_approved column does not exist'));
+
+        $this->notificationDispatchService
+            ->expects($this->never())
+            ->method('sendNotification');
+
+        $response = $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+
+        $this->assertSame('TR-2026-001', $response->reservationCode);
+    }
+
     private function buildIsoDateTime(string $modifier): string
     {
         return (new \DateTimeImmutable($modifier))->format(\DateTimeInterface::ATOM);
