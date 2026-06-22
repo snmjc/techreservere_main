@@ -109,6 +109,7 @@ class ReservationCreateService
             borrowerAccountId: $entity->getBorrowerAccountId(),
             organizationName: $entity->getOrganizationName(),
             venueIdentifier: $entity->getVenueIdentifier(),
+            venueName: null,
             requestedEquipmentList: $entity->getRequestedEquipmentList(),
             requestedQuantity: $entity->getRequestedQuantity(),
             eventDateTime: $entity->getEventDateTime()->format(\DateTime::ATOM),
