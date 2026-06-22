@@ -34,8 +34,8 @@ class DashboardAggregationService
         $totalEquipment = count($equipment);
         $totalReservations = count($reservations);
         $pendingReservations = $this->countReservationsByStatuses($reservations, ['Pending', 'Pending Review']);
-        $approvedReservations = $this->countReservationsByStatuses($reservations, ['Approved', 'Prepared']);
-        $activeReservations = $this->countReservationsByStatuses($reservations, ['Prepared', 'Deployed']);
+        $approvedReservations = $this->countReservationsByScheduleState($reservations, ['Approved', 'Prepared', 'Deployed', 'Active'], 'upcoming');
+        $activeReservations = $this->countReservationsByScheduleState($reservations, ['Approved', 'Prepared', 'Deployed', 'Active'], 'active');
         $completedReservations = $this->countReservationsByStatuses($reservations, ['Completed', 'Returned']);
 
         [$totalEquipmentUnits, $availableEquipmentUnits] = $this->summarizeEquipmentInventory($equipment);
@@ -100,7 +100,7 @@ class DashboardAggregationService
             'summary' => [
                 'totalAccounts' => count($accounts),
                 'pendingReservations' => $this->countReservationsByStatuses($relevantReservations, ['Pending', 'Pending Review']),
-                'approvedReservations' => $this->countReservationsByStatuses($relevantReservations, ['Approved', 'Prepared']),
+                'approvedReservations' => $this->countReservationsByScheduleState($relevantReservations, ['Approved', 'Prepared', 'Deployed', 'Active'], 'upcoming'),
                 'activeEquipmentCount' => max(0, $totalEquipmentUnits - $availableEquipmentUnits),
                 'activeFacilityCount' => $facilityUsageCount,
                 'overdueEquipmentCount' => $this->countOverdueReservationsInRange($overdueReservations, $range['start'], $range['end']),
@@ -245,7 +245,22 @@ class DashboardAggregationService
         return count(array_filter(
             $reservations,
             static fn (ReservationEntity $reservation): bool => $reservation->getVenueIdentifier() !== null
-                && in_array(self::normalizeStatus($reservation->getCurrentStatus()), ['approved', 'prepared', 'deployed'], true)
+                && in_array(self::normalizeStatus($reservation->getCurrentStatus()), ['approved', 'prepared', 'deployed', 'active'], true)
+                && self::resolveReservationScheduleState($reservation) === 'active'
+        ));
+    }
+
+    /**
+     * @param ReservationEntity[] $reservations
+     */
+    private function countReservationsByScheduleState(array $reservations, array $statuses, string $scheduleState): int
+    {
+        $normalizedStatuses = array_map([self::class, 'normalizeStatus'], $statuses);
+
+        return count(array_filter(
+            $reservations,
+            static fn (ReservationEntity $reservation): bool => in_array(self::normalizeStatus($reservation->getCurrentStatus()), $normalizedStatuses, true)
+                && self::resolveReservationScheduleState($reservation) === $scheduleState
         ));
     }
 
@@ -1024,6 +1039,25 @@ class DashboardAggregationService
         return strtolower(trim((string) $value));
     }
 
+    private static function resolveReservationScheduleState(ReservationEntity $reservation): string
+    {
+        $manilaTimezone = new \DateTimeZone('Asia/Manila');
+        $todayKey = (new \DateTimeImmutable('now', $manilaTimezone))->format('Y-m-d');
+        $startKey = (clone $reservation->getEventDateTime())->setTimezone($manilaTimezone)->format('Y-m-d');
+        $endDateTime = $reservation->getEndDateTime() ?? $reservation->getEventDateTime();
+        $endKey = (clone $endDateTime)->setTimezone($manilaTimezone)->format('Y-m-d');
+
+        if ($startKey > $todayKey) {
+            return 'upcoming';
+        }
+
+        if ($endKey < $todayKey) {
+            return 'past';
+        }
+
+        return 'active';
+    }
+
     public function getBorrowerDashboardSummary(int $borrowerAccountId): array
     {
         $userReservations = $this->reservationRepository->findByBorrowerAccountId($borrowerAccountId);
@@ -1035,13 +1069,17 @@ class DashboardAggregationService
 
         foreach ($userReservations as $reservation) {
             $status = $reservation->getCurrentStatus();
+            $scheduleState = self::resolveReservationScheduleState($reservation);
             switch ($status) {
+                case 'Approved':
                 case 'Prepared':
                 case 'Deployed':
-                    $activeReservations++;
-                    break;
-                case 'Approved':
-                    $approvedRequests++;
+                case 'Active':
+                    if ($scheduleState === 'active') {
+                        $activeReservations++;
+                    } elseif ($scheduleState === 'upcoming') {
+                        $approvedRequests++;
+                    }
                     break;
                 case 'Pending':
                 case 'Pending Review':

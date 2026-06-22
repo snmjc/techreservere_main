@@ -105,7 +105,7 @@ const filterTabs = [
 const notifications = computed(() => notificationStore.notifications || []);
 
 onMounted(() => {
-  notificationStore.fetchNotifications().catch(() => {});
+  notificationStore.fetchNotifications(true).catch(() => {});
 });
 
 const filteredNotifications = computed(() => {
