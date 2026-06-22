@@ -126,22 +126,22 @@
   font-weight: 800;
 }
 
-.my-reservations-stat-card.is-active .my-reservations-stat-icon {
+.my-reservations-stat-card.my-reservations-stat-card--active .my-reservations-stat-icon {
   color: #1d4ed8;
   background: #dbeafe;
 }
 
-.my-reservations-stat-card.is-approved .my-reservations-stat-icon {
+.my-reservations-stat-card.my-reservations-stat-card--approved .my-reservations-stat-icon {
   color: #047857;
   background: #d1fae5;
 }
 
-.my-reservations-stat-card.is-pending .my-reservations-stat-icon {
+.my-reservations-stat-card.my-reservations-stat-card--pending .my-reservations-stat-icon {
   color: #a16207;
   background: #fef3c7;
 }
 
-.my-reservations-stat-card.is-completed .my-reservations-stat-icon {
+.my-reservations-stat-card.my-reservations-stat-card--completed .my-reservations-stat-icon {
   color: #6d28d9;
   background: #ede9fe;
 }
