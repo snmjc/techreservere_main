@@ -26,7 +26,21 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
 
-              docker compose -f compose.prod.yml build
+              attempts=0
+              until [ \$attempts -ge 3 ]
+              do
+                if docker compose -f compose.prod.yml build --pull; then
+                  break
+                fi
+
+                attempts=\$((attempts + 1))
+                if [ \$attempts -ge 3 ]; then
+                  exit 1
+                fi
+
+                sleep 10
+              done
+
               docker compose -f compose.prod.yml up -d
 
               docker compose -f compose.prod.yml exec -T backend php bin/console doctrine:migrations:migrate --no-interaction --env=prod
