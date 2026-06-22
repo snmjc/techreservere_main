@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import dashboardApi from '@/modules/dashboard/services/dashboardApi.js';
 import reservationApi from '@/modules/reservation/services/reservationApi.js';
 import taskApi from '@/modules/task/services/taskApi.js';
+import { useNotificationStore } from '@/modules/notification/store/notificationStore.js';
 import {
   buildReservationBuckets,
   normalizeReservationListResponse,
@@ -12,6 +13,7 @@ import {
  * Shared Pinia store for reservation request lists used by admin pages.
  */
 export const useRequestStore = defineStore('requestStore', () => {
+  const notificationStore = useNotificationStore();
   const pendingRequestsList = ref([]);
   const approvedRequestsList = ref([]);
   const activeReservationsList = ref([]);
@@ -122,6 +124,7 @@ export const useRequestStore = defineStore('requestStore', () => {
       if (reservation) {
         console.log('Reservation created successfully:', reservation);
         await fetchReservations();
+        await refreshNotifications();
         return reservation;
       }
     } catch (error) {
@@ -134,6 +137,7 @@ export const useRequestStore = defineStore('requestStore', () => {
     try {
       await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, status, reason, securityConfirmation);
       await fetchReservations();
+      await refreshNotifications();
     } catch (error) {
       console.error(errorMessage, error);
       throw new Error(
@@ -170,6 +174,14 @@ export const useRequestStore = defineStore('requestStore', () => {
     approvedRequestsList.value = [];
     activeReservationsList.value = [];
     pastRecordsList.value = [];
+  }
+
+  async function refreshNotifications() {
+    try {
+      await notificationStore.fetchNotifications(true);
+    } catch (error) {
+      console.warn('Failed to refresh notifications after reservation update:', error);
+    }
   }
 
   return {

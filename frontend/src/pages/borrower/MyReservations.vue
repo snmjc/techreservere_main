@@ -154,11 +154,11 @@ const userFullName = computed(() => authStore.userFullName);
 
 const reservationStats = computed(() => [
   {
-    label: 'Active Reservations',
-    value: activeReservationsCount.value,
-    className: 'is-active',
-    action: navigateToViewReservationList,
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
+    label: 'Pending Requests',
+    value: pendingRequestsCount.value,
+    className: 'is-pending',
+    action: navigateToPendingRequestsLogs,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   },
   {
     label: 'Approved Requests',
@@ -168,11 +168,11 @@ const reservationStats = computed(() => [
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
   },
   {
-    label: 'Pending Requests',
-    value: pendingRequestsCount.value,
-    className: 'is-pending',
-    action: navigateToPendingRequestsLogs,
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    label: 'Active Reservations',
+    value: activeReservationsCount.value,
+    className: 'is-active',
+    action: navigateToViewReservationList,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
   },
   {
     label: 'Completed',
