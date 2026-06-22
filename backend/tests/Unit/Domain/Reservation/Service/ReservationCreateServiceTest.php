@@ -105,6 +105,61 @@ class ReservationCreateServiceTest extends TestCase
         ));
     }
 
+    public function testCreateReservationDoesNotRunRiskySchemaConversionsDuringSubmission(): void
+    {
+        $schemaReadyProperty = new \ReflectionProperty($this->service, 'reservationSchemaEnsured');
+        $schemaReadyProperty->setAccessible(true);
+        $schemaReadyProperty->setValue($this->service, false);
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchAllAssociative')
+            ->willReturn([
+                ['column_name' => 'reservation_identifier', 'data_type' => 'integer'],
+                ['column_name' => 'reservation_code', 'data_type' => 'character varying'],
+                ['column_name' => 'requested_equipment_list', 'data_type' => 'json'],
+                ['column_name' => 'event_date_time', 'data_type' => 'timestamp without time zone'],
+                ['column_name' => 'end_date_time', 'data_type' => 'timestamp without time zone'],
+                ['column_name' => 'supporting_documents', 'data_type' => 'text'],
+                ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone'],
+                ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone'],
+            ]);
+
+        $this->connection
+            ->expects($this->never())
+            ->method('executeStatement');
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('generateReservationCode')
+            ->willReturn('TR-2026-001');
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('persistReservation');
+
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('findActiveApprovedAccountsByRoles')
+            ->willReturn([]);
+
+        $response = $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: null,
+            requestedEquipmentList: [
+                ['equipmentIdentifier' => 9, 'name' => 'Projector', 'quantity' => 1],
+            ],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: ['endorsement.pdf']
+        ));
+
+        $this->assertSame('TR-2026-001', $response->reservationCode);
+    }
+
     private function buildIsoDateTime(string $modifier): string
     {
         return (new \DateTimeImmutable($modifier))->format(\DateTimeInterface::ATOM);

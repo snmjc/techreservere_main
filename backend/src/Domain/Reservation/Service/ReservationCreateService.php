@@ -162,26 +162,12 @@ class ReservationCreateService
 
         if (!isset($columnsByName['end_date_time'])) {
             $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN end_date_time TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+            $this->connection->executeStatement("UPDATE reservations SET end_date_time = event_date_time + INTERVAL '30 minutes' WHERE end_date_time IS NULL");
         }
-
-        $this->connection->executeStatement("UPDATE reservations SET end_date_time = event_date_time + INTERVAL '30 minutes' WHERE end_date_time IS NULL");
 
         if (!isset($columnsByName['updated_timestamp'])) {
             $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN updated_timestamp TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP');
-        }
-
-        $this->connection->executeStatement('UPDATE reservations SET updated_timestamp = COALESCE(updated_timestamp, submission_timestamp, CURRENT_TIMESTAMP)');
-
-        if (isset($columnsByName['supporting_documents']) && $columnsByName['supporting_documents'] !== 'json') {
-            $this->connection->executeStatement(
-                "ALTER TABLE reservations
-                 ALTER COLUMN supporting_documents TYPE JSON
-                 USING CASE
-                   WHEN supporting_documents IS NULL THEN NULL
-                   WHEN TRIM(supporting_documents::text) = '' THEN NULL
-                   ELSE supporting_documents::json
-                 END"
-            );
+            $this->connection->executeStatement('UPDATE reservations SET updated_timestamp = COALESCE(updated_timestamp, submission_timestamp, CURRENT_TIMESTAMP)');
         }
 
         $this->reservationSchemaEnsured = true;
