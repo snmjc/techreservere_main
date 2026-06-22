@@ -11,6 +11,7 @@ use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\RoleConstants;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 
 class ReservationCreateService
 {
@@ -95,10 +96,20 @@ class ReservationCreateService
         $entity->setCurrentStatus('Pending Review');
         $entity->setSupportingDocuments($requestDTO->supportingDocuments);
 
-        $this->reservationRepository->persistReservation($entity);
+        $this->persistReservationWithFallback($entity);
         $this->notifyAdminsOfSubmittedReservation($entity);
 
-        return $this->transformEntityToDTO($entity);
+        try {
+            return $this->transformEntityToDTO($entity);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Response mapping fallback [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+
+            return $this->buildFallbackResponseDTO($entity);
+        }
     }
 
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
@@ -131,6 +142,34 @@ class ReservationCreateService
         $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
+    }
+
+    private function buildFallbackResponseDTO(ReservationEntity $entity): ReservationResponseDTO
+    {
+        $eventDateTime = $entity->getEventDateTime();
+        $endDateTime = $entity->getEndDateTime() ?? $eventDateTime;
+        $submissionTimestamp = $entity->getSubmissionTimestamp() ?? new \DateTime();
+
+        return new ReservationResponseDTO(
+            reservationIdentifier: (int)($entity->getReservationIdentifier() ?? 0),
+            reservationCode: $entity->getReservationCode(),
+            borrowerAccountId: $entity->getBorrowerAccountId(),
+            organizationName: $entity->getOrganizationName(),
+            venueIdentifier: $entity->getVenueIdentifier(),
+            venueName: null,
+            requestedEquipmentList: $entity->getRequestedEquipmentList(),
+            requestedQuantity: $entity->getRequestedQuantity(),
+            eventDateTime: $eventDateTime->format(\DateTime::ATOM),
+            endDateTime: $endDateTime->format(\DateTime::ATOM),
+            activityTimeRange: $this->buildActivityTimeRange($entity),
+            purposeDescription: $entity->getPurposeDescription(),
+            activityType: $entity->getActivityType(),
+            currentStatus: $entity->getCurrentStatus(),
+            priorityLevel: $entity->getPriorityLevel(),
+            rejectionReason: $entity->getRejectionReason(),
+            supportingDocuments: $entity->getSupportingDocuments(),
+            submissionTimestamp: $submissionTimestamp->format(\DateTime::ATOM)
+        );
     }
 
     private function ensureReservationSchemaReady(): void
@@ -172,6 +211,155 @@ class ReservationCreateService
         }
 
         $this->reservationSchemaEnsured = true;
+    }
+
+    private function persistReservationWithFallback(ReservationEntity $entity): void
+    {
+        try {
+            $this->reservationRepository->persistReservation($entity);
+            return;
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Doctrine persist failed [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+        }
+
+        $this->persistReservationViaConnection($entity);
+    }
+
+    private function persistReservationViaConnection(ReservationEntity $entity): void
+    {
+        $columnsByName = $this->fetchReservationColumnsByName();
+        if ($columnsByName === []) {
+            throw new \RuntimeException('Reservations table schema is unavailable for fallback persistence.');
+        }
+
+        $requestedEquipmentJson = json_encode($entity->getRequestedEquipmentList(), JSON_THROW_ON_ERROR);
+        $supportingDocuments = $entity->getSupportingDocuments();
+        $supportingDocumentsJson = $supportingDocuments === null ? null : json_encode($supportingDocuments, JSON_THROW_ON_ERROR);
+
+        $rawValues = [
+            'reservation_code' => $entity->getReservationCode(),
+            'borrower_account_id' => $entity->getBorrowerAccountId(),
+            'organization_name' => $entity->getOrganizationName(),
+            'venue_identifier' => $entity->getVenueIdentifier(),
+            'requested_equipment_list' => $requestedEquipmentJson,
+            'requested_quantity' => $entity->getRequestedQuantity(),
+            'event_date_time' => $entity->getEventDateTime()->format('Y-m-d H:i:s'),
+            'end_date_time' => $entity->getEndDateTime()?->format('Y-m-d H:i:s'),
+            'purpose_description' => $entity->getPurposeDescription(),
+            'activity_type' => $entity->getActivityType(),
+            'current_status' => $entity->getCurrentStatus(),
+            'priority_level' => $entity->getPriorityLevel(),
+            'rejection_reason' => $entity->getRejectionReason(),
+            'supporting_documents' => $supportingDocumentsJson,
+            'submission_timestamp' => $entity->getSubmissionTimestamp()->format('Y-m-d H:i:s'),
+            'updated_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ];
+
+        $insertColumns = [];
+        $placeholders = [];
+        $parameters = [];
+        $parameterTypes = [];
+
+        foreach ($rawValues as $columnName => $value) {
+            if (!isset($columnsByName[$columnName])) {
+                continue;
+            }
+
+            $insertColumns[] = $columnName;
+            $placeholders[] = $this->buildInsertPlaceholder($columnName, $columnsByName[$columnName]);
+            $parameters[$columnName] = $value;
+            $parameterTypes[$columnName] = $this->resolveParameterType($value);
+        }
+
+        if ($insertColumns === []) {
+            throw new \RuntimeException('No compatible reservation columns were found for fallback persistence.');
+        }
+
+        $sql = sprintf(
+            'INSERT INTO reservations (%s) VALUES (%s) RETURNING reservation_identifier, submission_timestamp',
+            implode(', ', $insertColumns),
+            implode(', ', $placeholders)
+        );
+
+        $row = $this->connection->fetchAssociative($sql, $parameters, $parameterTypes);
+        if ($row === false || $row === []) {
+            throw new \RuntimeException('Fallback reservation insert did not return a reservation identifier.');
+        }
+
+        $this->hydratePersistedReservationEntity($entity, $row);
+    }
+
+    private function fetchReservationColumnsByName(): array
+    {
+        $columns = $this->connection->fetchAllAssociative(
+            "SELECT column_name, data_type, udt_name
+             FROM information_schema.columns
+             WHERE table_schema = CURRENT_SCHEMA()
+               AND table_name = 'reservations'"
+        );
+
+        $columnsByName = [];
+        foreach ($columns as $column) {
+            $columnName = strtolower(trim((string)($column['column_name'] ?? '')));
+            if ($columnName === '') {
+                continue;
+            }
+
+            $dataType = strtolower(trim((string)($column['data_type'] ?? '')));
+            $udtName = strtolower(trim((string)($column['udt_name'] ?? '')));
+            $columnsByName[$columnName] = $udtName !== '' ? $udtName : $dataType;
+        }
+
+        return $columnsByName;
+    }
+
+    private function buildInsertPlaceholder(string $columnName, string $columnType): string
+    {
+        $placeholder = ':' . $columnName;
+
+        if (str_contains($columnType, 'jsonb')) {
+            return 'CAST(' . $placeholder . ' AS JSONB)';
+        }
+
+        if (str_contains($columnType, 'json')) {
+            return 'CAST(' . $placeholder . ' AS JSON)';
+        }
+
+        return $placeholder;
+    }
+
+    private function resolveParameterType(mixed $value): int
+    {
+        if ($value === null) {
+            return ParameterType::NULL;
+        }
+
+        if (is_int($value)) {
+            return ParameterType::INTEGER;
+        }
+
+        return ParameterType::STRING;
+    }
+
+    private function hydratePersistedReservationEntity(ReservationEntity $entity, array $row): void
+    {
+        $reservationIdentifier = (int)($row['reservation_identifier'] ?? 0);
+        if ($reservationIdentifier > 0) {
+            $identifierProperty = new \ReflectionProperty($entity, 'reservationIdentifier');
+            $identifierProperty->setAccessible(true);
+            $identifierProperty->setValue($entity, $reservationIdentifier);
+        }
+
+        $submissionTimestamp = (string)($row['submission_timestamp'] ?? '');
+        if ($submissionTimestamp !== '') {
+            $submissionProperty = new \ReflectionProperty($entity, 'submissionTimestamp');
+            $submissionProperty->setAccessible(true);
+            $submissionProperty->setValue($entity, new \DateTime($submissionTimestamp));
+        }
     }
 
     private function notifyAdminsOfSubmittedReservation(ReservationEntity $reservation): void
