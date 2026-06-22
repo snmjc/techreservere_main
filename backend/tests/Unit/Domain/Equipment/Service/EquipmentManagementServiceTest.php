@@ -81,18 +81,17 @@ class EquipmentManagementServiceTest extends TestCase
 
         $this->equipmentRepository
             ->expects($this->once())
-            ->method('findHighestGeneratedAssetIdForCategoryPrefix')
-            ->with('PRE')
-            ->willReturn(null);
+            ->method('findAllEquipment')
+            ->willReturn([]);
         $this->equipmentRepository
             ->expects($this->once())
             ->method('findOneByBarcode')
-            ->with('TRBC-PRE-0001')
+            ->with('30001')
             ->willReturn(null);
         $this->equipmentRepository
             ->expects($this->once())
             ->method('findOneByAssetId')
-            ->with('TR-PRE-0001')
+            ->with('F300-000-001')
             ->willReturn(null);
         $this->equipmentRepository
             ->expects($this->once())
@@ -104,9 +103,45 @@ class EquipmentManagementServiceTest extends TestCase
         $response = $this->service->createEquipment($this->validRequest(barcode: '', assetId: ''));
 
         $this->assertInstanceOf(EquipmentEntity::class, $capturedEntity);
-        $this->assertSame('TR-PRE-0001', $capturedEntity->getAssetId());
-        $this->assertSame('TRBC-PRE-0001', $capturedEntity->getBarcode());
-        $this->assertSame('TR-PRE-0001', $response->assetId);
+        $this->assertSame('F300-000-001', $capturedEntity->getAssetId());
+        $this->assertSame('30001', $capturedEntity->getBarcode());
+        $this->assertSame('F300-000-001', $response->assetId);
+    }
+
+    public function testCreateEquipmentGeneratesNextCategorySequenceWhenExistingRecordsMatch(): void
+    {
+        $capturedEntity = null;
+        $existingEquipment = [
+            $this->existingEquipment('Presentation', '30001', 'F300-000-001'),
+            $this->existingEquipment('Presentation', '30002', 'F300-000-002'),
+        ];
+
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findAllEquipment')
+            ->willReturn($existingEquipment);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByBarcode')
+            ->with('30003')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByAssetId')
+            ->with('F300-000-003')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('persistEquipment')
+            ->willReturnCallback(function (EquipmentEntity $entity) use (&$capturedEntity): void {
+                $capturedEntity = $entity;
+            });
+
+        $this->service->createEquipment($this->validRequest(barcode: '', assetId: ''));
+
+        $this->assertInstanceOf(EquipmentEntity::class, $capturedEntity);
+        $this->assertSame('F300-000-003', $capturedEntity->getAssetId());
+        $this->assertSame('30003', $capturedEntity->getBarcode());
     }
 
     public function testUpdateEquipmentPersistsChangesToExistingEquipment(): void
@@ -145,6 +180,73 @@ class EquipmentManagementServiceTest extends TestCase
         $this->assertSame(3, $existingEquipment->getAvailableQuantity());
         $this->assertSame('F222-333-444', $existingEquipment->getAssetId());
         $this->assertSame('Laptop', $response->equipmentName);
+    }
+
+    public function testUpdateEquipmentPreservesExistingIdentifiersWhenRequestIdentifiersAreBlank(): void
+    {
+        $existingEquipment = $this->existingEquipment('Presentation', '30012', 'F300-000-012');
+
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(10)
+            ->willReturn($existingEquipment);
+        $this->equipmentRepository
+            ->expects($this->never())
+            ->method('findAllEquipment');
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByBarcode')
+            ->with('30012')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByAssetId')
+            ->with('F300-000-012')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('persistEquipment')
+            ->with($existingEquipment);
+
+        $this->service->updateEquipment(10, $this->validRequest(barcode: '', assetId: ''));
+
+        $this->assertSame('30012', $existingEquipment->getBarcode());
+        $this->assertSame('F300-000-012', $existingEquipment->getAssetId());
+    }
+
+    public function testUpdateEquipmentGeneratesMissingIdentifiersWhenExistingIdentifiersAreBlank(): void
+    {
+        $existingEquipment = new EquipmentEntity();
+
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(10)
+            ->willReturn($existingEquipment);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findAllEquipment')
+            ->willReturn([]);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByBarcode')
+            ->with('30001')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('findOneByAssetId')
+            ->with('F300-000-001')
+            ->willReturn(null);
+        $this->equipmentRepository
+            ->expects($this->once())
+            ->method('persistEquipment')
+            ->with($existingEquipment);
+
+        $this->service->updateEquipment(10, $this->validRequest(barcode: '', assetId: ''));
+
+        $this->assertSame('30001', $existingEquipment->getBarcode());
+        $this->assertSame('F300-000-001', $existingEquipment->getAssetId());
     }
 
     public function testDeleteEquipmentRemovesExistingEquipment(): void
@@ -260,5 +362,13 @@ class EquipmentManagementServiceTest extends TestCase
             barcode: $barcode,
             assetId: $assetId
         );
+    }
+
+    private function existingEquipment(string $category, string $barcode, string $assetId): EquipmentEntity
+    {
+        return (new EquipmentEntity())
+            ->setEquipmentCategory($category)
+            ->setBarcode($barcode)
+            ->setAssetId($assetId);
     }
 }

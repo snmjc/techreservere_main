@@ -148,7 +148,7 @@
             <div><dt>Available Quantity</dt><dd>{{ viewEquipment.availableQuantity }}</dd></div>
             <div><dt>Status</dt><dd>{{ viewEquipment.operationalStatus || viewEquipment.equipmentState }}</dd></div>
             <div><dt>Operational Status</dt><dd>{{ viewEquipment.operationalStatus }}</dd></div>
-            <div><dt>Barcode</dt><dd>{{ viewEquipment.barcode || 'N/A' }}</dd></div>
+            <div><dt>QR Code</dt><dd>{{ viewEquipment.barcode || 'N/A' }}</dd></div>
             <div><dt>Asset ID</dt><dd>{{ viewEquipment.assetId || 'N/A' }}</dd></div>
             <div><dt>Description</dt><dd>{{ viewEquipment.description || viewEquipment.scheduleDescription || 'N/A' }}</dd></div>
             <div><dt>Created</dt><dd>{{ formatDateTime(viewEquipment.createdTimestamp) }}</dd></div>
@@ -195,7 +195,7 @@
               </select>
             </label>
             <label>
-              <span>Barcode</span>
+              <span>QR Code</span>
               <input v-model.trim="form.barcode" type="text" maxlength="120" />
             </label>
             <label>
