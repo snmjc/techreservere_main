@@ -190,24 +190,23 @@ class ReservationCreateService
             return;
         }
 
-        $columnsByName = [];
-        foreach ($columns as $column) {
-            $columnName = (string)($column['column_name'] ?? '');
-            if ($columnName === '') {
-                continue;
+        $missingColumns = [];
+        $columnNames = array_map(
+            static fn (array $column): string => strtolower((string)($column['column_name'] ?? '')),
+            $columns
+        );
+
+        foreach (['end_date_time', 'updated_timestamp'] as $expectedColumn) {
+            if (!in_array($expectedColumn, $columnNames, true)) {
+                $missingColumns[] = $expectedColumn;
             }
-
-            $columnsByName[$columnName] = strtolower((string)($column['data_type'] ?? ''));
         }
 
-        if (!isset($columnsByName['end_date_time'])) {
-            $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN end_date_time TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
-            $this->connection->executeStatement("UPDATE reservations SET end_date_time = event_date_time + INTERVAL '30 minutes' WHERE end_date_time IS NULL");
-        }
-
-        if (!isset($columnsByName['updated_timestamp'])) {
-            $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN updated_timestamp TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP');
-            $this->connection->executeStatement('UPDATE reservations SET updated_timestamp = COALESCE(updated_timestamp, submission_timestamp, CURRENT_TIMESTAMP)');
+        if ($missingColumns !== []) {
+            error_log(sprintf(
+                'Reservation Creation - Legacy schema detected, continuing without runtime migration. Missing columns: %s',
+                implode(', ', $missingColumns)
+            ));
         }
 
         $this->reservationSchemaEnsured = true;
