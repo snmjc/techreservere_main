@@ -118,9 +118,46 @@
   font-weight: 700;
 }
 
+@media (max-width: 1200px) {
+  .reservation-summary-layout {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+}
+
 @media (max-width: 980px) {
-  .reservation-summary-layout,
   .reservation-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .reservation-summary-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .reservation-summary-section,
+  .reservation-summary-progress {
+    padding: 0.9rem;
+  }
+
+  .reservation-summary-progress article {
+    grid-template-columns: 22px 1fr;
+    gap: 0.5rem;
+  }
+
+  .reservation-summary-documents span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 480px) {
+  .reservation-summary-section h3,
+  .reservation-summary-progress h3 {
+    font-size: 0.86rem;
+  }
+
+  .reservation-summary-grid strong {
+    font-size: 0.74rem;
   }
 }

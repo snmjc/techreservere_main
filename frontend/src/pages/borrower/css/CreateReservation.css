@@ -229,7 +229,26 @@
 }
 
 @media (max-width: 640px) {
+  .reservation-time-picker__popover {
+    position: static;
+    margin-top: 0.7rem;
+    width: 100%;
+  }
+
   .reservation-time-picker__picker-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reservation-time-picker__picker-options {
+    max-height: 168px;
+  }
+
+  .reservation-time-picker__popover-actions {
+    flex-direction: column-reverse;
+  }
+
+  .reservation-time-picker__popover-button {
+    width: 100%;
+    min-height: 40px;
   }
 }

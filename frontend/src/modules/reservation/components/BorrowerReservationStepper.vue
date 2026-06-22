@@ -140,7 +140,9 @@ const steps = [
 
 @media (max-width: 900px) {
   .borrower-stepper {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    padding: 1rem;
   }
 
   .borrower-stepper-track {
@@ -148,9 +150,39 @@ const steps = [
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   .borrower-stepper {
-    grid-template-columns: 1fr;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.85rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .borrower-stepper-item {
+    min-width: 132px;
+    flex: 0 0 132px;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 480px) {
+  .borrower-stepper {
+    padding: 0.75rem;
+  }
+
+  .borrower-stepper-item {
+    min-width: 120px;
+    flex-basis: 120px;
+  }
+
+  .borrower-stepper-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .borrower-stepper-item p {
+    font-size: 0.64rem;
   }
 }
 </style>
