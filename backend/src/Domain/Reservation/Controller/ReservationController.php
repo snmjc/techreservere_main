@@ -79,7 +79,14 @@ class ReservationController extends AbstractController
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('ReservationValidationFailed', $exception->getMessage(), 422);
         } catch (\Throwable $exception) {
-            error_log('Reservation Creation - Error: ' . $exception->getMessage());
+            error_log(sprintf(
+                'Reservation Creation - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+            error_log('Reservation Creation - Trace: ' . $exception->getTraceAsString());
             return $this->createErrorResponse('ReservationCreateFailed', 'Unable to submit reservation at this time.', 500);
         }
     }

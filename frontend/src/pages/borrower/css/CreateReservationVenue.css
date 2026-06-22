@@ -1,5 +1,6 @@
 .borrower-step-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.25rem;
   padding: 1rem 1.25rem 0;
   border-bottom: 1px solid #e2e9e4;
@@ -313,5 +314,46 @@
   .reservation-equipment-sidebar,
   .reservation-equipment-selected-list {
     max-height: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .borrower-step-tabs {
+    gap: 0.8rem;
+    padding: 0.9rem 1rem 0;
+  }
+
+  .borrower-step-tabs button {
+    padding-bottom: 0.65rem;
+  }
+
+  .reservation-selection-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .reservation-equipment-sidebar {
+    padding: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .reservation-selection-filters {
+    gap: 0.7rem;
+  }
+
+  .reservation-selection-table thead th,
+  .reservation-selection-table tbody td {
+    padding: 0.68rem 0.62rem;
+  }
+
+  .reservation-selection-action,
+  .reservation-selection-reset {
+    width: 100%;
+  }
+
+  .reservation-equipment-quantity-input {
+    width: 100%;
+    max-width: 92px;
   }
 }
