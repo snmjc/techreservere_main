@@ -225,7 +225,18 @@ class ReservationCreateService
             ));
         }
 
-        $this->reservationRepository->persistReservation($entity);
+        try {
+            $this->reservationRepository->persistReservation($entity);
+            return;
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Repository persist failed [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+        }
+
+        $this->persistReservationViaLegacyInsert($entity);
     }
 
     private function generateReservationCode(): string
@@ -317,10 +328,15 @@ class ReservationCreateService
     private function fetchReservationColumnsByName(): array
     {
         $columns = $this->connection->fetchAllAssociative(
-            "SELECT column_name, data_type, udt_name
+            "SELECT column_name, data_type, udt_name, table_schema
              FROM information_schema.columns
-             WHERE table_schema = CURRENT_SCHEMA()
-               AND table_name = 'reservations'"
+             WHERE table_name = 'reservations'
+             ORDER BY CASE
+                 WHEN table_schema = CURRENT_SCHEMA() THEN 0
+                 WHEN table_schema = 'public' THEN 1
+                 ELSE 2
+             END,
+             ordinal_position ASC"
         );
 
         $columnsByName = [];
@@ -336,6 +352,85 @@ class ReservationCreateService
         }
 
         return $columnsByName;
+    }
+
+    private function persistReservationViaLegacyInsert(ReservationEntity $entity): void
+    {
+        $requestedEquipmentJson = json_encode($entity->getRequestedEquipmentList(), JSON_THROW_ON_ERROR);
+        $supportingDocuments = $entity->getSupportingDocuments();
+        $supportingDocumentsJson = $supportingDocuments === null ? null : json_encode($supportingDocuments, JSON_THROW_ON_ERROR);
+
+        $row = $this->connection->fetchAssociative(
+            'INSERT INTO reservations (
+                reservation_code,
+                borrower_account_id,
+                organization_name,
+                venue_identifier,
+                requested_equipment_list,
+                requested_quantity,
+                event_date_time,
+                purpose_description,
+                activity_type,
+                current_status,
+                priority_level,
+                rejection_reason,
+                supporting_documents,
+                submission_timestamp
+            ) VALUES (
+                :reservation_code,
+                :borrower_account_id,
+                :organization_name,
+                :venue_identifier,
+                CAST(:requested_equipment_list AS JSONB),
+                :requested_quantity,
+                :event_date_time,
+                :purpose_description,
+                :activity_type,
+                :current_status,
+                :priority_level,
+                :rejection_reason,
+                :supporting_documents,
+                :submission_timestamp
+            ) RETURNING reservation_identifier, submission_timestamp',
+            [
+                'reservation_code' => $entity->getReservationCode(),
+                'borrower_account_id' => $entity->getBorrowerAccountId(),
+                'organization_name' => $entity->getOrganizationName(),
+                'venue_identifier' => $entity->getVenueIdentifier(),
+                'requested_equipment_list' => $requestedEquipmentJson,
+                'requested_quantity' => $entity->getRequestedQuantity(),
+                'event_date_time' => $entity->getEventDateTime()->format('Y-m-d H:i:s'),
+                'purpose_description' => $entity->getPurposeDescription(),
+                'activity_type' => $entity->getActivityType(),
+                'current_status' => $entity->getCurrentStatus(),
+                'priority_level' => $entity->getPriorityLevel(),
+                'rejection_reason' => $entity->getRejectionReason(),
+                'supporting_documents' => $supportingDocumentsJson,
+                'submission_timestamp' => $entity->getSubmissionTimestamp()->format('Y-m-d H:i:s'),
+            ],
+            [
+                'reservation_code' => ParameterType::STRING,
+                'borrower_account_id' => ParameterType::INTEGER,
+                'organization_name' => ParameterType::STRING,
+                'venue_identifier' => $entity->getVenueIdentifier() === null ? ParameterType::NULL : ParameterType::INTEGER,
+                'requested_equipment_list' => ParameterType::STRING,
+                'requested_quantity' => ParameterType::INTEGER,
+                'event_date_time' => ParameterType::STRING,
+                'purpose_description' => ParameterType::STRING,
+                'activity_type' => ParameterType::STRING,
+                'current_status' => ParameterType::STRING,
+                'priority_level' => $entity->getPriorityLevel() === null ? ParameterType::NULL : ParameterType::STRING,
+                'rejection_reason' => $entity->getRejectionReason() === null ? ParameterType::NULL : ParameterType::STRING,
+                'supporting_documents' => $supportingDocumentsJson === null ? ParameterType::NULL : ParameterType::STRING,
+                'submission_timestamp' => ParameterType::STRING,
+            ]
+        );
+
+        if ($row === false || $row === []) {
+            throw new \RuntimeException('Legacy reservation insert did not return a reservation identifier.');
+        }
+
+        $this->hydratePersistedReservationEntity($entity, $row);
     }
 
     private function buildInsertPlaceholder(string $columnName, string $columnType): string
