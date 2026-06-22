@@ -4,6 +4,7 @@ namespace App\Domain\Reservation\Repository;
 
 use App\Domain\Reservation\Entity\ReservationEntity;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 class ReservationRepository extends ServiceEntityRepository
@@ -109,20 +110,37 @@ class ReservationRepository extends ServiceEntityRepository
     // Returns: string
     // Flow:
     // 1. Get current year
-    // 2. Count existing reservations for that year
+    // 2. Find the highest existing reservation suffix for that year
     // 3. Return formatted code
 
     public function generateReservationCode(): string
     {
         $currentYear = date('Y');
-        $countResult = $this->createQueryBuilder('rsrv')
-            ->select('COUNT(rsrv.reservationIdentifier)')
-            ->where('rsrv.reservationCode LIKE :yearPrefix')
-            ->setParameter('yearPrefix', 'TR-' . $currentYear . '-%')
-            ->getQuery()
-            ->getSingleScalarResult();
+        $yearPrefix = 'TR-' . $currentYear . '-%';
+        $suffixPattern = '^TR-' . $currentYear . '-([0-9]+)$';
 
-        $nextNumber = ((int)$countResult) + 1;
-        return sprintf('TR-%s-%03d', $currentYear, $nextNumber);
+        $maxSuffix = $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT COALESCE(MAX(CAST(SUBSTRING(reservation_code FROM :suffixPattern) AS INTEGER)), 0)
+             FROM reservations
+             WHERE reservation_code LIKE :yearPrefix',
+            [
+                'suffixPattern' => $suffixPattern,
+                'yearPrefix' => $yearPrefix,
+            ],
+            [
+                'suffixPattern' => ParameterType::STRING,
+                'yearPrefix' => ParameterType::STRING,
+            ]
+        );
+
+        $nextNumber = ((int)$maxSuffix) + 1;
+        $reservationCode = sprintf('TR-%s-%03d', $currentYear, $nextNumber);
+
+        while ($this->findOneByReservationCode($reservationCode) !== null) {
+            $nextNumber++;
+            $reservationCode = sprintf('TR-%s-%03d', $currentYear, $nextNumber);
+        }
+
+        return $reservationCode;
     }
 }
