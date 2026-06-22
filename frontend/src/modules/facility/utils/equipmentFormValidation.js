@@ -1,7 +1,7 @@
 const PHOTO_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\r\n]+$/i;
 const PHOTO_FILE_EXTENSION_PATTERN = /\.(jpg|jpeg|png|webp)$/i;
-const GENERATED_ASSET_ID_PATTERN = /^TR-[A-Z]{3}-\d{4}$/;
-const LEGACY_ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
+const GENERATED_ASSET_ID_PATTERN = /^F\d{3}-\d{3}-\d{3}$/;
+const LEGACY_ASSET_ID_PATTERN = /^TR-[A-Z]{3}-\d{4}$/;
 const ALLOWED_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 const EQUIPMENT_FORM_VALIDATORS = [
@@ -31,7 +31,7 @@ const EQUIPMENT_FORM_VALIDATORS = [
   },
   {
     isInvalid: (form) => Boolean(form.assetId) && !isSupportedAssetId(form.assetId),
-    message: 'Asset ID must match the generated TechReserve format.',
+    message: 'Asset ID must match the F123-456-789 format.',
   },
   {
     isInvalid: (form) => Boolean(form.photoData) && PHOTO_DATA_URL_PATTERN.test(form.photoData) !== true,

@@ -73,13 +73,13 @@
           </label>
 
           <label class="equipment-modal-field">
-            <span>Barcode</span>
+            <span>QR Code</span>
             <input
               :value="formData.barcode || generatedInventoryPreview.barcode"
               type="text"
               maxlength="120"
               readonly
-              placeholder="Generated on save"
+              placeholder="Generated 5-digit QR"
             />
             <small>Automatically generated from the category code and next available sequence.</small>
           </label>
@@ -93,7 +93,7 @@
               readonly
               placeholder="Generated on save"
             />
-            <small>Format: <code>TR-CAT-0001</code>. Existing legacy IDs stay unchanged when editing.</small>
+            <small>Format: <code>F123-456-789</code> using category and sequence rules. Existing IDs stay unchanged when editing.</small>
           </label>
 
           <label class="equipment-modal-field equipment-modal-field--full">
@@ -372,44 +372,54 @@ function resetPhotoInput() {
 }
 
 function buildGeneratedInventoryPreview(category) {
-  const prefix = resolveCategoryPrefix(category);
+  const assetCategoryPrefix = resolveAssetCategoryPrefix(category);
+  const barcodeCategoryPrefix = String(Math.max(10, Math.min(99, Math.floor(assetCategoryPrefix / 10)))).padStart(2, '0');
+
   return {
-    assetId: `TR-${prefix}-NEXT`,
-    barcode: `TRBC-${prefix}-NEXT`,
+    assetId: `F${String(assetCategoryPrefix).padStart(3, '0')}-000-###`,
+    barcode: `${barcodeCategoryPrefix}###`,
   };
 }
 
-function resolveCategoryPrefix(category) {
+function resolveAssetCategoryPrefix(category) {
   const normalizedCategory = String(category || '').trim().toLowerCase();
 
   switch (normalizedCategory) {
     case 'audio / microphone':
     case 'audio':
-      return 'AUD';
+      return 100;
     case 'furniture':
-      return 'FUR';
+      return 200;
     case 'presentation':
-      return 'PRE';
+      return 300;
     case 'accessories':
-      return 'ACC';
+      return 400;
     case 'electrical':
-      return 'ELC';
+      return 500;
     case 'setup':
-      return 'SET';
+      return 600;
     case 'decor':
-      return 'DEC';
+      return 700;
     case 'display':
-      return 'DSP';
+      return 800;
     case 'miscellaneous':
-      return 'MSC';
+      return 900;
     default:
-      return buildFallbackCategoryPrefix(category);
+      return buildFallbackAssetCategoryPrefix(category);
   }
 }
 
-function buildFallbackCategoryPrefix(category) {
-  const cleanedValue = String(category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return `${cleanedValue}XXX`.slice(0, 3);
+function buildFallbackAssetCategoryPrefix(category) {
+  const normalizedCategory = String(category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!normalizedCategory) {
+    return 990;
+  }
+
+  const firstCharacter = normalizedCategory[0];
+  const characterCode = /[A-Z]/.test(firstCharacter)
+    ? firstCharacter.charCodeAt(0) - 'A'.charCodeAt(0) + 1
+    : Number(firstCharacter);
+  return 900 + Math.max(1, Math.min(89, Number.isFinite(characterCode) ? characterCode : 90));
 }
 </script>
 

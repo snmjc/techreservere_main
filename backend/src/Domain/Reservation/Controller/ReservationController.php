@@ -73,7 +73,11 @@ class ReservationController extends AbstractController
             $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
             error_log('Reservation Creation - Created Reservation ID: ' . $responseDTO->reservationIdentifier);
 
-            return $this->createSuccessResponse($responseDTO->toResponseArray(), 201);
+            return $this->createSuccessResponse([
+                'reservationIdentifier' => $responseDTO->reservationIdentifier,
+                'reservationCode' => $responseDTO->reservationCode,
+                'currentStatus' => $responseDTO->currentStatus,
+            ], 201);
         } catch (\JsonException) {
             return $this->createErrorResponse('ReservationInvalidPayload', 'Reservation request body must be valid JSON.', 400);
         } catch (DomainValidationException $exception) {

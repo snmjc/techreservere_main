@@ -25,6 +25,8 @@ class EquipmentManagementService
     ];
 
     private const ALLOWED_PHOTO_DISPLAY_MODES = ['contain', 'cover'];
+    private const GENERATED_ASSET_ID_PATTERN = '/^F(\d{3})-(\d{3})-(\d{3})$/';
+    private const GENERATED_BARCODE_PATTERN = '/^\d{5}$/';
     private bool $equipmentSchemaEnsured = false;
 
     public function __construct(
@@ -55,7 +57,10 @@ class EquipmentManagementService
             throw new DomainNotFoundException('Equipment not found: ' . $equipmentIdentifier);
         }
 
-        $normalizedPayload = $this->validateAndNormalizePayload($requestDTO, $equipmentIdentifier);
+        $normalizedPayload = $this->validateAndNormalizePayload(
+            $this->preserveExistingInventoryIdentifiers($requestDTO, $entity),
+            $equipmentIdentifier
+        );
         $this->hydrateEquipmentEntity($entity, $normalizedPayload);
         $this->persistEquipment($entity);
 
@@ -187,7 +192,7 @@ class EquipmentManagementService
         }
 
         if ($assetId === '' || $barcode === '') {
-            [$assetId, $barcode] = $this->generateInventoryIdentifiers($equipmentCategory);
+            [$assetId, $barcode] = $this->generateMissingInventoryIdentifiers($equipmentCategory, $assetId, $barcode);
         }
 
         if (!$this->equipmentAssetIdValidator->isValid($assetId)) {
@@ -224,6 +229,34 @@ class EquipmentManagementService
             'photoPositionX' => $photoPositionX,
             'photoPositionY' => $photoPositionY,
         ];
+    }
+
+    private function preserveExistingInventoryIdentifiers(
+        EquipmentCreateRequestDTO $requestDTO,
+        EquipmentEntity $existingEquipment
+    ): EquipmentCreateRequestDTO {
+        $barcode = trim($requestDTO->barcode);
+        $assetId = strtoupper(trim($requestDTO->assetId));
+
+        if ($barcode !== '' && $assetId !== '') {
+            return $requestDTO;
+        }
+
+        return new EquipmentCreateRequestDTO(
+            equipmentName: $requestDTO->equipmentName,
+            equipmentCategory: $requestDTO->equipmentCategory,
+            equipmentBrand: $requestDTO->equipmentBrand,
+            availableQuantity: $requestDTO->availableQuantity,
+            operationalStatus: $requestDTO->operationalStatus,
+            description: $requestDTO->description,
+            imageUrl: $requestDTO->imageUrl,
+            barcode: $barcode === '' ? $existingEquipment->getBarcode() : $barcode,
+            assetId: $assetId === '' ? $existingEquipment->getAssetId() : $assetId,
+            photoData: $requestDTO->photoData,
+            photoDisplayMode: $requestDTO->photoDisplayMode,
+            photoPositionX: $requestDTO->photoPositionX,
+            photoPositionY: $requestDTO->photoPositionY
+        );
     }
 
     private function hydrateEquipmentEntity(EquipmentEntity $equipmentEntity, array $payload): void
@@ -312,48 +345,210 @@ class EquipmentManagementService
         $this->equipmentSchemaEnsured = true;
     }
 
-    private function generateInventoryIdentifiers(string $equipmentCategory): array
+    private function generateMissingInventoryIdentifiers(string $equipmentCategory, string $assetId, string $barcode): array
     {
-        $categoryPrefix = $this->resolveCategoryPrefix($equipmentCategory);
-        $existingRecord = $this->equipmentRepository->findHighestGeneratedAssetIdForCategoryPrefix($categoryPrefix);
-        $nextSequence = 1;
+        $existingEquipmentRecords = $this->equipmentRepository->findAllEquipment();
 
-        if ($existingRecord !== null) {
-            $matches = [];
-            if (preg_match('/^TR-[A-Z]{3}-(\d{4})$/', $existingRecord->getAssetId(), $matches) === 1) {
-                $nextSequence = ((int) $matches[1]) + 1;
-            }
+        if ($assetId === '' && $barcode === '') {
+            return $this->generateUniqueInventoryPair($equipmentCategory, $existingEquipmentRecords);
         }
 
-        $assetId = sprintf('TR-%s-%04d', $categoryPrefix, $nextSequence);
-        $barcode = sprintf('TRBC-%s-%04d', $categoryPrefix, $nextSequence);
+        if ($assetId === '') {
+            $assetId = $this->generateUniqueAssetId($equipmentCategory, $existingEquipmentRecords);
+        }
+
+        if ($barcode === '') {
+            $barcode = $this->generateUniqueBarcode($equipmentCategory, $existingEquipmentRecords);
+        }
 
         return [$assetId, $barcode];
     }
 
-    private function resolveCategoryPrefix(string $equipmentCategory): string
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function generateUniqueInventoryPair(string $equipmentCategory, array $existingEquipmentRecords): array
+    {
+        $assetCategoryPrefix = $this->resolveAssetCategoryPrefix($equipmentCategory);
+        $barcodeCategoryPrefix = $this->resolveBarcodeCategoryPrefix($assetCategoryPrefix);
+        $existingAssetIds = $this->collectExistingAssetIds($existingEquipmentRecords);
+        $existingBarcodes = $this->collectExistingBarcodes($existingEquipmentRecords);
+        $nextSequence = $this->resolveNextCategorySequence(
+            $existingEquipmentRecords,
+            $assetCategoryPrefix,
+            $barcodeCategoryPrefix
+        );
+
+        for ($sequence = $nextSequence; $sequence <= 999; $sequence++) {
+            $assetId = $this->formatAssetIdSequence($assetCategoryPrefix, $sequence);
+            $barcode = $this->formatBarcodeSequence($barcodeCategoryPrefix, $sequence);
+            if (!isset($existingAssetIds[$assetId]) && !isset($existingBarcodes[$barcode])) {
+                return [$assetId, $barcode];
+            }
+        }
+
+        throw new DomainValidationException('Unable to generate unique equipment identifiers for this category.');
+    }
+
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function generateUniqueAssetId(string $equipmentCategory, array $existingEquipmentRecords): string
+    {
+        $assetCategoryPrefix = $this->resolveAssetCategoryPrefix($equipmentCategory);
+        $barcodeCategoryPrefix = $this->resolveBarcodeCategoryPrefix($assetCategoryPrefix);
+        $existingAssetIds = $this->collectExistingAssetIds($existingEquipmentRecords);
+        $nextSequence = $this->resolveNextCategorySequence(
+            $existingEquipmentRecords,
+            $assetCategoryPrefix,
+            $barcodeCategoryPrefix
+        );
+
+        for ($sequence = $nextSequence; $sequence <= 999; $sequence++) {
+            $assetId = $this->formatAssetIdSequence($assetCategoryPrefix, $sequence);
+            if (!isset($existingAssetIds[$assetId])) {
+                return $assetId;
+            }
+        }
+
+        throw new DomainValidationException('Unable to generate a unique Asset ID for this category.');
+    }
+
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function generateUniqueBarcode(string $equipmentCategory, array $existingEquipmentRecords): string
+    {
+        $assetCategoryPrefix = $this->resolveAssetCategoryPrefix($equipmentCategory);
+        $barcodeCategoryPrefix = $this->resolveBarcodeCategoryPrefix($assetCategoryPrefix);
+        $existingBarcodes = $this->collectExistingBarcodes($existingEquipmentRecords);
+        $nextSequence = $this->resolveNextCategorySequence(
+            $existingEquipmentRecords,
+            $assetCategoryPrefix,
+            $barcodeCategoryPrefix
+        );
+
+        for ($sequence = $nextSequence; $sequence <= 999; $sequence++) {
+            $barcode = $this->formatBarcodeSequence($barcodeCategoryPrefix, $sequence);
+            if (!isset($existingBarcodes[$barcode])) {
+                return $barcode;
+            }
+        }
+
+        throw new DomainValidationException('Unable to generate a unique QR code for this category.');
+    }
+
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function resolveNextCategorySequence(
+        array $existingEquipmentRecords,
+        int $assetCategoryPrefix,
+        int $barcodeCategoryPrefix
+    ): int {
+        $highestSequence = 0;
+
+        foreach ($existingEquipmentRecords as $equipmentRecord) {
+            $assetMatches = [];
+            $assetId = strtoupper(trim($equipmentRecord->getAssetId()));
+            if (preg_match(self::GENERATED_ASSET_ID_PATTERN, $assetId, $assetMatches) === 1
+                && (int) $assetMatches[1] === $assetCategoryPrefix) {
+                $highestSequence = max($highestSequence, (int) ($assetMatches[2] . $assetMatches[3]));
+            }
+
+            $barcode = trim($equipmentRecord->getBarcode());
+            if (preg_match(self::GENERATED_BARCODE_PATTERN, $barcode) === 1
+                && substr($barcode, 0, 2) === sprintf('%02d', $barcodeCategoryPrefix)) {
+                $highestSequence = max($highestSequence, (int) substr($barcode, 2, 3));
+            }
+        }
+
+        return $highestSequence + 1;
+    }
+
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function collectExistingAssetIds(array $existingEquipmentRecords): array
+    {
+        $existingAssetIds = [];
+
+        foreach ($existingEquipmentRecords as $equipmentRecord) {
+            $assetId = strtoupper(trim($equipmentRecord->getAssetId()));
+            if ($assetId !== '') {
+                $existingAssetIds[$assetId] = true;
+            }
+        }
+
+        return $existingAssetIds;
+    }
+
+    /**
+     * @param EquipmentEntity[] $existingEquipmentRecords
+     */
+    private function collectExistingBarcodes(array $existingEquipmentRecords): array
+    {
+        $existingBarcodes = [];
+
+        foreach ($existingEquipmentRecords as $equipmentRecord) {
+            $barcode = trim($equipmentRecord->getBarcode());
+            if ($barcode !== '') {
+                $existingBarcodes[$barcode] = true;
+            }
+        }
+
+        return $existingBarcodes;
+    }
+
+    private function formatAssetIdSequence(int $assetCategoryPrefix, int $sequence): string
+    {
+        $sequenceDigits = str_pad((string) $sequence, 6, '0', STR_PAD_LEFT);
+        return sprintf(
+            'F%s-%s-%s',
+            str_pad((string) $assetCategoryPrefix, 3, '0', STR_PAD_LEFT),
+            substr($sequenceDigits, 0, 3),
+            substr($sequenceDigits, 3, 3)
+        );
+    }
+
+    private function formatBarcodeSequence(int $barcodeCategoryPrefix, int $sequence): string
+    {
+        return sprintf('%02d%03d', $barcodeCategoryPrefix, $sequence);
+    }
+
+    private function resolveAssetCategoryPrefix(string $equipmentCategory): int
     {
         $normalizedCategory = strtolower(trim($equipmentCategory));
 
         return match ($normalizedCategory) {
-            'audio / microphone', 'audio' => 'AUD',
-            'furniture' => 'FUR',
-            'presentation' => 'PRE',
-            'accessories' => 'ACC',
-            'electrical' => 'ELC',
-            'setup' => 'SET',
-            'decor' => 'DEC',
-            'display' => 'DSP',
-            'miscellaneous' => 'MSC',
-            default => $this->buildFallbackCategoryPrefix($equipmentCategory),
+            'audio / microphone', 'audio' => 100,
+            'furniture' => 200,
+            'presentation' => 300,
+            'accessories' => 400,
+            'electrical' => 500,
+            'setup' => 600,
+            'decor' => 700,
+            'display' => 800,
+            'miscellaneous' => 900,
+            default => $this->buildFallbackAssetCategoryPrefix($equipmentCategory),
         };
     }
 
-    private function buildFallbackCategoryPrefix(string $equipmentCategory): string
+    private function resolveBarcodeCategoryPrefix(int $assetCategoryPrefix): int
     {
-        $normalized = preg_replace('/[^A-Za-z0-9]+/', '', strtoupper($equipmentCategory));
-        $normalized = $normalized === null ? '' : $normalized;
-        return str_pad(substr($normalized, 0, 3), 3, 'X');
+        return max(10, min(99, intdiv($assetCategoryPrefix, 10)));
+    }
+
+    private function buildFallbackAssetCategoryPrefix(string $equipmentCategory): int
+    {
+        $normalizedCategory = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '', $equipmentCategory) ?? '');
+        if ($normalizedCategory === '') {
+            return 990;
+        }
+
+        $firstCharacter = $normalizedCategory[0];
+        $letterOffset = ctype_alpha($firstCharacter) ? ord($firstCharacter) - ord('A') + 1 : (int) $firstCharacter;
+        return 900 + max(1, min(89, $letterOffset));
     }
 
     private function normalizePhotoPosition(int $position): int

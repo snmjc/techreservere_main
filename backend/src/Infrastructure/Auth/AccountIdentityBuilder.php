@@ -9,7 +9,9 @@ class AccountIdentityBuilder
 {
     public function validateApprovedAccount(AccountEntity $account): void
     {
-        if (!in_array($account->getStatus(), ['active', 'approved', 'accepted'], true)) {
+        $normalizedStatus = strtolower(trim((string)$account->getStatus()));
+
+        if (!in_array($normalizedStatus, ['active', 'approved', 'accepted'], true)) {
             throw new ClerkVerificationFailedException('Account status is ' . $account->getStatus() . '. Only active invitation accounts can access the system.');
         }
 

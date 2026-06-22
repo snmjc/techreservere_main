@@ -82,6 +82,20 @@ export function useClerkLoginPage() {
         return;
       }
 
+      if (shouldAttemptClerkAfterBackendAuthenticationFailure(error)) {
+        try {
+          await handleClerkPasswordLogin(null, {
+            skipPreflight: shouldBypassClerkPreflightOnCurrentHost(),
+          });
+          return;
+        } catch (clerkError) {
+          if (!shouldFallbackToBackendAfterClerkFailure(clerkError)) {
+            loginError.value = resolveClerkErrorMessage(clerkError);
+            return;
+          }
+        }
+      }
+
       if (error?.errorType === 'AccountDisabled') {
         authStore.performLogout();
         router.replace({ name: ROUTE_NAMES.accountDeactivated });
@@ -449,6 +463,11 @@ function shouldAttemptClerkPasswordLogin(error) {
   return errorType === 'LocalPasswordUnavailable'
     || errorType === 'AccountInvitationPending'
     || errorType === 'AccountSyncPending';
+}
+
+function shouldAttemptClerkAfterBackendAuthenticationFailure(error) {
+  const errorType = String(error?.errorType || '');
+  return shouldPreferClerkOnCurrentHost() && errorType === 'AuthenticationFailed';
 }
 
 function shouldPreferClerkOnCurrentHost() {
