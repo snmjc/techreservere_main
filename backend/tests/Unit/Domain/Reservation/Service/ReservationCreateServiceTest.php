@@ -112,18 +112,9 @@ class ReservationCreateServiceTest extends TestCase
         $schemaReadyProperty->setValue($this->service, false);
 
         $this->connection
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('fetchAllAssociative')
-            ->willReturn([
-                ['column_name' => 'reservation_identifier', 'data_type' => 'integer'],
-                ['column_name' => 'reservation_code', 'data_type' => 'character varying'],
-                ['column_name' => 'requested_equipment_list', 'data_type' => 'json'],
-                ['column_name' => 'event_date_time', 'data_type' => 'timestamp without time zone'],
-                ['column_name' => 'end_date_time', 'data_type' => 'timestamp without time zone'],
-                ['column_name' => 'supporting_documents', 'data_type' => 'text'],
-                ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone'],
-                ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone'],
-            ]);
+            ->willReturn($this->buildReservationColumnRows());
 
         $this->connection
             ->expects($this->never())
@@ -135,8 +126,16 @@ class ReservationCreateServiceTest extends TestCase
             ->willReturn('TR-2026-001');
 
         $this->reservationRepository
-            ->expects($this->once())
+            ->expects($this->never())
             ->method('persistReservation');
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchAssociative')
+            ->willReturn([
+                'reservation_identifier' => 1,
+                'submission_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
 
         $this->accountRepository
             ->expects($this->once())
@@ -168,8 +167,21 @@ class ReservationCreateServiceTest extends TestCase
             ->willReturn('TR-2026-001');
 
         $this->reservationRepository
-            ->expects($this->once())
+            ->expects($this->never())
             ->method('persistReservation');
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchAllAssociative')
+            ->willReturn($this->buildReservationColumnRows());
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchAssociative')
+            ->willReturn([
+                'reservation_identifier' => 1,
+                'submission_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
 
         $this->accountRepository
             ->expects($this->once())
@@ -198,5 +210,28 @@ class ReservationCreateServiceTest extends TestCase
     private function buildIsoDateTime(string $modifier): string
     {
         return (new \DateTimeImmutable($modifier))->format(\DateTimeInterface::ATOM);
+    }
+
+    private function buildReservationColumnRows(): array
+    {
+        return [
+            ['column_name' => 'reservation_identifier', 'data_type' => 'integer', 'udt_name' => 'int4'],
+            ['column_name' => 'reservation_code', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'borrower_account_id', 'data_type' => 'integer', 'udt_name' => 'int4'],
+            ['column_name' => 'organization_name', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'venue_identifier', 'data_type' => 'integer', 'udt_name' => 'int4'],
+            ['column_name' => 'requested_equipment_list', 'data_type' => 'json', 'udt_name' => 'json'],
+            ['column_name' => 'requested_quantity', 'data_type' => 'integer', 'udt_name' => 'int4'],
+            ['column_name' => 'event_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
+            ['column_name' => 'end_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
+            ['column_name' => 'purpose_description', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'activity_type', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'current_status', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'priority_level', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
+            ['column_name' => 'rejection_reason', 'data_type' => 'text', 'udt_name' => 'text'],
+            ['column_name' => 'supporting_documents', 'data_type' => 'json', 'udt_name' => 'json'],
+            ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
+            ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
+        ];
     }
 }

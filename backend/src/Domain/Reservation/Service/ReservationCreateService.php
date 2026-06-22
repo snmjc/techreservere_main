@@ -80,7 +80,7 @@ class ReservationCreateService
             }
         }
 
-        $reservationCode = $this->reservationRepository->generateReservationCode();
+        $reservationCode = $this->generateReservationCode();
 
         $entity = new ReservationEntity();
         $entity->setReservationCode($reservationCode);
@@ -215,17 +215,39 @@ class ReservationCreateService
     private function persistReservationWithFallback(ReservationEntity $entity): void
     {
         try {
-            $this->reservationRepository->persistReservation($entity);
+            $this->persistReservationViaConnection($entity);
             return;
         } catch (\Throwable $exception) {
             error_log(sprintf(
-                'Reservation Creation - Doctrine persist failed [%s]: %s',
+                'Reservation Creation - Direct persist failed [%s]: %s',
                 $exception::class,
                 $exception->getMessage()
             ));
         }
 
-        $this->persistReservationViaConnection($entity);
+        $this->reservationRepository->persistReservation($entity);
+    }
+
+    private function generateReservationCode(): string
+    {
+        try {
+            return $this->reservationRepository->generateReservationCode();
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Repository code generation failed [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+        }
+
+        $currentYear = date('Y');
+        $countResult = $this->connection->fetchOne(
+            'SELECT COUNT(*) FROM reservations WHERE reservation_code LIKE :yearPrefix',
+            ['yearPrefix' => 'TR-' . $currentYear . '-%'],
+            ['yearPrefix' => ParameterType::STRING]
+        );
+
+        return sprintf('TR-%s-%03d', $currentYear, ((int)$countResult) + 1);
     }
 
     private function persistReservationViaConnection(ReservationEntity $entity): void
