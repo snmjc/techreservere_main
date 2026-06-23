@@ -52,6 +52,7 @@ services:
       MAILER_DSN: "${MAILER_DSN:-null://null}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
       RUN_MIGRATIONS_ON_BOOT: "${RUN_MIGRATIONS_ON_BOOT:-1}"
+      ANALYTICS_SERVICE_URL: "http://analytics-service:9000"
       CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
       CLERK_API_BASE_URL: "${CLERK_API_BASE_URL:-https://api.clerk.com}"
       CLERK_JWT_ISSUER: "${CLERK_JWT_ISSUER:-}"
@@ -61,6 +62,30 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+
+  analytics-service:
+    build:
+      context: ./analytics-service
+    container_name: techreserve_analytics_service
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB:-techreserve}"
+      ANALYTICS_DAILY_CRON_HOUR: "${ANALYTICS_DAILY_CRON_HOUR:-2}"
+      ANALYTICS_DAILY_CRON_MINUTE: "${ANALYTICS_DAILY_CRON_MINUTE:-0}"
+      ANALYTICS_SCHEDULER_ENABLED: "${ANALYTICS_SCHEDULER_ENABLED:-true}"
+    expose:
+      - "9000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=2).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   frontend:
     build:
