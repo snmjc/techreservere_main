@@ -179,6 +179,39 @@
   vertical-align: middle;
 }
 
+.logs-action-button {
+  border: 1px solid #d6e4dc;
+  background: #ffffff;
+  color: #1d3b2a;
+  padding: 0.38rem 0.78rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.logs-action-button:hover {
+  background-color: #edf7f2;
+  border-color: #8eb9a2;
+}
+
+.logs-action-button--danger {
+  color: #b42318;
+  background-color: #fff7f6;
+  border-color: #f1c4be;
+}
+
+.logs-action-button--danger:hover {
+  background-color: #fdeceb;
+  border-color: #e79b90;
+}
+
+.logs-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .logs-empty-row {
   padding: 1.5rem;
   text-align: center;

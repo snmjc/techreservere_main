@@ -2,7 +2,7 @@ import axios from 'axios';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   buildAuthorizationHeaders,
-  getStoredAuthToken,
+  resolveAuthToken,
 } from '@/shared/utils/authToken.js';
 
 function normalizeNotificationPayload(responseData) {
@@ -23,7 +23,7 @@ function normalizeNotificationPayload(responseData) {
 
 export const notificationApi = {
   async listNotifications() {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     if (!authToken) {
       return [];
     }
@@ -36,7 +36,7 @@ export const notificationApi = {
   },
 
   async markAsRead(notificationIdentifier) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     if (!authToken) {
       return;
     }

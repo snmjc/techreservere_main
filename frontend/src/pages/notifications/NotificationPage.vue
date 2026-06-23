@@ -110,7 +110,7 @@ const notifications = computed(() => notificationStore.notifications || []);
 const unreadCount = computed(() => notificationStore.unreadCount || 0);
 
 onMounted(() => {
-  notificationStore.fetchNotifications().catch(() => {});
+  notificationStore.fetchNotifications(true).catch(() => {});
 });
 
 const filteredNotifications = computed(() => {

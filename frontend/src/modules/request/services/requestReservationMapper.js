@@ -61,7 +61,7 @@ function addReservationToBucket(buckets, reservation, linkedTasks = []) {
       buckets.active.push({
         ...mappedRecord,
         assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-        deploymentStatus: 'Scheduled for Today',
+        deploymentStatus: resolveActiveDeploymentLabel(status),
       });
       return;
     }
@@ -131,8 +131,8 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
     neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
-    activityTime: reservation?.activityTimeRange || reservation?.eventDateTime || 'N/A',
-    activityEndTime: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
+    activityTime: requestScheduleStart || 'N/A',
+    activityEndTime: requestScheduleEnd || requestScheduleStart || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
@@ -161,19 +161,28 @@ function resolveReservationScheduleState(reservation) {
     return 'upcoming';
   }
 
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const todayKey = formatReservationDayKey(new Date());
+  const startKey = formatReservationDayKey(start);
+  const endKey = formatReservationDayKey(end);
 
-  if (start > todayEnd) {
+  if (startKey > todayKey) {
     return 'upcoming';
   }
 
-  if (end < todayStart) {
+  if (endKey < todayKey) {
     return 'past';
   }
 
   return 'active';
+}
+
+function resolveActiveDeploymentLabel(status) {
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (normalizedStatus === 'deployed' || normalizedStatus === 'active') {
+    return 'Ongoing Today';
+  }
+
+  return 'Scheduled for Today';
 }
 
 function parseReservationDate(value) {
@@ -183,6 +192,15 @@ function parseReservationDate(value) {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatReservationDayKey(value) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
 }
 
 function resolveRequestType(reservation, requestedEquipmentList) {
@@ -379,9 +397,7 @@ function formatReservationScheduleRange(startValue, endValue) {
   const formattedEnd = formatReservationScheduleDate(endValue);
 
   if (formattedStart && formattedEnd) {
-    return formattedStart === formattedEnd
-      ? formattedStart
-      : `${formattedStart} - ${formattedEnd}`;
+    return `${formattedStart} - ${formattedEnd}`;
   }
 
   return formattedStart || formattedEnd || 'N/A';

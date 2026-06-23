@@ -112,31 +112,31 @@ const emit = defineEmits(['close', 'secondary-action']);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.75rem;
   background: rgba(15, 23, 42, 0.56);
 }
 
 .equipment-details-modal {
   position: relative;
-  width: min(760px, 100%);
-  max-height: 92vh;
+  width: min(560px, 100%);
+  max-height: 82vh;
   overflow-y: auto;
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 18px;
   border: 1px solid #d9e3dd;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
 }
 
 .equipment-details-modal-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.85rem;
+  right: 0.85rem;
   background: #ffffff;
   border: 1px solid #d5ddd8;
   border-radius: 999px;
   cursor: pointer;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,23 +144,24 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-heading,
 .equipment-details-modal-actions {
-  padding: 1.25rem;
+  padding: 0.85rem 0.95rem;
 }
 
 .equipment-details-modal-heading {
-  padding-right: 4.5rem;
+  padding-right: 3.9rem;
   border-bottom: 1px solid #e8eeea;
 }
 
 .equipment-details-modal-heading h2 {
   margin: 0;
   color: #16361f;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
 }
 
 .equipment-details-modal-heading p {
-  margin: 0.4rem 0 0;
+  margin: 0.3rem 0 0;
   color: #4b6354;
+  font-size: 0.92rem;
 }
 
 .equipment-details-modal-error {
@@ -175,9 +176,9 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: 1.25rem;
-  padding: 1.25rem;
+  grid-template-columns: minmax(170px, 190px) minmax(0, 1fr);
+  gap: 0.8rem;
+  padding: 0.85rem 0.95rem;
 }
 
 .equipment-details-modal-photo-card {
@@ -187,8 +188,8 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-photo {
   width: 100%;
-  min-height: 220px;
-  border-radius: 16px;
+  min-height: 150px;
+  border-radius: 14px;
   border: 1px solid #d9e3dd;
   background: #f7faf8;
 }
@@ -196,21 +197,21 @@ const emit = defineEmits(['close', 'secondary-action']);
 .equipment-details-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 0.75rem;
   margin: 0;
 }
 
 .equipment-details-modal-grid div {
-  padding: 0.85rem 0.95rem;
+  padding: 0.75rem 0.8rem;
   background: #f7faf8;
   border: 1px solid #e7efe9;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .equipment-details-modal-grid dt {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.25rem;
   color: #607165;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
@@ -218,6 +219,8 @@ const emit = defineEmits(['close', 'secondary-action']);
   margin: 0;
   color: #16361f;
   font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .equipment-details-modal-grid__full {
@@ -227,14 +230,14 @@ const emit = defineEmits(['close', 'secondary-action']);
 .equipment-details-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.6rem;
   border-top: 1px solid #e8eeea;
 }
 
 .equipment-details-modal-button {
-  min-height: 44px;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
+  min-height: 40px;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
   border: 1px solid transparent;
   font: inherit;
   font-weight: 700;
@@ -253,6 +256,11 @@ const emit = defineEmits(['close', 'secondary-action']);
 }
 
 @media (max-width: 720px) {
+  .equipment-details-modal {
+    width: min(520px, 100%);
+    max-height: 90vh;
+  }
+
   .equipment-details-modal-layout,
   .equipment-details-modal-grid {
     grid-template-columns: 1fr;

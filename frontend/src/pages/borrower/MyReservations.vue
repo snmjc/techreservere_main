@@ -154,30 +154,30 @@ const userFullName = computed(() => authStore.userFullName);
 
 const reservationStats = computed(() => [
   {
-    label: 'Active Reservations',
-    value: activeReservationsCount.value,
-    className: 'is-active',
-    action: navigateToViewReservationList,
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
-  },
-  {
-    label: 'Approved Requests',
-    value: approvedRequestsCount.value,
-    className: 'is-approved',
-    action: navigateToApprovedRequestsLogs,
-    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
-  },
-  {
     label: 'Pending Requests',
     value: pendingRequestsCount.value,
-    className: 'is-pending',
+    className: 'my-reservations-stat-card--pending',
     action: navigateToPendingRequestsLogs,
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   },
   {
+    label: 'Approved Requests',
+    value: approvedRequestsCount.value,
+    className: 'my-reservations-stat-card--approved',
+    action: navigateToApprovedRequestsLogs,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
+  },
+  {
+    label: 'Active Reservations',
+    value: activeReservationsCount.value,
+    className: 'my-reservations-stat-card--active',
+    action: navigateToViewReservationList,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
+  },
+  {
     label: 'Completed',
     value: completedReservationsCount.value,
-    className: 'is-completed',
+    className: 'my-reservations-stat-card--completed',
     action: navigateToCompletedReservationsLogs,
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>',
   },

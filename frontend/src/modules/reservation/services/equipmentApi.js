@@ -3,12 +3,12 @@ import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   buildAuthorizationHeaders,
   buildJsonAuthorizationHeaders,
-  getStoredAuthToken,
+  resolveAuthToken,
 } from '@/shared/utils/authToken.js';
 
 const equipmentApi = {
   async listEquipment() {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/equipment'), {
         headers: buildAuthorizationHeaders(authToken)
@@ -21,7 +21,7 @@ const equipmentApi = {
   },
 
   async getEquipmentById(equipmentIdentifier) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.get(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
         headers: buildAuthorizationHeaders(authToken)
@@ -34,7 +34,7 @@ const equipmentApi = {
   },
 
   async createEquipment(equipmentData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.post(apiUrl('/api/v1/equipment'), equipmentData, {
         headers: buildJsonAuthorizationHeaders(authToken)
@@ -47,7 +47,7 @@ const equipmentApi = {
   },
 
   async updateEquipment(equipmentIdentifier, equipmentData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.put(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), equipmentData, {
         headers: buildJsonAuthorizationHeaders(authToken)
@@ -60,7 +60,7 @@ const equipmentApi = {
   },
 
   async deleteEquipment(equipmentIdentifier, confirmationData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.delete(apiUrl(`/api/v1/equipment/${equipmentIdentifier}`), {
         headers: buildJsonAuthorizationHeaders(authToken),

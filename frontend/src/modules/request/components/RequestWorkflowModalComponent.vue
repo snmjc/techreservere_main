@@ -47,8 +47,8 @@
         <div class="request-workflow-modal-flow-grid">
           <div class="request-workflow-modal-flow-column">
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Activity Time:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.activityTime }}</span>
+              <span class="request-workflow-modal-label">Start Date and Time:</span>
+              <span class="request-workflow-modal-value">{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</span>
             </div>
             <div class="request-workflow-modal-field">
               <span class="request-workflow-modal-label">Activity Name/Title:</span>
@@ -66,12 +66,12 @@
 
           <div class="request-workflow-modal-flow-column">
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Activity End Time:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.activityEndTime }}</span>
+              <span class="request-workflow-modal-label">End Date and Time:</span>
+              <span class="request-workflow-modal-value">{{ formatDateTime(requestRecord.requestScheduleEnd || requestRecord.activityEndTime) }}</span>
             </div>
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Schedule:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.requestSchedule }}</span>
+              <span class="request-workflow-modal-label">Schedule Dates:</span>
+              <span class="request-workflow-modal-value">{{ formatDateRange(requestRecord.requestScheduleStart, requestRecord.requestScheduleEnd) }}</span>
             </div>
             <div class="request-workflow-modal-field">
               <span class="request-workflow-modal-label">Facility:</span>
@@ -137,6 +137,27 @@
           <span class="request-workflow-modal-label">Assigned FO Personnel:</span>
           <span class="request-workflow-modal-value">{{ requestRecord.assignedPersonnel }}</span>
         </div>
+
+        <div class="request-workflow-modal-section">
+          <p class="request-workflow-modal-section-label">Linked Workflow Tasks:</p>
+          <div v-if="requestRecord.workflowTasks?.length" class="request-workflow-modal-remarks-box">
+            <div
+              v-for="taskRecord in requestRecord.workflowTasks"
+              :key="taskRecord.taskIdentifier || `${taskRecord.taskTitle}-${taskRecord.assignedStaffName || 'unassigned'}`"
+              class="request-workflow-modal-field"
+            >
+              <span class="request-workflow-modal-label">
+                {{ taskRecord.taskType || 'Task' }}:
+              </span>
+              <span class="request-workflow-modal-value">
+                {{ formatTaskSummary(taskRecord) }}
+              </span>
+            </div>
+          </div>
+          <div v-else class="request-workflow-modal-remarks-box">
+            No linked workflow tasks yet.
+          </div>
+        </div>
       </div>
 
       <!-- Action Buttons -->
@@ -167,6 +188,8 @@
 </template>
 
 <script setup>
+import { formatDisplayDate, formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
+
 /**
  * @typedef {Object} RequestWorkflowModalProps
  * @property {Object|null} requestRecord - The approved request record to display
@@ -220,5 +243,31 @@ function handleEditWorkflowClick() {
  */
 function handleCancelClick() {
   emit('cancelWorkflowRecord', props.requestRecord);
+}
+
+function formatTaskSummary(taskRecord) {
+  const title = String(taskRecord?.taskTitle || 'Untitled task').trim();
+  const staffName = String(taskRecord?.assignedStaffName || '').trim();
+  const venueName = String(taskRecord?.venueName || taskRecord?.facilityName || props.requestRecord?.facilityName || '').trim();
+  const status = String(taskRecord?.taskStatus || 'Pending').trim();
+
+  return [title, staffName || 'Pending Assignment', venueName, status]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function formatDateTime(value) {
+  return formatDisplayDateTime(value);
+}
+
+function formatDateRange(startValue, endValue) {
+  const formattedStart = startValue ? formatDisplayDate(startValue) : '';
+  const formattedEnd = endValue ? formatDisplayDate(endValue) : '';
+
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
 }
 </script>

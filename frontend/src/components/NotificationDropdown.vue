@@ -97,6 +97,9 @@ const unreadCount = computed(() => notificationStore.unreadCount || 0);
 
 function toggleDropdown() {
   isDropdownOpen.value = !isDropdownOpen.value;
+  if (isDropdownOpen.value) {
+    notificationStore.fetchNotifications(true).catch(() => {});
+  }
 }
 
 function closeDropdown() {
@@ -144,7 +147,7 @@ function handleClickOutside(event) {
 }
 
 onMounted(() => {
-  notificationStore.fetchNotifications().catch(() => {});
+  notificationStore.fetchNotifications(true).catch(() => {});
   document.addEventListener('click', handleClickOutside);
 });
 

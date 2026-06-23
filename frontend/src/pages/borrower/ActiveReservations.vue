@@ -1,94 +1,112 @@
-<!-- ===== AI GENERATED: BorrowerActiveReservationsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="authStore.userFullName || 'BORROWER'"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Header -->
-    <div class="borrower-sublist-page-header">
-      <h2 class="borrower-sublist-page-heading">Today's Active Reservations</h2>
-      <span class="borrower-sublist-go-back-link" @click="navigateBackToMyReservations">Go Back</span>
+    <div class="logs-page-header">
+      <h2 class="logs-page-heading">Active Reservations</h2>
+      <button class="logs-go-back-button" @click="navigateBackToMyReservations">
+        ← Go Back
+      </button>
     </div>
 
-    <!-- Toolbar -->
-    <div class="borrower-sublist-toolbar">
-      <div class="borrower-sublist-search-group">
-        <label class="borrower-sublist-search-label" for="borrowerActiveSearch">Search:</label>
+    <div class="logs-controls">
+      <div class="logs-search-group">
+        <label class="logs-search-label" for="activeLogsSearch">Search:</label>
         <input
-          id="borrowerActiveSearch"
-          v-model="searchQueryText"
+          id="activeLogsSearch"
+          v-model="searchQuery"
           type="text"
-          class="borrower-sublist-search-input"
-          placeholder="Name"
+          class="logs-search-input"
+          placeholder="Reservation ID or Name"
         />
       </div>
-      <div class="borrower-sublist-showing-group">
-        <label class="borrower-sublist-showing-label" for="borrowerActiveShowing">Showing:</label>
-        <select id="borrowerActiveShowing" v-model="showingFilterValue" class="borrower-sublist-showing-select">
-          <option value="all">All</option>
-        </select>
-        <button class="borrower-sublist-sort-button" aria-label="Sort">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
-          </svg>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="logs-sort-group">
+          <label class="logs-sort-label" for="activeLogsSort">Sort By:</label>
+          <select
+            id="activeLogsSort"
+            v-model="sortBy"
+            class="logs-sort-select"
+          >
+            <option value="date">Date</option>
+            <option value="name">Name</option>
+            <option value="facility">Facility</option>
+          </select>
+        </div>
+
+        <button
+          class="logs-sort-toggle"
+          @click="toggleSortOrder"
+          :title="sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'"
+        >
+          {{ sortOrder === 'asc' ? '↑' : '↓' }}
         </button>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="borrower-sublist-table-wrapper">
-      <table class="borrower-sublist-table">
+    <div class="logs-table-wrapper">
+      <table class="logs-table">
         <thead>
-          <tr class="borrower-sublist-table-header-row">
-            <th class="borrower-sublist-table-header-cell">ID</th>
-            <th class="borrower-sublist-table-header-cell">Name</th>
-            <th class="borrower-sublist-table-header-cell">Role</th>
-            <th class="borrower-sublist-table-header-cell">Schedule</th>
-            <th class="borrower-sublist-table-header-cell">Facility</th>
-            <th class="borrower-sublist-table-header-cell">Quantity</th>
-            <th class="borrower-sublist-table-header-cell">Type</th>
-            <th class="borrower-sublist-table-header-cell">Purpose</th>
-            <th class="borrower-sublist-table-header-cell">Status</th>
+          <tr>
+            <th class="logs-th">Reservation ID</th>
+            <th class="logs-th">Name</th>
+            <th class="logs-th">Role</th>
+            <th class="logs-th">Schedule</th>
+            <th class="logs-th">Facility</th>
+            <th class="logs-th">Type</th>
+            <th class="logs-th">Purpose</th>
+            <th class="logs-th">Status</th>
+            <th class="logs-th">Submitted</th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="record in filteredRecordList"
-            :key="record.requestIdentifier + record.requesterFullName"
-            class="borrower-sublist-table-body-row"
-          >
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--id">{{ record.requestIdentifier }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--name">{{ record.requesterFullName }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--role">{{ record.requesterRole }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--schedule">{{ record.requestSchedule }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--facility">{{ record.facilityName }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--quantity">{{ record.requestQuantity }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--type">
-              <span class="borrower-sublist-type-badge" :class="getTypeBadgeClass(record.requestType)">{{ record.requestType }}</span>
+          <tr v-for="log in filteredLogs" :key="log.id" class="logs-tr">
+            <td class="logs-td">{{ log.reservationId }}</td>
+            <td class="logs-td">{{ log.name }}</td>
+            <td class="logs-td">{{ log.role }}</td>
+            <td class="logs-td">{{ log.date }}</td>
+            <td class="logs-td">
+              <div class="logs-facility">
+                <span>{{ log.facility }}</span>
+              </div>
             </td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--purpose">{{ record.requestPurpose }}</td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--status">
-              <span class="borrower-sublist-status-badge borrower-sublist-status-badge--active">Active</span>
+            <td class="logs-td">
+              <span class="logs-badge" :class="getTypeBadgeClass(log.type)">
+                {{ log.type }}
+              </span>
             </td>
+            <td class="logs-td">{{ log.purpose }}</td>
+            <td class="logs-td">
+              <span class="logs-status-badge" :class="getStatusBadgeClass(log.status)">
+                {{ log.status }}
+              </span>
+            </td>
+            <td class="logs-td">{{ log.submitted }}</td>
           </tr>
-          <tr v-if="filteredRecordList.length === 0">
-            <td colspan="9" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No active reservations.</td>
+          <tr v-if="loading">
+            <td colspan="9" class="logs-td logs-empty-row">Loading active reservations...</td>
+          </tr>
+          <tr v-else-if="filteredLogs.length === 0">
+            <td colspan="9" class="logs-td logs-empty-row">No active reservations found.</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Footer -->
-    <div class="borrower-sublist-page-footer">&copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.</div>
+    <div class="logs-page-footer">
+      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
+    </div>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
-import './css/SubList.css';
+import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
@@ -98,55 +116,118 @@ const router = useRouter();
 const requestStore = useRequestStore();
 const authStore = useAuthenticationStore();
 const loading = ref(false);
-const searchQueryText = ref('');
-const showingFilterValue = ref('all');
-
-const activeRecordsList = computed(() => requestStore.activeReservationsList || []);
+const searchQuery = ref('');
+const sortBy = ref('date');
+const sortOrder = ref('asc');
 
 onMounted(async () => {
   try {
+    loading.value = true;
     await requestStore.fetchReservations();
-    const list = requestStore.activeReservationsList || [];
-    console.log('Borrower Active Reservations - Count:', list.length);
   } catch (error) {
     console.error('Error fetching active reservations:', error);
+  } finally {
+    loading.value = false;
   }
 });
 
-const filteredRecordList = computed(() => {
-  const queryLower = searchQueryText.value.toLowerCase().trim();
-  const list = activeRecordsList.value || [];
-  if (!queryLower) return list;
-  return list.filter((record) =>
-    record.requesterFullName?.toLowerCase().includes(queryLower) ||
-    record.requestIdentifier?.toString().includes(queryLower)
-  );
+const activeLogs = computed(() =>
+  (requestStore.activeReservationsList || []).map((record) => ({
+    id: record.requestIdentifier,
+    reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier),
+    name: record.requesterFullName || 'User',
+    role: record.requesterRole || 'Borrower',
+    date: record.requestSchedule || 'N/A',
+    facility: record.facilityName || 'N/A',
+    type: record.requestType || 'Reservation',
+    purpose: record.requestPurpose || 'N/A',
+    status: record.requestStatus || 'Active',
+    submitted: formatDateTime(record.requestedDate),
+    sortDate: getDateSortValue(record.requestScheduleStart || record.activityTime),
+  }))
+);
+
+const filteredLogs = computed(() => {
+  let logs = [...activeLogs.value];
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    logs = logs.filter((log) =>
+      log.reservationId.toLowerCase().includes(query)
+      || log.name.toLowerCase().includes(query)
+    );
+  }
+
+  logs.sort((a, b) => {
+    let compareA;
+    let compareB;
+
+    if (sortBy.value === 'date') {
+      compareA = a.sortDate;
+      compareB = b.sortDate;
+    } else if (sortBy.value === 'name') {
+      compareA = a.name.toLowerCase();
+      compareB = b.name.toLowerCase();
+    } else {
+      compareA = a.facility.toLowerCase();
+      compareB = b.facility.toLowerCase();
+    }
+
+    if (typeof compareA === 'string' && typeof compareB === 'string') {
+      return sortOrder.value === 'asc'
+        ? compareA.localeCompare(compareB)
+        : compareB.localeCompare(compareA);
+    }
+
+    return sortOrder.value === 'asc'
+      ? compareA - compareB
+      : compareB - compareA;
+  });
+
+  return logs;
 });
 
-const hasNoRecords = computed(() => {
-  const list = filteredRecordList.value || [];
-  return list.length === 0;
-});
-
-/**
- * @function getTypeBadgeClass
- * @description Returns CSS class for type badge.
- * @param {string} requestType
- * @returns {string}
- */
-function getTypeBadgeClass(requestType) {
-  const typeLower = requestType.toLowerCase();
-  if (typeLower === 'venue') return 'borrower-sublist-type-badge--venue';
-  if (typeLower === 'equipment') return 'borrower-sublist-type-badge--equipment';
-  if (typeLower === 'both') return 'borrower-sublist-type-badge--both';
-  return '';
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
 }
 
-/**
- * @function navigateBackToMyReservations
- * @description Navigates back to My Reservations page.
- * @returns {void}
- */
+function getTypeBadgeClass(type) {
+  const normalizedType = String(type || '').toLowerCase();
+  if (normalizedType === 'venue') return 'logs-badge--venue';
+  if (normalizedType === 'equipment') return 'logs-badge--equipment';
+  return 'logs-badge--venue';
+}
+
+function getStatusBadgeClass(status) {
+  const normalizedStatus = String(status || '').toLowerCase();
+  if (normalizedStatus.includes('approved') || normalizedStatus.includes('prepared')) {
+    return 'logs-status-badge--approved';
+  }
+
+  return 'logs-status-badge--active';
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function getDateSortValue(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 function navigateBackToMyReservations() {
   router.push({ name: ROUTE_NAMES.borrowerMyReservations });
 }

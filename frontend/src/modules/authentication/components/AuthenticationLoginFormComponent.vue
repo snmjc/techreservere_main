@@ -96,7 +96,7 @@ const passwordVisible = ref(false);
  * @description Emits login credentials to parent on form submit.
  * @returns {void}
  */
-const ALLOWED_EMAIL_DOMAINS = ['@fit.edu.ph', '@feu.edu.ph', '@techreserve.feu.edu.ph'];
+const ALLOWED_EMAIL_DOMAINS = ['@fit.edu.ph', '@feutech.edu.ph', '@techreserve.edu.ph'];
 
 function handleLoginSubmit() {
   const trimmedEmail = emailAddressValue.value.trim().toLowerCase();
@@ -117,7 +117,7 @@ function handleLoginSubmit() {
       usernameOrEmail: '',
       passwordText: '',
       rememberSession: rememberMeChecked.value,
-      validationError: 'Email must use an FEU institutional domain (e.g. @fit.edu.ph).',
+      validationError: 'Please enter a valid institutional email address.',
     });
     return;
   }

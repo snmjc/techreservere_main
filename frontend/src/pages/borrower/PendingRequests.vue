@@ -1,7 +1,7 @@
 <!-- ===== AI GENERATED: BorrowerPendingRequestsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="authStore.userFullName || 'BORROWER'"
     :navigation-items="borrowerNavigationItems"
   >
     <!-- Page Header -->
@@ -49,6 +49,7 @@
             <th class="borrower-sublist-table-header-cell">Type</th>
             <th class="borrower-sublist-table-header-cell">Purpose</th>
             <th class="borrower-sublist-table-header-cell">Status</th>
+            <th class="borrower-sublist-table-header-cell">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -57,7 +58,7 @@
             :key="record.requestIdentifier + record.requesterFullName"
             class="borrower-sublist-table-body-row"
           >
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--id">{{ record.requestIdentifier }}</td>
+            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--id">{{ record.requestDisplayIdentifier || record.requestIdentifier }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--name">{{ record.requesterFullName }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--role">{{ record.requesterRole }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--schedule">{{ record.requestSchedule }}</td>
@@ -70,9 +71,24 @@
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--status">
               <span class="borrower-sublist-status-badge borrower-sublist-status-badge--pending">Pending Approval</span>
             </td>
+            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--actions">
+              <div class="borrower-sublist-actions">
+                <button type="button" class="borrower-sublist-action-button" @click="selectedRequest = record">
+                  View
+                </button>
+                <button
+                  type="button"
+                  class="borrower-sublist-action-button borrower-sublist-action-button--danger"
+                  :disabled="isCancelling"
+                  @click="openCancelModal(record)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </td>
           </tr>
           <tr v-if="filteredRecordList.length === 0">
-            <td colspan="9" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No pending requests.</td>
+            <td colspan="10" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No pending requests.</td>
           </tr>
         </tbody>
       </table>
@@ -80,6 +96,14 @@
 
     <!-- Footer -->
     <div class="borrower-sublist-page-footer">&copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.</div>
+
+    <BorrowerRequestViewModal :request-record="selectedRequest" @close="selectedRequest = null" />
+    <BorrowerRequestCancelModal
+      :request-record="requestToCancel"
+      :is-submitting="isCancelling"
+      @close="closeCancelModal"
+      @confirm="handleCancelRequest"
+    />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -87,6 +111,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
+import BorrowerRequestViewModal from '@/modules/request/components/BorrowerRequestViewModal.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/SubList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -100,6 +126,9 @@ const authStore = useAuthenticationStore();
 const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const selectedRequest = ref(null);
+const requestToCancel = ref(null);
+const isCancelling = ref(false);
 
 const pendingRecordsList = computed(() => requestStore.pendingRequestsList || []);
 
@@ -127,6 +156,30 @@ const hasNoRecords = computed(() => {
   const list = filteredRecordList.value || [];
   return list.length === 0;
 });
+
+function openCancelModal(requestRecord) {
+  requestToCancel.value = requestRecord;
+}
+
+function closeCancelModal() {
+  requestToCancel.value = null;
+}
+
+async function handleCancelRequest({ reason }) {
+  if (!requestToCancel.value) {
+    return;
+  }
+
+  try {
+    isCancelling.value = true;
+    await requestStore.cancelOwnRequest(requestToCancel.value, reason);
+    closeCancelModal();
+  } catch (error) {
+    console.error('Unable to cancel request.', error);
+  } finally {
+    isCancelling.value = false;
+  }
+}
 
 function getTypeBadgeClass(requestType) {
   const typeLower = requestType.toLowerCase();
