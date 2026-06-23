@@ -123,7 +123,18 @@ class ReservationPolicyConfigService
                     start_time,
                     end_time,
                     block_label,
-                    block_type
+                    block_type,
+                    course_code,
+                    course_name,
+                    instructor_name,
+                    days_of_week_json,
+                    date_range_start,
+                    date_range_end,
+                    venue_name_snapshot,
+                    academic_year,
+                    semester_label,
+                    notes,
+                    capacity_limit
              FROM venue_schedule_blocks
              {$where}
              ORDER BY block_date ASC, start_time ASC, schedule_block_identifier ASC",
@@ -138,27 +149,49 @@ class ReservationPolicyConfigService
     {
         $this->ensurePolicyTablesReady();
 
-        $normalizedBlock = $this->normalizeScheduleBlockPayload($payload);
+        $normalizedBlocks = $this->normalizeScheduleBlockPayloads($payload);
+        $createdBlocks = [];
 
-        $this->connection->insert('venue_schedule_blocks', [
-            'venue_identifier' => $normalizedBlock['venueIdentifier'],
-            'block_date' => $normalizedBlock['blockDate'],
-            'start_time' => $normalizedBlock['startTime'],
-            'end_time' => $normalizedBlock['endTime'],
-            'block_label' => $normalizedBlock['blockLabel'],
-            'block_type' => $normalizedBlock['blockType'],
-        ], [
-            'venue_identifier' => ParameterType::INTEGER,
-            'block_date' => ParameterType::STRING,
-            'start_time' => ParameterType::STRING,
-            'end_time' => ParameterType::STRING,
-            'block_label' => ParameterType::STRING,
-            'block_type' => ParameterType::STRING,
-        ]);
+        foreach ($normalizedBlocks as $normalizedBlock) {
+            $this->connection->insert('venue_schedule_blocks', $this->buildScheduleBlockDatabaseRow($normalizedBlock), $this->buildScheduleBlockDatabaseTypes());
+            $createdBlocks[] = [
+                'scheduleBlockIdentifier' => (int) $this->connection->lastInsertId(),
+                ...$normalizedBlock,
+            ];
+        }
 
-        $identifier = (int) $this->connection->lastInsertId();
+        if (count($createdBlocks) === 1) {
+            return $createdBlocks[0];
+        }
+
         return [
-            'scheduleBlockIdentifier' => $identifier,
+            'createdCount' => count($createdBlocks),
+            'scheduleBlocks' => $createdBlocks,
+        ];
+    }
+
+    public function updateClassScheduleBlock(int $scheduleBlockIdentifier, array $payload): array
+    {
+        $this->ensurePolicyTablesReady();
+
+        if ($scheduleBlockIdentifier <= 0) {
+            throw new DomainValidationException('A valid class schedule identifier is required.');
+        }
+
+        $normalizedBlock = $this->normalizeSingleScheduleBlockPayload($payload);
+
+        $this->connection->update(
+            'venue_schedule_blocks',
+            $this->buildScheduleBlockDatabaseRow($normalizedBlock),
+            ['schedule_block_identifier' => $scheduleBlockIdentifier],
+            [
+                ...$this->buildScheduleBlockDatabaseTypes(),
+                'schedule_block_identifier' => ParameterType::INTEGER,
+            ]
+        );
+
+        return [
+            'scheduleBlockIdentifier' => $scheduleBlockIdentifier,
             ...$normalizedBlock,
         ];
     }
@@ -193,7 +226,18 @@ class ReservationPolicyConfigService
                     start_time,
                     end_time,
                     block_label,
-                    block_type
+                    block_type,
+                    course_code,
+                    course_name,
+                    instructor_name,
+                    days_of_week_json,
+                    date_range_start,
+                    date_range_end,
+                    venue_name_snapshot,
+                    academic_year,
+                    semester_label,
+                    notes,
+                    capacity_limit
              FROM venue_schedule_blocks
              WHERE venue_identifier IN (:venueIdentifiers)
                AND block_date BETWEEN :dateFrom AND :dateTo
@@ -250,9 +294,32 @@ class ReservationPolicyConfigService
                 end_time TIME NOT NULL,
                 block_label VARCHAR(200) NOT NULL,
                 block_type VARCHAR(80) NOT NULL DEFAULT \'Class Schedule\',
+                course_code VARCHAR(80) DEFAULT NULL,
+                course_name VARCHAR(200) DEFAULT NULL,
+                instructor_name VARCHAR(160) DEFAULT NULL,
+                days_of_week_json JSON DEFAULT NULL,
+                date_range_start DATE DEFAULT NULL,
+                date_range_end DATE DEFAULT NULL,
+                venue_name_snapshot VARCHAR(200) DEFAULT NULL,
+                academic_year VARCHAR(40) DEFAULT NULL,
+                semester_label VARCHAR(80) DEFAULT NULL,
+                notes TEXT DEFAULT NULL,
+                capacity_limit INT DEFAULT NULL,
                 created_timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             )'
         );
+
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS course_code VARCHAR(80) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS course_name VARCHAR(200) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS instructor_name VARCHAR(160) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS days_of_week_json JSON DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS date_range_start DATE DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS date_range_end DATE DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS venue_name_snapshot VARCHAR(200) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS academic_year VARCHAR(40) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS semester_label VARCHAR(80) DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL');
+        $this->connection->executeStatement('ALTER TABLE venue_schedule_blocks ADD COLUMN IF NOT EXISTS capacity_limit INT DEFAULT NULL');
     }
 
     private function normalizeBookingWindowPayload(array $payload): array
@@ -286,14 +353,72 @@ class ReservationPolicyConfigService
         ];
     }
 
-    private function normalizeScheduleBlockPayload(array $payload): array
+    private function normalizeScheduleBlockPayloads(array $payload): array
+    {
+        $daysOfWeek = $this->normalizeDayList($payload['daysOfWeek'] ?? []);
+        $dateRangeStart = $this->normalizeDateString($payload['dateRangeStart'] ?? $payload['startDate'] ?? null);
+        $dateRangeEnd = $this->normalizeDateString($payload['dateRangeEnd'] ?? $payload['endDate'] ?? null);
+
+        if ($dateRangeStart !== null || $dateRangeEnd !== null || $daysOfWeek !== []) {
+            if ($dateRangeStart === null || $dateRangeEnd === null) {
+                throw new DomainValidationException('A valid start date and end date are required for a recurring class schedule.');
+            }
+
+            if ($dateRangeEnd < $dateRangeStart) {
+                throw new DomainValidationException('The end date must be on or after the start date.');
+            }
+
+            if ($daysOfWeek === []) {
+                throw new DomainValidationException('Select at least one day for the class schedule.');
+            }
+
+            $baseBlock = $this->normalizeSingleScheduleBlockPayload([
+                ...$payload,
+                'blockDate' => $dateRangeStart,
+                'dateRangeStart' => $dateRangeStart,
+                'dateRangeEnd' => $dateRangeEnd,
+                'daysOfWeek' => $daysOfWeek,
+            ]);
+
+            $matchingDates = $this->expandDatesForDays($dateRangeStart, $dateRangeEnd, $daysOfWeek);
+            if ($matchingDates === []) {
+                throw new DomainValidationException('No class schedule dates matched the selected day range.');
+            }
+
+            return array_map(
+                static fn (string $blockDate): array => [
+                    ...$baseBlock,
+                    'blockDate' => $blockDate,
+                ],
+                $matchingDates
+            );
+        }
+
+        return [$this->normalizeSingleScheduleBlockPayload($payload)];
+    }
+
+    private function normalizeSingleScheduleBlockPayload(array $payload): array
     {
         $venueIdentifier = (int) ($payload['venueIdentifier'] ?? 0);
         $blockDate = $this->normalizeDateString($payload['blockDate'] ?? null);
         $startTime = $this->normalizeTimeString($payload['startTime'] ?? null);
         $endTime = $this->normalizeTimeString($payload['endTime'] ?? null);
+        $courseCode = trim((string) ($payload['courseCode'] ?? ''));
+        $courseName = trim((string) ($payload['courseName'] ?? ''));
         $blockLabel = trim((string) ($payload['blockLabel'] ?? ''));
-        $blockType = trim((string) ($payload['blockType'] ?? 'Class Schedule')) ?: 'Class Schedule';
+        if ($blockLabel === '') {
+            $blockLabel = trim(sprintf('%s %s', $courseCode, $courseName));
+        }
+        $blockType = trim((string) ($payload['blockType'] ?? $payload['scheduleType'] ?? 'Class Schedule')) ?: 'Class Schedule';
+        $instructorName = trim((string) ($payload['instructorName'] ?? ''));
+        $venueNameSnapshot = trim((string) ($payload['venueNameSnapshot'] ?? $payload['venueName'] ?? ''));
+        $academicYear = trim((string) ($payload['academicYear'] ?? ''));
+        $semesterLabel = trim((string) ($payload['semesterLabel'] ?? $payload['semester'] ?? ''));
+        $notes = trim((string) ($payload['notes'] ?? ''));
+        $capacityLimit = (int) ($payload['capacityLimit'] ?? $payload['capacity'] ?? 0);
+        $daysOfWeek = $this->normalizeDayList($payload['daysOfWeek'] ?? []);
+        $dateRangeStart = $this->normalizeDateString($payload['dateRangeStart'] ?? $payload['startDate'] ?? $blockDate);
+        $dateRangeEnd = $this->normalizeDateString($payload['dateRangeEnd'] ?? $payload['endDate'] ?? $blockDate);
 
         if ($venueIdentifier <= 0) {
             throw new DomainValidationException('A valid venue identifier is required for a class schedule block.');
@@ -322,6 +447,17 @@ class ReservationPolicyConfigService
             'endTime' => $endTime,
             'blockLabel' => $blockLabel,
             'blockType' => $blockType,
+            'courseCode' => $courseCode,
+            'courseName' => $courseName,
+            'instructorName' => $instructorName,
+            'daysOfWeek' => $daysOfWeek,
+            'dateRangeStart' => $dateRangeStart ?? $blockDate,
+            'dateRangeEnd' => $dateRangeEnd ?? $blockDate,
+            'venueNameSnapshot' => $venueNameSnapshot,
+            'academicYear' => $academicYear,
+            'semesterLabel' => $semesterLabel,
+            'notes' => $notes,
+            'capacityLimit' => $capacityLimit > 0 ? $capacityLimit : null,
         ];
     }
 
@@ -381,6 +517,63 @@ class ReservationPolicyConfigService
             'endTime' => substr((string) ($row['end_time'] ?? ''), 0, 5),
             'blockLabel' => trim((string) ($row['block_label'] ?? '')),
             'blockType' => trim((string) ($row['block_type'] ?? 'Class Schedule')) ?: 'Class Schedule',
+            'courseCode' => trim((string) ($row['course_code'] ?? '')),
+            'courseName' => trim((string) ($row['course_name'] ?? '')),
+            'instructorName' => trim((string) ($row['instructor_name'] ?? '')),
+            'daysOfWeek' => $this->decodeStringArray($row['days_of_week_json'] ?? null, []),
+            'dateRangeStart' => $this->normalizeDateString($row['date_range_start'] ?? null) ?? '',
+            'dateRangeEnd' => $this->normalizeDateString($row['date_range_end'] ?? null) ?? '',
+            'venueNameSnapshot' => trim((string) ($row['venue_name_snapshot'] ?? '')),
+            'academicYear' => trim((string) ($row['academic_year'] ?? '')),
+            'semesterLabel' => trim((string) ($row['semester_label'] ?? '')),
+            'notes' => trim((string) ($row['notes'] ?? '')),
+            'capacityLimit' => ($row['capacity_limit'] ?? null) !== null ? (int) $row['capacity_limit'] : null,
+        ];
+    }
+
+    private function buildScheduleBlockDatabaseRow(array $normalizedBlock): array
+    {
+        return [
+            'venue_identifier' => $normalizedBlock['venueIdentifier'],
+            'block_date' => $normalizedBlock['blockDate'],
+            'start_time' => $normalizedBlock['startTime'],
+            'end_time' => $normalizedBlock['endTime'],
+            'block_label' => $normalizedBlock['blockLabel'],
+            'block_type' => $normalizedBlock['blockType'],
+            'course_code' => $normalizedBlock['courseCode'] !== '' ? $normalizedBlock['courseCode'] : null,
+            'course_name' => $normalizedBlock['courseName'] !== '' ? $normalizedBlock['courseName'] : null,
+            'instructor_name' => $normalizedBlock['instructorName'] !== '' ? $normalizedBlock['instructorName'] : null,
+            'days_of_week_json' => $normalizedBlock['daysOfWeek'] !== [] ? json_encode($normalizedBlock['daysOfWeek'], JSON_THROW_ON_ERROR) : null,
+            'date_range_start' => $normalizedBlock['dateRangeStart'] !== '' ? $normalizedBlock['dateRangeStart'] : null,
+            'date_range_end' => $normalizedBlock['dateRangeEnd'] !== '' ? $normalizedBlock['dateRangeEnd'] : null,
+            'venue_name_snapshot' => $normalizedBlock['venueNameSnapshot'] !== '' ? $normalizedBlock['venueNameSnapshot'] : null,
+            'academic_year' => $normalizedBlock['academicYear'] !== '' ? $normalizedBlock['academicYear'] : null,
+            'semester_label' => $normalizedBlock['semesterLabel'] !== '' ? $normalizedBlock['semesterLabel'] : null,
+            'notes' => $normalizedBlock['notes'] !== '' ? $normalizedBlock['notes'] : null,
+            'capacity_limit' => $normalizedBlock['capacityLimit'],
+        ];
+    }
+
+    private function buildScheduleBlockDatabaseTypes(): array
+    {
+        return [
+            'venue_identifier' => ParameterType::INTEGER,
+            'block_date' => ParameterType::STRING,
+            'start_time' => ParameterType::STRING,
+            'end_time' => ParameterType::STRING,
+            'block_label' => ParameterType::STRING,
+            'block_type' => ParameterType::STRING,
+            'course_code' => ParameterType::STRING,
+            'course_name' => ParameterType::STRING,
+            'instructor_name' => ParameterType::STRING,
+            'days_of_week_json' => ParameterType::STRING,
+            'date_range_start' => ParameterType::STRING,
+            'date_range_end' => ParameterType::STRING,
+            'venue_name_snapshot' => ParameterType::STRING,
+            'academic_year' => ParameterType::STRING,
+            'semester_label' => ParameterType::STRING,
+            'notes' => ParameterType::STRING,
+            'capacity_limit' => ParameterType::INTEGER,
         ];
     }
 
@@ -438,5 +631,51 @@ class ReservationPolicyConfigService
         ))));
 
         return $normalizedValues;
+    }
+
+    private function normalizeDayList(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $allowedDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $normalizedDays = array_values(array_unique(array_filter(array_map(
+            static function ($dayValue) use ($allowedDays): string {
+                $normalizedDay = ucfirst(strtolower(trim((string) $dayValue)));
+                return in_array($normalizedDay, $allowedDays, true) ? $normalizedDay : '';
+            },
+            $value
+        ))));
+
+        return $normalizedDays;
+    }
+
+    private function expandDatesForDays(string $startDate, string $endDate, array $daysOfWeek): array
+    {
+        $dayNumbers = array_flip([
+            'Monday' => 1,
+            'Tuesday' => 2,
+            'Wednesday' => 3,
+            'Thursday' => 4,
+            'Friday' => 5,
+            'Saturday' => 6,
+            'Sunday' => 7,
+        ]);
+        $selectedDayNumbers = array_values(array_map(static fn (string $dayName): int => $dayNumbers[$dayName] ?? 0, $daysOfWeek));
+
+        $dates = [];
+        $cursor = new \DateTimeImmutable($startDate, AppClock::timezone());
+        $end = new \DateTimeImmutable($endDate, AppClock::timezone());
+
+        while ($cursor <= $end) {
+            if (in_array((int) $cursor->format('N'), $selectedDayNumbers, true)) {
+                $dates[] = $cursor->format('Y-m-d');
+            }
+
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        return $dates;
     }
 }

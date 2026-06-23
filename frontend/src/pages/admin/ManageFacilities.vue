@@ -4,48 +4,29 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <section class="manage-facilities-hero">
-      <div class="manage-facilities-hero-copy">
-        <p class="manage-facilities-hero-kicker">Facilities Command Center</p>
-        <h2 class="manage-facilities-page-heading">Manage spaces, equipment, and daily readiness.</h2>
-        <p class="manage-facilities-hero-description">
-          Keep venue availability current, surface rooms that need attention, and maintain an accurate inventory for reservation teams.
-        </p>
-      </div>
-    </section>
-
-    <section class="manage-facilities-summary-grid" aria-label="Facilities summary">
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Venues tracked' : 'Equipment tracked' }}</span>
-        <strong class="manage-facilities-summary-value">{{ totalManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Active spaces on the roster' : 'Reservable items in inventory' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">Ready now</span>
-        <strong class="manage-facilities-summary-value">{{ availableManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Open for the selected date' : 'Currently available for checkout' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">Needs attention</span>
-        <strong class="manage-facilities-summary-value">{{ unavailableManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Blocked, booked, or inactive rooms' : 'Unavailable or inactive equipment' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Floors in view' : 'Categories in view' }}</span>
-        <strong class="manage-facilities-summary-value">{{ currentGroupingCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Organized by floor for faster scanning' : 'Grouped through the category filter' }}</p>
-      </article>
-    </section>
+    <div class="logs-page-header manage-facilities-page-header">
+      <h2 class="logs-page-heading">Manage Facilities</h2>
+      <button class="logs-go-back-button" type="button" @click="handleGoBack">
+        ← Go Back
+      </button>
+    </div>
 
     <section class="manage-facilities-workspace">
       <div class="manage-facilities-tabs-row">
         <div class="manage-facilities-tab-cluster manage-facilities-tab-cluster--classic" role="tablist" aria-label="Facility tabs">
           <button
             class="manage-facilities-tab-button"
+            :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'all' }"
+            @click="handleFacilityTabChange('all')"
+          >
+            All
+          </button>
+          <button
+            class="manage-facilities-tab-button"
             :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'venue' }"
             @click="handleFacilityTabChange('venue')"
           >
-            Venue
+            Venues
           </button>
           <button
             class="manage-facilities-tab-button"
@@ -54,20 +35,34 @@
           >
             Equipment
           </button>
+          <button
+            class="manage-facilities-tab-button"
+            :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'classroom-schedules' }"
+            @click="handleFacilityTabChange('classroom-schedules')"
+          >
+            Classroom Schedules
+          </button>
         </div>
 
         <div class="manage-facilities-inline-actions">
+          <button
+            v-if="activeFacilityTab === 'classroom-schedules'"
+            class="manage-facilities-add-button manage-facilities-add-button--compact"
+            @click="openImportSchedulesModal"
+          >
+            Import Schedules
+          </button>
           <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            {{ activeFacilityTab === 'venue' ? 'Add Venue' : 'Add Equipment' }}
+            {{ addButtonLabel }}
           </button>
         </div>
       </div>
 
-      <div class="manage-facilities-filter-row">
+      <div v-if="activeFacilityTab !== 'classroom-schedules'" class="manage-facilities-filter-row">
         <button
           class="manage-facilities-filter-pill"
           :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'all' }"
@@ -101,11 +96,11 @@
             v-model="searchQuery"
             type="text"
             class="manage-facilities-search-input"
-            :placeholder="activeFacilityTab === 'venue' ? 'Search by venue name, location, or floor...' : 'Search by equipment name, type, brand, barcode, or asset ID...'"
+            :placeholder="searchPlaceholder"
           />
         </div>
         <div class="manage-facilities-sort-group manage-facilities-sort-group--showing">
-          <label class="manage-facilities-sort-label manage-facilities-sort-label--inline">Showing:</label>
+          <label class="manage-facilities-sort-label manage-facilities-sort-label--inline">{{ showingLabel }}</label>
           <select id="facilityShowingSelect" v-model="showingFilterValue" class="manage-facilities-showing-select">
             <option
               v-for="filterOption in showingFilterOptions"
@@ -146,6 +141,127 @@
               @delete-venue="handleDeleteVenue"
             />
           </div>
+        </div>
+      </div>
+
+      <div v-else-if="activeFacilityTab === 'classroom-schedules'">
+        <div v-if="classScheduleLoading" class="manage-facilities-loading">Loading classroom schedules...</div>
+        <p v-else-if="classScheduleError" class="manage-facilities-modal-error">{{ classScheduleError }}</p>
+        <div v-else class="classroom-schedule-layout">
+          <aside class="classroom-schedule-sidebar">
+            <section class="classroom-schedule-date-card">
+              <div class="classroom-schedule-date-badge">
+                <span>{{ selectedClassroomDateMonthShort }}</span>
+                <strong>{{ selectedClassroomDateDayNumber }}</strong>
+              </div>
+              <div>
+                <h3>{{ selectedClassroomDateHeading }}</h3>
+                <p>{{ selectedClassroomDateWeekday }}</p>
+              </div>
+            </section>
+
+            <section class="classroom-schedule-mini-calendar">
+              <div class="classroom-schedule-mini-calendar__header">
+                <button type="button" @click="shiftClassroomMonth(-1)">‹</button>
+                <strong>{{ classroomMonthHeading }}</strong>
+                <button type="button" @click="shiftClassroomMonth(1)">›</button>
+              </div>
+              <div class="classroom-schedule-mini-calendar__weekdays">
+                <span v-for="weekdayLabel in miniCalendarWeekdays" :key="weekdayLabel">{{ weekdayLabel }}</span>
+              </div>
+              <div class="classroom-schedule-mini-calendar__grid">
+                <button
+                  v-for="calendarDay in classroomMonthDays"
+                  :key="calendarDay.dateKey"
+                  type="button"
+                  class="classroom-schedule-mini-calendar__day"
+                  :class="{
+                    'is-outside': !calendarDay.isCurrentMonth,
+                    'is-selected': calendarDay.dateKey === selectedClassroomDate,
+                    'has-schedules': calendarDay.hasSchedules,
+                  }"
+                  @click="selectClassroomDate(calendarDay.dateKey)"
+                >
+                  {{ calendarDay.dayNumber }}
+                </button>
+              </div>
+            </section>
+
+            <section class="classroom-schedule-selected-card">
+              <h4>Selected Schedule</h4>
+              <template v-if="selectedClassScheduleRecord">
+                <strong>{{ selectedClassScheduleRecord.courseCode || selectedClassScheduleRecord.blockLabel }}</strong>
+                <p>{{ selectedClassScheduleRecord.courseName || selectedClassScheduleRecord.blockLabel }}</p>
+                <p>{{ selectedClassScheduleRecord.venueNameSnapshot || selectedClassScheduleRecord.venueName || 'Venue not set' }}</p>
+                <p>{{ formatClassroomScheduleTime(selectedClassScheduleRecord.startTime, selectedClassScheduleRecord.endTime) }}</p>
+                <p>{{ selectedClassScheduleRecord.instructorName || 'Instructor not specified' }}</p>
+                <button type="button" class="classroom-schedule-sidebar-button" @click="openClassScheduleDetails(selectedClassScheduleRecord)">
+                  View Details
+                </button>
+              </template>
+              <p v-else class="classroom-schedule-empty-copy">No classroom schedule is selected for this date.</p>
+            </section>
+
+            <section class="classroom-schedule-legend-card">
+              <h4>Legend</h4>
+              <div class="classroom-schedule-legend-list">
+                <span><i class="classroom-schedule-legend-dot classroom-schedule-legend-dot--class"></i>Class Schedule</span>
+                <span><i class="classroom-schedule-legend-dot classroom-schedule-legend-dot--reserved"></i>Reserved</span>
+                <span><i class="classroom-schedule-legend-dot classroom-schedule-legend-dot--equipment"></i>Equipment Reservation</span>
+                <span><i class="classroom-schedule-legend-dot classroom-schedule-legend-dot--pending"></i>Pending</span>
+                <span><i class="classroom-schedule-legend-dot classroom-schedule-legend-dot--maintenance"></i>Maintenance</span>
+              </div>
+            </section>
+          </aside>
+
+          <section class="classroom-schedule-board-card">
+            <div class="classroom-schedule-board-toolbar">
+              <button type="button" class="classroom-schedule-board-icon-button" @click="jumpClassroomDateByDays(-7)">‹</button>
+              <button type="button" class="classroom-schedule-board-today" @click="selectClassroomDate(todayDateKey)">Today</button>
+              <button type="button" class="classroom-schedule-board-icon-button" @click="jumpClassroomDateByDays(7)">›</button>
+              <div class="classroom-schedule-board-spacer"></div>
+              <span class="classroom-schedule-board-view-badge">Weekly View</span>
+            </div>
+
+            <div class="classroom-schedule-board-grid">
+              <div class="classroom-schedule-board-grid__header"></div>
+              <div
+                v-for="weekDate in classroomWeekDates"
+                :key="weekDate.dateKey"
+                class="classroom-schedule-board-day-header"
+                :class="{ 'is-selected': weekDate.dateKey === selectedClassroomDate }"
+              >
+                <span>{{ weekDate.weekday }}</span>
+                <strong>{{ weekDate.monthDay }}</strong>
+              </div>
+
+              <div class="classroom-schedule-board-time-column">
+                <span v-for="timeLabel in classroomTimeLabels" :key="timeLabel">{{ timeLabel }}</span>
+              </div>
+
+              <div
+                v-for="weekDate in classroomWeekDates"
+                :key="`${weekDate.dateKey}-column`"
+                class="classroom-schedule-board-day-column"
+                @dblclick="openAddScheduleForDate(weekDate.dateKey)"
+              >
+                <button
+                  v-for="scheduleRecord in getSchedulesForClassroomDay(weekDate.dateKey)"
+                  :key="scheduleRecord.scheduleBlockIdentifier"
+                  type="button"
+                  class="classroom-schedule-event"
+                  :class="classroomScheduleEventClass(scheduleRecord.blockType)"
+                  :style="buildClassroomScheduleStyle(scheduleRecord)"
+                  @click="openClassScheduleDetails(scheduleRecord)"
+                >
+                  <strong>{{ scheduleRecord.courseCode || scheduleRecord.blockLabel }}</strong>
+                  <span>{{ scheduleRecord.courseName || scheduleRecord.blockLabel }}</span>
+                  <small>{{ scheduleRecord.venueNameSnapshot || scheduleRecord.venueName || 'Venue' }}</small>
+                  <small>{{ formatClassroomScheduleTime(scheduleRecord.startTime, scheduleRecord.endTime) }}</small>
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </section>
@@ -189,6 +305,184 @@
 
     <div class="manage-facilities-page-footer">
       TechReserve facilities operations workspace.
+    </div>
+
+    <div
+      v-if="showClassScheduleModal"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeClassScheduleModal"
+    >
+      <section class="manage-facilities-delete-modal classroom-schedule-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeClassScheduleModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading">
+          <h2>{{ classScheduleFormMode === 'edit' ? 'Edit Classroom Schedule' : 'Add Classroom Schedule' }}</h2>
+          <p>Manage classroom schedule blocks that should appear in the facilities calendar and block venue booking conflicts.</p>
+        </div>
+
+        <form class="classroom-schedule-form" @submit.prevent="submitClassSchedule">
+          <div class="classroom-schedule-form-grid">
+            <label>
+              <span>Course Code</span>
+              <input v-model.trim="classScheduleForm.courseCode" type="text" placeholder="IT321" />
+            </label>
+            <label>
+              <span>Course Name</span>
+              <input v-model.trim="classScheduleForm.courseName" type="text" placeholder="Data Structures" />
+            </label>
+            <label>
+              <span>Instructor</span>
+              <input v-model.trim="classScheduleForm.instructorName" type="text" placeholder="Prof. Juan Dela Cruz" />
+            </label>
+            <label>
+              <span>Venue / Room</span>
+              <select v-model.number="classScheduleForm.venueIdentifier">
+                <option :value="0">Select room</option>
+                <option v-for="venueOption in classroomVenueOptions" :key="venueOption.venueIdentifier" :value="venueOption.venueIdentifier">
+                  {{ venueOption.venueName }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>Schedule Type</span>
+              <select v-model="classScheduleForm.blockType">
+                <option v-for="typeOption in classroomScheduleTypeOptions" :key="typeOption" :value="typeOption">{{ typeOption }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Academic Year</span>
+              <input v-model.trim="classScheduleForm.academicYear" type="text" placeholder="2026 - 2027" />
+            </label>
+            <label>
+              <span>Semester</span>
+              <input v-model.trim="classScheduleForm.semesterLabel" type="text" placeholder="1st Semester" />
+            </label>
+            <label>
+              <span>Capacity</span>
+              <input v-model.number="classScheduleForm.capacityLimit" type="number" min="0" placeholder="40" />
+            </label>
+          </div>
+
+          <div class="classroom-schedule-form-days">
+            <span>Days</span>
+            <div class="classroom-schedule-form-days__grid">
+              <label v-for="dayLabel in classroomDayOptions" :key="dayLabel">
+                <input v-model="classScheduleForm.daysOfWeek" type="checkbox" :value="dayLabel" />
+                <span>{{ dayLabel }}</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="classroom-schedule-form-grid">
+            <label>
+              <span>Start Time</span>
+              <input v-model="classScheduleForm.startTime" type="time" />
+            </label>
+            <label>
+              <span>End Time</span>
+              <input v-model="classScheduleForm.endTime" type="time" />
+            </label>
+            <label>
+              <span>Start Date</span>
+              <input v-model="classScheduleForm.dateRangeStart" type="date" />
+            </label>
+            <label>
+              <span>End Date</span>
+              <input v-model="classScheduleForm.dateRangeEnd" type="date" />
+            </label>
+          </div>
+
+          <label class="classroom-schedule-form-notes">
+            <span>Notes</span>
+            <textarea v-model.trim="classScheduleForm.notes" rows="3" placeholder="Regular class schedule notes"></textarea>
+          </label>
+
+          <p v-if="classScheduleModalError" class="manage-facilities-modal-error">{{ classScheduleModalError }}</p>
+
+          <div class="manage-facilities-modal-actions">
+            <button class="manage-facilities-cancel-button" type="button" @click="closeClassScheduleModal">Cancel</button>
+            <button class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral" type="submit" :disabled="isSavingClassSchedule">
+              {{ isSavingClassSchedule ? 'Saving...' : (classScheduleFormMode === 'edit' ? 'Save Schedule' : 'Add Schedule') }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div
+      v-if="viewClassScheduleRecord"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeClassScheduleDetails"
+    >
+      <section class="manage-facilities-delete-modal classroom-schedule-detail-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeClassScheduleDetails">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+        <div class="manage-facilities-modal-heading">
+          <h2>Schedule Details</h2>
+          <p>Review, edit, or remove this classroom schedule block.</p>
+        </div>
+
+        <div class="classroom-schedule-detail-grid">
+          <div><span>Course</span><strong>{{ viewClassScheduleRecord.courseCode || viewClassScheduleRecord.blockLabel }}</strong></div>
+          <div><span>Course Name</span><strong>{{ viewClassScheduleRecord.courseName || viewClassScheduleRecord.blockLabel }}</strong></div>
+          <div><span>Instructor</span><strong>{{ viewClassScheduleRecord.instructorName || 'Not specified' }}</strong></div>
+          <div><span>Room</span><strong>{{ viewClassScheduleRecord.venueNameSnapshot || viewClassScheduleRecord.venueName || 'Not specified' }}</strong></div>
+          <div><span>Days</span><strong>{{ formatScheduleDays(viewClassScheduleRecord.daysOfWeek) }}</strong></div>
+          <div><span>Time</span><strong>{{ formatClassroomScheduleTime(viewClassScheduleRecord.startTime, viewClassScheduleRecord.endTime) }}</strong></div>
+          <div><span>Date Range</span><strong>{{ formatScheduleDateRange(viewClassScheduleRecord.dateRangeStart || viewClassScheduleRecord.blockDate, viewClassScheduleRecord.dateRangeEnd || viewClassScheduleRecord.blockDate) }}</strong></div>
+          <div><span>Schedule Type</span><strong>{{ viewClassScheduleRecord.blockType }}</strong></div>
+          <div><span>Capacity</span><strong>{{ viewClassScheduleRecord.capacityLimit || 'N/A' }}</strong></div>
+          <div><span>Notes</span><strong>{{ viewClassScheduleRecord.notes || 'No notes added.' }}</strong></div>
+        </div>
+
+        <div class="manage-facilities-modal-actions">
+          <button class="manage-facilities-cancel-button" type="button" @click="openEditClassSchedule(viewClassScheduleRecord)">Edit Schedule</button>
+          <button class="manage-facilities-delete-confirm-button" type="button" :disabled="isDeletingClassSchedule" @click="deleteClassSchedule(viewClassScheduleRecord)">
+            {{ isDeletingClassSchedule ? 'Deleting...' : 'Delete Schedule' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showImportSchedulesModal"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeImportSchedulesModal"
+    >
+      <section class="manage-facilities-delete-modal classroom-schedule-import-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeImportSchedulesModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+        <div class="manage-facilities-modal-heading">
+          <h2>Import Classroom Schedules</h2>
+          <p>Upload a schedule file to stage classroom schedule imports for admin review.</p>
+        </div>
+
+        <div class="classroom-schedule-import-shell">
+          <label class="classroom-schedule-import-dropzone">
+            <input type="file" accept=".xlsx,.xls,.csv" @change="handleImportFileChange" />
+            <strong>{{ importScheduleFile ? importScheduleFile.name : 'Drag and drop your file here, or click to browse' }}</strong>
+            <span>Supports `.xlsx`, `.xls`, and `.csv` files.</span>
+          </label>
+          <p class="classroom-schedule-import-note">File import UI is ready. Manual entry is fully supported in this build, while bulk import parsing can be connected next.</p>
+        </div>
+
+        <div class="manage-facilities-modal-actions">
+          <button class="manage-facilities-cancel-button" type="button" @click="closeImportSchedulesModal">Close</button>
+        </div>
+      </section>
     </div>
 
     <VenueModalComponent
@@ -335,6 +629,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
+import '@/pages/borrower/css/Logs.css';
 import './css/ManageFacilities.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import FacilityVenueListComponent from '@/modules/facility/components/FacilityVenueListComponent.vue';
@@ -347,6 +642,7 @@ import EquipmentDetailsModalComponent from '@/modules/facility/components/Equipm
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
+import classScheduleApi from '@/modules/reservation/services/classScheduleApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import {
   deriveVenueAvailabilityForDate,
@@ -397,6 +693,20 @@ const deleteConfirmEmail = ref('');
 const deleteConfirmPassword = ref('');
 const deleteVenueError = ref('');
 const isDeletingVenue = ref(false);
+const classScheduleList = ref([]);
+const classScheduleLoading = ref(false);
+const classScheduleError = ref('');
+const selectedClassroomDate = ref(getTodayDateInputValue());
+const classroomMonthCursor = ref(getMonthCursor(getTodayDateInputValue()));
+const showClassScheduleModal = ref(false);
+const showImportSchedulesModal = ref(false);
+const classScheduleFormMode = ref('create');
+const classScheduleModalError = ref('');
+const isSavingClassSchedule = ref(false);
+const viewClassScheduleRecord = ref(null);
+const isDeletingClassSchedule = ref(false);
+const importScheduleFile = ref(null);
+const classScheduleForm = ref(createEmptyClassScheduleForm());
 
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
@@ -419,6 +729,11 @@ const floorOrder = [
   '7th Floor', '6th Floor', '5th Floor', '4th Floor', '3rd Floor',
   '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor',
 ];
+const classroomDayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const classroomScheduleTypeOptions = ['Class Schedule', 'Reserved', 'Equipment Reservation', 'Pending', 'Maintenance'];
+const miniCalendarWeekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const classroomTimeLabels = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
+const todayDateKey = getTodayDateInputValue();
 
 const searchedAndSortedVenues = computed(() => filterAndSortVenues(
   venuesList.value,
@@ -472,7 +787,7 @@ const filteredEquipmentBaseRecords = computed(() => {
 });
 
 const showingFilterOptions = computed(() => {
-  if (activeFacilityTab.value === 'venue') {
+  if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     const floorOptions = Array.from(new Set(
       searchedAndSortedVenues.value
         .map((venueRecord) => venueRecord.floorLevel)
@@ -491,6 +806,16 @@ const showingFilterOptions = computed(() => {
     ];
   }
 
+  if (activeFacilityTab.value === 'classroom-schedules') {
+    return [
+      { value: 'all', label: 'All rooms' },
+      ...classroomVenueOptions.value.map((venueOption) => ({
+        value: String(venueOption.venueIdentifier),
+        label: venueOption.venueName,
+      })),
+    ];
+  }
+
   const categoryOptions = Array.from(new Set(
     equipmentList.value
       .map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))
@@ -504,19 +829,23 @@ const showingFilterOptions = computed(() => {
 });
 
 const totalManagedCount = computed(() => (
-  activeFacilityTab.value === 'venue'
+  activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all'
     ? visibleVenueRecords.value.length
-    : filteredEquipmentRecords.value.length
+    : activeFacilityTab.value === 'classroom-schedules'
+      ? filteredClassScheduleRecords.value.length
+      : filteredEquipmentRecords.value.length
 ));
 
 const availableManagedCount = computed(() => (
-  activeFacilityTab.value === 'venue'
+  activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all'
     ? visibleVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
       venueRecord,
       'available',
       selectedVenueCalendarDate.value,
     )).length
-    : filteredEquipmentRecords.value.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) === 'Available').length
+    : activeFacilityTab.value === 'classroom-schedules'
+      ? filteredClassScheduleRecords.value.length
+      : filteredEquipmentRecords.value.filter((equipmentRecord) => formatEquipmentStatus(equipmentRecord) === 'Available').length
 ));
 
 const unavailableManagedCount = computed(() => Math.max(totalManagedCount.value - availableManagedCount.value, 0));
@@ -528,13 +857,15 @@ const dispatchedEquipmentUnits = computed(() => dispatchSummaryRecords.value
   .reduce((totalUnits, equipmentRecord) => totalUnits + Number(equipmentRecord.dispatchedTodayQuantity ?? 0), 0));
 
 const currentGroupingCount = computed(() => (
-  activeFacilityTab.value === 'venue'
+  activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all'
     ? venueFloorGroups.value.filter((floorGroup) => (floorGroup.venueRecords || []).some((venueRecord) => matchesCalendarAvailability(
       venueRecord,
       availabilityFilter.value,
       selectedVenueCalendarDate.value,
     ))).length
-    : new Set(filteredEquipmentRecords.value.map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))).size
+    : activeFacilityTab.value === 'classroom-schedules'
+      ? new Set(filteredClassScheduleRecords.value.map((scheduleRecord) => scheduleRecord.venueIdentifier)).size
+      : new Set(filteredEquipmentRecords.value.map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))).size
 ));
 
 const selectedRecordLabel = computed(() => (
@@ -544,12 +875,68 @@ const selectedRecordLabel = computed(() => (
 ));
 
 const resultsSummaryCopy = computed(() => {
-  if (activeFacilityTab.value === 'venue') {
+  if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     return `${totalManagedCount.value} venue${totalManagedCount.value === 1 ? '' : 's'} visible for ${formatSummaryDate(selectedVenueCalendarDate.value)}.`;
+  }
+
+  if (activeFacilityTab.value === 'classroom-schedules') {
+    return `${totalManagedCount.value} classroom schedule block${totalManagedCount.value === 1 ? '' : 's'} in the current view.`;
   }
 
   return `${totalManagedCount.value} equipment record${totalManagedCount.value === 1 ? '' : 's'} match the current filters.`;
 });
+
+const addButtonLabel = computed(() => {
+  if (activeFacilityTab.value === 'classroom-schedules') {
+    return 'Add Schedule';
+  }
+
+  if (activeFacilityTab.value === 'equipment') {
+    return 'Add Equipment';
+  }
+
+  return 'Add Venue';
+});
+
+const searchPlaceholder = computed(() => {
+  if (activeFacilityTab.value === 'classroom-schedules') {
+    return 'Search by course code, course name, instructor, or room...';
+  }
+
+  if (activeFacilityTab.value === 'equipment') {
+    return 'Search by equipment name, type, brand, barcode, or asset ID...';
+  }
+
+  return 'Search by venue name, location, or floor...';
+});
+
+const showingLabel = computed(() => (
+  activeFacilityTab.value === 'classroom-schedules' ? 'Room:' : 'Showing:'
+));
+
+const classroomVenueOptions = computed(() => searchedAndSortedVenues.value
+  .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+  .map((venueRecord) => ({
+    venueIdentifier: venueRecord.venueIdentifier,
+    venueName: venueRecord.venueName,
+  }))
+);
+
+const filteredClassScheduleRecords = computed(() => filterAndSortClassSchedules(
+  classScheduleList.value,
+  searchQuery.value,
+  showingFilterValue.value,
+  sortValue.value,
+  venuesList.value,
+));
+
+const classroomWeekDates = computed(() => buildWeekDates(selectedClassroomDate.value));
+const classroomMonthHeading = computed(() => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(`${classroomMonthCursor.value}-01T00:00:00`)));
+const selectedClassroomDateHeading = computed(() => formatDisplayDateHeading(selectedClassroomDate.value));
+const selectedClassroomDateWeekday = computed(() => new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date(`${selectedClassroomDate.value}T00:00:00`)));
+const selectedClassroomDateMonthShort = computed(() => new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(`${selectedClassroomDate.value}T00:00:00`)).toUpperCase());
+const selectedClassroomDateDayNumber = computed(() => new Date(`${selectedClassroomDate.value}T00:00:00`).getDate());
+const classroomMonthDays = computed(() => buildMiniCalendarDays(classroomMonthCursor.value, classScheduleList.value));
 
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
@@ -1068,5 +1455,9 @@ function updateFacilityTabQuery(tabName) {
   }
 
   router.replace({ query: nextQuery });
+}
+
+function handleGoBack() {
+  router.back();
 }
 </script>
