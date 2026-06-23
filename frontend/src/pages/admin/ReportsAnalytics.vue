@@ -92,6 +92,16 @@
                   <dd><strong>{{ reportGeneratedAt }}</strong></dd>
                 </div>
               </dl>
+              <div class="reports-accordion">
+                <details open>
+                  <summary>What this graph shows</summary>
+                  <p>It compares actual demand against the projected demand trend for the selected range.</p>
+                </details>
+                <details>
+                  <summary>Suggested decision</summary>
+                  <p>If forecasted demand stays above actual demand, prepare more equipment and staffing for the next cycle.</p>
+                </details>
+              </div>
             </aside>
           </div>
         </section>
@@ -120,6 +130,16 @@
                 </ol>
               </div>
             </div>
+            <div class="reports-accordion reports-accordion--full">
+              <details open>
+                <summary>What this graph shows</summary>
+                <p>It groups equipment into risk bands using stock pressure, availability state, overdue linkage, and usage frequency.</p>
+              </details>
+              <details>
+                <summary>Suggested decision</summary>
+                <p>Focus on the red band first: inspect availability, resolve overdue items, and rebalance stock before peak demand.</p>
+              </details>
+            </div>
           </section>
 
           <section class="reports-panel">
@@ -135,6 +155,16 @@
                 <em :class="{ negative: Number(metric.value || 0) < 0 }">{{ formatMetricDelta(metric.value, 1) }}</em>
               </article>
             </div>
+            <div class="reports-accordion reports-accordion--full">
+              <details open>
+                <summary>What this graph shows</summary>
+                <p>It summarizes how efficiently reservations are fulfilled, how often equipment is used, and how many requests remain unassigned.</p>
+              </details>
+              <details>
+                <summary>Suggested decision</summary>
+                <p>When utilization rises but unassigned requests stay low, the current allocation is working; otherwise, redistribute inventory sooner.</p>
+              </details>
+            </div>
           </section>
         </div>
 
@@ -148,6 +178,16 @@
                 <i :style="{ height: `${Math.max(12, Number(item.value || 0))}%` }" :title="resolveUtilizationTooltip(item)"></i>
                 <small :title="resolveUtilizationTooltip(item)">{{ item.label }}</small>
               </div>
+            </div>
+            <div class="reports-accordion reports-accordion--full">
+              <details open>
+                <summary>What this graph shows</summary>
+                <p>It ranks category utilization so the highest-usage areas are easier to see at a glance.</p>
+              </details>
+              <details>
+                <summary>Suggested decision</summary>
+                <p>Keep the left-most high-usage categories well stocked and review low-usage categories for consolidation or reallocation.</p>
+              </details>
             </div>
           </section>
 

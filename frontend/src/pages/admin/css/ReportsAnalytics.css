@@ -301,6 +301,43 @@
   line-height: 1.4;
 }
 
+.reports-accordion {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
+}
+
+.reports-accordion details {
+  padding: 0.7rem 0.8rem;
+  background: #ffffff;
+  border: 1px solid #d9e5dc;
+  border-radius: 14px;
+}
+
+.reports-accordion summary {
+  cursor: pointer;
+  color: #132238;
+  font-size: 0.78rem;
+  font-weight: 850;
+  list-style: none;
+}
+
+.reports-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.reports-accordion p {
+  margin-top: 0.55rem;
+  color: #51615a;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.reports-accordion--full {
+  margin-top: 1rem;
+}
+
 .positive {
   color: #059669;
 }
