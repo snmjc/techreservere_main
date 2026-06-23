@@ -9,6 +9,7 @@
           <div>
             <p class="reports-analytics-kicker">Analytics Dashboard</p>
             <h1>Reports &amp; Analytics</h1>
+            <p class="reports-analytics-source">{{ reportsSourceLabel }}</p>
           </div>
 
           <label class="reports-analytics-date-range">
@@ -24,10 +25,12 @@
             </select>
             <small>{{ activeRangeLabel }}</small>
           </label>
+
         </header>
 
         <p v-if="reportsError" class="reports-inline-message is-error">{{ reportsError }}</p>
         <p v-else-if="isReportsLoading" class="reports-inline-message">Loading analytics report...</p>
+        <p v-if="analyticsToastMessage" class="reports-inline-message is-success">{{ analyticsToastMessage }}</p>
 
         <div class="reports-model-grid">
           <article
@@ -210,6 +213,7 @@
 
       <div class="reports-actions">
         <p v-if="pdfError" class="reports-inline-message is-error">{{ pdfError }}</p>
+        <p v-if="analyticsToastMessage" class="reports-inline-message is-success">{{ analyticsToastMessage }}</p>
         <button class="reports-generate-button" type="button" :disabled="isExporting || isReportsLoading" @click="handleGeneratePdf">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
@@ -219,6 +223,51 @@
           </svg>
           {{ isExporting ? 'Generating PDF...' : 'Generate PDF Report' }}
         </button>
+
+        <button class="reports-trigger-button reports-trigger-button--bottom" type="button" @click="isScenarioModalOpen = true">
+          Run Analytics Now
+        </button>
+      </div>
+
+      <div v-if="isScenarioModalOpen" class="reports-modal-backdrop" @click.self="closeScenarioModal">
+        <div class="reports-modal">
+          <div class="reports-modal-header">
+            <h3>Run Analytics Scenario</h3>
+            <button type="button" class="reports-modal-close" @click="closeScenarioModal">×</button>
+          </div>
+
+          <p class="reports-modal-description">Choose the dataset shape you want to run against.</p>
+          <p v-if="analyticsRunStatus" class="reports-modal-status" :class="{ 'is-success': analyticsRunStatusType === 'success', 'is-error': analyticsRunStatusType === 'error' }">
+            {{ analyticsRunStatus }}
+          </p>
+
+          <div class="reports-scenario-grid">
+            <button
+              v-for="scenario in analyticsScenarios"
+              :key="scenario.key"
+              type="button"
+              class="reports-scenario-card"
+              :class="{ 'is-selected': selectedAnalyticsScenario === scenario.key }"
+              :disabled="isTriggeringAnalytics"
+              @click="selectedAnalyticsScenario = scenario.key"
+            >
+              <strong>{{ scenario.title }}</strong>
+              <span>{{ scenario.description }}</span>
+            </button>
+          </div>
+
+          <div class="reports-modal-actions">
+            <button type="button" class="reports-secondary-button" @click="closeScenarioModal">Cancel</button>
+            <button
+              type="button"
+              class="reports-primary-button"
+              :disabled="isTriggeringAnalytics"
+              @click="handleTriggerAnalyticsRun"
+            >
+              {{ isTriggeringAnalytics ? 'Running...' : 'Run Scenario' }}
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   </AdminSidebarLayoutComponent>
@@ -245,10 +294,25 @@ import {
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
 const isExporting = ref(false);
+const isTriggeringAnalytics = ref(false);
+const isScenarioModalOpen = ref(false);
+const selectedAnalyticsScenario = ref('clean_data');
 const reportsError = ref('');
+const analyticsToastMessage = ref('');
+const analyticsRunStatus = ref('');
+const analyticsRunStatusType = ref('info');
 const pdfError = ref('');
 const reportSurfaceRef = ref(null);
 const reportsAnalytics = ref(createEmptyReport());
+const reportsSourceLabel = ref('Loading stored analytics...');
+
+const analyticsScenarios = [
+  { key: 'clean_data', title: 'Clean Data', description: 'Reset to a neutral demo state with balanced inputs.' },
+  { key: 'high_last_low_this', title: 'High demand last year, low this sem', description: 'Seasonal spike in the prior year, softer current term.' },
+  { key: 'high_last_high_this', title: 'High demand last year, high this sem', description: 'Strong demand in both periods for stress testing.' },
+  { key: 'low_last_low_this', title: 'Low demand last year, low this sem', description: 'Quiet baseline across both periods.' },
+  { key: 'low_last_high_this', title: 'Low demand last year, high this sem', description: 'Recovery pattern with a current-term spike.' },
+];
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
 const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
@@ -312,7 +376,8 @@ watch(selectedRangeKey, () => {
   loadReportsAnalytics();
 });
 
-async function loadReportsAnalytics() {
+async function loadReportsAnalytics(options = {}) {
+  const preferLiveOnly = options.preferLiveOnly === true;
   isReportsLoading.value = true;
   reportsError.value = '';
   pdfError.value = '';
@@ -320,12 +385,106 @@ async function loadReportsAnalytics() {
   try {
     reportsAnalytics.value = createEmptyReport();
     reportsAnalytics.value = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+    reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
   } catch (error) {
-    reportsAnalytics.value = createEmptyReport();
-    reportsError.value = resolveReportsError(error);
+    if (preferLiveOnly) {
+      reportsAnalytics.value = createEmptyReport();
+      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+      return;
+    }
+
+    try {
+      const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
+      const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
+
+      if (storedAnalytics !== null) {
+        reportsAnalytics.value = storedAnalytics;
+        reportsSourceLabel.value = buildStoredAnalyticsLabel(latestResultsResponse?.run);
+        return;
+      }
+
+      reportsAnalytics.value = createEmptyReport();
+      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+    } catch (fallbackError) {
+      reportsAnalytics.value = createEmptyReport();
+      reportsError.value = resolveReportsError(fallbackError || error);
+      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+    }
   } finally {
     isReportsLoading.value = false;
   }
+}
+
+async function handleTriggerAnalyticsRun() {
+  if (isTriggeringAnalytics.value) {
+    return;
+  }
+
+  isTriggeringAnalytics.value = true;
+  reportsError.value = '';
+  analyticsToastMessage.value = '';
+  analyticsRunStatus.value = 'Preparing scenario data...';
+  analyticsRunStatusType.value = 'info';
+
+  try {
+    analyticsRunStatus.value = 'Running analytics service...';
+    await adminAnalyticsApi.triggerAnalyticsRun(selectedAnalyticsScenario.value);
+    analyticsRunStatus.value = 'Refreshing dashboard data...';
+    await refreshReportsAfterRun();
+    analyticsToastMessage.value = 'Analytics run completed successfully.';
+    analyticsRunStatus.value = 'Analytics run completed successfully.';
+    analyticsRunStatusType.value = 'success';
+    window.setTimeout(() => {
+      if (analyticsToastMessage.value === 'Analytics run completed successfully.') {
+        analyticsToastMessage.value = '';
+      }
+      analyticsRunStatus.value = '';
+      isScenarioModalOpen.value = false;
+    }, 3500);
+  } catch (error) {
+    reportsError.value = resolveReportsError(error);
+    analyticsRunStatus.value = resolveReportsError(error);
+    analyticsRunStatusType.value = 'error';
+  } finally {
+    isTriggeringAnalytics.value = false;
+  }
+}
+
+async function refreshReportsAfterRun() {
+  const maxAttempts = 4;
+  let attempt = 0;
+  let latestReport = null;
+
+  while (attempt < maxAttempts) {
+    latestReport = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+    reportsAnalytics.value = latestReport;
+
+    if ((latestReport?.forecast?.actualSeries || []).length > 0 || attempt === maxAttempts - 1) {
+      reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
+      return;
+    }
+
+    attempt += 1;
+    await wait(600);
+  }
+
+  reportsAnalytics.value = createEmptyReport();
+  reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+function closeScenarioModal() {
+  if (isTriggeringAnalytics.value) {
+    return;
+  }
+
+  analyticsRunStatus.value = '';
+  isScenarioModalOpen.value = false;
 }
 
 async function handleGeneratePdf() {
@@ -407,6 +566,119 @@ function resolveReportsError(error) {
   return error?.response?.data?.errorMessage
     || error?.message
     || 'Unable to load analytics data right now.';
+}
+
+function normalizeStoredAnalyticsResponse(response) {
+  const resultList = Array.isArray(response?.results) ? response.results : [];
+  if (resultList.length === 0) {
+    return null;
+  }
+
+  const payloadByType = Object.fromEntries(
+    resultList.map((result) => [
+      String(result?.result_type || result?.resultType || '').toLowerCase(),
+      result?.result_payload || result?.resultPayload || {},
+    ]),
+  );
+
+  const normalized = createEmptyReport();
+  const forecastPayload = payloadByType.sarima || payloadByType.forecast || {};
+  const readinessPayload = payloadByType.random_forest || payloadByType.readiness || {};
+  const allocationPayload = payloadByType.binary_linear_programming || payloadByType.allocation || {};
+
+  normalized.forecast = {
+    actualSeries: (forecastPayload.actualSeries || forecastPayload.actual_series || []).map(normalizeSeriesPoint),
+    forecastSeries: (forecastPayload.forecastSeries || forecastPayload.forecast_series || []).map(normalizeSeriesPoint),
+    peakDate: forecastPayload.peakDate || forecastPayload.peak_date || null,
+    peakValue: Number(forecastPayload.peakValue || forecastPayload.peak_value || 0),
+    growthPercent: Number(forecastPayload.growthPercent || forecastPayload.growth_percent || 0),
+  };
+
+  normalized.riskDistribution = {
+    bands: normalizeBands(readinessPayload),
+    topRiskFactors: readinessPayload.topRiskFactors || readinessPayload.top_risk_factors || [],
+    safeRate: Number(readinessPayload.safeRate || readinessPayload.safe_rate || 0),
+  };
+
+  normalized.optimizationMetrics = normalizeOptimizationMetrics(allocationPayload);
+  normalized.utilizationByCategory = allocationPayload.utilizationByCategory || allocationPayload.utilization_by_category || [];
+  normalized.topEquipment = allocationPayload.topEquipment || allocationPayload.top_equipment || [];
+  normalized.summary = {
+    totalEquipment: Number(allocationPayload.summary?.totalEquipment || allocationPayload.summary?.total_equipment || 0),
+    activeReservations: Number(allocationPayload.summary?.activeReservations || allocationPayload.summary?.active_reservations || 0),
+    pendingRequests: Number(allocationPayload.summary?.pendingRequests || allocationPayload.summary?.pending_requests || 0),
+    completedThisPeriod: Number(allocationPayload.summary?.completedThisPeriod || allocationPayload.summary?.completed_this_period || 0),
+    generatedAt: response?.run?.started_at || response?.run?.startedAt || 'N/A',
+  };
+
+  return normalized;
+}
+
+function normalizeSeriesPoint(item) {
+  return {
+    date: item?.date || item?.label || '',
+    label: item?.label || item?.date || '',
+    value: Number(item?.value || 0),
+  };
+}
+
+function normalizeBands(readinessPayload) {
+  const sourceBands = readinessPayload.bands || readinessPayload.riskBands || readinessPayload.risk_bands || [];
+  if (Array.isArray(sourceBands) && sourceBands.length > 0) {
+    return sourceBands;
+  }
+
+  const records = Array.isArray(readinessPayload.records) ? readinessPayload.records : [];
+  const counts = {
+    'High Risk': 0,
+    'Medium Risk': 0,
+    'Low Risk': 0,
+    'Very Low Risk': 0,
+  };
+
+  records.forEach((record) => {
+    const ratio = Number(record?.availabilityRatio || 0);
+    if (ratio >= 0.8) counts['Very Low Risk'] += 1;
+    else if (ratio >= 0.5) counts['Low Risk'] += 1;
+    else if (ratio >= 0.25) counts['Medium Risk'] += 1;
+    else counts['High Risk'] += 1;
+  });
+
+  return [
+    { label: 'High Risk', count: counts['High Risk'], color: '#ef4444' },
+    { label: 'Medium Risk', count: counts['Medium Risk'], color: '#f59e0b' },
+    { label: 'Low Risk', count: counts['Low Risk'], color: '#facc15' },
+    { label: 'Very Low Risk', count: counts['Very Low Risk'], color: '#16a34a' },
+  ];
+}
+
+function normalizeOptimizationMetrics(allocationPayload) {
+  const sourceMetrics = allocationPayload.optimizationMetrics || allocationPayload.optimization_metrics || [];
+  if (Array.isArray(sourceMetrics) && sourceMetrics.length > 0) {
+    return sourceMetrics;
+  }
+
+  const allocationPlan = allocationPayload.allocationPlan || allocationPayload.allocation_plan || [];
+  return [
+    {
+      label: 'Allocation Plan Items',
+      note: 'stored results',
+      value: Array.isArray(allocationPlan) ? allocationPlan.length : 0,
+      icon: 'AP',
+      tone: 'tree',
+    },
+  ];
+}
+
+function buildStoredAnalyticsLabel(run) {
+  if (!run) {
+    return 'Using stored analytics results.';
+  }
+
+  const startedAt = run.started_at || run.startedAt || 'unknown time';
+  const runType = run.run_type || run.runType || 'analytics';
+  const status = run.status || 'unknown';
+  return `Using latest stored ${runType} run (${status}) from ${startedAt}.`;
 }
 
 function formatShortDate(value) {
