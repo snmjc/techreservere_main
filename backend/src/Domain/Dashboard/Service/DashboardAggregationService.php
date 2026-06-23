@@ -281,7 +281,23 @@ class DashboardAggregationService
         $currentLabels = array_keys($currentDailyDemandMap);
         $currentValues = array_values($currentDailyDemandMap);
         $previousValues = array_values($previousDailyDemandMap);
-        $forecastValues = $previousValues;
+        $forecastValues = [];
+        $forecastLabels = [];
+        $lastCurrentDate = $currentLabels === [] ? $endDate : new \DateTimeImmutable(end($currentLabels));
+        $baseline = $currentValues === [] ? 0.0 : array_sum($currentValues) / count($currentValues);
+        $recentBaseline = array_sum(array_slice($currentValues, -3)) / max(1, count(array_slice($currentValues, -3)));
+
+        for ($offset = 1; $offset <= 3; $offset++) {
+            $futureDate = $lastCurrentDate->modify(sprintf('+%d day', $offset));
+            $forecastLabels[] = $futureDate->format('Y-m-d');
+
+            $historicalIndex = count($currentValues) - 1 - (3 - $offset);
+            $historicalValue = $historicalIndex >= 0 ? (float) $currentValues[$historicalIndex] : $baseline;
+            $weekdayBoost = in_array((int) $futureDate->format('N'), [6, 7], true) ? 1.15 : 1.0;
+            $trendBoost = $recentBaseline > $baseline ? 1.12 : ($recentBaseline < $baseline ? 0.92 : 1.0);
+            $forecastValues[] = round(max(0.0, (($historicalValue * 0.55) + ($recentBaseline * 0.45)) * $weekdayBoost * $trendBoost), 2);
+        }
+
         $peakIndex = $forecastValues === [] ? null : array_keys($forecastValues, max($forecastValues), true)[0];
         $currentTotal = array_sum($currentValues);
         $previousTotal = array_sum($previousValues);
@@ -294,10 +310,10 @@ class DashboardAggregationService
             ),
             'forecastSeries' => array_map(
                 static fn (string $label, float|int $value): array => ['label' => $label, 'value' => (float) $value],
-                $currentLabels,
+                $forecastLabels,
                 $forecastValues
             ),
-            'peakDate' => $peakIndex === null ? null : $currentLabels[$peakIndex],
+            'peakDate' => $peakIndex === null ? null : $forecastLabels[$peakIndex],
             'peakValue' => $peakIndex === null ? 0.0 : (float) $forecastValues[$peakIndex],
             'growthPercent' => round($this->calculateDirectionalDelta($previousTotal, $currentTotal), 1),
         ];
@@ -557,6 +573,7 @@ class DashboardAggregationService
             'Overdue release linkage' => 0,
             'High usage frequency' => 0,
         ];
+        $highRiskEquipment = [];
         $distribution = [
             ['label' => 'High Risk', 'count' => 0, 'color' => '#ef4444'],
             ['label' => 'Medium Risk', 'count' => 0, 'color' => '#f59e0b'],
@@ -601,6 +618,11 @@ class DashboardAggregationService
 
             if ($score >= 6) {
                 $distribution[0]['count']++;
+                $highRiskEquipment[] = [
+                    'name' => $equipmentRecord->getEquipmentName(),
+                    'score' => $score,
+                    'usageCount' => (int) ($usageRecord['usageCount'] ?? 0),
+                ];
             } elseif ($score >= 4) {
                 $distribution[1]['count']++;
             } elseif ($score >= 2) {
@@ -609,6 +631,12 @@ class DashboardAggregationService
                 $distribution[3]['count']++;
             }
         }
+
+        usort($highRiskEquipment, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score'])
+                ?: ($right['usageCount'] <=> $left['usageCount'])
+                ?: strcmp((string) $left['name'], (string) $right['name']);
+        });
 
         arsort($factorCounts);
         $topRiskFactors = array_slice(array_keys($factorCounts), 0, 4);
@@ -619,6 +647,7 @@ class DashboardAggregationService
         return [
             'bands' => $distribution,
             'topRiskFactors' => $topRiskFactors,
+            'highRiskEquipment' => array_slice($highRiskEquipment, 0, 5),
             'safeRate' => $safeRate,
             'overdueReservations' => count($overdueReservations),
         ];
@@ -691,9 +720,16 @@ class DashboardAggregationService
             ];
         }
 
-        usort($result, static fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
+        usort($result, static function (array $left, array $right): int {
+            $valueComparison = $right['value'] <=> $left['value'];
+            if ($valueComparison !== 0) {
+                return $valueComparison;
+            }
 
-        return $result;
+            return strcmp($left['label'], $right['label']);
+        });
+
+        return array_slice($result, 0, 5);
     }
 
     /**

@@ -1,7 +1,7 @@
 export const ADMIN_ANALYTICS_RANGE_PRESETS = [
-  { key: '14d', label: 'Last 14 days', days: 14 },
-  { key: '30d', label: 'Last 30 days', days: 30 },
-  { key: 'semester', label: 'This semester', mode: 'semester' },
+  { key: '30d', label: 'Last 30 Days', days: 30 },
+  { key: '14d', label: 'Last 14 Days', days: 14 },
+  { key: '7d', label: 'Last 7 days', days: 7 },
 ];
 
 export function resolveAdminAnalyticsDateRange(presetKey, now = new Date()) {
@@ -9,14 +9,7 @@ export function resolveAdminAnalyticsDateRange(presetKey, now = new Date()) {
   const endDate = startOfDay(now);
   let startDate = startOfDay(now);
 
-  if (preset.mode === 'semester') {
-    const month = now.getMonth();
-    startDate = month <= 5
-      ? new Date(now.getFullYear(), 0, 1)
-      : new Date(now.getFullYear(), 6, 1);
-  } else {
-    startDate.setDate(startDate.getDate() - Math.max(0, (preset.days || 14) - 1));
-  }
+  startDate.setDate(startDate.getDate() - Math.max(0, (preset.days || 30) - 1));
 
   return {
     startDate,
@@ -138,9 +131,10 @@ export function buildDualLineChartModel(actualSeries = [], forecastSeries = [], 
     bottom: options.paddingBottom ?? 30,
     left: options.paddingLeft ?? 52,
   };
-  const labels = actualSeries.map((item) => item?.label || '');
-  const actualValues = actualSeries.map((item) => Number(item?.value ?? 0));
-  const forecastValues = forecastSeries.map((item) => Number(item?.value ?? 0));
+  const normalizedSeries = normalizeDualSeries(actualSeries, forecastSeries, options.maxDataPoints || 14);
+  const labels = normalizedSeries.labels;
+  const actualValues = normalizedSeries.actualValues;
+  const forecastValues = normalizedSeries.forecastValues;
   const maxValue = Math.max(1, ...actualValues, ...forecastValues);
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
@@ -170,6 +164,48 @@ export function buildDualLineChartModel(actualSeries = [], forecastSeries = [], 
     gridLinesY: buildGridLinePositions(padding.top, plotHeight, 5),
     gridLinesX: buildGridLinePositions(padding.left, plotWidth, Math.max(1, labels.length - 1), true),
   };
+}
+
+function normalizeDualSeries(actualSeries, forecastSeries, maxDataPoints) {
+  const length = Math.max(actualSeries.length, forecastSeries.length);
+  const labels = Array.from({ length }, (_, index) => (
+    actualSeries[index]?.label || forecastSeries[index]?.label || ''
+  ));
+  const actualValues = Array.from({ length }, (_, index) => Number(actualSeries[index]?.value ?? 0));
+  const forecastValues = Array.from({ length }, (_, index) => Number(forecastSeries[index]?.value ?? 0));
+
+  if (length <= maxDataPoints) {
+    return { labels, actualValues, forecastValues };
+  }
+
+  const bucketSize = Math.ceil(length / maxDataPoints);
+  const normalizedLabels = [];
+  const normalizedActualValues = [];
+  const normalizedForecastValues = [];
+
+  for (let start = 0; start < length; start += bucketSize) {
+    const end = Math.min(length, start + bucketSize);
+    const actualBucket = actualValues.slice(start, end);
+    const forecastBucket = forecastValues.slice(start, end);
+    normalizedLabels.push(labels[start]);
+    normalizedActualValues.push(roundChartValue(averageChartValue(actualBucket)));
+    normalizedForecastValues.push(roundChartValue(averageChartValue(forecastBucket)));
+  }
+
+  return {
+    labels: normalizedLabels,
+    actualValues: normalizedActualValues,
+    forecastValues: normalizedForecastValues,
+  };
+}
+
+function averageChartValue(values) {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function roundChartValue(value) {
+  return Math.round(value * 10) / 10;
 }
 
 export function buildRiskDonutStyle(bands = []) {

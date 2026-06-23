@@ -7,13 +7,13 @@ from psycopg import Connection
 
 
 DEFAULT_CONFIG = {
-    "forecast": {
-        "enabled": True,
-        "model": "sarima",
-        "historyDays": 180,
-        "forecastDays": 30,
-        "seasonalPeriod": 7,
-    },
+        "forecast": {
+            "enabled": True,
+            "model": "sarima",
+            "historyDays": 180,
+            "forecastDays": 3,
+            "seasonalPeriod": 7,
+        },
     "readiness": {
         "enabled": True,
         "model": "random_forest",
@@ -47,12 +47,16 @@ class AnalyticsRunner:
         self._clear_all_reservations(connection)
         if normalized_scenario == 'high_last_low_this':
             self._seed_scenario_reservations(connection, high_last_year=True, high_this_sem=False)
+            self._apply_scenario_readiness(connection, 'moderate_pressure')
         elif normalized_scenario == 'high_last_high_this':
             self._seed_scenario_reservations(connection, high_last_year=True, high_this_sem=True)
+            self._apply_scenario_readiness(connection, 'high_pressure')
         elif normalized_scenario == 'low_last_low_this':
             self._seed_scenario_reservations(connection, high_last_year=False, high_this_sem=False)
+            self._apply_scenario_readiness(connection, 'low_pressure')
         elif normalized_scenario == 'low_last_high_this':
             self._seed_scenario_reservations(connection, high_last_year=False, high_this_sem=True)
+            self._apply_scenario_readiness(connection, 'surprise_pressure')
 
         seeded_row = connection.execute('SELECT COUNT(*) AS reservation_count FROM reservations').fetchone()
         seeded_count = int(seeded_row['reservation_count'] if seeded_row is not None else 0)
@@ -210,6 +214,7 @@ class AnalyticsRunner:
                 "averageActualDemand": round(average_actual, 2),
                 "averageForecastDemand": round(average_forecast, 2),
                 "expectedChangePercent": expected_change_percent,
+                "forecastHorizonDays": forecast_days,
             },
             "notes": "FastAPI storage path is live. SARIMA training will replace this placeholder output.",
         }
@@ -280,13 +285,61 @@ class AnalyticsRunner:
         ).fetchall()
 
         records = []
+        bands = {
+            "High Risk": {"label": "High Risk", "count": 0, "color": "#ef4444"},
+            "Medium Risk": {"label": "Medium Risk", "count": 0, "color": "#f59e0b"},
+            "Low Risk": {"label": "Low Risk", "count": 0, "color": "#facc15"},
+            "Very Low Risk": {"label": "Very Low Risk", "count": 0, "color": "#16a34a"},
+        }
+        factor_counts = {
+            "Low stock pressure": 0,
+            "Inactive availability state": 0,
+            "High usage frequency": 0,
+            "Overdue release linkage": 0,
+        }
+        high_risk_equipment = []
         for row in rows:
             total_quantity = max(0, int(row["total_quantity"] or 0))
             available_quantity = max(0, int(row["available_quantity"] or 0))
             availability_ratio = available_quantity / total_quantity if total_quantity > 0 else 1
             risk_label = "ready" if availability_ratio >= 0.7 else "watch"
-            if row["equipment_state"].lower() in {"under maintenance", "unavailable"}:
+            equipment_state = str(row["equipment_state"] or "")
+            operational_status = str(row["operational_status"] or "")
+            is_inactive = equipment_state.lower() in {"under maintenance", "unavailable"} or operational_status.lower() in {"under maintenance", "unavailable"}
+            if is_inactive:
                 risk_label = "watch"
+
+            score = 0
+            if availability_ratio <= 0.2:
+                score += 3
+                factor_counts["Low stock pressure"] += 1
+            elif availability_ratio <= 0.45:
+                score += 4
+                factor_counts["Low stock pressure"] += 1
+            elif availability_ratio <= 0.7:
+                score += 2
+
+            if is_inactive:
+                score += 3
+                factor_counts["Inactive availability state"] += 1
+
+            if score >= 6:
+                band_label = "High Risk"
+                high_risk_equipment.append(
+                    {
+                        "name": row["equipment_name"],
+                        "score": score,
+                        "usageCount": 0,
+                    }
+                )
+            elif score >= 4:
+                band_label = "Medium Risk"
+            elif score >= 2:
+                band_label = "Low Risk"
+            else:
+                band_label = "Very Low Risk"
+
+            bands[band_label]["count"] += 1
 
             records.append(
                 {
@@ -294,15 +347,24 @@ class AnalyticsRunner:
                     "equipmentName": row["equipment_name"],
                     "readinessLabel": risk_label,
                     "availabilityRatio": round(availability_ratio, 3),
-                    "equipmentState": row["equipment_state"],
-                    "operationalStatus": row["operational_status"],
+                    "equipmentState": equipment_state,
+                    "operationalStatus": operational_status,
                 }
             )
+
+        ordered_bands = [bands["High Risk"], bands["Medium Risk"], bands["Low Risk"], bands["Very Low Risk"]]
+        total_equipment = sum(item["count"] for item in ordered_bands)
+        safe_equipment = bands["Low Risk"]["count"] + bands["Very Low Risk"]["count"]
+        sorted_factors = sorted(factor_counts.items(), key=lambda item: item[1], reverse=True)
 
         return {
             "modelName": "random_forest",
             "status": "placeholder_ready",
             "records": records,
+            "bands": ordered_bands,
+            "topRiskFactors": [factor for factor, _count in sorted_factors[:4]],
+            "highRiskEquipment": high_risk_equipment[:5],
+            "safeRate": round((safe_equipment / total_equipment) * 100, 1) if total_equipment > 0 else 0,
             "riskSummary": {
                 "readyCount": sum(1 for item in records if item["readinessLabel"] == "ready"),
                 "watchCount": sum(1 for item in records if item["readinessLabel"] == "watch"),
@@ -332,6 +394,8 @@ class AnalyticsRunner:
             """
             SELECT equipment_identifier,
                    equipment_name,
+                   equipment_category,
+                   total_quantity,
                    available_quantity,
                    operational_status,
                    equipment_state
@@ -390,16 +454,89 @@ class AnalyticsRunner:
             )
 
         pending_count = len(pending_rows)
+        utilization_by_category = self._build_utilization_by_category(equipment_rows, self._build_equipment_usage_map(connection, 2026))
+        utilization_comparison_by_category = self._build_utilization_by_category(equipment_rows, self._build_equipment_usage_map(connection, 2025))
+        top_equipment = self._build_top_equipment(equipment_rows, self._build_equipment_usage_map(connection, 2026))
 
         return {
             "modelName": "binary_linear_programming",
             "status": "placeholder_ready",
             "pendingRequestCount": pending_count,
             "allocationPlan": allocation_plan,
+            "utilizationByCategory": utilization_by_category,
+            "utilizationComparisonByCategory": utilization_comparison_by_category,
+            "topEquipment": top_equipment,
+            "summary": {
+                "totalEquipment": len(equipment_rows),
+                "activeReservations": len(allocation_plan),
+                "pendingRequests": pending_count,
+                "completedThisPeriod": 0,
+            },
             "fulfilledCount": sum(1 for item in allocation_plan if item["status"] == "allocated"),
             "partialCount": sum(1 for item in allocation_plan if item["status"] == "partial"),
             "notes": "FastAPI storage path is live. Binary LP solving will replace this placeholder output.",
         }
+
+    def _build_equipment_usage_map(self, connection: Connection, year: int) -> dict[str, int]:
+        rows = connection.execute(
+            """
+            SELECT requested_equipment_list
+              FROM reservations
+             WHERE EXTRACT(YEAR FROM event_date_time) = %s
+               AND LOWER(COALESCE(current_status, '')) NOT IN ('cancelled', 'rejected')
+            """,
+            (year,),
+        ).fetchall()
+
+        usage: dict[str, int] = {}
+        for row in rows:
+            requested_items = row["requested_equipment_list"] or []
+            if isinstance(requested_items, str):
+                requested_items = json.loads(requested_items)
+            for item in requested_items:
+                item_name = str(item.get("equipmentName") or item.get("name") or "").strip()
+                if not item_name:
+                    continue
+                usage[item_name.lower()] = usage.get(item_name.lower(), 0) + max(1, int(item.get("quantity") or 1))
+
+        return usage
+
+    def _build_utilization_by_category(self, equipment_rows: list[Any], usage_map: dict[str, int]) -> list[dict[str, Any]]:
+        category_usage: dict[str, int] = {}
+        category_total: dict[str, int] = {}
+
+        for row in equipment_rows:
+            category = str(row["equipment_category"] or "Others")
+            equipment_name = str(row["equipment_name"] or "")
+            total_quantity = max(1, int(row["total_quantity"] or 1))
+            category_total[category] = category_total.get(category, 0) + total_quantity
+            category_usage[category] = category_usage.get(category, 0) + usage_map.get(equipment_name.lower(), 0)
+
+        result = [
+            {
+                "label": category,
+                "value": round(min(100.0, (category_usage.get(category, 0) / max(1, total)) * 100), 1),
+            }
+            for category, total in category_total.items()
+        ]
+        return sorted(result, key=lambda item: (-float(item["value"]), str(item["label"])))[:5]
+
+    def _build_top_equipment(self, equipment_rows: list[Any], usage_map: dict[str, int]) -> list[dict[str, Any]]:
+        items = []
+        for row in equipment_rows:
+            equipment_name = str(row["equipment_name"] or "")
+            usage_count = usage_map.get(equipment_name.lower(), 0)
+            if usage_count <= 0:
+                continue
+            total_quantity = max(1, int(row["total_quantity"] or 1))
+            items.append(
+                {
+                    "name": equipment_name,
+                    "count": usage_count,
+                    "rate": round(min(100.0, (usage_count / total_quantity) * 100), 1),
+                }
+            )
+        return sorted(items, key=lambda item: (-int(item["count"]), str(item["name"])))[:5]
 
     def _clear_all_reservations(self, connection: Connection) -> None:
         connection.execute('DELETE FROM reservations')
@@ -413,12 +550,17 @@ class AnalyticsRunner:
     def _seed_scenario_reservations(self, connection: Connection, high_last_year: bool, high_this_sem: bool) -> None:
         templates = self._build_scenario_templates(high_last_year, high_this_sem)
         reservation_index = 1
+        seeded_equipment_names: set[str] = set()
         for template in templates:
             repetitions = max(1, int(template["requested_quantity"] // 3))
             for copy_index in range(repetitions):
                 reservation_code = f"SCN-{reservation_index:03d}"
                 reservation_index += 1
                 copy_quantity = max(1, int(template["requested_quantity"] - copy_index))
+                for equipment_item in template["requested_equipment_list"]:
+                    equipment_name = str(equipment_item.get("equipmentName", "")).strip()
+                    if equipment_name:
+                        seeded_equipment_names.add(equipment_name)
                 connection.execute(
                     """
                     INSERT INTO reservations (
@@ -444,10 +586,7 @@ class AnalyticsRunner:
                             reservation_code,
                             12,
                             template["organization_name"],
-                            json.dumps([
-                                {'equipmentName': 'Canon EOS R50', 'quantity': 1},
-                                {'equipmentName': 'Wireless Mic Kit', 'quantity': max(1, copy_quantity // 2)},
-                            ], default=str),
+                            json.dumps(template["requested_equipment_list"], default=str),
                             copy_quantity,
                             template["event_date_time"],
                             template["purpose_description"],
@@ -458,6 +597,104 @@ class AnalyticsRunner:
                         template["end_date_time"],
                     ),
                 )
+        self._log_action(
+            connection,
+            'scenario_equipment_seeded',
+            None,
+            {
+                'uniqueEquipmentCount': len(seeded_equipment_names),
+                'equipmentNames': sorted(seeded_equipment_names),
+            },
+        )
+
+    def _apply_scenario_readiness(self, connection: Connection, profile_key: str) -> None:
+        rows = connection.execute(
+            """
+            SELECT equipment_identifier, equipment_name, total_quantity
+              FROM equipment
+             ORDER BY equipment_name ASC
+            """
+        ).fetchall()
+
+        if not rows:
+            self._log_action(connection, 'scenario_readiness_skipped', profile_key, {'reason': 'no_equipment'})
+            return
+
+        profiles = {
+            'low_pressure': {'high': 1, 'medium': 2, 'low': 7},
+            'moderate_pressure': {'high': 3, 'medium': 5, 'low': 10},
+            'surprise_pressure': {'high': 5, 'medium': 7, 'low': 10},
+            'high_pressure': {'high': 8, 'medium': 8, 'low': 8},
+        }
+        profile = profiles.get(profile_key, profiles['moderate_pressure'])
+
+        connection.execute(
+            """
+            UPDATE equipment
+               SET available_quantity = total_quantity,
+                   equipment_state = 'Available',
+                   operational_status = 'Available',
+                   updated_at = NOW()
+            """
+        )
+
+        high_rows = rows[:profile['high']]
+        medium_rows = rows[profile['high']:profile['high'] + profile['medium']]
+        low_rows = rows[profile['high'] + profile['medium']:profile['high'] + profile['medium'] + profile['low']]
+
+        for row in high_rows:
+            connection.execute(
+                """
+                UPDATE equipment
+                   SET available_quantity = 0,
+                       equipment_state = 'Under Maintenance',
+                       operational_status = 'Under Maintenance',
+                       updated_at = NOW()
+                 WHERE equipment_identifier = %s
+                """,
+                (row['equipment_identifier'],),
+            )
+
+        for row in medium_rows:
+            total_quantity = max(1, int(row['total_quantity'] or 1))
+            connection.execute(
+                """
+                UPDATE equipment
+                   SET available_quantity = %s,
+                       equipment_state = 'Available',
+                       operational_status = 'Available',
+                       updated_at = NOW()
+                 WHERE equipment_identifier = %s
+                """,
+                (max(1, round(total_quantity * 0.3)), row['equipment_identifier']),
+            )
+
+        for row in low_rows:
+            total_quantity = max(1, int(row['total_quantity'] or 1))
+            connection.execute(
+                """
+                UPDATE equipment
+                   SET available_quantity = %s,
+                       equipment_state = 'Available',
+                       operational_status = 'Available',
+                       updated_at = NOW()
+                 WHERE equipment_identifier = %s
+                """,
+                (max(1, round(total_quantity * 0.6)), row['equipment_identifier']),
+            )
+
+        self._log_action(
+            connection,
+            'scenario_readiness_applied',
+            profile_key,
+            {
+                'profile': profile_key,
+                'highRiskEquipment': [row['equipment_name'] for row in high_rows],
+                'mediumRiskCount': len(medium_rows),
+                'lowRiskCount': len(low_rows),
+                'veryLowRiskCount': max(0, len(rows) - len(high_rows) - len(medium_rows) - len(low_rows)),
+            },
+        )
 
     def _log_action(self, connection: Connection, action_key: str, scenario_key: str | None, payload: dict[str, Any] | None = None) -> None:
         self._ensure_action_log_table(connection)
@@ -495,6 +732,38 @@ class AnalyticsRunner:
         )
 
     def _build_scenario_templates(self, high_last_year: bool, high_this_sem: bool) -> list[dict[str, Any]]:
+        equipment_pool = [
+            'Canon EOS R50',
+            'Sony A7 IV',
+            'DSLR Kit',
+            'GoPro Action Kit',
+            'Wireless Mic Kit',
+            'Podcast Mic Set',
+            'Portable Mixer',
+            'Audio Interface',
+            'PA Speaker Set',
+            'PA Subwoofer',
+            'LED Panel Light',
+            'Stage Light Bar',
+            'Ring Light Pro',
+            'LED Tube Light',
+            'Lighting Softbox',
+            'Projector X200',
+            'Projector Mini HD',
+            'Portable TV Stand',
+            'Portable Monitor',
+            'HDMI Switcher',
+            'Extension Cord 20m',
+            'Extension Cord 50m',
+            'Cable Kit Pro',
+            'Battery Pack 20k',
+            'Document Scanner',
+            'Tablet Cart',
+            'Wireless Presenter',
+            'Tripod Pro',
+            'Tripod Mini',
+            'Camera Slider',
+        ]
         if high_last_year and high_this_sem:
             dates = self._build_plateau_pairs()
         elif high_last_year and not high_this_sem:
@@ -506,15 +775,16 @@ class AnalyticsRunner:
         templates: list[dict[str, Any]] = []
 
         for index, (event_date, quantity, organization_name) in enumerate(dates):
+            pool_offset = (index * 3) % len(equipment_pool)
             equipment_mix = [
-                {'equipmentName': 'Canon EOS R50', 'quantity': 1},
-                {'equipmentName': 'Wireless Mic Kit', 'quantity': max(1, quantity // 3)},
-                {'equipmentName': 'Tripod Pro', 'quantity': 1},
+                {'equipmentName': equipment_pool[pool_offset % len(equipment_pool)], 'quantity': 1},
+                {'equipmentName': equipment_pool[(pool_offset + 1) % len(equipment_pool)], 'quantity': max(1, quantity // 3)},
+                {'equipmentName': equipment_pool[(pool_offset + 2) % len(equipment_pool)], 'quantity': 1},
             ]
-            if index % 2 == 0:
-                equipment_mix.append({'equipmentName': 'Portable Projector', 'quantity': max(1, quantity // 4)})
+            if quantity >= 8:
+                equipment_mix.append({'equipmentName': equipment_pool[(pool_offset + 3) % len(equipment_pool)], 'quantity': max(1, quantity // 4)})
             if quantity >= 10:
-                equipment_mix.append({'equipmentName': 'PA Speaker', 'quantity': 1})
+                equipment_mix.append({'equipmentName': equipment_pool[(pool_offset + 4) % len(equipment_pool)], 'quantity': 1})
 
             templates.append(
                 {
