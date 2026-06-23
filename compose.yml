@@ -81,6 +81,8 @@ services:
     build:
       context: ./analytics-service
     container_name: techreserve_analytics_service
+    volumes:
+      - ./analytics-service/app:/app/app
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD:-techreserve_pass}@database:5432/${POSTGRES_DB:-techreserve}"
       ANALYTICS_DAILY_CRON_HOUR: "${ANALYTICS_DAILY_CRON_HOUR:-2}"

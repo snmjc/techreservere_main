@@ -36,7 +36,35 @@ WITH equipment_seed AS (
             ('Projector X200', 'Display', 3, 0, 'Unavailable', 'Unavailable', 'Projector set held back while replacement lamps are checked.', 'Epson', '90006', 'TR-DSP-001', 'TR-DSP-001'),
             ('Extension Cord 20m', 'Accessories', 15, 13, 'Available', 'Available', 'Long extension cord for rooms and event spaces.', 'Panther', '90007', 'TR-ACC-001', 'TR-ACC-001'),
             ('PA Speaker Set', 'Audio', 5, 3, 'Available', 'Available', 'Portable speaker pair for orientations and seminars.', 'JBL', '91001', 'DEM-AUD-001', 'DEM-AUD-001'),
-            ('Laptop Cart', 'Computing', 2, 1, 'Under Maintenance', 'Under Maintenance', 'Mobile laptop cart with one unit in battery service.', 'Lenovo', '91002', 'DEM-CMP-001', 'DEM-CMP-001')
+            ('Laptop Cart', 'Computing', 2, 1, 'Under Maintenance', 'Under Maintenance', 'Mobile laptop cart with one unit in battery service.', 'Lenovo', '91002', 'DEM-CMP-001', 'DEM-CMP-001'),
+            ('DSLR Kit', 'Camera', 4, 2, 'Available', 'Available', 'Backup DSLR set for events and quick shoots.', 'Nikon', '91003', 'DEM-CAM-003', 'DEM-CAM-003'),
+            ('GoPro Action Kit', 'Camera', 3, 2, 'Available', 'Available', 'Action camera bundle for compact field coverage.', 'GoPro', '91004', 'DEM-CAM-004', 'DEM-CAM-004'),
+            ('Podcast Mic Set', 'Audio', 6, 4, 'Available', 'Available', 'Desktop microphone set for recording and interviews.', 'Shure', '91005', 'DEM-AUD-002', 'DEM-AUD-002'),
+            ('Portable Mixer', 'Audio', 3, 2, 'Available', 'Available', 'Compact audio mixer for small productions.', 'Yamaha', '91006', 'DEM-AUD-003', 'DEM-AUD-003'),
+            ('Stage Light Bar', 'Lighting', 5, 3, 'Available', 'Available', 'Multi-angle light bar for stage and event use.', 'Nanlite', '91007', 'DEM-LGT-002', 'DEM-LGT-002'),
+            ('Ring Light Pro', 'Lighting', 8, 6, 'Available', 'Available', 'Ring light for interviews and livestream support.', 'Neewer', '91008', 'DEM-LGT-003', 'DEM-LGT-003'),
+            ('Projector Mini HD', 'Display', 4, 2, 'Available', 'Available', 'Portable projector for small rooms and demos.', 'BenQ', '91009', 'DEM-DSP-002', 'DEM-DSP-002'),
+            ('Portable TV Stand', 'Display', 4, 3, 'Available', 'Available', 'Mobile stand for display screens and presentations.', 'AVF', '91010', 'DEM-DSP-003', 'DEM-DSP-003'),
+            ('HDMI Switcher', 'Accessories', 6, 5, 'Available', 'Available', 'Input switcher for mixed display sources.', 'Ugreen', '91011', 'DEM-ACC-002', 'DEM-ACC-002'),
+            ('Cable Kit Pro', 'Accessories', 12, 10, 'Available', 'Available', 'Assorted adapters and spare cables.', 'Anker', '91012', 'DEM-ACC-003', 'DEM-ACC-003'),
+            ('Speaker Stand', 'Support', 8, 7, 'Available', 'Available', 'Adjustable stand for audio equipment.', 'K&M', '91013', 'DEM-SUP-002', 'DEM-SUP-002'),
+            ('Backdrop Stand', 'Support', 5, 4, 'Available', 'Available', 'Frame stand for backdrops and banners.', 'Selens', '91014', 'DEM-SUP-003', 'DEM-SUP-003'),
+            ('Tablet Cart', 'Computing', 3, 2, 'Available', 'Available', 'Charging cart for tablets and mobile devices.', 'Dell', '91015', 'DEM-CMP-002', 'DEM-CMP-002'),
+            ('Wireless Presenter', 'Computing', 10, 9, 'Available', 'Available', 'Presenter clicker for lectures and briefings.', 'Logitech', '91016', 'DEM-CMP-003', 'DEM-CMP-003'),
+            ('Battery Pack 20k', 'Accessories', 20, 18, 'Available', 'Available', 'Power bank set for field coverage.', 'Baseus', '91017', 'DEM-ACC-004', 'DEM-ACC-004'),
+            ('Tripod Mini', 'Support', 12, 10, 'Available', 'Available', 'Small tripod for handheld camera stabilization.', 'Ulanzi', '91018', 'DEM-SUP-004', 'DEM-SUP-004'),
+            ('Green Screen Roll', 'Accessories', 4, 3, 'Available', 'Available', 'Backdrop roll for recordings and livestreams.', 'Elgato', '91019', 'DEM-ACC-005', 'DEM-ACC-005'),
+            ('LED Tube Light', 'Lighting', 6, 4, 'Available', 'Available', 'Tube light for creative lighting setups.', 'Aputure', '91020', 'DEM-LGT-004', 'DEM-LGT-004'),
+            ('Field Recorder', 'Audio', 4, 2, 'Available', 'Available', 'Portable recorder for on-site interviews.', 'Zoom', '91021', 'DEM-AUD-004', 'DEM-AUD-004'),
+            ('Ceiling Projector', 'Display', 2, 1, 'Under Maintenance', 'Under Maintenance', 'Installed projector awaiting lamp replacement.', 'Epson', '91022', 'DEM-DSP-004', 'DEM-DSP-004'),
+            ('Document Scanner', 'Computing', 3, 2, 'Available', 'Available', 'Fast scanner for registration and archives.', 'Canon', '91023', 'DEM-CMP-004', 'DEM-CMP-004'),
+            ('Extension Cord 50m', 'Accessories', 8, 6, 'Available', 'Available', 'Long-range power cable for larger venues.', 'Panther', '91024', 'DEM-ACC-006', 'DEM-ACC-006'),
+            ('Lighting Softbox', 'Lighting', 5, 3, 'Available', 'Available', 'Softbox kit for interviews and portraits.', 'Godox', '91025', 'DEM-LGT-005', 'DEM-LGT-005'),
+            ('PA Subwoofer', 'Audio', 2, 1, 'Available', 'Available', 'Low-end audio support for large events.', 'JBL', '91026', 'DEM-AUD-005', 'DEM-AUD-005'),
+            ('Teleprompter Kit', 'Computing', 2, 1, 'Available', 'Available', 'Teleprompter bundle for formal recordings.', 'Desview', '91027', 'DEM-CMP-005', 'DEM-CMP-005'),
+            ('Camera Slider', 'Support', 3, 2, 'Available', 'Available', 'Smooth-motion slider for video capture.', 'Neewer', '91028', 'DEM-SUP-005', 'DEM-SUP-005'),
+            ('Audio Interface', 'Audio', 5, 4, 'Available', 'Available', 'Interface for recording and livestream audio routing.', 'Focusrite', '91029', 'DEM-AUD-006', 'DEM-AUD-006'),
+            ('Portable Monitor', 'Display', 6, 4, 'Available', 'Available', 'Secondary screen for production monitoring.', 'ASUS', '91030', 'DEM-DSP-005', 'DEM-DSP-005')
     ) AS seed(equipment_name, equipment_category, total_quantity, available_quantity, operational_status, equipment_state, description, equipment_brand, barcode, asset_id, serial_number)
 ),
 backup_existing AS (
@@ -177,6 +205,11 @@ reservation_seed AS (
             ('2024-06-14'::date, 'Registrar service desk support', 4, 'Rejected', 'Registrar', 2, 'Low'),
             ('2024-06-18'::date, 'Mini conference support', 7, 'Completed', 'Enrollment Office', 1, 'High'),
             ('2024-06-23'::date, 'Closing week equipment demand', 6, 'Approved', 'Enrollment Office', 2, 'Normal'),
+            ('2024-06-24'::date, 'Prior year training wrap-up', 5, 'Completed', 'Academic Affairs', 1, 'Normal'),
+            ('2024-06-25'::date, 'Prior year lab cleanup', 4, 'Approved', 'Research Office', 2, 'Low'),
+            ('2024-06-26'::date, 'Prior year equipment return', 3, 'Completed', 'Enrollment Office', 1, 'Low'),
+            ('2024-06-27'::date, 'Prior year media documentation', 5, 'Approved', 'Enrollment Office', 2, 'Normal'),
+            ('2024-06-28'::date, 'Prior year graduation setup', 6, 'Completed', 'Student Affairs', 1, 'High'),
             ('2024-07-16'::date, 'Low-volume lab documentation', 2, 'Completed', 'TechReserve Demo Org', 1, 'Low'),
             ('2024-08-20'::date, 'Quiet month seminar', 2, 'Approved', 'TechReserve Demo Org', 2, 'Low'),
             ('2024-09-11'::date, 'Opening term showcase', 3, 'Completed', 'Academic Affairs', 1, 'Normal'),
@@ -197,6 +230,10 @@ reservation_seed AS (
             ('2025-06-18'::date, 'Mini conference support', 8, 'Approved', 'Enrollment Office', 2, 'High'),
             ('2025-06-21'::date, 'Student org orientation', 6, 'Completed', 'Student Affairs', 1, 'Normal'),
             ('2025-06-23'::date, 'Closing week equipment demand', 7, 'Approved', 'Enrollment Office', 2, 'High'),
+            ('2025-06-24'::date, 'Prior year follow-up audit', 5, 'Completed', 'Academic Affairs', 1, 'Normal'),
+            ('2025-06-25'::date, 'Prior year setup rehearsal', 6, 'Approved', 'Enrollment Office', 2, 'High'),
+            ('2025-06-26'::date, 'Prior year venue cleanup', 4, 'Completed', 'Student Affairs', 1, 'Low'),
+            ('2025-06-27'::date, 'Prior year media handoff', 5, 'Approved', 'Enrollment Office', 2, 'Normal'),
             ('2025-07-15'::date, 'Low-volume lab documentation', 2, 'Completed', 'TechReserve Demo Org', 1, 'Low'),
             ('2025-08-19'::date, 'Quiet month seminar', 2, 'Approved', 'TechReserve Demo Org', 2, 'Low'),
             ('2025-09-10'::date, 'Opening term showcase', 4, 'Completed', 'Academic Affairs', 1, 'Normal'),
@@ -220,6 +257,12 @@ reservation_seed AS (
             ('2026-06-21'::date, 'Enrollment overflow request', 5, 'Pending Review', 'Enrollment Office', 1, 'Normal'),
             ('2026-06-23'::date, 'Closing week equipment demand', 7, 'Approved', 'Enrollment Office', 2, 'High')
     ) AS seed(submission_date, purpose_description, requested_quantity, current_status, organization_name, borrower_index, priority_level)
+),
+reservation_seed_with_index AS (
+    SELECT
+        reservation_seed.*,
+        ROW_NUMBER() OVER (ORDER BY reservation_seed.submission_date, reservation_seed.organization_name, reservation_seed.purpose_description) AS seed_index
+    FROM reservation_seed
 )
 INSERT INTO reservations (
     reservation_code,
@@ -246,13 +289,37 @@ SELECT
     NULL,
     CASE
         WHEN EXTRACT(MONTH FROM reservation_seed.submission_date) IN (5, 6) THEN
-            '[{"equipmentName":"Canon EOS R50","quantity":2},{"equipmentName":"Wireless Mic Kit","quantity":2},{"equipmentName":"Tripod Pro","quantity":1},{"equipmentName":"PA Speaker Set","quantity":1}]'::json
+            CASE MOD(reservation_seed_with_index.seed_index, 10)
+                WHEN 0 THEN '[{"equipmentName":"Canon EOS R50","quantity":1},{"equipmentName":"Wireless Mic Kit","quantity":1},{"equipmentName":"Tripod Pro","quantity":1}]'::json
+                WHEN 1 THEN '[{"equipmentName":"Sony A7 IV","quantity":1},{"equipmentName":"LED Panel Light","quantity":1},{"equipmentName":"Laptop Cart","quantity":1}]'::json
+                WHEN 2 THEN '[{"equipmentName":"Podcast Mic Set","quantity":1},{"equipmentName":"Portable Mixer","quantity":1},{"equipmentName":"PA Speaker Set","quantity":1}]'::json
+                WHEN 3 THEN '[{"equipmentName":"Projector X200","quantity":1},{"equipmentName":"Projector Mini HD","quantity":1},{"equipmentName":"Portable TV Stand","quantity":1}]'::json
+                WHEN 4 THEN '[{"equipmentName":"GoPro Action Kit","quantity":1},{"equipmentName":"Camera Slider","quantity":1},{"equipmentName":"Tripod Mini","quantity":1}]'::json
+                WHEN 5 THEN '[{"equipmentName":"Stage Light Bar","quantity":1},{"equipmentName":"LED Tube Light","quantity":1},{"equipmentName":"Lighting Softbox","quantity":1}]'::json
+                WHEN 6 THEN '[{"equipmentName":"Document Scanner","quantity":1},{"equipmentName":"Wireless Presenter","quantity":1},{"equipmentName":"Tablet Cart","quantity":1}]'::json
+                WHEN 7 THEN '[{"equipmentName":"Battery Pack 20k","quantity":1},{"equipmentName":"Green Screen Roll","quantity":1},{"equipmentName":"Portable Monitor","quantity":1}]'::json
+                WHEN 8 THEN '[{"equipmentName":"Extension Cord 20m","quantity":1},{"equipmentName":"HDMI Switcher","quantity":1},{"equipmentName":"Speaker Stand","quantity":1}]'::json
+                ELSE '[{"equipmentName":"Field Recorder","quantity":1},{"equipmentName":"Camera Slider","quantity":1},{"equipmentName":"Audio Interface","quantity":1}]'::json
+            END
         WHEN reservation_seed.organization_name = 'Academic Affairs' THEN
-            '[{"equipmentName":"Sony A7 IV","quantity":1},{"equipmentName":"LED Panel Light","quantity":2},{"equipmentName":"Laptop Cart","quantity":1}]'::json
+            CASE MOD(EXTRACT(DAY FROM reservation_seed.submission_date)::int, 3)
+                WHEN 0 THEN '[{"equipmentName":"Sony A7 IV","quantity":1},{"equipmentName":"LED Panel Light","quantity":2},{"equipmentName":"Laptop Cart","quantity":1}]'::json
+                WHEN 1 THEN '[{"equipmentName":"Document Scanner","quantity":1},{"equipmentName":"Wireless Presenter","quantity":1},{"equipmentName":"Tablet Cart","quantity":1}]'::json
+                ELSE '[{"equipmentName":"Teleprompter Kit","quantity":1},{"equipmentName":"Portable Monitor","quantity":1},{"equipmentName":"Extension Cord 50m","quantity":1}]'::json
+            END
         WHEN reservation_seed.organization_name = 'Research Office' THEN
-            '[{"equipmentName":"Sony A7 IV","quantity":1},{"equipmentName":"Tripod Pro","quantity":1}]'::json
+            CASE MOD(EXTRACT(DAY FROM reservation_seed.submission_date)::int, 3)
+                WHEN 0 THEN '[{"equipmentName":"Sony A7 IV","quantity":1},{"equipmentName":"Tripod Pro","quantity":1}]'::json
+                WHEN 1 THEN '[{"equipmentName":"Field Recorder","quantity":1},{"equipmentName":"Camera Slider","quantity":1}]'::json
+                ELSE '[{"equipmentName":"GoPro Action Kit","quantity":1},{"equipmentName":"Ring Light Pro","quantity":1}]'::json
+            END
         ELSE
-            '[{"equipmentName":"Extension Cord 20m","quantity":1},{"equipmentName":"Projector X200","quantity":1},{"equipmentName":"Tripod Pro","quantity":1}]'::json
+            CASE MOD(EXTRACT(DAY FROM reservation_seed.submission_date)::int, 4)
+                WHEN 0 THEN '[{"equipmentName":"Extension Cord 20m","quantity":1},{"equipmentName":"Projector X200","quantity":1},{"equipmentName":"Tripod Pro","quantity":1}]'::json
+                WHEN 1 THEN '[{"equipmentName":"Extension Cord 50m","quantity":1},{"equipmentName":"Projector Mini HD","quantity":1},{"equipmentName":"Backdrop Stand","quantity":1}]'::json
+                WHEN 2 THEN '[{"equipmentName":"Battery Pack 20k","quantity":2},{"equipmentName":"Green Screen Roll","quantity":1},{"equipmentName":"Portable Monitor","quantity":1}]'::json
+                ELSE '[{"equipmentName":"Cable Kit Pro","quantity":1},{"equipmentName":"HDMI Switcher","quantity":1},{"equipmentName":"Speaker Stand","quantity":1}]'::json
+            END
     END,
     reservation_seed.requested_quantity,
     reservation_seed.submission_date::timestamp + INTERVAL '10 days' + INTERVAL '9 hours',
@@ -275,6 +342,12 @@ SELECT
     reservation_seed.submission_date::timestamp + INTERVAL '10 days' + INTERVAL '13 hours'
 FROM reservation_seed
 JOIN borrower_pool ON borrower_pool.borrower_index = reservation_seed.borrower_index
+JOIN reservation_seed_with_index ON reservation_seed_with_index.submission_date = reservation_seed.submission_date
+    AND reservation_seed_with_index.purpose_description = reservation_seed.purpose_description
+    AND reservation_seed_with_index.organization_name = reservation_seed.organization_name
+    AND reservation_seed_with_index.requested_quantity = reservation_seed.requested_quantity
+    AND reservation_seed_with_index.current_status = reservation_seed.current_status
+    AND reservation_seed_with_index.priority_level = reservation_seed.priority_level
 ON CONFLICT (reservation_code) DO NOTHING;
 
 COMMIT;

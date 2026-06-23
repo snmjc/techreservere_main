@@ -173,42 +173,62 @@
           <section class="reports-panel">
             <h2>Equipment Utilization Overview</h2>
             <div v-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
-            <div v-else class="reports-bar-chart">
-              <div v-for="item in utilizationItems" :key="item.label" :title="resolveUtilizationTooltip(item)">
-                <span>{{ formatMetricNumber(item.value, 0) }}%</span>
-                <i :style="{ height: `${Math.max(12, Number(item.value || 0))}%` }" :title="resolveUtilizationTooltip(item)"></i>
-                <small :title="resolveUtilizationTooltip(item)">{{ item.label }}</small>
-              </div>
+            <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
+              <canvas ref="utilizationChartRef" class="reports-chart-canvas" aria-label="Equipment utilization comparison chart"></canvas>
             </div>
-            <div class="reports-accordion">
-              <details>
-                <summary>What this graph shows</summary>
-                <p>{{ utilizationNarrative.summary }}</p>
-              </details>
-              <details>
-                <summary>Interpretation</summary>
-                <p>{{ utilizationNarrative.interpretation }}</p>
-              </details>
+              <div class="reports-accordion">
+                <details>
+                  <summary>What this graph shows</summary>
+                  <p>{{ utilizationNarrative.summary }}</p>
+                </details>
+                <details>
+                  <summary>Interpretation</summary>
+                  <p>{{ utilizationNarrative.interpretation }}</p>
+                </details>
             </div>
           </section>
 
           <section class="reports-panel">
-            <h2>Top Frequently Used Equipment</h2>
-            <table class="reports-equipment-table">
-              <thead>
-                <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
-              </thead>
-              <tbody>
-                <tr v-if="topEquipment.length === 0">
-                  <td colspan="3">No equipment requests were recorded in the selected range.</td>
-                </tr>
-                <tr v-for="item in topEquipment" :key="item.name">
-                  <td>{{ item.name }}</td>
-                  <td>{{ formatMetricNumber(item.count, 0) }}</td>
-                  <td>{{ formatMetricNumber(item.rate, 1) }}%</td>
-                </tr>
-              </tbody>
-            </table>
+            <h2>Top Equipment Trends</h2>
+            <div class="reports-table-stack">
+              <div>
+                <h3>Top Frequently Used Equipment</h3>
+                <table class="reports-equipment-table">
+                  <thead>
+                    <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="topEquipment.length === 0">
+                      <td colspan="3">No equipment requests were recorded in the selected range.</td>
+                    </tr>
+                    <tr v-for="item in topEquipment" :key="item.name">
+                      <td>{{ item.name }}</td>
+                      <td>{{ formatMetricNumber(item.count, 0) }}</td>
+                      <td>{{ formatMetricNumber(item.rate, 1) }}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h3>Top Possible Borrowed Equipment</h3>
+                <table class="reports-equipment-table">
+                  <thead>
+                    <tr><th>Equipment</th><th>Trend Signal</th><th>Why it may move</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="possibleBorrowedEquipment.length === 0">
+                      <td colspan="3">No trend-based borrowing candidates are available yet.</td>
+                    </tr>
+                    <tr v-for="item in possibleBorrowedEquipment" :key="item.name">
+                      <td>{{ item.name }}</td>
+                      <td>{{ item.signal }}</td>
+                      <td>{{ item.reason }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </section>
 
           <section class="reports-panel reports-summary-panel">
@@ -287,13 +307,33 @@
 </template>
 
 <script setup>
-import { Chart, registerables } from 'chart.js';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
+import {
+  createEmptyForecastReport,
+  createEmptyReport,
+  createEmptyRiskReport,
+  createEmptySummaryReport,
+  createEmptyUtilizationReport,
+  hasRiskDistribution,
+  normalizeStoredAnalyticsResponse,
+  pickNonEmptyArray,
+} from './services/reportsAnalyticsDataAdapter.js';
+import { createReportsAnalyticsChartRenderer } from './services/reportsAnalyticsChartRenderer.js';
+import {
+  buildForecastDisplaySeries,
+  buildForecastNarrative,
+  buildOptimizationNarrative,
+  buildRiskNarrative,
+  buildUtilizationNarrative,
+  resolveOptimizationDecision,
+  resolveUtilizationTooltip,
+  roundForecastValue,
+} from './services/reportsAnalyticsNarrativeService.js';
 import {
   ADMIN_ANALYTICS_RANGE_PRESETS,
   buildDualLineChartModel,
@@ -304,8 +344,6 @@ import {
   parseDateOnly,
   resolveAdminAnalyticsDateRange,
 } from './adminAnalyticsHelpers.js';
-
-Chart.register(...registerables);
 
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
@@ -321,10 +359,14 @@ const pdfError = ref('');
 const reportSurfaceRef = ref(null);
 const forecastChartRef = ref(null);
 const riskChartRef = ref(null);
-const reportsAnalytics = ref(createEmptyReport());
+const utilizationChartRef = ref(null);
+const chartRenderer = createReportsAnalyticsChartRenderer();
+const forecastReport = ref(createEmptyForecastReport());
+const riskReport = ref(createEmptyRiskReport());
+const optimizationReport = ref([]);
+const utilizationReport = ref(createEmptyUtilizationReport());
+const summaryReport = ref(createEmptySummaryReport());
 const reportsSourceLabel = ref('Loading stored analytics...');
-let forecastChartInstance = null;
-let riskChartInstance = null;
 
 const analyticsScenarios = [
   { key: 'clean_data', title: 'Clean Data', description: 'Reset to a neutral demo state with balanced inputs.' },
@@ -361,7 +403,7 @@ const modelCards = [
   },
 ];
 
-const forecastData = computed(() => reportsAnalytics.value.forecast || {});
+const forecastData = computed(() => forecastReport.value || {});
 const forecastSeries = computed(() => (forecastData.value.actualSeries || []).map((item) => ({
   ...item,
   label: formatShortDate(item.date || item.label),
@@ -394,23 +436,33 @@ const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels
 }));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
 const forecastNarrative = computed(() => buildForecastNarrative(forecastData.value, forecastSeries.value, forecastProjectionSeries.value));
-const riskBands = computed(() => reportsAnalytics.value.riskDistribution?.bands || []);
-const topRiskFactors = computed(() => reportsAnalytics.value.riskDistribution?.topRiskFactors || []);
-const highRiskEquipment = computed(() => reportsAnalytics.value.riskDistribution?.highRiskEquipment || []);
-const safeRateLabel = computed(() => `${formatMetricNumber(reportsAnalytics.value.riskDistribution?.safeRate || 0, 0)}%`);
+const riskBands = computed(() => riskReport.value?.bands || []);
+const topRiskFactors = computed(() => riskReport.value?.topRiskFactors || []);
+const highRiskEquipment = computed(() => riskReport.value?.highRiskEquipment || []);
+const safeRateLabel = computed(() => `${formatMetricNumber(riskReport.value?.safeRate || 0, 0)}%`);
 const highRiskTooltip = computed(() => resolveHighRiskTooltip());
 const riskNarrative = computed(() => buildRiskNarrative(riskBands.value));
-const optimizationMetrics = computed(() => reportsAnalytics.value.optimizationMetrics || []);
-const utilizationItems = computed(() => reportsAnalytics.value.utilizationByCategory || []);
-const topEquipment = computed(() => reportsAnalytics.value.topEquipment || []);
-const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, reportsAnalytics.value.summary || {}));
+const optimizationMetrics = computed(() => optimizationReport.value || []);
+const utilizationItems = computed(() => utilizationReport.value.items || []);
+const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
+const topEquipment = computed(() => utilizationReport.value.topEquipment || []);
+const possibleBorrowedEquipment = computed(() => topEquipment.value.slice(0, 5).map((item, index) => ({
+  name: item.name,
+  signal: `${index + 1}`,
+  reason: Number(item.rate || 0) >= 50
+    ? 'Already trending high, so it may stay in demand next cycle.'
+    : Number(item.count || 0) >= 3
+      ? 'Repeat usage suggests this item may reappear in the next 3 days.'
+      : 'Light but consistent usage makes it a possible next-cycle borrow.',
+})));
+const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
-const reportGeneratedAt = computed(() => reportsAnalytics.value.summary?.generatedAt || 'N/A');
+const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'N/A');
 const summaryItems = computed(() => [
-  { label: 'Total Equipment', value: formatMetricNumber(reportsAnalytics.value.summary?.totalEquipment || 0, 0) },
-  { label: 'Active Reservations', value: formatMetricNumber(reportsAnalytics.value.summary?.activeReservations || 0, 0) },
-  { label: 'Pending Requests', value: formatMetricNumber(reportsAnalytics.value.summary?.pendingRequests || 0, 0) },
-  { label: 'Completed This Period', value: formatMetricNumber(reportsAnalytics.value.summary?.completedThisPeriod || 0, 0) },
+  { label: 'Total Equipment', value: formatMetricNumber(summaryReport.value?.totalEquipment || 0, 0) },
+  { label: 'Active Reservations', value: formatMetricNumber(summaryReport.value?.activeReservations || 0, 0) },
+  { label: 'Pending Requests', value: formatMetricNumber(summaryReport.value?.pendingRequests || 0, 0) },
+  { label: 'Completed This Period', value: formatMetricNumber(summaryReport.value?.completedThisPeriod || 0, 0) },
   { label: 'Generated At', value: reportGeneratedAt.value },
 ]);
 
@@ -427,9 +479,25 @@ watch(selectedRangeKey, () => {
 });
 
 watch(
-  () => reportsAnalytics.value,
+  () => forecastReport.value,
   () => {
-    renderCharts();
+    renderForecastChartAfterUpdate();
+  },
+  { deep: true }
+);
+
+watch(
+  () => riskReport.value,
+  () => {
+    renderRiskChartAfterUpdate();
+  },
+  { deep: true }
+);
+
+watch(
+  () => utilizationReport.value,
+  () => {
+    renderUtilizationChartAfterUpdate();
   },
   { deep: true }
 );
@@ -441,13 +509,12 @@ async function loadReportsAnalytics(options = {}) {
   pdfError.value = '';
 
   try {
-    reportsAnalytics.value = createEmptyReport();
-    reportsAnalytics.value = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+    applyEmptyAnalyticsSections();
+    applyLiveAnalyticsSections(await adminAnalyticsApi.getReportsAnalytics(activeRange.value));
     reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
-    await renderCharts();
   } catch (error) {
     if (preferLiveOnly) {
-      reportsAnalytics.value = createEmptyReport();
+      applyEmptyAnalyticsSections();
       reportsSourceLabel.value = 'Analytics data is unavailable right now.';
       return;
     }
@@ -457,21 +524,20 @@ async function loadReportsAnalytics(options = {}) {
       const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
 
       if (storedAnalytics !== null) {
-        reportsAnalytics.value = storedAnalytics;
+        applyStoredAnalyticsSections(storedAnalytics);
         reportsSourceLabel.value = buildStoredAnalyticsLabel(latestResultsResponse?.run);
         return;
       }
 
-      reportsAnalytics.value = createEmptyReport();
+      applyEmptyAnalyticsSections();
       reportsSourceLabel.value = 'Analytics data is unavailable right now.';
     } catch (fallbackError) {
-      reportsAnalytics.value = createEmptyReport();
+      applyEmptyAnalyticsSections();
       reportsError.value = resolveReportsError(fallbackError || error);
       reportsSourceLabel.value = 'Analytics data is unavailable right now.';
     }
   } finally {
     isReportsLoading.value = false;
-    await renderCharts();
   }
 }
 
@@ -513,14 +579,15 @@ async function handleTriggerAnalyticsRun() {
 async function refreshReportsAfterRun() {
   const maxAttempts = 4;
   let attempt = 0;
-  let latestReport = null;
 
   while (attempt < maxAttempts) {
-    latestReport = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
-    reportsAnalytics.value = latestReport;
+    const liveAnalytics = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+    const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
+    const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
 
-    if ((latestReport?.forecast?.actualSeries || []).length > 0 || attempt === maxAttempts - 1) {
-      reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
+    if (storedAnalytics !== null) {
+      applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics);
+      reportsSourceLabel.value = `${buildStoredAnalyticsLabel(latestResultsResponse?.run)} Forecast uses live aggregation for ${activeRangeLabel.value}.`;
       return;
     }
 
@@ -528,8 +595,65 @@ async function refreshReportsAfterRun() {
     await wait(600);
   }
 
-  reportsAnalytics.value = createEmptyReport();
+  applyEmptyAnalyticsSections();
   reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+}
+
+function applyEmptyAnalyticsSections() {
+  forecastReport.value = createEmptyForecastReport();
+  riskReport.value = createEmptyRiskReport();
+  optimizationReport.value = [];
+  utilizationReport.value = createEmptyUtilizationReport();
+  summaryReport.value = createEmptySummaryReport();
+}
+
+function applyLiveAnalyticsSections(liveAnalytics) {
+  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
+  riskReport.value = liveAnalytics?.riskDistribution || createEmptyRiskReport();
+  optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
+  utilizationReport.value = {
+    items: Array.isArray(liveAnalytics?.utilizationByCategory) ? liveAnalytics.utilizationByCategory : [],
+    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
+      ? liveAnalytics.utilizationComparisonByCategory
+      : [],
+    topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
+  };
+  summaryReport.value = liveAnalytics?.summary || createEmptySummaryReport();
+}
+
+function applyStoredAnalyticsSections(storedAnalytics) {
+  forecastReport.value = storedAnalytics?.forecast || createEmptyForecastReport();
+  riskReport.value = storedAnalytics?.riskDistribution || createEmptyRiskReport();
+  optimizationReport.value = Array.isArray(storedAnalytics?.optimizationMetrics) ? storedAnalytics.optimizationMetrics : [];
+  utilizationReport.value = {
+    items: Array.isArray(storedAnalytics?.utilizationByCategory) ? storedAnalytics.utilizationByCategory : [],
+    comparisonItems: Array.isArray(storedAnalytics?.utilizationComparisonByCategory)
+      ? storedAnalytics.utilizationComparisonByCategory
+      : [],
+    topEquipment: Array.isArray(storedAnalytics?.topEquipment) ? storedAnalytics.topEquipment : [],
+  };
+  summaryReport.value = storedAnalytics?.summary || createEmptySummaryReport();
+}
+
+function applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics) {
+  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
+  riskReport.value = hasRiskDistribution(storedAnalytics?.riskDistribution)
+    ? storedAnalytics.riskDistribution
+    : liveAnalytics?.riskDistribution || createEmptyRiskReport();
+  optimizationReport.value = pickNonEmptyArray(storedAnalytics?.optimizationMetrics, liveAnalytics?.optimizationMetrics);
+  utilizationReport.value = {
+    items: pickNonEmptyArray(storedAnalytics?.utilizationByCategory, liveAnalytics?.utilizationByCategory),
+    comparisonItems: pickNonEmptyArray(
+      storedAnalytics?.utilizationComparisonByCategory,
+      liveAnalytics?.utilizationComparisonByCategory,
+    ),
+    topEquipment: pickNonEmptyArray(storedAnalytics?.topEquipment, liveAnalytics?.topEquipment),
+  };
+  summaryReport.value = {
+    ...(liveAnalytics?.summary || createEmptySummaryReport()),
+    ...(storedAnalytics?.summary || {}),
+    generatedAt: storedAnalytics?.summary?.generatedAt || liveAnalytics?.summary?.generatedAt || 'N/A',
+  };
 }
 
 function wait(milliseconds) {
@@ -595,188 +719,50 @@ async function handleGeneratePdf() {
   }
 }
 
-function createEmptyReport() {
-  return {
-    forecast: {
-      actualSeries: [],
-      forecastSeries: [],
-      peakDate: null,
-      peakValue: 0,
-      growthPercent: 0,
-    },
-    riskDistribution: {
-      bands: [],
-      topRiskFactors: [],
-      safeRate: 0,
-    },
-    optimizationMetrics: [],
-    utilizationByCategory: [],
-    topEquipment: [],
-    summary: {
-      totalEquipment: 0,
-      activeReservations: 0,
-      pendingRequests: 0,
-      completedThisPeriod: 0,
-      generatedAt: 'N/A',
-    },
-  };
-}
-
 function destroyCharts() {
-  if (forecastChartInstance) {
-    forecastChartInstance.destroy();
-    forecastChartInstance = null;
-  }
-
-  if (riskChartInstance) {
-    riskChartInstance.destroy();
-    riskChartInstance = null;
-  }
+  chartRenderer.destroyAll();
 }
 
-async function renderCharts() {
+async function renderForecastChartAfterUpdate() {
   await nextTick();
   renderForecastChart();
+}
+
+async function renderRiskChartAfterUpdate() {
+  await nextTick();
   renderRiskChart();
 }
 
+async function renderUtilizationChartAfterUpdate() {
+  await nextTick();
+  renderUtilizationChart();
+}
+
 function renderForecastChart() {
-  const canvas = forecastChartRef.value;
-  if (!canvas || forecastSeries.value.length === 0) {
-    if (forecastChartInstance) {
-      forecastChartInstance.destroy();
-      forecastChartInstance = null;
-    }
-    return;
-  }
-
-  if (forecastChartInstance) {
-    forecastChartInstance.destroy();
-  }
-
-  forecastChartInstance = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: forecastDisplaySeries.value.labels.map((label) => formatShortDate(label)),
-      datasets: [
-        {
-          label: 'Actual Demand',
-          data: forecastDisplaySeries.value.actualValues,
-          borderColor: '#1d4ed8',
-          backgroundColor: 'rgba(29, 78, 216, 0.12)',
-          tension: 0.35,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-        },
-        {
-          label: 'Forecasted Demand',
-          data: forecastDisplaySeries.value.forecastValues,
-          borderColor: '#60a5fa',
-          borderDash: [8, 6],
-          tension: 0.35,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-        },
-        {
-          label: 'Midpoint Trend',
-          data: forecastMidpointSeries.value,
-          borderColor: '#10b981',
-          borderDash: [2, 4],
-          tension: 0.35,
-          pointRadius: 1,
-          pointHoverRadius: 3,
-          borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, labels: { usePointStyle: true } },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: {
-            label(context) {
-              const label = context.dataset?.label || '';
-              const value = Number(context.raw || 0);
-              return `${label}: ${formatMetricNumber(value, 1)} requests`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: { grid: { color: '#e5e7eb' } },
-        y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-      },
-    },
+  chartRenderer.renderForecastChart({
+    canvas: forecastChartRef.value,
+    displaySeries: forecastDisplaySeries.value,
+    midpointSeries: forecastMidpointSeries.value,
+    formatShortDate,
+    formatMetricNumber,
   });
 }
 
 function renderRiskChart() {
-  const canvas = riskChartRef.value;
-  if (!canvas || riskBands.value.length === 0) {
-    if (riskChartInstance) {
-      riskChartInstance.destroy();
-      riskChartInstance = null;
-    }
-    return;
-  }
+  chartRenderer.renderRiskChart({
+    canvas: riskChartRef.value,
+    riskBands: riskBands.value,
+    highRiskEquipment: highRiskEquipment.value,
+    safeRateLabel: safeRateLabel.value,
+  });
+}
 
-  if (riskChartInstance) {
-    riskChartInstance.destroy();
-  }
-
-  riskChartInstance = new Chart(canvas, {
-    type: 'doughnut',
-    data: {
-      labels: riskBands.value.map((item) => item.label),
-      datasets: [
-        {
-          data: riskBands.value.map((item) => Number(item.count || 0)),
-          backgroundColor: riskBands.value.map((item) => item.color),
-          borderWidth: 0,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '65%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label(context) {
-              const label = context.label || '';
-              const value = Number(context.raw || 0);
-              if (label === 'High Risk') {
-                const names = highRiskEquipment.value.map((item) => item?.name).filter(Boolean);
-                return [`${label}: ${value} equipment`, ...names.slice(0, 5).map((name) => `• ${name}`)];
-              }
-              return `${label}: ${value} equipment`;
-            },
-          },
-        },
-      },
-    },
-    plugins: [
-      {
-        id: 'centerText',
-        afterDraw(chart) {
-          const { ctx, chartArea } = chart;
-          if (!chartArea) return;
-          ctx.save();
-          ctx.fillStyle = '#15803d';
-          ctx.font = '700 18px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(safeRateLabel.value, (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
-          ctx.restore();
-        },
-      },
-    ],
+function renderUtilizationChart() {
+  chartRenderer.renderUtilizationChart({
+    canvas: utilizationChartRef.value,
+    utilizationItems: utilizationItems.value,
+    utilizationComparisonItems: utilizationComparisonItems.value,
+    formatMetricNumber,
   });
 }
 
@@ -784,109 +770,6 @@ function resolveReportsError(error) {
   return error?.response?.data?.errorMessage
     || error?.message
     || 'Unable to load analytics data right now.';
-}
-
-function normalizeStoredAnalyticsResponse(response) {
-  const resultList = Array.isArray(response?.results) ? response.results : [];
-  if (resultList.length === 0) {
-    return null;
-  }
-
-  const payloadByType = Object.fromEntries(
-    resultList.map((result) => [
-      String(result?.result_type || result?.resultType || '').toLowerCase(),
-      result?.result_payload || result?.resultPayload || {},
-    ]),
-  );
-
-  const normalized = createEmptyReport();
-  const forecastPayload = payloadByType.sarima || payloadByType.forecast || {};
-  const readinessPayload = payloadByType.random_forest || payloadByType.readiness || {};
-  const allocationPayload = payloadByType.binary_linear_programming || payloadByType.allocation || {};
-
-  normalized.forecast = {
-    actualSeries: (forecastPayload.actualSeries || forecastPayload.actual_series || []).map(normalizeSeriesPoint),
-    forecastSeries: (forecastPayload.forecastSeries || forecastPayload.forecast_series || []).map(normalizeSeriesPoint),
-    peakDate: forecastPayload.peakDate || forecastPayload.peak_date || null,
-    peakValue: Number(forecastPayload.peakValue || forecastPayload.peak_value || 0),
-    growthPercent: Number(forecastPayload.growthPercent || forecastPayload.growth_percent || 0),
-  };
-
-  normalized.riskDistribution = {
-    bands: normalizeBands(readinessPayload),
-    topRiskFactors: readinessPayload.topRiskFactors || readinessPayload.top_risk_factors || [],
-    highRiskEquipment: readinessPayload.highRiskEquipment || readinessPayload.high_risk_equipment || [],
-    safeRate: Number(readinessPayload.safeRate || readinessPayload.safe_rate || 0),
-  };
-
-  normalized.optimizationMetrics = normalizeOptimizationMetrics(allocationPayload);
-  normalized.utilizationByCategory = allocationPayload.utilizationByCategory || allocationPayload.utilization_by_category || [];
-  normalized.topEquipment = allocationPayload.topEquipment || allocationPayload.top_equipment || [];
-  normalized.summary = {
-    totalEquipment: Number(allocationPayload.summary?.totalEquipment || allocationPayload.summary?.total_equipment || 0),
-    activeReservations: Number(allocationPayload.summary?.activeReservations || allocationPayload.summary?.active_reservations || 0),
-    pendingRequests: Number(allocationPayload.summary?.pendingRequests || allocationPayload.summary?.pending_requests || 0),
-    completedThisPeriod: Number(allocationPayload.summary?.completedThisPeriod || allocationPayload.summary?.completed_this_period || 0),
-    generatedAt: response?.run?.started_at || response?.run?.startedAt || 'N/A',
-  };
-
-  return normalized;
-}
-
-function normalizeSeriesPoint(item) {
-  return {
-    date: item?.date || item?.label || '',
-    label: item?.label || item?.date || '',
-    value: Number(item?.value || 0),
-  };
-}
-
-function normalizeBands(readinessPayload) {
-  const sourceBands = readinessPayload.bands || readinessPayload.riskBands || readinessPayload.risk_bands || [];
-  if (Array.isArray(sourceBands) && sourceBands.length > 0) {
-    return sourceBands;
-  }
-
-  const records = Array.isArray(readinessPayload.records) ? readinessPayload.records : [];
-  const counts = {
-    'High Risk': 0,
-    'Medium Risk': 0,
-    'Low Risk': 0,
-    'Very Low Risk': 0,
-  };
-
-  records.forEach((record) => {
-    const ratio = Number(record?.availabilityRatio || 0);
-    if (ratio >= 0.8) counts['Very Low Risk'] += 1;
-    else if (ratio >= 0.5) counts['Low Risk'] += 1;
-    else if (ratio >= 0.25) counts['Medium Risk'] += 1;
-    else counts['High Risk'] += 1;
-  });
-
-  return [
-    { label: 'High Risk', count: counts['High Risk'], color: '#ef4444' },
-    { label: 'Medium Risk', count: counts['Medium Risk'], color: '#f59e0b' },
-    { label: 'Low Risk', count: counts['Low Risk'], color: '#facc15' },
-    { label: 'Very Low Risk', count: counts['Very Low Risk'], color: '#16a34a' },
-  ];
-}
-
-function normalizeOptimizationMetrics(allocationPayload) {
-  const sourceMetrics = allocationPayload.optimizationMetrics || allocationPayload.optimization_metrics || [];
-  if (Array.isArray(sourceMetrics) && sourceMetrics.length > 0) {
-    return sourceMetrics;
-  }
-
-  const allocationPlan = allocationPayload.allocationPlan || allocationPayload.allocation_plan || [];
-  return [
-    {
-      label: 'Allocation Plan Items',
-      note: 'stored results',
-      value: Array.isArray(allocationPlan) ? allocationPlan.length : 0,
-      icon: 'AP',
-      tone: 'tree',
-    },
-  ];
 }
 
 function buildStoredAnalyticsLabel(run) {
@@ -1000,314 +883,4 @@ function resolveRiskFactorTooltip(factor) {
   }
 }
 
-function buildRiskNarrative(bands = []) {
-  const normalizedBands = Array.isArray(bands) ? bands : [];
-  const getCount = (label) => Number(normalizedBands.find((band) => band?.label === label)?.count || 0);
-  const totalEquipment = normalizedBands.reduce((sum, band) => sum + Number(band?.count || 0), 0);
-  const highRisk = getCount('High Risk');
-  const mediumRisk = getCount('Medium Risk');
-  const lowRisk = getCount('Low Risk');
-  const veryLowRisk = getCount('Very Low Risk');
-  const safeEquipment = lowRisk + veryLowRisk;
-  const attentionCount = highRisk + mediumRisk;
-  const safeRate = totalEquipment > 0 ? Math.round((safeEquipment / totalEquipment) * 100) : 0;
-
-  const dominantBand = [
-    { label: 'Low Risk', count: lowRisk },
-    { label: 'High Risk', count: highRisk },
-    { label: 'Medium Risk', count: mediumRisk },
-    { label: 'Very Low Risk', count: veryLowRisk },
-  ].sort((left, right) => right.count - left.count)[0] || { label: 'Low Risk', count: 0 };
-
-  const summary = totalEquipment > 0
-    ? `Most tracked equipment is currently in a ${dominantBand.label} condition: ${formatMetricNumber(dominantBand.count, 0)} out of ${formatMetricNumber(totalEquipment, 0)} equipment items (${safeRate}% safe rate). ${attentionCount > 0 ? `${formatMetricNumber(attentionCount, 0)} items still require attention—${formatMetricNumber(highRisk, 0)} High Risk and ${formatMetricNumber(mediumRisk, 0)} Medium Risk.` : 'No equipment currently requires immediate escalation.'} ${veryLowRisk === 0 ? 'No equipment falls under Very Low Risk, which means all tracked assets still have at least one monitored operational risk factor.' : `${formatMetricNumber(veryLowRisk, 0)} equipment items are already in Very Low Risk status.`}`
-    : 'No readiness risk data is available for the selected range.';
-
-  const interpretation = totalEquipment > 0
-    ? `Overall inventory readiness is ${attentionCount > 0 ? 'stable, but the High- and Medium-Risk equipment should be reviewed first' : 'stable'}. Prioritize items affected by inactive availability, low stock pressure, frequent use, or overdue release status to prevent disruption to reservations and operations.`
-    : 'There is no risk distribution to interpret for this range.';
-
-  return { summary, interpretation };
-}
-
-function buildForecastNarrative(forecast = {}, actualSeries = [], forecastSeries = []) {
-  const actualValues = Array.isArray(actualSeries) ? actualSeries.map((item) => Number(item?.value || 0)) : [];
-  const forecastValues = Array.isArray(forecastSeries) ? forecastSeries.map((item) => Number(item?.value || 0)) : [];
-  const actualPeak = actualValues.length > 0 ? Math.max(...actualValues) : 0;
-  const actualPeakIndex = actualValues.indexOf(actualPeak);
-  const actualTailAverage = actualValues.length >= 3
-    ? actualValues.slice(-3).reduce((sum, value) => sum + value, 0) / 3
-    : actualValues.reduce((sum, value) => sum + value, 0);
-  const forecastPeak = Number(forecast?.peakValue || (forecastValues.length > 0 ? Math.max(...forecastValues) : 0));
-  const forecastPeakIndex = forecastValues.indexOf(forecastPeak);
-  const forecastTailAverage = forecastValues.length >= 3
-    ? forecastValues.slice(-3).reduce((sum, value) => sum + value, 0) / 3
-    : forecastValues.reduce((sum, value) => sum + value, 0);
-  const actualAverage = actualValues.length > 0 ? actualValues.reduce((sum, value) => sum + value, 0) / actualValues.length : 0;
-  const forecastAverage = forecastValues.length > 0 ? forecastValues.reduce((sum, value) => sum + value, 0) / forecastValues.length : 0;
-  const forecastLookAheadAverage = forecastValues.slice(-3).reduce((sum, value) => sum + value, 0) / Math.max(1, Math.min(3, forecastValues.length));
-  const midpointTail = forecastValues.length >= 1
-    ? forecastValues
-        .slice(-3)
-        .map((value, index, values) => {
-          const actualValue = actualValues.slice(-values.length)[index] ?? actualAverage;
-          return (Number(actualValue || 0) + Number(value || 0)) / 2;
-        })
-    : [];
-  const midpointTrend = midpointTail.length > 0 ? midpointTail.reduce((sum, value) => sum + value, 0) / midpointTail.length : 0;
-  const growthPercent = Number(forecast?.growthPercent || 0);
-  const peakDate = formatLongDate(forecast?.peakDate);
-  const forecastGap = forecastPeak - actualPeak;
-  const averageGap = forecastAverage - actualAverage;
-  const peakInForecast = forecastPeakIndex >= 0 && actualPeakIndex >= 0 ? forecastPeakIndex >= actualPeakIndex : false;
-  const isSmoothTrend = forecastValues.length >= 4 && Math.max(...forecastValues) - Math.min(...forecastValues) <= Math.max(2, forecastAverage * 0.25);
-
-  const summary = actualValues.length > 0 || forecastValues.length > 0
-    ? `This graph compares ${formatMetricNumber(actualValues.length, 0)} actual demand points with ${formatMetricNumber(forecastValues.length, 0)} forecast points over the selected range. The forecast peaks at ${formatMetricNumber(forecastPeak, 1)} requests on ${peakDate}, while actual demand peaks at ${formatMetricNumber(actualPeak, 1)} requests.`
-    : 'No demand series is available for this range.';
-
-  const tldr = forecastValues.length > 0
-    ? [
-        forecastLookAheadAverage >= actualAverage + 2
-          ? `If the next 3 days stay above ${formatMetricNumber(actualAverage, 1)} requests, prepare more equipment and staff now.`
-          : forecastLookAheadAverage <= actualAverage - 2
-            ? `If the next 3 days fall below ${formatMetricNumber(actualAverage, 1)} requests, keep inventory lean and avoid over-preparing.`
-            : `If the next 3 days stay near ${formatMetricNumber(actualAverage, 1)} requests, hold current allocation and monitor for changes.`,
-        midpointTrend >= forecastLookAheadAverage
-          ? 'If the midpoint trend stays above the look-ahead average, keep a cautious buffer because demand may flatten later.'
-          : 'If the midpoint trend stays below the look-ahead average, move to a proactive allocation plan because demand may rise later.',
-        forecastGap >= 3
-          ? 'If the forecast peak is higher than the current peak, expect a sharper surge and stage resources earlier.'
-          : forecastGap <= -3
-            ? 'If the forecast peak is lower than the current peak, the surge may already be passing and the load should ease.'
-            : 'If the forecast peak stays close to the current peak, keep the same operating rhythm and review daily.',
-      ].join(' ')
-    : 'No forecast trend is available yet for a decision check.';
-
-  const interpretation = forecastValues.length > 0
-    ? [
-        growthPercent >= 15
-          ? 'Demand is materially above the previous period, so reserve extra equipment earlier and watch for capacity pressure.'
-          : growthPercent >= 0
-            ? 'Demand is slightly above the previous period, so keep a moderate buffer and monitor the next booking cycle.'
-            : 'Demand is below the previous period, so release surplus inventory cautiously and avoid overcommitting stock.',
-        forecastGap >= 5
-          ? 'The forecast peak is much higher than actual demand, which suggests a strong seasonal surge or a concentrated booking window.'
-          : forecastGap >= 2
-            ? 'The forecast peak is moderately higher than actual demand, which suggests a clear upward shift in request volume.'
-            : forecastGap <= -2
-              ? 'The forecast peak is below the current peak, so future demand may soften after the current burst.'
-              : 'Forecast and actual peaks are close, so the next period should stay near the current operational pattern.',
-        averageGap >= 3
-          ? 'Average forecast volume is noticeably above actual demand, so this range should be staffed as a higher-demand cycle.'
-          : averageGap <= -3
-            ? 'Average forecast volume is noticeably below actual demand, so current usage may be tapering off.'
-            : 'Average forecast volume is close to actual demand, so the overall pattern is steady.',
-        forecastLookAheadAverage >= actualAverage + 2
-          ? `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so prepare for a short-term rise in demand.`
-          : forecastLookAheadAverage <= actualAverage - 2
-            ? `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so demand should ease slightly.`
-            : `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so demand should stay near the current baseline.`,
-        midpointTrend >= forecastLookAheadAverage
-          ? `The midpoint trend sits at ${formatMetricNumber(midpointTrend, 1)} requests, which leans closer to the actual demand line and supports a cautious allocation plan.`
-          : `The midpoint trend sits at ${formatMetricNumber(midpointTrend, 1)} requests, which leans toward the forecast line and supports a more proactive allocation plan.`,
-        peakInForecast
-          ? 'The forecast peak arrives at or after the actual peak, which usually means the pressure is moving later in the period.'
-          : 'The forecast peak appears earlier than the actual peak, which may indicate an early spike followed by a taper.',
-        isSmoothTrend
-          ? `The forecast line is relatively smooth, with a tail average of ${formatMetricNumber(forecastTailAverage, 1)} requests; that makes it better for base staffing plans.`
-          : `The forecast line is volatile, with a tail average of ${formatMetricNumber(forecastTailAverage, 1)} requests; that supports a more flexible buffer plan.`,
-      ].join(' ')
-    : 'There is no forecast trend to interpret for this range.';
-
-  return { tldr, summary, interpretation };
-}
-
-function buildForecastDisplaySeries(actualSeries = [], forecastSeries = []) {
-  const actualMap = new Map();
-  const forecastMap = new Map();
-
-  actualSeries.forEach((item) => {
-    const key = item?.date || item?.label || '';
-    if (key) {
-      actualMap.set(key, Number(item?.value || 0));
-    }
-  });
-
-  forecastSeries.forEach((item) => {
-    const key = item?.date || item?.label || '';
-    if (key) {
-      forecastMap.set(key, Number(item?.value || 0));
-    }
-  });
-
-  const dateComparator = (left, right) => parseDateOnly(left).getTime() - parseDateOnly(right).getTime();
-  const actualKeys = [...actualMap.keys()].sort(dateComparator);
-  const forecastKeys = [...forecastMap.keys()].sort(dateComparator);
-  const lastActualKey = actualKeys[actualKeys.length - 1];
-  const lastActualDate = lastActualKey ? parseDateOnly(lastActualKey) : null;
-  const normalizedForecastKeys = forecastKeys.filter((key) => {
-    if (!lastActualDate) {
-      return true;
-    }
-    const date = parseDateOnly(key);
-    return Number.isNaN(date.getTime()) || date > lastActualDate;
-  });
-
-  if (normalizedForecastKeys.length === 0 && lastActualDate && actualKeys.length > 0) {
-    const tailValues = actualKeys.slice(-3).map((key) => actualMap.get(key) || 0);
-    const tailAverage = tailValues.length > 0 ? tailValues.reduce((sum, value) => sum + value, 0) / tailValues.length : 0;
-    for (let offset = 1; offset <= 3; offset += 1) {
-      const futureDate = new Date(lastActualDate);
-      futureDate.setDate(futureDate.getDate() + offset);
-      const key = formatDateKeyLocal(futureDate);
-      normalizedForecastKeys.push(key);
-      if (!forecastMap.has(key)) {
-        forecastMap.set(key, roundForecastValue(tailAverage));
-      }
-    }
-  }
-
-  const labels = [...new Set([...actualKeys, ...normalizedForecastKeys])].sort(dateComparator);
-  const actualValues = labels.map((label) => {
-    const isFutureForecastLabel = lastActualDate && parseDateOnly(label).getTime() > lastActualDate.getTime();
-    return isFutureForecastLabel ? null : Number(actualMap.get(label) ?? 0);
-  });
-  const forecastValues = labels.map((label) => Number(forecastMap.get(label) ?? 0));
-
-  return { labels, actualValues, forecastValues };
-}
-
-function roundForecastValue(value) {
-  return Math.round(Number(value || 0) * 100) / 100;
-}
-
-function formatDateKeyLocal(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function buildOptimizationNarrative(metrics = [], summary = {}) {
-  const normalizedMetrics = Array.isArray(metrics) ? metrics : [];
-  const utilizationMetric = normalizedMetrics.find((metric) => String(metric?.label || '').toLowerCase().includes('utilization'));
-  const conflictMetric = normalizedMetrics.find((metric) => String(metric?.label || '').toLowerCase().includes('conflict'));
-  const constraintMetric = normalizedMetrics.find((metric) => String(metric?.label || '').toLowerCase().includes('constraint'));
-  const unassignedMetric = normalizedMetrics.find((metric) => String(metric?.label || '').toLowerCase().includes('unassigned'));
-
-  const utilizationValue = Number(utilizationMetric?.value || 0);
-  const conflictValue = Number(conflictMetric?.value || 0);
-  const constraintValue = Number(constraintMetric?.value || 0);
-  const unassignedValue = Number(unassignedMetric?.value || 0);
-  const completed = Number(summary?.completedThisPeriod || 0);
-  const activeReservations = Number(summary?.activeReservations || 0);
-
-  const summaryText = normalizedMetrics.length > 0
-    ? `This panel compares ${formatMetricNumber(activeReservations, 0)} active reservations and ${formatMetricNumber(completed, 0)} completed requests with efficiency indicators for conflict reduction, utilization, constraint satisfaction, and unassigned work.`
-    : 'No allocation efficiency data is available for this range.';
-
-  const interpretation = normalizedMetrics.length > 0
-    ? [
-        conflictValue >= 10
-          ? 'Conflict reduction is improving strongly, so overlapping reservations are being handled well.'
-          : conflictValue >= 0
-            ? 'Conflict reduction is flat to slightly positive, so the current schedule is holding but still needs monitoring.'
-            : 'Conflict reduction is slipping, so overlapping bookings or timing clashes need attention.',
-        utilizationValue >= 10
-          ? 'Equipment utilization is trending up, which means demand is being absorbed efficiently.'
-          : utilizationValue >= 0
-            ? 'Equipment utilization is steady, which supports the current allocation plan.'
-            : 'Equipment utilization is falling, so some inventory may be underused or waiting idle.',
-        constraintValue >= 95
-          ? 'Constraint satisfaction is very high, so most requests are being resolved within the current rules.'
-          : constraintValue >= 80
-            ? 'Constraint satisfaction is acceptable, but the remaining unresolved items should be checked for bottlenecks.'
-            : 'Constraint satisfaction is weak, which suggests the current allocation rules are blocking too many requests.',
-        unassignedValue <= 5
-          ? 'Unassigned requests are low, so the system is matching demand well.'
-          : unassignedValue <= 20
-            ? 'Unassigned requests are moderate, so a small redistribution may help.'
-            : 'Unassigned requests are high, so the allocation plan should be revisited sooner rather than later.',
-      ].join(' ')
-    : 'There is no efficiency trend to interpret for this range.';
-
-  return { summary: summaryText, interpretation };
-}
-
-function buildUtilizationNarrative(items = []) {
-  const normalizedItems = Array.isArray(items) ? items : [];
-  const sortedItems = [...normalizedItems].sort((left, right) => Number(right?.value || 0) - Number(left?.value || 0));
-  const topItems = sortedItems.slice(0, 5);
-  const highest = topItems[0];
-  const lowest = topItems[topItems.length - 1];
-  const highestValue = Number(highest?.value || 0);
-  const lowestValue = Number(lowest?.value || 0);
-  const utilizationSpread = highestValue - lowestValue;
-  const topAverage = topItems.length > 0
-    ? topItems.reduce((sum, item) => sum + Number(item?.value || 0), 0) / topItems.length
-    : 0;
-
-  const summary = topItems.length > 0
-    ? `This chart ranks the top ${formatMetricNumber(topItems.length, 0)} categories by utilization, from ${highest?.label || 'the highest category'} at ${formatMetricNumber(highest?.value || 0, 0)}% down to ${lowest?.label || 'the lowest visible category'} at ${formatMetricNumber(lowest?.value || 0, 0)}%.`
-    : 'No category utilization data is available yet.';
-
-  const interpretation = topItems.length > 0
-    ? [
-        highestValue >= 75
-          ? 'The leading category is very active, so it should keep the highest stock buffer.'
-          : highestValue >= 40
-            ? 'The leading category is moderately active, so it needs regular replenishment but not emergency allocation.'
-            : 'The leading category is still low, so the current stock level is adequate unless demand changes quickly.',
-        utilizationSpread >= 30
-          ? 'The spread between top and bottom categories is wide, which points to uneven demand and a need for targeted reallocation.'
-          : utilizationSpread >= 10
-            ? 'The spread between categories is moderate, so the inventory mix is somewhat balanced but still needs tuning.'
-            : 'The categories are clustered closely together, so a balanced allocation strategy should work well.',
-        topAverage >= 50
-          ? `The top categories average ${formatMetricNumber(topAverage, 0)}%, so the most-used equipment group should be protected first.`
-          : `The top categories average only ${formatMetricNumber(topAverage, 0)}%, so you can keep a lighter buffer and watch for changes.`,
-        lowestValue <= 20
-          ? 'The lowest categories are quiet enough to consider consolidation or temporary redistribution.'
-          : 'The lower categories still see meaningful usage, so avoid cutting them too aggressively.',
-      ].join(' ')
-    : 'There is no category utilization trend to interpret for this range.';
-
-  return { summary, interpretation };
-}
-
-function resolveUtilizationTooltip(item) {
-  if (!item) {
-    return 'Equipment utilization';
-  }
-
-  const value = formatMetricNumber(item.value || 0, 0);
-  return `${item.label || 'Category'} utilization: ${value}%`;
-}
-
-function resolveOptimizationDecision(metric) {
-  const label = String(metric?.label || '').toLowerCase();
-
-  if (label.includes('conflict')) {
-    return 'Decision: reduce clashes by reserving fewer overlapping items at the same time.';
-  }
-
-  if (label.includes('utilization')) {
-    return 'Decision: keep this allocation if demand is steady; add inventory if the rate keeps rising.';
-  }
-
-  if (label.includes('constraint')) {
-    return 'Decision: continue the current plan and monitor unresolved requests for bottlenecks.';
-  }
-
-  if (label.includes('unassigned')) {
-    return 'Decision: reassign idle inventory or relax scheduling limits if this stays above target.';
-  }
-
-  return 'Decision: review this metric alongside the forecast and risk bands before reallocating.';
-}
 </script>
