@@ -26,6 +26,16 @@
 
         <div class="request-view-modal-grid">
           <div class="request-view-modal-panel">
+            <span class="request-view-modal-label">Start Date and Time</span>
+            <strong class="request-view-modal-emphasis">{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</strong>
+          </div>
+
+          <div class="request-view-modal-panel">
+            <span class="request-view-modal-label">End Date and Time</span>
+            <strong class="request-view-modal-emphasis">{{ formatDateTime(requestRecord.requestScheduleEnd || requestRecord.activityEndTime) }}</strong>
+          </div>
+
+          <div class="request-view-modal-panel">
             <span class="request-view-modal-label">Activity Title</span>
             <strong class="request-view-modal-emphasis">{{ requestRecord.activityTitle || requestRecord.activityNameTitle }}</strong>
           </div>
@@ -137,6 +147,8 @@
 </template>
 
 <script setup>
+import { formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
+
 const props = defineProps({
   requestRecord: {
     type: Object,
@@ -181,5 +193,9 @@ function handleRequestRevisionsClick() {
 
 function handleRejectClick() {
   emit('rejectRequestRecord', props.requestRecord);
+}
+
+function formatDateTime(value) {
+  return formatDisplayDateTime(value);
 }
 </script>

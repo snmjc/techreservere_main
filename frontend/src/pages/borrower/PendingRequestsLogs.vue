@@ -146,13 +146,13 @@ const pendingLogs = computed(() =>
     reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier),
     name: record.requesterFullName || 'User',
     role: authStore.userRole || record.requesterRole || 'Borrower',
-    date: formatDateTime(record.requestSchedule),
+    date: formatSchedule(record.requestScheduleStart, record.requestScheduleEnd),
     facility: record.facilityName || 'N/A',
     type: record.requestType || 'Reservation',
     purpose: record.requestPurpose || 'N/A',
     status: normalizePendingStatus(record.requestStatus),
     submitted: formatDateTime(record.requestedDate),
-    sortDate: getDateSortValue(record.requestSchedule),
+    sortDate: getDateSortValue(record.requestScheduleStart || record.activityTime),
   }))
 );
 
@@ -222,6 +222,17 @@ function formatDateTime(value) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
+}
+
+function formatSchedule(startValue, endValue) {
+  const startDate = formatDateTime(startValue);
+  const endDate = formatDateTime(endValue);
+
+  if (startDate !== 'N/A' && endDate !== 'N/A') {
+    return `${startDate} - ${endDate}`;
+  }
+
+  return startDate !== 'N/A' ? startDate : endDate;
 }
 
 function getDateSortValue(value) {

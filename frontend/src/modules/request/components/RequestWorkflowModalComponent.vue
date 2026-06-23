@@ -47,8 +47,8 @@
         <div class="request-workflow-modal-flow-grid">
           <div class="request-workflow-modal-flow-column">
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Activity Time:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.activityTime }}</span>
+              <span class="request-workflow-modal-label">Start Date and Time:</span>
+              <span class="request-workflow-modal-value">{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</span>
             </div>
             <div class="request-workflow-modal-field">
               <span class="request-workflow-modal-label">Activity Name/Title:</span>
@@ -66,12 +66,12 @@
 
           <div class="request-workflow-modal-flow-column">
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Activity End Time:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.activityEndTime }}</span>
+              <span class="request-workflow-modal-label">End Date and Time:</span>
+              <span class="request-workflow-modal-value">{{ formatDateTime(requestRecord.requestScheduleEnd || requestRecord.activityEndTime) }}</span>
             </div>
             <div class="request-workflow-modal-field">
-              <span class="request-workflow-modal-label">Schedule:</span>
-              <span class="request-workflow-modal-value">{{ requestRecord.requestSchedule }}</span>
+              <span class="request-workflow-modal-label">Schedule Dates:</span>
+              <span class="request-workflow-modal-value">{{ formatDateRange(requestRecord.requestScheduleStart, requestRecord.requestScheduleEnd) }}</span>
             </div>
             <div class="request-workflow-modal-field">
               <span class="request-workflow-modal-label">Facility:</span>
@@ -188,6 +188,8 @@
 </template>
 
 <script setup>
+import { formatDisplayDate, formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
+
 /**
  * @typedef {Object} RequestWorkflowModalProps
  * @property {Object|null} requestRecord - The approved request record to display
@@ -252,5 +254,20 @@ function formatTaskSummary(taskRecord) {
   return [title, staffName || 'Pending Assignment', venueName, status]
     .filter(Boolean)
     .join(' | ');
+}
+
+function formatDateTime(value) {
+  return formatDisplayDateTime(value);
+}
+
+function formatDateRange(startValue, endValue) {
+  const formattedStart = startValue ? formatDisplayDate(startValue) : '';
+  const formattedEnd = endValue ? formatDisplayDate(endValue) : '';
+
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
 }
 </script>

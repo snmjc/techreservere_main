@@ -1,21 +1,22 @@
 export function mapRequestRecordToLog(record, statusFallback = 'Reservation') {
-  const schedule = record?.requestSchedule || record?.neededDate || record?.requestedDate;
+  const scheduleStart = record?.requestScheduleStart || record?.activityTime || record?.neededDate || record?.requestedDate;
+  const scheduleEnd = record?.requestScheduleEnd || record?.activityEndTime || scheduleStart;
 
   return {
     id: record?.requestIdentifier || record?.requestDisplayIdentifier,
     reservationId: String(record?.requestDisplayIdentifier || record?.requestIdentifier || 'N/A'),
     name: record?.requesterFullName || 'You',
     role: record?.requesterRole || 'Borrower',
-    date: formatDateTime(schedule),
+    date: formatSchedule(scheduleStart, scheduleEnd),
     facility: record?.facilityName || 'N/A',
     type: record?.requestType || 'Reservation',
     purpose: record?.requestPurpose || 'N/A',
     status: record?.recordStatus || record?.requestStatus || statusFallback,
     submitted: formatDateTime(record?.requestedDate),
     approvedBy: 'Facilities Office',
-    completed: formatDateTime(record?.neededDate || schedule),
+    completed: formatDateTime(record?.neededDate || scheduleEnd),
     activity: buildActivityText(record, statusFallback),
-    sortDate: getDateSortValue(schedule),
+    sortDate: getDateSortValue(scheduleStart),
   };
 }
 
@@ -61,6 +62,17 @@ export function formatDateTime(value) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
+}
+
+export function formatSchedule(startValue, endValue) {
+  const startDate = formatDateTime(startValue);
+  const endDate = formatDateTime(endValue);
+
+  if (startDate !== 'N/A' && endDate !== 'N/A') {
+    return `${startDate} - ${endDate}`;
+  }
+
+  return startDate !== 'N/A' ? startDate : endDate;
 }
 
 function resolveSortValue(log, sortBy) {

@@ -131,8 +131,8 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || 'N/A',
     neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
-    activityTime: reservation?.activityTimeRange || reservation?.eventDateTime || 'N/A',
-    activityEndTime: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
+    activityTime: requestScheduleStart || 'N/A',
+    activityEndTime: requestScheduleEnd || requestScheduleStart || 'N/A',
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
@@ -397,9 +397,7 @@ function formatReservationScheduleRange(startValue, endValue) {
   const formattedEnd = formatReservationScheduleDate(endValue);
 
   if (formattedStart && formattedEnd) {
-    return formattedStart === formattedEnd
-      ? formattedStart
-      : `${formattedStart} - ${formattedEnd}`;
+    return `${formattedStart} - ${formattedEnd}`;
   }
 
   return formattedStart || formattedEnd || 'N/A';

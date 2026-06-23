@@ -66,7 +66,7 @@
                   <strong>{{ requestRecord.requestDisplayIdentifier }}</strong>
                   <p>{{ requestRecord.activityNameTitle }}</p>
                 </td>
-                <td>{{ formatDateTime(requestRecord.activityTime) }}</td>
+                <td>{{ formatSchedule(requestRecord.requestScheduleStart, requestRecord.requestScheduleEnd) }}</td>
                 <td>
                   <strong>{{ requestRecord.facilityName }}</strong>
                   <p>{{ requestRecord.requestType }}</p>
@@ -128,6 +128,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
+import { formatDisplayDateTimeRange } from '@/shared/utils/dateTimeDisplay.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewReservationList.css';
 
@@ -265,18 +266,7 @@ function resolveSortValue(requestRecord, sortKey) {
   return String(requestRecord[sortKey] || '').toLowerCase();
 }
 
-function formatDateTime(value) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value || 'N/A';
-  }
-
-  return new Intl.DateTimeFormat('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(parsed);
+function formatSchedule(startValue, endValue) {
+  return formatDisplayDateTimeRange(startValue, endValue);
 }
 </script>

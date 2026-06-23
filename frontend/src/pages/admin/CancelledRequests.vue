@@ -64,7 +64,7 @@
                 <strong>{{ requestRecord.requesterFullName }}</strong>
                 <p>{{ requestRecord.requesterRole }}</p>
               </td>
-              <td>{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</td>
+              <td>{{ formatSchedule(requestRecord.requestScheduleStart, requestRecord.requestScheduleEnd) }}</td>
               <td>
                 <span class="admin-cancelled-requests-status-pill">
                   {{ requestRecord.recordStatus || requestRecord.requestStatus }}
@@ -102,6 +102,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import RequestViewModalComponent from '@/modules/request/components/RequestViewModalComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { formatDisplayDateTimeRange } from '@/shared/utils/dateTimeDisplay.js';
 import '@/shared/components/adminSidebarLayout.css';
 import '@/modules/request/components/requestViewModal.css';
 import './css/CancelledRequests.css';
@@ -184,18 +185,7 @@ function normalizeSortValue(value) {
   return String(value || '').toLowerCase();
 }
 
-function formatDateTime(value) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value || 'N/A';
-  }
-
-  return new Intl.DateTimeFormat('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(parsedDate);
+function formatSchedule(startValue, endValue) {
+  return formatDisplayDateTimeRange(startValue, endValue);
 }
 </script>

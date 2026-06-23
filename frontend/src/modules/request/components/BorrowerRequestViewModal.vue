@@ -16,8 +16,8 @@
           <dl>
             <div><dt>Type</dt><dd>{{ requestRecord.requestType }}</dd></div>
             <div><dt>Submitted</dt><dd>{{ formatDateTime(requestRecord.requestedDate) }}</dd></div>
-            <div><dt>Schedule Start</dt><dd>{{ formatDateTime(requestRecord.activityTime) }}</dd></div>
-            <div><dt>Schedule End</dt><dd>{{ formatDateTime(requestRecord.activityEndTime) }}</dd></div>
+            <div><dt>Start Date and Time</dt><dd>{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</dd></div>
+            <div><dt>End Date and Time</dt><dd>{{ formatDateTime(requestRecord.requestScheduleEnd || requestRecord.activityEndTime) }}</dd></div>
             <div><dt>Activity</dt><dd>{{ requestRecord.activityNameTitle }}</dd></div>
             <div><dt>Purpose</dt><dd>{{ requestRecord.requestPurpose }}</dd></div>
             <div><dt>Participants</dt><dd>{{ requestRecord.participantCount }}</dd></div>
