@@ -63,6 +63,7 @@
             <th class="logs-th">Purpose</th>
             <th class="logs-th">Status</th>
             <th class="logs-th">Submitted</th>
+            <th class="logs-th">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -92,12 +93,22 @@
               </span>
             </td>
             <td class="logs-td">{{ log.submitted }}</td>
+            <td class="logs-td">
+              <button
+                type="button"
+                class="logs-action-button logs-action-button--danger"
+                :disabled="isCancelling"
+                @click="openCancelModal(log.requestRecord)"
+              >
+                Cancel
+              </button>
+            </td>
           </tr>
           <tr v-if="isLoading">
-            <td colspan="9" class="logs-td logs-empty-row">Loading pending requests...</td>
+            <td colspan="10" class="logs-td logs-empty-row">Loading pending requests...</td>
           </tr>
           <tr v-else-if="filteredLogs.length === 0">
-            <td colspan="9" class="logs-td logs-empty-row">No pending request logs found.</td>
+            <td colspan="10" class="logs-td logs-empty-row">No pending request logs found.</td>
           </tr>
         </tbody>
       </table>
@@ -107,6 +118,13 @@
     <div class="logs-page-footer">
       &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
     </div>
+
+    <BorrowerRequestCancelModal
+      :request-record="requestToCancel"
+      :is-submitting="isCancelling"
+      @close="closeCancelModal"
+      @confirm="handleCancelRequest"
+    />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -114,6 +132,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -127,6 +146,8 @@ const searchQuery = ref('');
 const sortBy = ref('date');
 const sortOrder = ref('asc');
 const isLoading = ref(false);
+const requestToCancel = ref(null);
+const isCancelling = ref(false);
 
 onMounted(async () => {
   isLoading.value = true;
@@ -143,6 +164,7 @@ onMounted(async () => {
 const pendingLogs = computed(() =>
   (requestStore.pendingRequestsList || []).map((record) => ({
     id: record.requestIdentifier,
+    requestRecord: record,
     reservationId: String(record.requestDisplayIdentifier || record.requestIdentifier),
     name: record.requesterFullName || 'User',
     role: authStore.userRole || record.requesterRole || 'Borrower',
@@ -202,6 +224,30 @@ function handleGoBack() {
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+function openCancelModal(requestRecord) {
+  requestToCancel.value = requestRecord;
+}
+
+function closeCancelModal() {
+  requestToCancel.value = null;
+}
+
+async function handleCancelRequest({ reason }) {
+  if (!requestToCancel.value) {
+    return;
+  }
+
+  try {
+    isCancelling.value = true;
+    await requestStore.cancelOwnRequest(requestToCancel.value, reason);
+    closeCancelModal();
+  } catch (error) {
+    console.error('Unable to cancel request.', error);
+  } finally {
+    isCancelling.value = false;
+  }
 }
 
 function normalizePendingStatus(status) {
