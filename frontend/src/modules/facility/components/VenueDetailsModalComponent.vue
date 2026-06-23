@@ -197,27 +197,27 @@ const emit = defineEmits(['close']);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.75rem;
   background: rgba(15, 23, 42, 0.56);
 }
 
 .venue-details-modal {
   position: relative;
-  width: min(680px, 100%);
-  max-height: 88vh;
+  width: min(560px, 100%);
+  max-height: 82vh;
   overflow-y: auto;
   background: #ffffff;
   border: 1px solid #d9e3dd;
-  border-radius: 24px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
 }
 
 .venue-details-modal-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 42px;
-  height: 42px;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,29 +230,30 @@ const emit = defineEmits(['close']);
 
 .venue-details-modal-close svg,
 .venue-details-modal-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .venue-details-modal-heading,
 .venue-details-modal-actions {
-  padding: 1rem 1.1rem;
+  padding: 0.85rem 0.95rem;
 }
 
 .venue-details-modal-heading {
-  padding-right: 4.5rem;
+  padding-right: 3.9rem;
   border-bottom: 1px solid #e8eeea;
 }
 
 .venue-details-modal-heading h2 {
   margin: 0;
   color: #16361f;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
 }
 
 .venue-details-modal-heading p {
-  margin: 0.4rem 0 0;
+  margin: 0.3rem 0 0;
   color: #4b6354;
+  font-size: 0.92rem;
 }
 
 .venue-details-modal-error {
@@ -267,67 +268,67 @@ const emit = defineEmits(['close']);
 
 .venue-details-modal-body {
   display: grid;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
+  gap: 0.8rem;
+  padding: 0.85rem 0.95rem;
 }
 
 .venue-details-modal-banner {
   overflow: hidden;
-  min-height: 160px;
+  min-height: 120px;
   border: 1px solid #d9e3dd;
-  border-radius: 18px;
+  border-radius: 16px;
   background: linear-gradient(135deg, #eff7f1 0%, #dcefe2 100%);
 }
 
 .venue-details-modal-image {
   display: block;
   width: 100%;
-  min-height: 160px;
-  max-height: 220px;
+  min-height: 120px;
+  max-height: 160px;
   object-fit: cover;
 }
 
 .venue-details-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.95rem;
+  gap: 0.75rem;
 }
 
 .venue-details-modal-card,
 .venue-details-modal-description {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.8rem;
+  gap: 0.7rem;
   align-items: start;
-  padding: 0.95rem 1rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid #e7efe9;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #f7faf8;
 }
 
 .venue-details-modal-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   color: #1b7248;
   background: #eaf6ee;
 }
 
 .venue-details-modal-card p,
 .venue-details-modal-description p {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.25rem;
   color: #607165;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
 .venue-details-modal-card strong,
 .venue-details-modal-description strong {
   color: #16361f;
-  font-size: 0.98rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .venue-details-modal-description {
@@ -337,10 +338,10 @@ const emit = defineEmits(['close']);
 .venue-details-modal-status {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 0.85rem;
+  min-height: 28px;
+  padding: 0 0.75rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 800;
 }
 
@@ -361,10 +362,10 @@ const emit = defineEmits(['close']);
 }
 
 .venue-details-modal-button {
-  min-height: 44px;
-  padding: 0.75rem 1rem;
+  min-height: 40px;
+  padding: 0.65rem 0.9rem;
   border: 1px solid #d4ddd7;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #ffffff;
   color: #264434;
   font: inherit;
@@ -374,7 +375,8 @@ const emit = defineEmits(['close']);
 
 @media (max-width: 720px) {
   .venue-details-modal {
-    max-height: 94vh;
+    width: min(520px, 100%);
+    max-height: 90vh;
   }
 
   .venue-details-modal-grid {

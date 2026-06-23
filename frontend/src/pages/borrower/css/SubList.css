@@ -216,6 +216,49 @@
   width: 120px;
 }
 
+.borrower-sublist-table-cell--actions {
+  width: 150px;
+}
+
+.borrower-sublist-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.borrower-sublist-action-button {
+  border: 1px solid #d6e4dc;
+  background: #ffffff;
+  color: #1d3b2a;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.borrower-sublist-action-button:hover {
+  background-color: #edf7f2;
+  border-color: #8eb9a2;
+}
+
+.borrower-sublist-action-button--danger {
+  color: #b42318;
+  border-color: #f1c4be;
+  background-color: #fff7f6;
+}
+
+.borrower-sublist-action-button--danger:hover {
+  background-color: #fdeceb;
+  border-color: #e79b90;
+}
+
+.borrower-sublist-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Type Badges */
 .borrower-sublist-type-badge {
   display: inline-block;
