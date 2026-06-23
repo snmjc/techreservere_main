@@ -42,7 +42,7 @@ class AuthenticationController
         if (!$this->accountInputValidationService->isValidInstitutionalSignInEmail($emailAddress)) {
             return $this->createErrorResponse(
                 'ValidationError',
-                'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.',
+                'Please enter a valid institutional email address.',
                 422
             );
         }
@@ -67,7 +67,7 @@ class AuthenticationController
         if (!$this->accountInputValidationService->isValidInstitutionalSignInEmail($emailAddress)) {
             return $this->createErrorResponse(
                 'ValidationError',
-                'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.',
+                'Please enter a valid institutional email address.',
                 422
             );
         }
