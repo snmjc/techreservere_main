@@ -80,6 +80,23 @@ class ReservationPolicyController extends AbstractController
         }
     }
 
+    #[Route('/class-schedules/{scheduleBlockIdentifier}', name: 'reservation_policy_class_schedules_update', methods: ['PUT'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function updateClassSchedule(int $scheduleBlockIdentifier, Request $request): JsonResponse
+    {
+        try {
+            $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+
+            return $this->createSuccessResponse(
+                $this->reservationPolicyConfigService->updateClassScheduleBlock($scheduleBlockIdentifier, $body)
+            );
+        } catch (\JsonException) {
+            return $this->createErrorResponse('ReservationScheduleInvalidPayload', 'Class schedule body must be valid JSON.', 400);
+        } catch (DomainValidationException $exception) {
+            return $this->createErrorResponse('ReservationScheduleValidationFailed', $exception->getMessage(), 422);
+        }
+    }
+
     #[Route('/class-schedules/{scheduleBlockIdentifier}', name: 'reservation_policy_class_schedules_delete', methods: ['DELETE'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function deleteClassSchedule(int $scheduleBlockIdentifier): JsonResponse
