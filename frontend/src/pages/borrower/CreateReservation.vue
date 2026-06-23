@@ -33,13 +33,14 @@
 
               <div class="borrower-reservation-field">
                 <label for="activityDate">Activity Start Date <em>*</em></label>
-                <input id="activityDate" v-model="formState.activityDate" type="date" :min="activityStartMinDate" :max="yearEndIsoDate" @change="handleActivityDateChange" />
+                <input id="activityDate" v-model="formState.activityDate" type="date" :min="activityStartMinDate" :max="activityMaxDate" @change="handleActivityDateChange" />
+                <small class="borrower-reservation-help">{{ bookingWindowHelpText }}</small>
                 <small v-if="validationErrors.activityDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityDate }}</small>
               </div>
 
               <div class="borrower-reservation-field">
                 <label for="activityEndDate">Activity End Date <em>*</em></label>
-                <input id="activityEndDate" v-model="formState.activityEndDate" type="date" :min="activityEndMinDate" :max="yearEndIsoDate" @change="handleActivityEndDateChange" />
+                <input id="activityEndDate" v-model="formState.activityEndDate" type="date" :min="activityEndMinDate" :max="activityMaxDate" @change="handleActivityEndDateChange" />
                 <small v-if="validationErrors.activityEndDate" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityEndDate }}</small>
               </div>
 
@@ -252,12 +253,18 @@ import './css/CreateReservationWizard.css';
 import './css/CreateReservation.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
+import { bookingPolicyApi } from '@/modules/reservation/services/bookingPolicyApi.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
 const reservationFormStore = useReservationFormStore();
 const todayIsoDate = getTodayISODate();
-const yearEndIsoDate = getCurrentYearEndISODate();
+const bookingWindow = ref({
+  activeBookingStartDate: todayIsoDate,
+  activeBookingEndDate: getCurrentYearEndISODate(),
+  extendedBookingEndDate: getCurrentYearEndISODate(),
+  termLabel: '',
+});
 
 const purposeOptions = [
   'Academic Class',
@@ -306,13 +313,26 @@ const formState = ref({
 
 const selectedStartTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeFrom, 'Choose a start time'));
 const selectedEndTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeTo, 'Choose an end time'));
-const activityStartMinDate = computed(() => maxIsoDate(todayIsoDate, formState.value.requestDate || todayIsoDate));
+const activityStartMinDate = computed(() => maxIsoDate(
+  maxIsoDate(todayIsoDate, formState.value.requestDate || todayIsoDate),
+  bookingWindow.value.activeBookingStartDate || todayIsoDate,
+));
 const activityEndMinDate = computed(() => maxIsoDate(activityStartMinDate.value, formState.value.activityDate || activityStartMinDate.value));
+const activityMaxDate = computed(() => bookingWindow.value.activeBookingEndDate || getCurrentYearEndISODate());
+const bookingWindowHelpText = computed(() => {
+  const termLabel = String(bookingWindow.value.termLabel || '').trim();
+  const formattedStart = formatPolicyDate(bookingWindow.value.activeBookingStartDate);
+  const formattedEnd = formatPolicyDate(bookingWindow.value.activeBookingEndDate);
+  return termLabel
+    ? `Booking window for ${termLabel}: ${formattedStart} to ${formattedEnd}.`
+    : `Booking window: ${formattedStart} to ${formattedEnd}.`;
+});
 const startTimeDraft = ref(createTimeDraft(formState.value.activityTimeFrom || '07:00'));
 const endTimeDraft = ref(createTimeDraft(formState.value.activityTimeTo || '07:30'));
 
-onMounted(() => {
+onMounted(async () => {
   formState.value.requestDate = todayIsoDate;
+  await loadBookingWindow();
   document.addEventListener('mousedown', handleGlobalPointerDown);
 });
 
@@ -332,6 +352,33 @@ function getTodayISODate() {
 function getCurrentYearEndISODate() {
   const today = new Date();
   return `${today.getFullYear()}-12-31`;
+}
+
+async function loadBookingWindow() {
+  try {
+    const policyWindow = await bookingPolicyApi.getBookingWindow();
+    bookingWindow.value = {
+      activeBookingStartDate: policyWindow?.activeBookingStartDate || todayIsoDate,
+      activeBookingEndDate: policyWindow?.activeBookingEndDate || getCurrentYearEndISODate(),
+      extendedBookingEndDate: policyWindow?.extendedBookingEndDate || policyWindow?.activeBookingEndDate || getCurrentYearEndISODate(),
+      termLabel: policyWindow?.termLabel || '',
+    };
+  } catch {
+    bookingWindow.value = {
+      activeBookingStartDate: todayIsoDate,
+      activeBookingEndDate: getCurrentYearEndISODate(),
+      extendedBookingEndDate: getCurrentYearEndISODate(),
+      termLabel: '',
+    };
+  }
+
+  if (formState.value.activityDate && formState.value.activityDate < activityStartMinDate.value) {
+    formState.value.activityDate = activityStartMinDate.value;
+  }
+
+  if (formState.value.activityEndDate && formState.value.activityEndDate < activityEndMinDate.value) {
+    formState.value.activityEndDate = activityEndMinDate.value;
+  }
 }
 
 function createTimeDraft(timeValue) {
@@ -423,6 +470,10 @@ function handleActivityDateChange() {
     formState.value.activityDate = activityStartMinDate.value;
   }
 
+  if (formState.value.activityDate && formState.value.activityDate > activityMaxDate.value) {
+    formState.value.activityDate = activityMaxDate.value;
+  }
+
   if (!formState.value.activityEndDate || formState.value.activityEndDate < formState.value.activityDate) {
     formState.value.activityEndDate = formState.value.activityDate;
   }
@@ -440,6 +491,10 @@ function handleActivityDateChange() {
 function handleActivityEndDateChange() {
   if (formState.value.activityEndDate && formState.value.activityEndDate < activityEndMinDate.value) {
     formState.value.activityEndDate = activityEndMinDate.value;
+  }
+
+  if (formState.value.activityEndDate && formState.value.activityEndDate > activityMaxDate.value) {
+    formState.value.activityEndDate = activityMaxDate.value;
   }
 
   if (
@@ -488,13 +543,13 @@ function validateReservationDetails() {
   }
 
   if (!isWithinAllowedReservationDate(formState.value.activityDate)) {
-    validationErrors.activityDate = 'Activity start date must be between today and December 31 of the current year.';
+    validationErrors.activityDate = `Activity start date must be within the active booking window of ${formatPolicyDate(bookingWindow.value.activeBookingStartDate)} to ${formatPolicyDate(bookingWindow.value.activeBookingEndDate)}.`;
   } else if (formState.value.activityDate < activityStartMinDate.value) {
     validationErrors.activityDate = 'Activity start date cannot be earlier than the request date.';
   }
 
   if (!isWithinAllowedReservationDate(formState.value.activityEndDate)) {
-    validationErrors.activityEndDate = 'Activity end date must be between today and December 31 of the current year.';
+    validationErrors.activityEndDate = `Activity end date must be within the active booking window of ${formatPolicyDate(bookingWindow.value.activeBookingStartDate)} to ${formatPolicyDate(bookingWindow.value.activeBookingEndDate)}.`;
   } else if (formState.value.activityEndDate < activityEndMinDate.value) {
     validationErrors.activityEndDate = 'Activity end date cannot be earlier than the activity start date.';
   }
@@ -527,7 +582,9 @@ function clearValidationErrors() {
 }
 
 function isWithinAllowedReservationDate(value) {
-  return typeof value === 'string' && value >= todayIsoDate && value <= yearEndIsoDate;
+  return typeof value === 'string'
+    && value >= activityStartMinDate.value
+    && value <= activityMaxDate.value;
 }
 
 function maxIsoDate(leftValue, rightValue) {
@@ -558,5 +615,23 @@ function formatSelectedSlotLabel(timeValue, fallbackLabel) {
   }
 
   return formatMinutesAsLabel(parseTimeToMinutes(timeValue));
+}
+
+function formatPolicyDate(value) {
+  if (!value) {
+    return 'N/A';
+  }
+
+  const parsedDate = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'Asia/Manila',
+  }).format(parsedDate);
 }
 </script>

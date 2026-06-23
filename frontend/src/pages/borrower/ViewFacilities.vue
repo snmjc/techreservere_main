@@ -77,7 +77,7 @@
 
       <div v-else class="view-facilities-venues-grid">
         <div
-          v-for="floorGroup in filteredVenueFloorGroups"
+          v-for="floorGroup in paginatedVenueFloorGroups"
           :key="floorGroup.floorLabel"
           class="view-facilities-floor-section"
         >
@@ -120,9 +120,15 @@
           </div>
         </div>
 
-        <div v-if="filteredVenueFloorGroups.length === 0" class="view-facilities-empty-state">
+        <div v-if="paginatedVenueFloorGroups.length === 0" class="view-facilities-empty-state">
           <p>No venues found matching your filter.</p>
         </div>
+      </div>
+
+      <div v-if="venueTotalPages > 1" class="view-facilities-pagination">
+        <button type="button" :disabled="venueCurrentPage === 1" @click="venueCurrentPage -= 1">Previous</button>
+        <span>Page {{ venueCurrentPage }} of {{ venueTotalPages }}</span>
+        <button type="button" :disabled="venueCurrentPage === venueTotalPages" @click="venueCurrentPage += 1">Next</button>
       </div>
     </div>
 
@@ -170,7 +176,7 @@
       </div>
       <div v-else class="view-facilities-equipment-grid">
         <button
-          v-for="equipment in filteredEquipment"
+          v-for="equipment in paginatedEquipment"
           :key="equipment.equipmentIdentifier"
           type="button"
           class="view-facilities-equipment-chip view-facilities-equipment-chip--card"
@@ -201,8 +207,14 @@
         </button>
       </div>
 
-      <div v-if="!equipmentLoading && filteredEquipment.length === 0" class="view-facilities-empty-state">
+      <div v-if="!equipmentLoading && paginatedEquipment.length === 0" class="view-facilities-empty-state">
         <p>No equipment found matching your filter.</p>
+      </div>
+
+      <div v-if="equipmentTotalPages > 1" class="view-facilities-pagination">
+        <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
+        <span>Page {{ equipmentCurrentPage }} of {{ equipmentTotalPages }}</span>
+        <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>
       </div>
     </div>
 
@@ -251,9 +263,13 @@ const activeFacilityTab = ref('venue');
 const venueFilterValue = ref('all');
 const venueSortOrder = ref('asc');
 const selectedVenueDate = ref(getTodayDateInputValue());
+const venueCurrentPage = ref(1);
+const venuePageSize = 6;
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentSearchQuery = ref('');
+const equipmentCurrentPage = ref(1);
+const equipmentPageSize = 8;
 const venueList = ref([]);
 const venueLoading = ref(false);
 const venueError = ref('');
@@ -267,12 +283,18 @@ const equipmentList = ref([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
 
-const filteredVenueFloorGroups = computed(() => {
-  const filteredVenues = venueList.value
+const filteredVenues = computed(() => (
+  venueList.value
     .filter((venueRecord) => matchesVenueAvailability(venueRecord, venueFilterValue.value))
-    .sort((left, right) => compareByName(left?.venueName, right?.venueName, venueSortOrder.value));
+    .sort((left, right) => compareByName(left?.venueName, right?.venueName, venueSortOrder.value))
+));
 
-  return Object.entries(groupVenuesByFloor(filteredVenues)).map(([floorLabel, venueRecords]) => ({
+const venueTotalPages = computed(() => Math.max(1, Math.ceil(filteredVenues.value.length / venuePageSize)));
+const paginatedVenueFloorGroups = computed(() => {
+  const startIndex = (venueCurrentPage.value - 1) * venuePageSize;
+  const paginatedVenues = filteredVenues.value.slice(startIndex, startIndex + venuePageSize);
+
+  return Object.entries(groupVenuesByFloor(paginatedVenues)).map(([floorLabel, venueRecords]) => ({
     floorLabel,
     venueRecords,
   }));
@@ -301,6 +323,12 @@ const filteredEquipment = computed(() => {
   });
 });
 
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipment.value.length / equipmentPageSize)));
+const paginatedEquipment = computed(() => {
+  const startIndex = (equipmentCurrentPage.value - 1) * equipmentPageSize;
+  return filteredEquipment.value.slice(startIndex, startIndex + equipmentPageSize);
+});
+
 onMounted(() => {
   fetchVenues();
   fetchEquipment();
@@ -308,6 +336,26 @@ onMounted(() => {
 
 watch(selectedVenueDate, () => {
   fetchVenues();
+});
+
+watch([activeFacilityTab, venueFilterValue, venueSortOrder, selectedVenueDate], () => {
+  venueCurrentPage.value = 1;
+});
+
+watch([equipmentFilterValue, equipmentSortOrder, equipmentSearchQuery], () => {
+  equipmentCurrentPage.value = 1;
+});
+
+watch(venueTotalPages, (nextTotalPages) => {
+  if (venueCurrentPage.value > nextTotalPages) {
+    venueCurrentPage.value = nextTotalPages;
+  }
+});
+
+watch(equipmentTotalPages, (nextTotalPages) => {
+  if (equipmentCurrentPage.value > nextTotalPages) {
+    equipmentCurrentPage.value = nextTotalPages;
+  }
 });
 
 async function fetchVenues() {

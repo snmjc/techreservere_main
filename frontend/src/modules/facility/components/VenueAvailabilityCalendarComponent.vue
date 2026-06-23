@@ -225,6 +225,8 @@ function formatDateInputValue(date) {
 
 <style scoped>
 .venue-availability-calendar {
+  width: min(100%, 980px);
+  max-width: 980px;
   padding: 1rem 1rem 1.15rem;
   background: #ffffff;
   border: 1px solid #dfe4df;
@@ -393,7 +395,7 @@ function formatDateInputValue(date) {
 .venue-availability-calendar__month-cell {
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
+  min-height: 44px;
   color: #111827;
   font-size: 0.86rem;
   border-radius: 999px;
@@ -468,6 +470,10 @@ function formatDateInputValue(date) {
 }
 
 @media (max-width: 720px) {
+  .venue-availability-calendar {
+    width: 100%;
+  }
+
   .venue-availability-calendar__date-toolbar,
   .venue-availability-calendar__time-row {
     grid-template-columns: 1fr;

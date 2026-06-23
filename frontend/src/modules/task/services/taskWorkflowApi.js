@@ -1,5 +1,5 @@
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
+import { buildAuthorizationHeaders, resolveAuthToken } from '@/shared/utils/authToken.js';
 
 function buildHeaders(authToken, includeJson = false) {
   return {
@@ -10,9 +10,10 @@ function buildHeaders(authToken, includeJson = false) {
 
 async function requestJson(path, authToken, options = {}) {
   try {
+    const liveAuthToken = authToken || await resolveAuthToken();
     const response = await fetch(apiUrl(path), {
       method: options.method || 'GET',
-      headers: buildHeaders(authToken, Boolean(options.body)),
+      headers: buildHeaders(liveAuthToken, Boolean(options.body)),
       body: options.body,
     });
 

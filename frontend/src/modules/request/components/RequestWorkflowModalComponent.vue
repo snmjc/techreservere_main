@@ -137,6 +137,27 @@
           <span class="request-workflow-modal-label">Assigned FO Personnel:</span>
           <span class="request-workflow-modal-value">{{ requestRecord.assignedPersonnel }}</span>
         </div>
+
+        <div class="request-workflow-modal-section">
+          <p class="request-workflow-modal-section-label">Linked Workflow Tasks:</p>
+          <div v-if="requestRecord.workflowTasks?.length" class="request-workflow-modal-remarks-box">
+            <div
+              v-for="taskRecord in requestRecord.workflowTasks"
+              :key="taskRecord.taskIdentifier || `${taskRecord.taskTitle}-${taskRecord.assignedStaffName || 'unassigned'}`"
+              class="request-workflow-modal-field"
+            >
+              <span class="request-workflow-modal-label">
+                {{ taskRecord.taskType || 'Task' }}:
+              </span>
+              <span class="request-workflow-modal-value">
+                {{ formatTaskSummary(taskRecord) }}
+              </span>
+            </div>
+          </div>
+          <div v-else class="request-workflow-modal-remarks-box">
+            No linked workflow tasks yet.
+          </div>
+        </div>
       </div>
 
       <!-- Action Buttons -->
@@ -220,5 +241,16 @@ function handleEditWorkflowClick() {
  */
 function handleCancelClick() {
   emit('cancelWorkflowRecord', props.requestRecord);
+}
+
+function formatTaskSummary(taskRecord) {
+  const title = String(taskRecord?.taskTitle || 'Untitled task').trim();
+  const staffName = String(taskRecord?.assignedStaffName || '').trim();
+  const venueName = String(taskRecord?.venueName || taskRecord?.facilityName || props.requestRecord?.facilityName || '').trim();
+  const status = String(taskRecord?.taskStatus || 'Pending').trim();
+
+  return [title, staffName || 'Pending Assignment', venueName, status]
+    .filter(Boolean)
+    .join(' | ');
 }
 </script>

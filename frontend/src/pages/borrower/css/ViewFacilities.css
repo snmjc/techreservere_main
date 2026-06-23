@@ -166,6 +166,44 @@
   gap: 1.5rem;
 }
 
+.view-facilities-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.view-facilities-pagination span {
+  color: #4b5563;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.view-facilities-pagination button {
+  min-width: 110px;
+  padding: 0.7rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-facilities-pagination button:hover {
+  border-color: #10b981;
+  color: #047857;
+  background: #f0fdf4;
+}
+
+.view-facilities-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .view-facilities-venues-grid {
   display: flex;
   flex-direction: column;
@@ -495,5 +533,13 @@
 
   .view-facilities-venue-grid {
     grid-template-columns: 1fr;
+  }
+
+  .view-facilities-pagination {
+    flex-direction: column;
+  }
+
+  .view-facilities-pagination button {
+    width: 100%;
   }
 }

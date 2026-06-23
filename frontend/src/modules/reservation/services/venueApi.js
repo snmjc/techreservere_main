@@ -3,12 +3,12 @@ import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   buildAuthorizationHeaders,
   buildJsonAuthorizationHeaders,
-  getStoredAuthToken,
+  resolveAuthToken,
 } from '@/shared/utils/authToken.js';
 
 const venueApi = {
   async listVenues(options = {}) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/venues'), {
         headers: buildAuthorizationHeaders(authToken),
@@ -22,7 +22,7 @@ const venueApi = {
   },
 
   async getVenueById(venueIdentifier) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.get(apiUrl(`/api/v1/venues/${venueIdentifier}`), {
         headers: buildAuthorizationHeaders(authToken)
@@ -35,7 +35,7 @@ const venueApi = {
   },
 
   async createVenue(venueData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.post(apiUrl('/api/v1/venues'), buildVenueMutationPayload(venueData), {
         headers: buildJsonAuthorizationHeaders(authToken)
@@ -48,7 +48,7 @@ const venueApi = {
   },
 
   async updateVenue(venueIdentifier, venueData) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.put(apiUrl(`/api/v1/venues/${venueIdentifier}`), buildVenueMutationPayload(venueData), {
         headers: buildJsonAuthorizationHeaders(authToken)
@@ -61,7 +61,7 @@ const venueApi = {
   },
 
   async deleteVenue(venueIdentifier, confirmationPayload = {}) {
-    const authToken = getStoredAuthToken();
+    const authToken = await resolveAuthToken();
     try {
       const response = await axios.delete(apiUrl(`/api/v1/venues/${venueIdentifier}`), {
         headers: buildJsonAuthorizationHeaders(authToken),

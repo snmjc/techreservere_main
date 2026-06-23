@@ -9,6 +9,7 @@ use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\AppClock;
 use Doctrine\DBAL\Connection;
 
 class VenueManagementService
@@ -24,7 +25,8 @@ class VenueManagementService
     public function __construct(
         VenueRepository $venueRepository,
         ReservationRepository $reservationRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly ReservationPolicyConfigService $reservationPolicyConfigService
     )
     {
         $this->venueRepository = $venueRepository;
@@ -58,7 +60,7 @@ class VenueManagementService
             throw new DomainNotFoundException('Venue not found: ' . $venueIdentifier);
         }
 
-        return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
+        return $this->transformEntityToDTO($entity, $this->resolveAvailabilityStatus($entity->getOperationalStatus(), $entity->getAvailabilityDate() ?? AppClock::now()));
     }
 
     public function createVenue(string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl): VenueResponseDTO
@@ -89,7 +91,10 @@ class VenueManagementService
         $entity->setDescription($normalizedDescription);
         $entity->setImageUrl($normalizedImageUrl);
         $this->venueRepository->persistVenue($entity);
-        return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->resolveAvailabilityStatus($entity->getOperationalStatus(), $entity->getAvailabilityDate() ?? AppClock::now())
+        );
     }
 
     public function updateVenue(int $venueIdentifier, string $venueName, ?string $venueLocation, ?string $floorLevel, ?int $capacityLimit, ?string $availabilityDate, ?string $operationalStatus, ?string $availabilityStatus, ?string $description, ?string $imageUrl, bool $replaceImage = false): VenueResponseDTO
@@ -126,7 +131,10 @@ class VenueManagementService
             $entity->setImageUrl($normalizedImageUrl);
         }
         $this->venueRepository->persistVenue($entity);
-        return $this->transformEntityToDTO($entity, $entity->getAvailabilityStatus());
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->resolveAvailabilityStatus($entity->getOperationalStatus(), $entity->getAvailabilityDate() ?? AppClock::now())
+        );
     }
 
     public function deleteVenue(int $venueIdentifier): void
@@ -251,8 +259,10 @@ class VenueManagementService
             return 'Unavailable';
         }
 
-        $today = new \DateTimeImmutable('today');
-        $availableOn = \DateTimeImmutable::createFromInterface($availabilityDate)->setTime(0, 0);
+        $today = AppClock::now()->setTime(0, 0);
+        $availableOn = \DateTimeImmutable::createFromInterface($availabilityDate)
+            ->setTimezone(AppClock::timezone())
+            ->setTime(0, 0);
 
         return $availableOn > $today ? 'Unavailable' : 'Available';
     }
@@ -263,20 +273,27 @@ class VenueManagementService
     private function transformEntitiesToDTOs(array $entities, ?string $selectedDate, ?string $startTime, ?string $endTime): array
     {
         $availabilityWindow = $this->buildAvailabilityWindow($selectedDate, $startTime, $endTime);
-        $reservationMap = $this->buildReservationMap($entities, $availabilityWindow);
+        [$reservationMap, $scheduleBlockMap] = $this->buildBlockedTimeMaps($entities, $availabilityWindow);
 
-        return array_map(function (VenueEntity $entity) use ($availabilityWindow, $reservationMap): VenueResponseDTO {
+        return array_map(function (VenueEntity $entity) use ($reservationMap, $scheduleBlockMap): VenueResponseDTO {
             $reservationRows = $reservationMap[$entity->getVenueIdentifier()] ?? [];
-            $availabilityStatus = $entity->getAvailabilityStatus();
+            $scheduleBlocks = $scheduleBlockMap[$entity->getVenueIdentifier()] ?? [];
+            $availabilityStatus = $this->resolveAvailabilityStatus(
+                $entity->getOperationalStatus(),
+                $entity->getAvailabilityDate() ?? AppClock::now()
+            );
 
-            if ($availabilityStatus === 'Available' && $reservationRows !== []) {
+            if ($availabilityStatus === 'Available' && ($reservationRows !== [] || $scheduleBlocks !== [])) {
                 $availabilityStatus = 'Unavailable';
             }
 
             return $this->transformEntityToDTO(
                 $entity,
                 $availabilityStatus,
-                array_map([$this, 'formatReservationWindow'], $reservationRows)
+                [
+                    ...array_map([$this, 'formatReservationWindow'], $reservationRows),
+                    ...array_map([$this, 'formatScheduleBlockWindow'], $scheduleBlocks),
+                ]
             );
         }, $entities);
     }
@@ -289,7 +306,7 @@ class VenueManagementService
         }
 
         try {
-            $selectedDateValue = new \DateTimeImmutable($normalizedDate);
+            $selectedDateValue = new \DateTimeImmutable($normalizedDate, AppClock::timezone());
         } catch (\Throwable) {
             return null;
         }
@@ -299,8 +316,8 @@ class VenueManagementService
 
         if ($normalizedStartTime !== '' && $normalizedEndTime !== '') {
             try {
-                $rangeStart = new \DateTimeImmutable(sprintf('%s %s', $normalizedDate, $normalizedStartTime));
-                $rangeEnd = new \DateTimeImmutable(sprintf('%s %s', $normalizedDate, $normalizedEndTime));
+                $rangeStart = new \DateTimeImmutable(sprintf('%s %s', $normalizedDate, $normalizedStartTime), AppClock::timezone());
+                $rangeEnd = new \DateTimeImmutable(sprintf('%s %s', $normalizedDate, $normalizedEndTime), AppClock::timezone());
             } catch (\Throwable) {
                 $rangeStart = $selectedDateValue->setTime(0, 0);
                 $rangeEnd = $selectedDateValue->setTime(23, 59, 59);
@@ -318,10 +335,10 @@ class VenueManagementService
     }
 
     /** @param VenueEntity[] $entities */
-    private function buildReservationMap(array $entities, ?array $availabilityWindow): array
+    private function buildBlockedTimeMaps(array $entities, ?array $availabilityWindow): array
     {
         if ($availabilityWindow === null) {
-            return [];
+            return [[], []];
         }
 
         $venueIdentifiers = array_values(array_filter(
@@ -330,6 +347,11 @@ class VenueManagementService
         ));
 
         $reservations = $this->reservationRepository->findVenueReservationsOverlappingRange(
+            $venueIdentifiers,
+            $availabilityWindow['rangeStart'],
+            $availabilityWindow['rangeEnd']
+        );
+        $scheduleBlocks = $this->reservationPolicyConfigService->findScheduleBlocksOverlappingRange(
             $venueIdentifiers,
             $availabilityWindow['rangeStart'],
             $availabilityWindow['rangeEnd']
@@ -349,7 +371,21 @@ class VenueManagementService
             $reservationMap[$venueIdentifier][] = $reservation;
         }
 
-        return $reservationMap;
+        $scheduleBlockMap = [];
+        foreach ($scheduleBlocks as $scheduleBlock) {
+            $venueIdentifier = (int) ($scheduleBlock['venueIdentifier'] ?? 0);
+            if ($venueIdentifier <= 0) {
+                continue;
+            }
+
+            if (!isset($scheduleBlockMap[$venueIdentifier])) {
+                $scheduleBlockMap[$venueIdentifier] = [];
+            }
+
+            $scheduleBlockMap[$venueIdentifier][] = $scheduleBlock;
+        }
+
+        return [$reservationMap, $scheduleBlockMap];
     }
 
     private function formatReservationWindow(ReservationEntity $reservation): string
@@ -358,6 +394,21 @@ class VenueManagementService
         $endDateTime = $reservation->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s - %s', $startDateTime->format('g:i A'), $endDateTime->format('g:i A'));
+    }
+
+    private function formatScheduleBlockWindow(array $scheduleBlock): string
+    {
+        $label = trim((string) ($scheduleBlock['blockLabel'] ?? 'Class Schedule'));
+        $startTime = trim((string) ($scheduleBlock['startTime'] ?? ''));
+        $endTime = trim((string) ($scheduleBlock['endTime'] ?? ''));
+
+        try {
+            $formattedStart = (new \DateTimeImmutable(sprintf('1970-01-01 %s', $startTime), AppClock::timezone()))->format('g:i A');
+            $formattedEnd = (new \DateTimeImmutable(sprintf('1970-01-01 %s', $endTime), AppClock::timezone()))->format('g:i A');
+            return sprintf('%s: %s - %s', $label, $formattedStart, $formattedEnd);
+        } catch (\Throwable) {
+            return sprintf('%s: %s - %s', $label, $startTime, $endTime);
+        }
     }
 
     private function isValidJpgImagePayload(string $imageUrl): bool
