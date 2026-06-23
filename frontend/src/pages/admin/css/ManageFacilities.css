@@ -17,8 +17,66 @@ body {
   --manage-facilities-shadow: 0 24px 64px rgba(17, 34, 23, 0.08);
 }
 
-.manage-facilities-page-header {
+.manage-facilities-hero-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.9rem 2rem;
   margin-bottom: 1.35rem;
+  background:
+    radial-gradient(circle at top right, rgba(149, 227, 172, 0.22), transparent 30%),
+    linear-gradient(135deg, #ffffff 0%, #f8fcf9 58%, #eefaf1 100%);
+  border: 1px solid #dce9e0;
+  border-radius: 26px;
+  box-shadow: 0 18px 48px rgba(17, 34, 23, 0.06);
+}
+
+.manage-facilities-hero-copy {
+  max-width: 860px;
+}
+
+.manage-facilities-hero-eyebrow {
+  margin: 0 0 0.5rem;
+  color: #5a6f60;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.manage-facilities-hero-header h1 {
+  margin: 0;
+  color: #0f2d56;
+  font-size: clamp(2rem, 3vw, 2.35rem);
+  line-height: 1.08;
+  font-weight: 800;
+}
+
+.manage-facilities-hero-subcopy {
+  margin: 0.7rem 0 0;
+  color: #4d6459;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.manage-facilities-hero-back {
+  align-self: center;
+  min-height: 40px;
+  padding: 0 1rem;
+  color: #173322;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #d7e3db;
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  font-size: 0;
+}
+
+.manage-facilities-hero-back::before {
+  content: 'Go Back';
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .manage-facilities-hero {

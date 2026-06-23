@@ -4,12 +4,16 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <div class="logs-page-header manage-facilities-page-header">
-      <h2 class="logs-page-heading">Manage Facilities</h2>
-      <button class="logs-go-back-button" type="button" @click="handleGoBack">
+    <section class="manage-facilities-hero-header">
+      <div class="manage-facilities-hero-copy">
+        <p class="manage-facilities-hero-eyebrow">Facility Operations</p>
+        <h1>Manage Facilities</h1>
+        <p class="manage-facilities-hero-subcopy">Review venue availability, maintain equipment records, and manage classroom schedules from one admin workspace.</p>
+      </div>
+      <button class="manage-facilities-hero-back" type="button" @click="handleGoBack">
         ← Go Back
       </button>
-    </div>
+    </section>
 
     <section class="manage-facilities-workspace">
       <div class="manage-facilities-tabs-row">
