@@ -93,6 +93,44 @@ GET  /health
 5. Add a Symfony client/service that calls FastAPI.
 6. Replace the current heuristic analytics outputs incrementally with real model outputs.
 
+## First Deployment Slice
+
+The first deployable slice adds a private FastAPI service that can run daily analytics checks and persist outputs to PostgreSQL.
+
+Added runtime pieces:
+
+- `analytics-service`: FastAPI application exposed only inside Docker on port `9000`.
+- `GET /health`: container healthcheck endpoint.
+- `POST /analytics/run-daily-check`: manual trigger for an analytics run.
+- Internal scheduler: daily run controlled by `ANALYTICS_DAILY_CRON_HOUR`, `ANALYTICS_DAILY_CRON_MINUTE`, and `ANALYTICS_SCHEDULER_ENABLED`.
+
+Added database tables:
+
+- `analytics_configurations`: stores frontend/admin-controlled analytics settings as JSON.
+- `analytics_runs`: records each scheduled or manual analytics run.
+- `analytics_results`: stores generated forecast, readiness, and allocation result payloads.
+
+The initial FastAPI implementation stores placeholder-compatible result payloads so deployment wiring can be tested early. SARIMA, Random Forest, and Binary Linear Programming can then replace those placeholders one model at a time without changing the deployment shape.
+
+## Target Data Flow
+
+```text
+Admin config screen in Vue
+  -> Symfony API validates roles and saves analytics_configurations
+
+FastAPI daily scheduler
+  -> reads analytics_configurations
+  -> reads reservation/equipment/release-return data
+  -> runs SARIMA, Random Forest, and Binary LP models
+  -> stores analytics_runs and analytics_results
+
+Vue analytics dashboard
+  -> Symfony API reads latest analytics_results
+  -> Vue renders stored results
+```
+
+The frontend should not call FastAPI directly. FastAPI stays private, and Symfony remains responsible for auth, role checks, response normalization, and public API stability.
+
 ## Fastest MVP Scope
 
 1. Keep the existing Vue analytics UI unchanged.
