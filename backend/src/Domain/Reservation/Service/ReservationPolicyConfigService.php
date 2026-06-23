@@ -4,6 +4,7 @@ namespace App\Domain\Reservation\Service;
 
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\AppClock;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -203,7 +204,7 @@ class ReservationPolicyConfigService
                 'dateTo' => $rangeEnd->format('Y-m-d'),
             ],
             [
-                'venueIdentifiers' => Connection::PARAM_INT_ARRAY,
+                'venueIdentifiers' => ArrayParameterType::INTEGER,
                 'dateFrom' => ParameterType::STRING,
                 'dateTo' => ParameterType::STRING,
             ]
