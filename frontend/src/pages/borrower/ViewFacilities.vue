@@ -8,7 +8,7 @@
         <div>
           <p class="borrower-facilities__eyebrow">Borrower Calendar</p>
           <h1>Calendar</h1>
-          <p class="borrower-facilities__subcopy">Browse weekly venue availability and explore equipment from one borrower-friendly workspace.</p>
+          <p class="borrower-facilities__subcopy">Browse weekly reserved-room activity and explore equipment from one borrower-friendly workspace.</p>
         </div>
       </header>
 
@@ -128,7 +128,7 @@
                     </span>
                     <div>
                       <strong>{{ selectedDaySummary.availableCount }}</strong>
-                      <p>venues currently available for this date</p>
+                      <p>rooms already reserved for this date</p>
                     </div>
                   </div>
                   <div class="borrower-facilities__detail-item">
@@ -153,7 +153,7 @@
                     </span>
                     <div>
                       <strong>{{ calendarViewMode === 'weekly' ? 'Weekly View' : 'Daily Summary' }}</strong>
-                      <p>{{ selectedDaySummary.bookableCount }} venues bookable from this board</p>
+                      <p>{{ selectedDaySummary.bookableCount }} reserved rooms shown on this board</p>
                     </div>
                   </div>
                 </div>
@@ -165,22 +165,22 @@
                   <div class="borrower-facilities__legend-row">
                     <span class="borrower-facilities__legend-dot borrower-facilities__legend-dot--available"></span>
                     <div>
-                      <strong>Available</strong>
-                      <p>Ready for borrower reservation requests.</p>
+                      <strong>Reserved</strong>
+                      <p>Already reserved for that date.</p>
                     </div>
                   </div>
                   <div class="borrower-facilities__legend-row">
                     <span class="borrower-facilities__legend-dot borrower-facilities__legend-dot--future"></span>
                     <div>
-                      <strong>Future Bookable</strong>
-                      <p>Available later based on the reservation availability start date.</p>
+                      <strong>Reserved Block</strong>
+                      <p>Another blocked room entry for the selected date.</p>
                     </div>
                   </div>
                   <div class="borrower-facilities__legend-row">
                     <span class="borrower-facilities__legend-dot borrower-facilities__legend-dot--maintenance"></span>
                     <div>
-                      <strong>Maintenance</strong>
-                      <p>Operationally unavailable for requests.</p>
+                      <strong>Other Block</strong>
+                      <p>Unavailable because of another scheduled block.</p>
                     </div>
                   </div>
                 </div>
@@ -208,7 +208,7 @@
                     <header class="borrower-facilities__day-header">
                       <span>{{ dayColumn.weekdayLabel }}</span>
                       <strong>{{ dayColumn.shortDateLabel }}</strong>
-                      <small>{{ dayColumn.availableCount }} available</small>
+                      <small>{{ dayColumn.availableCount }} reserved</small>
                     </header>
 
                     <div class="borrower-facilities__day-body">
@@ -230,8 +230,8 @@
                       </button>
 
                       <div v-if="dayColumn.entries.length === 0" class="borrower-facilities__empty-day">
-                        <strong>No venues surfaced</strong>
-                        <p>Try another date or view available venues from the cards below.</p>
+                        <strong>No reserved rooms surfaced</strong>
+                        <p>No reserved rooms were returned for this date.</p>
                       </div>
                     </div>
                   </article>
@@ -248,17 +248,17 @@
           <div class="borrower-facilities__section-head">
             <div>
               <p class="borrower-facilities__section-eyebrow">Venue Directory</p>
-              <h3>Venues for {{ selectedLongDateLabel }}</h3>
+              <h3>Reserved Rooms for {{ selectedLongDateLabel }}</h3>
             </div>
 
             <div class="borrower-facilities__section-actions">
               <label class="borrower-facilities__inline-field">
                 <span>Status</span>
                 <select v-model="venueFilterValue">
-                  <option value="all">All Venues</option>
-                  <option value="available">Available</option>
-                  <option value="future">Future Bookable</option>
-                  <option value="maintenance">Maintenance</option>
+                  <option value="all">All Reserved Rooms</option>
+                  <option value="available">Reserved</option>
+                  <option value="future">Reserved Blocks</option>
+                  <option value="maintenance">Other Blocks</option>
                 </select>
               </label>
 
@@ -281,7 +281,7 @@
           </div>
 
           <div v-if="venueCardRecords.length === 0" class="borrower-facilities__empty-state">
-            <p>No venues were returned for the current date.</p>
+            <p>No reserved rooms were returned for the current date.</p>
           </div>
 
           <div v-else class="borrower-facilities__venue-grid">
@@ -529,8 +529,8 @@ const selectedDayVenues = computed(() => weeklyVenueMap.value[selectedVenueDate.
 const selectedDaySummary = computed(() => {
   const venues = selectedDayVenues.value;
   return {
-    availableCount: venues.filter((venue) => deriveVenueAvailabilityForDate(venue, selectedVenueDate.value) === 'Available').length,
-    bookableCount: venues.filter((venue) => resolveVenueStatusTone(venue, selectedVenueDate.value) !== 'maintenance').length,
+    availableCount: venues.length,
+    bookableCount: venues.length,
   };
 });
 
@@ -551,8 +551,8 @@ const visibleCalendarColumns = computed(() => {
         metaLine: resolveAvailabilityMetaLine(venue, dateValue),
         descriptionLine: venue.venueLocation || venue.description || 'Venue details available on click.',
         footerLabel: statusTone === 'future'
-          ? `Bookable from ${formatDisplayDate(venue.availabilityDate)}`
-          : 'Open for reservation',
+          ? `Blocked on ${formatDisplayDate(dateValue)}`
+          : 'Reserved for this date',
         capacityLabel: `Cap ${venue.capacityLimit || 'N/A'}`,
       };
     });
@@ -662,13 +662,17 @@ async function fetchVenuesForVisibleWeek() {
   try {
     const weekDateValues = buildWeekDateValues(selectedVenueDate.value);
     const responses = await Promise.all(weekDateValues.map(async (dateValue) => {
-      const response = await venueApi.listVenues({ selectedDate: dateValue });
+      const response = await venueApi.listVenues({
+        selectedDate: dateValue,
+        reservedOnly: true,
+      });
       const venuePayload = response?.data?.venues || response?.venues || [];
       const normalizedVenues = Array.isArray(venuePayload)
         ? venuePayload
           .map((venueRecord) => normalizeVenueRecord(venueRecord))
           .filter(Boolean)
           .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+          .filter((venueRecord) => Array.isArray(venueRecord.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0)
         : [];
 
       return [dateValue, normalizedVenues];
@@ -782,9 +786,10 @@ function normalizeVenueRecord(venue) {
 
 function matchesVenueAvailability(venueRecord, filterValue) {
   const statusTone = resolveVenueStatusTone(venueRecord, selectedVenueDate.value);
+  const hasReservationBlocks = Array.isArray(venueRecord?.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0;
 
   if (filterValue === 'available') {
-    return statusTone === 'available';
+    return hasReservationBlocks && statusTone !== 'maintenance';
   }
 
   if (filterValue === 'future') {
@@ -814,17 +819,17 @@ function resolveVenueStatusLabel(statusTone) {
   }
 
   if (statusTone === 'future') {
-    return 'Future Bookable';
+    return 'Reserved Block';
   }
 
-  return 'Available';
+  return 'Reserved';
 }
 
 function resolveAvailabilityMetaLine(venueRecord, dateValue) {
   const statusTone = resolveVenueStatusTone(venueRecord, dateValue);
 
   if (statusTone === 'future') {
-    return 'Future booking window';
+    return 'Blocked reservation window';
   }
 
   if (statusTone === 'maintenance') {
@@ -835,7 +840,7 @@ function resolveAvailabilityMetaLine(venueRecord, dateValue) {
     return venueRecord.reservationTimeRanges[0];
   }
 
-  return 'Open for reservations';
+  return 'Reserved room';
 }
 
 function compareByName(leftName, rightName, sortDirection) {

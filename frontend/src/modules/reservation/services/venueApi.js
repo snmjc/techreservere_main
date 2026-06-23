@@ -90,6 +90,10 @@ function buildVenueListQueryParams(options) {
     params.endTime = options.endTime;
   }
 
+  if (options.reservedOnly === true) {
+    params.reservedOnly = true;
+  }
+
   return params;
 }
 
