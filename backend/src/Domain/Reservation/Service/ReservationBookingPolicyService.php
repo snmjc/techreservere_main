@@ -5,29 +5,14 @@ namespace App\Domain\Reservation\Service;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\AppClock;
 
 class ReservationBookingPolicyService
 {
-    private const RESTRICTED_VENUE_KEYWORDS = [
-        'classroom',
-        'class room',
-        'avr',
-        'case room',
-        'caseroom',
-    ];
-
-    private const EXTENDED_WINDOW_KEYWORDS = [
-        'rso',
-        'registered student organization',
-        'institutional',
-        'institution event',
-        'institutional event',
-        'university event',
-        'school-wide',
-        'school wide',
-    ];
-
-    public function __construct(private readonly VenueRepository $venueRepository)
+    public function __construct(
+        private readonly VenueRepository $venueRepository,
+        private readonly ReservationPolicyConfigService $reservationPolicyConfigService
+    )
     {
     }
 
@@ -36,40 +21,71 @@ class ReservationBookingPolicyService
         \DateTimeInterface $eventDateTime,
         \DateTimeInterface $endDateTime
     ): void {
-        $today = new \DateTimeImmutable('today');
-        $defaultWindowEnd = $this->resolveCurrentTermEnd($today);
+        $bookingWindow = $this->reservationPolicyConfigService->getBookingWindow();
+        $activeWindowStart = new \DateTimeImmutable(
+            sprintf('%s 00:00:00', $bookingWindow['activeBookingStartDate']),
+            AppClock::timezone()
+        );
+        $activeWindowEnd = new \DateTimeImmutable(
+            sprintf('%s 23:59:59', $bookingWindow['activeBookingEndDate']),
+            AppClock::timezone()
+        );
+        $extendedWindowEnd = new \DateTimeImmutable(
+            sprintf('%s 23:59:59', $bookingWindow['extendedBookingEndDate']),
+            AppClock::timezone()
+        );
+        $eventStart = \DateTimeImmutable::createFromInterface($eventDateTime)->setTimezone(AppClock::timezone());
+        $eventEnd = \DateTimeImmutable::createFromInterface($endDateTime)->setTimezone(AppClock::timezone());
 
-        if ($eventDateTime <= $defaultWindowEnd && $endDateTime <= $defaultWindowEnd) {
-            return;
-        }
-
-        if (!$this->qualifiesForExtendedWindow($requestDTO)) {
+        if ($eventStart < $activeWindowStart) {
             throw new DomainValidationException(
                 sprintf(
-                    'Reservations are currently limited to the active booking period ending on %s unless the request is for an approved RSO or institutional event.',
-                    $defaultWindowEnd->format('F j, Y')
+                    'Reservations can only be made within the active booking window from %s to %s.',
+                    $activeWindowStart->format('F j, Y'),
+                    $activeWindowEnd->format('F j, Y')
                 )
             );
         }
 
-        if ($this->usesRestrictedVenue($requestDTO)) {
+        if ($eventStart <= $activeWindowEnd && $eventEnd <= $activeWindowEnd) {
+            return;
+        }
+
+        if (
+            !$this->allowsExemptionOverride($bookingWindow)
+            || !$this->qualifiesForExtendedWindow($requestDTO, $bookingWindow)
+        ) {
+            throw new DomainValidationException(
+                sprintf(
+                    'Reservations are currently limited to the active booking window from %s to %s.',
+                    $activeWindowStart->format('F j, Y'),
+                    $activeWindowEnd->format('F j, Y')
+                )
+            );
+        }
+
+        if ($this->usesRestrictedVenue($requestDTO, $bookingWindow)) {
             throw new DomainValidationException(
                 'Extended-term reservations are not allowed for classrooms, AVR rooms, or case rooms.'
             );
         }
 
-        $extendedWindowEnd = $this->resolveNextTermEnd($today);
-        if ($eventDateTime > $extendedWindowEnd || $endDateTime > $extendedWindowEnd) {
+        if ($eventStart > $extendedWindowEnd || $eventEnd > $extendedWindowEnd) {
             throw new DomainValidationException(
                 sprintf(
-                    'Approved RSO or institutional events can only be scheduled through %s.',
+                    'Approved exempt events can only be scheduled through %s.',
                     $extendedWindowEnd->format('F j, Y')
                 )
             );
         }
     }
 
-    private function qualifiesForExtendedWindow(ReservationCreateRequestDTO $requestDTO): bool
+    private function allowsExemptionOverride(array $bookingWindow): bool
+    {
+        return (bool) ($bookingWindow['allowExemptions'] ?? true);
+    }
+
+    private function qualifiesForExtendedWindow(ReservationCreateRequestDTO $requestDTO, array $bookingWindow): bool
     {
         $haystack = strtolower(trim(implode(' ', array_filter([
             $requestDTO->organizationName,
@@ -77,7 +93,11 @@ class ReservationBookingPolicyService
             $requestDTO->purposeDescription,
         ]))));
 
-        foreach (self::EXTENDED_WINDOW_KEYWORDS as $keyword) {
+        $keywords = is_array($bookingWindow['exemptionKeywords'] ?? null)
+            ? $bookingWindow['exemptionKeywords']
+            : [];
+
+        foreach ($keywords as $keyword) {
             if (str_contains($haystack, $keyword)) {
                 return true;
             }
@@ -86,7 +106,7 @@ class ReservationBookingPolicyService
         return false;
     }
 
-    private function usesRestrictedVenue(ReservationCreateRequestDTO $requestDTO): bool
+    private function usesRestrictedVenue(ReservationCreateRequestDTO $requestDTO, array $bookingWindow): bool
     {
         if ($requestDTO->venueIdentifier === null) {
             return false;
@@ -100,47 +120,20 @@ class ReservationBookingPolicyService
         $venueDescriptor = strtolower(trim(implode(' ', array_filter([
             $venue->getVenueName(),
             $venue->getVenueLocation(),
+            $venue->getFloorLevel(),
             $venue->getDescription(),
         ]))));
 
-        foreach (self::RESTRICTED_VENUE_KEYWORDS as $keyword) {
+        $keywords = is_array($bookingWindow['restrictedVenueKeywords'] ?? null)
+            ? $bookingWindow['restrictedVenueKeywords']
+            : [];
+
+        foreach ($keywords as $keyword) {
             if (str_contains($venueDescriptor, $keyword)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private function resolveCurrentTermEnd(\DateTimeImmutable $today): \DateTimeImmutable
-    {
-        $month = (int)$today->format('n');
-        $year = (int)$today->format('Y');
-
-        if ($month >= 1 && $month <= 5) {
-            return new \DateTimeImmutable(sprintf('%d-05-31 23:59:59', $year));
-        }
-
-        if ($month >= 6 && $month <= 7) {
-            return new \DateTimeImmutable(sprintf('%d-07-31 23:59:59', $year));
-        }
-
-        return new \DateTimeImmutable(sprintf('%d-12-31 23:59:59', $year));
-    }
-
-    private function resolveNextTermEnd(\DateTimeImmutable $today): \DateTimeImmutable
-    {
-        $month = (int)$today->format('n');
-        $year = (int)$today->format('Y');
-
-        if ($month >= 1 && $month <= 5) {
-            return new \DateTimeImmutable(sprintf('%d-07-31 23:59:59', $year));
-        }
-
-        if ($month >= 6 && $month <= 7) {
-            return new \DateTimeImmutable(sprintf('%d-12-31 23:59:59', $year));
-        }
-
-        return new \DateTimeImmutable(sprintf('%d-05-31 23:59:59', $year + 1));
     }
 }
