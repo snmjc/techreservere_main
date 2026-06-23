@@ -35,6 +35,28 @@ export function formatNullableDateTime(value) {
   return value ? formatDisplayDateTime(value) : 'N/A';
 }
 
+export function formatDisplayDateRange(startValue, endValue) {
+  const formattedStart = startValue ? formatDisplayDate(startValue) : '';
+  const formattedEnd = endValue ? formatDisplayDate(endValue) : '';
+
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
+}
+
+export function formatDisplayDateTimeRange(startValue, endValue) {
+  const formattedStart = startValue ? formatDisplayDateTime(startValue) : '';
+  const formattedEnd = endValue ? formatDisplayDateTime(endValue) : '';
+
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
+}
+
 function parseDisplayDate(value) {
   const normalizedValue = String(value || '').trim();
   if (!normalizedValue) {

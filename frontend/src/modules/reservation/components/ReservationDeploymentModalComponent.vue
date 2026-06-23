@@ -48,8 +48,8 @@
           <div class="reservation-deployment-modal-flow-grid">
             <div class="reservation-deployment-modal-flow-column">
               <div class="reservation-deployment-modal-field">
-                <span class="reservation-deployment-modal-label">Activity Date:</span>
-                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityDate }}</span>
+                <span class="reservation-deployment-modal-label">Start Date and Time:</span>
+                <span class="reservation-deployment-modal-value">{{ formatDateTime(reservationRecord.requestScheduleStart || reservationRecord.activityTime) }}</span>
               </div>
               <div class="reservation-deployment-modal-field">
                 <span class="reservation-deployment-modal-label">Activity Name/Title:</span>
@@ -67,12 +67,12 @@
 
             <div class="reservation-deployment-modal-flow-column">
               <div class="reservation-deployment-modal-field">
-                <span class="reservation-deployment-modal-label">Activity Time:</span>
-                <span class="reservation-deployment-modal-value">{{ reservationRecord.activityEndTime }}</span>
+                <span class="reservation-deployment-modal-label">End Date and Time:</span>
+                <span class="reservation-deployment-modal-value">{{ formatDateTime(reservationRecord.requestScheduleEnd || reservationRecord.activityEndTime) }}</span>
               </div>
               <div class="reservation-deployment-modal-field">
-                <span class="reservation-deployment-modal-label">Schedule:</span>
-                <span class="reservation-deployment-modal-value">{{ reservationRecord.requestSchedule }}</span>
+                <span class="reservation-deployment-modal-label">Schedule Dates:</span>
+                <span class="reservation-deployment-modal-value">{{ formatDateRange(reservationRecord.requestScheduleStart, reservationRecord.requestScheduleEnd) }}</span>
               </div>
               <div class="reservation-deployment-modal-field">
                 <span class="reservation-deployment-modal-label">Facility:</span>
@@ -185,6 +185,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { formatDisplayDate, formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
 
 /**
  * @typedef {Object} ReservationDeploymentModalProps
@@ -242,5 +243,20 @@ function handleReturnDoneClick() {
  */
 function handleReportClick() {
   emit('reportReservationRecord', props.reservationRecord);
+}
+
+function formatDateTime(value) {
+  return formatDisplayDateTime(value);
+}
+
+function formatDateRange(startValue, endValue) {
+  const formattedStart = startValue ? formatDisplayDate(startValue) : '';
+  const formattedEnd = endValue ? formatDisplayDate(endValue) : '';
+
+  if (formattedStart && formattedEnd) {
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+
+  return formattedStart || formattedEnd || 'N/A';
 }
 </script>
