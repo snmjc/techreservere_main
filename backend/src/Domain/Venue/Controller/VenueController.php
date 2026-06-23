@@ -42,9 +42,18 @@ class VenueController extends AbstractController
         $selectedDate = $request->query->get('selectedDate');
         $startTime = $request->query->get('startTime');
         $endTime = $request->query->get('endTime');
-        $dtos = ($role === RoleConstants::ROLE_BORROWER)
-            ? $this->venueManagementService->getAvailableVenues($selectedDate, $startTime, $endTime)
-            : $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime);
+        $reservedOnly = filter_var($request->query->get('reservedOnly', false), FILTER_VALIDATE_BOOL);
+
+        if ($role === RoleConstants::ROLE_BORROWER && $reservedOnly) {
+            $dtos = array_values(array_filter(
+                $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime),
+                static fn ($venueDto): bool => !empty($venueDto->reservationTimeRanges)
+            ));
+        } else {
+            $dtos = ($role === RoleConstants::ROLE_BORROWER)
+                ? $this->venueManagementService->getAvailableVenues($selectedDate, $startTime, $endTime)
+                : $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime);
+        }
 
         $responseList = array_map(fn($dto) => $dto->toResponseArray(), $dtos);
         return $this->createSuccessResponse(['venues' => $responseList]);
