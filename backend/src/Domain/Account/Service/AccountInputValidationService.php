@@ -7,10 +7,12 @@ class AccountInputValidationService
     private const USER_EMAIL_DOMAINS = [
         '@fit.edu.ph',
         '@feutech.edu.ph',
+        '@techreserve.edu.ph',
     ];
 
     private const ADMIN_EMAIL_DOMAINS = [
         '@feutech.edu.ph',
+        '@techreserve.edu.ph',
     ];
 
     public function isValidPersonName(string $name): bool

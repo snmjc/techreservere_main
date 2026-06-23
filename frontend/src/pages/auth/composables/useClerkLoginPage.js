@@ -451,8 +451,8 @@ function validateInstitutionalLoginEmail(value) {
     return 'Email address is required.';
   }
 
-  if (!/^[^\s@]+@(fit|feutech)\.edu\.ph$/i.test(normalizedValue)) {
-    return 'Please use a valid @fit.edu.ph or @feutech.edu.ph email address.';
+  if (!/^[^\s@]+@(?:(?:fit|feutech)\.edu\.ph|techreserve\.edu\.ph)$/i.test(normalizedValue)) {
+    return 'Please enter a valid institutional email address.';
   }
 
   return '';
