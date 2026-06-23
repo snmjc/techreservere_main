@@ -13,6 +13,7 @@ async function getWithRange(path, range) {
     params: {
       startDate: range?.startDateIso,
       endDate: range?.endDateIso,
+      _: Date.now(),
     },
   });
 
@@ -26,6 +27,46 @@ const adminAnalyticsApi = {
 
   async getReportsAnalytics(range) {
     return getWithRange('/api/v1/reports-analytics', range);
+  },
+
+  async getAnalyticsConfiguration() {
+    const authToken = getStoredAuthToken();
+    const response = await axios.get(apiUrl('/api/v1/analytics/configuration'), {
+      headers: buildAuthorizationHeaders(authToken),
+    });
+
+    return unwrapResponse(response);
+  },
+
+  async saveAnalyticsConfiguration(configuration) {
+    const authToken = getStoredAuthToken();
+    const response = await axios.patch(apiUrl('/api/v1/analytics/configuration'), {
+      configuration,
+    }, {
+      headers: buildAuthorizationHeaders(authToken),
+    });
+
+    return unwrapResponse(response);
+  },
+
+  async getLatestAnalyticsResults() {
+    const authToken = getStoredAuthToken();
+    const response = await axios.get(apiUrl('/api/v1/analytics/latest-results'), {
+      headers: buildAuthorizationHeaders(authToken),
+    });
+
+    return unwrapResponse(response);
+  },
+
+  async triggerAnalyticsRun(scenario) {
+    const authToken = getStoredAuthToken();
+    const response = await axios.post(apiUrl('/api/v1/analytics/trigger-run'), {
+      scenario,
+    }, {
+      headers: buildAuthorizationHeaders(authToken),
+    });
+
+    return unwrapResponse(response);
   },
 };
 
