@@ -1,545 +1,901 @@
-/* ===== View Facilities Page Styles ===== */
-
-.view-facilities-page-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.view-facilities-page-heading {
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  color: #1a6e3a !important;
-  margin: 0;
-}
-
-/* ===== Tabs Section ===== */
-
-.view-facilities-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.view-facilities-tab {
-  padding: 1rem 1.5rem;
-  background-color: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.view-facilities-tab:hover {
-  color: #374151;
-}
-
-.view-facilities-tab--active {
-  color: #10b981;
-  border-bottom-color: #10b981;
-}
-
-/* ===== Toolbar Section ===== */
-
-.view-facilities-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border-radius: 0.5rem;
-}
-
-.view-facilities-filter-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.view-facilities-search-input {
-  min-width: 220px;
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.95rem;
-}
-
-.view-facilities-search-input:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.view-facilities-filter-label {
-  font-weight: 600;
-  color: #374151;
-}
-
-.view-facilities-filter-select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.95rem;
-  background-color: white;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-}
-
-.view-facilities-filter-select:hover {
-  border-color: #9ca3af;
-}
-
-.view-facilities-filter-select:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.view-facilities-filter-select--date {
-  min-width: 170px;
-}
-
-.view-facilities-sort-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: white;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.view-facilities-sort-button:hover {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
-  color: #10b981;
-}
-
-/* ===== Legend Section ===== */
-
-.view-facilities-legend {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border-radius: 0.5rem;
-}
-
-.view-facilities-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-  color: #374151;
-  font-weight: 500;
-}
-
-.view-facilities-legend-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-
-.view-facilities-legend-dot--available {
-  background-color: #10b981;
-}
-
-.view-facilities-legend-dot--unavailable {
-  background-color: #ef4444;
-}
-
-/* ===== Content Section ===== */
-
-.view-facilities-content {
+.borrower-facilities {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 100%;
+  color: #163427;
 }
 
-.view-facilities-pagination {
+.borrower-facilities__header h1,
+.borrower-facilities__header p,
+.borrower-facilities__date-copy h2,
+.borrower-facilities__date-copy p,
+.borrower-facilities__section-head h3,
+.borrower-facilities__section-head p {
+  margin: 0;
+}
+
+.borrower-facilities__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.borrower-facilities__eyebrow,
+.borrower-facilities__section-eyebrow {
+  margin: 0 0 0.35rem;
+  color: #1b8c5a;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.borrower-facilities__header h1 {
+  color: #11291f;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.borrower-facilities__subcopy {
+  max-width: 720px;
+  margin-top: 0.45rem;
+  color: #587063;
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.borrower-facilities__surface {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.2rem;
+  border: 1px solid #d9e7de;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(214, 244, 225, 0.82), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f8fcf9 100%);
+  box-shadow: 0 24px 60px rgba(15, 61, 41, 0.08);
+}
+
+.borrower-facilities__surface-toolbar,
+.borrower-facilities__section-head,
+.borrower-facilities__toolbar-actions,
+.borrower-facilities__section-actions,
+.borrower-facilities__date-nav,
+.borrower-facilities__mini-calendar-head,
+.borrower-facilities__venue-topline,
+.borrower-facilities__equipment-topline,
+.borrower-facilities__availability-footer,
+.borrower-facilities__pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
+}
+
+.borrower-facilities__surface-toolbar,
+.borrower-facilities__section-head {
+  justify-content: space-between;
   gap: 1rem;
-  margin-top: 0.25rem;
+  flex-wrap: wrap;
 }
 
-.view-facilities-pagination span {
-  color: #4b5563;
-  font-size: 0.95rem;
-  font-weight: 600;
+.borrower-facilities__segment-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid #d7e0da;
+  border-radius: 16px;
+  background: rgba(244, 248, 245, 0.92);
 }
 
-.view-facilities-pagination button {
-  min-width: 110px;
-  padding: 0.7rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 0.92rem;
+.borrower-facilities__segment {
+  min-width: 96px;
+  padding: 0.82rem 1.15rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #53685d;
+  font-size: 0.94rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.view-facilities-pagination button:hover {
-  border-color: #10b981;
-  color: #047857;
-  background: #f0fdf4;
+.borrower-facilities__segment:hover {
+  color: #184634;
 }
 
-.view-facilities-pagination button:disabled {
+.borrower-facilities__segment--active {
+  background: #ffffff;
+  color: #14784d;
+  box-shadow: 0 12px 28px rgba(20, 120, 77, 0.14);
+}
+
+.borrower-facilities__toolbar-actions,
+.borrower-facilities__section-actions {
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.borrower-facilities__icon-button,
+.borrower-facilities__today-button,
+.borrower-facilities__view-select,
+.borrower-facilities__sort-button,
+.borrower-facilities__inline-field,
+.borrower-facilities__reserve-button,
+.borrower-facilities__mini-nav {
+  border: 1px solid #d7e0da;
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(16, 53, 36, 0.05);
+}
+
+.borrower-facilities__icon-button,
+.borrower-facilities__mini-nav,
+.borrower-facilities__sort-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: #20382d;
+  cursor: pointer;
+}
+
+.borrower-facilities__icon-button svg,
+.borrower-facilities__reserve-button svg,
+.borrower-facilities__mini-nav svg,
+.borrower-facilities__sort-button svg,
+.borrower-facilities__detail-icon svg,
+.borrower-facilities__inline-field svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.borrower-facilities__date-nav {
+  gap: 0.55rem;
+}
+
+.borrower-facilities__today-button {
+  min-width: 100px;
+  height: 44px;
+  padding: 0 1.2rem;
+  border-radius: 14px;
+  color: #20382d;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.borrower-facilities__view-select {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-radius: 14px;
+}
+
+.borrower-facilities__view-select select,
+.borrower-facilities__inline-field select,
+.borrower-facilities__inline-field input {
+  border: none;
+  background: transparent;
+  color: #20382d;
+  font: inherit;
+  outline: none;
+}
+
+.borrower-facilities__view-select select {
+  min-width: 118px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.borrower-facilities__reserve-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 46px;
+  padding: 0 1.25rem;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #188f5a 0%, #0f7346 100%);
+  border-color: transparent;
+  font-size: 0.94rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.borrower-facilities__date-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid #d9e5de;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.borrower-facilities__date-tile {
+  display: grid;
+  overflow: hidden;
+  width: 72px;
+  min-width: 72px;
+  border: 1px solid #d8e7dd;
+  border-radius: 16px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.borrower-facilities__date-tile span {
+  padding: 0.4rem 0.55rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #178651 0%, #0f6c42 100%);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.borrower-facilities__date-tile strong {
+  padding: 0.8rem 0.55rem;
+  color: #173526;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.borrower-facilities__date-copy h2 {
+  color: #143124;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.borrower-facilities__date-copy p {
+  margin-top: 0.35rem;
+  color: #667c70;
+  font-size: 0.98rem;
+}
+
+.borrower-facilities__calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.borrower-facilities__sidebar,
+.borrower-facilities__detail-list,
+.borrower-facilities__legend-list,
+.borrower-facilities__venue-copy,
+.borrower-facilities__equipment-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.borrower-facilities__sidebar-card,
+.borrower-facilities__board,
+.borrower-facilities__section-card {
+  border: 1px solid #d9e5de;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.borrower-facilities__sidebar-card {
+  padding: 1.15rem;
+}
+
+.borrower-facilities__card-label {
+  margin: 0 0 0.15rem;
+  color: #132d21;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__mini-calendar-head strong {
+  color: #173526;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__mini-calendar-head {
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.borrower-facilities__mini-nav {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.borrower-facilities__mini-weekdays,
+.borrower-facilities__mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.borrower-facilities__mini-weekdays {
+  margin-bottom: 0.35rem;
+}
+
+.borrower-facilities__mini-weekdays span {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  color: #6a7c72;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__mini-day {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #193327;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.borrower-facilities__mini-day--muted {
+  color: #b0beb6;
+}
+
+.borrower-facilities__mini-day--active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #178651 0%, #0f6c42 100%);
+}
+
+.borrower-facilities__detail-item,
+.borrower-facilities__legend-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.borrower-facilities__detail-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #127246;
+  background: #eef8f1;
+}
+
+.borrower-facilities__detail-item strong,
+.borrower-facilities__legend-row strong {
+  display: block;
+  color: #183327;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__detail-item p,
+.borrower-facilities__legend-row p {
+  margin: 0.25rem 0 0;
+  color: #62756a;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.borrower-facilities__legend-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+}
+
+.borrower-facilities__legend-dot--available {
+  background: #1ca96a;
+}
+
+.borrower-facilities__legend-dot--future {
+  background: #f59e0b;
+}
+
+.borrower-facilities__legend-dot--maintenance {
+  background: #8b92c7;
+}
+
+.borrower-facilities__board-panel {
+  min-width: 0;
+}
+
+.borrower-facilities__board,
+.borrower-facilities__loading-panel {
+  padding: 1rem;
+}
+
+.borrower-facilities__loading-panel,
+.borrower-facilities__empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 2rem;
+  text-align: center;
+  color: #62756a;
+}
+
+.borrower-facilities__board {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.borrower-facilities__time-rail {
+  display: grid;
+  grid-template-rows: 74px repeat(5, 1fr);
+  gap: 0.7rem;
+}
+
+.borrower-facilities__time-rail span {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  color: #72857a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__time-rail-spacer {
+  opacity: 0;
+}
+
+.borrower-facilities__week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.borrower-facilities__week-grid--daily {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.borrower-facilities__day-column {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 640px;
+  overflow: hidden;
+  border: 1px solid #dce8e1;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+}
+
+.borrower-facilities__day-column--selected {
+  border-color: #a9d7c1;
+  box-shadow: inset 0 0 0 1px rgba(23, 134, 81, 0.12);
+}
+
+.borrower-facilities__day-header {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 0.9rem;
+  border-bottom: 1px solid #e4ece7;
+  text-align: center;
+}
+
+.borrower-facilities__day-header span,
+.borrower-facilities__day-header small {
+  color: #6b7f74;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__day-header strong {
+  color: #123023;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__day-body {
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+  padding: 0.85rem;
+  background:
+    linear-gradient(180deg, rgba(222, 235, 227, 0.6) 1px, transparent 1px) 0 0 / 100% 112px,
+    linear-gradient(90deg, rgba(236, 242, 239, 0.9) 1px, transparent 1px) 0 0 / 100% 100%;
+}
+
+.borrower-facilities__availability-card,
+.borrower-facilities__venue-card,
+.borrower-facilities__equipment-card {
+  width: 100%;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.borrower-facilities__availability-card:hover,
+.borrower-facilities__venue-card:hover,
+.borrower-facilities__equipment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px rgba(16, 55, 37, 0.1);
+}
+
+.borrower-facilities__availability-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border-radius: 18px;
+  background: #f7fbf8;
+}
+
+.borrower-facilities__availability-card--available {
+  border-color: #9ad2b3;
+  background: linear-gradient(180deg, rgba(235, 249, 240, 0.96) 0%, rgba(246, 252, 248, 1) 100%);
+}
+
+.borrower-facilities__availability-card--future {
+  border-color: #f4c66f;
+  background: linear-gradient(180deg, rgba(255, 248, 233, 0.96) 0%, rgba(255, 252, 245, 1) 100%);
+}
+
+.borrower-facilities__availability-card--maintenance {
+  border-color: #c8cdef;
+  background: linear-gradient(180deg, rgba(243, 245, 254, 0.98) 0%, rgba(249, 250, 255, 1) 100%);
+}
+
+.borrower-facilities__availability-card strong {
+  color: #163126;
+  font-size: 0.97rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.borrower-facilities__availability-card p {
+  margin: 0;
+  color: #4d6258;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.borrower-facilities__availability-meta,
+.borrower-facilities__availability-footer span {
+  color: #5e7468;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__availability-footer {
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.borrower-facilities__empty-day {
+  display: grid;
+  place-items: center;
+  gap: 0.3rem;
+  min-height: 180px;
+  padding: 1rem;
+  border: 1px dashed #d5e0d9;
+  border-radius: 18px;
+  background: rgba(250, 252, 251, 0.9);
+  text-align: center;
+}
+
+.borrower-facilities__empty-day strong {
+  color: #31473c;
+  font-size: 0.88rem;
+}
+
+.borrower-facilities__empty-day p {
+  margin: 0;
+  color: #6d8076;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.borrower-facilities__section-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.15rem;
+}
+
+.borrower-facilities__section-head h3 {
+  color: #122d21;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.borrower-facilities__inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border-radius: 14px;
+}
+
+.borrower-facilities__inline-field span {
+  color: #5f7368;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__inline-field--search {
+  min-width: min(320px, 100%);
+}
+
+.borrower-facilities__inline-field input {
+  min-width: 0;
+  width: 100%;
+  font-size: 0.92rem;
+}
+
+.borrower-facilities__venue-grid,
+.borrower-facilities__equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.borrower-facilities__venue-card,
+.borrower-facilities__equipment-card {
+  display: grid;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #ffffff;
+}
+
+.borrower-facilities__venue-card--available {
+  border-color: #93d0ae;
+}
+
+.borrower-facilities__venue-card--future {
+  border-color: #efc86d;
+}
+
+.borrower-facilities__venue-card--maintenance {
+  border-color: #c4caec;
+}
+
+.borrower-facilities__venue-media,
+.borrower-facilities__equipment-media {
+  height: 180px;
+  background: linear-gradient(135deg, #eff7f1 0%, #dcefe2 100%);
+}
+
+.borrower-facilities__venue-image,
+.borrower-facilities__equipment-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.borrower-facilities__venue-copy,
+.borrower-facilities__equipment-copy {
+  padding: 1rem;
+}
+
+.borrower-facilities__venue-topline,
+.borrower-facilities__equipment-topline {
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.borrower-facilities__venue-copy h4,
+.borrower-facilities__equipment-copy h4 {
+  margin: 0;
+  color: #133125;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__venue-copy p,
+.borrower-facilities__equipment-copy p {
+  margin: 0;
+  color: #546a5e;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.borrower-facilities__venue-meta,
+.borrower-facilities__equipment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.borrower-facilities__venue-meta span,
+.borrower-facilities__equipment-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  color: #29473a;
+  background: #f0f6f2;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.borrower-facilities__venue-copy small {
+  color: #6a7d73;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.borrower-facilities__status-pill--available {
+  color: #0d6a41;
+  background: #dcf6e7;
+}
+
+.borrower-facilities__status-pill--future {
+  color: #a76108;
+  background: #fff1d5;
+}
+
+.borrower-facilities__status-pill--maintenance {
+  color: #485287;
+  background: #e6e9fb;
+}
+
+.borrower-facilities__feedback {
+  margin: 0;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__feedback--error {
+  color: #8a1f28;
+  background: #fff0f2;
+  border: 1px solid #f5c8cf;
+}
+
+.borrower-facilities__pagination {
+  justify-content: center;
+  gap: 1rem;
+}
+
+.borrower-facilities__pagination span {
+  color: #4e655a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__pagination button {
+  min-width: 110px;
+  min-height: 42px;
+  padding: 0 1rem;
+  border: 1px solid #d7e0da;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #173526;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.borrower-facilities__pagination button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.view-facilities-venues-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.view-facilities-equipment-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.view-facilities-floor-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.view-facilities-floor-heading {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-  padding: 0.75rem 0;
-  border-left: 4px solid #3b82f6;
-  padding-left: 1rem;
-}
-
-.view-facilities-venue-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-/* ===== Venue Card ===== */
-
-.view-facilities-venue-card {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  padding: 0;
-  text-align: left;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border-left: 5px solid;
-  border-top: none;
-  border-right: none;
-  border-bottom: none;
-  cursor: pointer;
-}
-
-.view-facilities-venue-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15);
-}
-
-.view-facilities-venue-card--available {
-  background-color: #f0fdf4;
-  border-left-color: #10b981;
-}
-
-.view-facilities-venue-card--unavailable {
-  background-color: #fef2f2;
-  border-left-color: #ef4444;
-}
-
-.view-facilities-venue-media {
-  height: 170px;
-  background: linear-gradient(135deg, #f7faf8 0%, #eef7f1 100%);
-}
-
-.view-facilities-venue-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.view-facilities-venue-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.view-facilities-venue-card-body {
-  display: grid;
-  gap: 0.45rem;
-  padding: 1rem;
-}
-
-.view-facilities-venue-name {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-  flex: 1;
-}
-
-.view-facilities-venue-status {
-  margin-left: 0.5rem;
-}
-
-.view-facilities-venue-detail {
-  margin: 0;
-  color: #374151;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.view-facilities-venue-link {
-  padding: 0 1rem 1rem;
-  color: #047857;
-  font-size: 0.88rem;
-  font-weight: 700;
-}
-
-.view-facilities-status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.view-facilities-status-badge.available {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.view-facilities-status-badge.unavailable {
-  background-color: #fee2e2;
-  color: #7f1d1d;
-}
-
-/* ===== Equipment Chip ===== */
-
-.view-facilities-equipment-chip {
-  display: grid;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0;
-  text-align: left;
-  border-radius: 1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid #dbe5df;
-  overflow: hidden;
-}
-
-.view-facilities-equipment-chip--available {
-  background-color: #ffffff;
-  color: #1f2937;
-}
-
-.view-facilities-equipment-chip--available:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
-}
-
-.view-facilities-equipment-chip--unavailable {
-  background-color: #ffffff;
-  color: #1f2937;
-}
-
-.view-facilities-equipment-chip--unavailable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.12);
-}
-
-.view-facilities-equipment-media {
-  height: 160px;
-  background: linear-gradient(135deg, #f7faf8 0%, #eef7f1 100%);
-}
-
-.view-facilities-equipment-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.view-facilities-equipment-chip-header,
-.view-facilities-equipment-detail,
-.view-facilities-equipment-link {
-  padding-inline: 1rem;
-}
-
-.view-facilities-equipment-chip-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.view-facilities-equipment-detail {
-  margin: 0;
-  color: #475569;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.view-facilities-equipment-link {
-  padding-bottom: 1rem;
-  color: #047857;
-  font-size: 0.88rem;
-  font-weight: 700;
-}
-
-.view-facilities-equipment-chip-name {
-  color: #1f2937;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-/* ===== Empty State ===== */
-
-.view-facilities-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
+.borrower-facilities__footer {
+  padding-bottom: 0.5rem;
   text-align: center;
-  color: #6b7280;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-}
-
-.view-facilities-empty-state p {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.view-facilities-feedback {
-  margin: 0;
-  padding: 0.9rem 1rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-}
-
-.view-facilities-feedback--error {
-  color: #991b1b;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-}
-
-.view-facilities-equipment-chip--card {
-  display: grid;
-  justify-content: stretch;
-  gap: 0.65rem;
-  width: min(320px, 100%);
-  padding: 1rem;
-  border-radius: 1rem;
-  border: none;
-  text-align: left;
-}
-
-.view-facilities-equipment-chip-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.view-facilities-equipment-detail {
-  margin: 0;
-  color: inherit;
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.view-facilities-equipment-detail strong {
+  color: #89a095;
+  font-size: 0.72rem;
   font-weight: 700;
-}
-
-.view-facilities-equipment-link {
-  color: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-}
-
-/* ===== Footer ===== */
-
-.view-facilities-page-footer {
-  margin-top: auto;
-  padding-top: 2rem;
-  text-align: center;
-  font-size: 0.7rem;
-  color: #888888;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-/* ===== Responsive Design ===== */
-
-@media (max-width: 1024px) {
-  .view-facilities-venue-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .view-facilities-page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .view-facilities-toolbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .view-facilities-legend {
-    width: 100%;
-  }
-
-  .view-facilities-venue-grid {
+@media (max-width: 1280px) {
+  .borrower-facilities__calendar-layout {
     grid-template-columns: 1fr;
   }
 
-  .view-facilities-pagination {
+  .borrower-facilities__sidebar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1080px) {
+  .borrower-facilities__board {
+    grid-template-columns: 1fr;
+  }
+
+  .borrower-facilities__time-rail {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: none;
+  }
+
+  .borrower-facilities__time-rail-spacer {
+    display: none;
+  }
+
+  .borrower-facilities__time-rail span {
+    justify-content: flex-start;
+  }
+
+  .borrower-facilities__week-grid {
+    overflow-x: auto;
+    grid-auto-columns: minmax(240px, 1fr);
+    grid-auto-flow: column;
+  }
+
+  .borrower-facilities__week-grid--daily {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+  }
+}
+
+@media (max-width: 820px) {
+  .borrower-facilities__surface {
+    padding: 1rem;
+  }
+
+  .borrower-facilities__sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .borrower-facilities__date-banner {
+    align-items: start;
     flex-direction: column;
   }
 
-  .view-facilities-pagination button {
+  .borrower-facilities__segment-control,
+  .borrower-facilities__toolbar-actions,
+  .borrower-facilities__section-actions,
+  .borrower-facilities__surface-toolbar,
+  .borrower-facilities__section-head {
     width: 100%;
+  }
+
+  .borrower-facilities__toolbar-actions,
+  .borrower-facilities__section-actions {
+    justify-content: flex-start;
+  }
+
+  .borrower-facilities__segment {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .borrower-facilities__reserve-button,
+  .borrower-facilities__view-select,
+  .borrower-facilities__today-button,
+  .borrower-facilities__inline-field,
+  .borrower-facilities__inline-field--search {
+    width: 100%;
+  }
+
+  .borrower-facilities__date-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .borrower-facilities__week-grid {
+    grid-auto-columns: minmax(210px, 1fr);
   }
 }
