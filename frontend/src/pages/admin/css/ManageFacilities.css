@@ -817,11 +817,25 @@ body {
   background: #ffffff;
   color: #234231;
   cursor: pointer;
+  font-size: 0;
 }
 
 .classroom-schedule-mini-calendar__header button svg {
   width: 16px;
   height: 16px;
+}
+
+.classroom-schedule-mini-calendar__header button::before {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-mini-calendar__header button:first-of-type::before {
+  content: '<';
+}
+
+.classroom-schedule-mini-calendar__header button:last-of-type::before {
+  content: '>';
 }
 
 .classroom-schedule-mini-calendar__header strong {
@@ -985,11 +999,25 @@ body {
 .classroom-schedule-board-icon-button {
   width: 36px;
   padding: 0;
+  font-size: 0;
 }
 
 .classroom-schedule-board-icon-button svg {
   width: 16px;
   height: 16px;
+}
+
+.classroom-schedule-board-icon-button:not(.classroom-schedule-board-icon-button--search)::before {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-board-toolbar > .classroom-schedule-board-icon-button:nth-of-type(2)::before {
+  content: '<';
+}
+
+.classroom-schedule-board-toolbar > .classroom-schedule-board-icon-button:nth-of-type(4)::before {
+  content: '>';
 }
 
 .classroom-schedule-board-spacer {
@@ -1114,10 +1142,47 @@ body {
   background-size: 100% 60px;
 }
 
+.classroom-schedule-quick-slot {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.6rem;
+  color: #1b5e3b;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed transparent;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.classroom-schedule-board-day-column:hover .classroom-schedule-quick-slot {
+  opacity: 1;
+}
+
+.classroom-schedule-quick-slot:hover {
+  background: #edf9f1;
+  border-color: #9fd5b1;
+}
+
+.classroom-schedule-quick-slot span {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-quick-slot strong {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
 .classroom-schedule-event {
   position: absolute;
   left: 0.45rem;
   right: 0.45rem;
+  z-index: 2;
   display: grid;
   gap: 0.12rem;
   padding: 0.45rem 0.5rem;

@@ -44,7 +44,7 @@
           </button>
         </div>
 
-        <div class="manage-facilities-inline-actions">
+        <div v-if="activeFacilityTab !== 'classroom-schedules'" class="manage-facilities-inline-actions">
           <button
             v-if="activeFacilityTab === 'classroom-schedules'"
             class="manage-facilities-add-button manage-facilities-add-button--compact"
@@ -237,6 +237,12 @@
 
           <section class="classroom-schedule-board-card">
             <div class="classroom-schedule-board-toolbar">
+              <button type="button" class="classroom-schedule-board-icon-button classroom-schedule-board-icon-button--search" aria-label="Search schedules">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+              </button>
               <button type="button" class="classroom-schedule-board-icon-button" @click="jumpClassroomDateByDays(-7)">‹</button>
               <button type="button" class="classroom-schedule-board-today" @click="selectClassroomDate(todayDateKey)">Today</button>
               <button type="button" class="classroom-schedule-board-icon-button" @click="jumpClassroomDateByDays(7)">›</button>
@@ -288,6 +294,17 @@
                 class="classroom-schedule-board-day-column"
                 @dblclick="openQuickAddScheduleModal(weekDate.dateKey)"
               >
+                <button
+                  v-for="quickSlot in classroomQuickSlots"
+                  :key="`${weekDate.dateKey}-${quickSlot.startTime}`"
+                  type="button"
+                  class="classroom-schedule-quick-slot"
+                  :style="buildQuickSlotStyle(quickSlot)"
+                  @click.stop="openQuickAddScheduleModal(weekDate.dateKey, quickSlot.startTime, quickSlot.endTime)"
+                >
+                  <span>{{ quickSlot.label }}</span>
+                  <strong>+</strong>
+                </button>
                 <button
                   v-for="scheduleRecord in getSchedulesForClassroomDay(weekDate.dateKey)"
                   :key="scheduleRecord.scheduleBlockIdentifier"
@@ -504,6 +521,7 @@
           <div><span>Date Range</span><strong>{{ formatScheduleDateRange(viewClassScheduleRecord.dateRangeStart || viewClassScheduleRecord.blockDate, viewClassScheduleRecord.dateRangeEnd || viewClassScheduleRecord.blockDate) }}</strong></div>
           <div><span>Schedule Type</span><strong>{{ viewClassScheduleRecord.blockType }}</strong></div>
           <div><span>Capacity</span><strong>{{ viewClassScheduleRecord.capacityLimit || 'N/A' }}</strong></div>
+          <div><span>Created By</span><strong>{{ currentAdminDisplayName }}</strong></div>
           <div><span>Notes</span><strong>{{ viewClassScheduleRecord.notes || 'No notes added.' }}</strong></div>
         </div>
 
@@ -888,6 +906,14 @@ const quickClassScheduleForm = ref(createEmptyQuickAddScheduleForm());
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
 );
+const currentAdminDisplayName = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  const firstName = String(account.firstName || '').trim();
+  const lastName = String(account.lastName || '').trim();
+  const combinedName = `${firstName} ${lastName}`.trim();
+
+  return combinedName || 'TechReserve Admin';
+});
 
 const isDeleteVenueReady = computed(() =>
   Boolean(deleteVenueRecord.value)
@@ -912,6 +938,17 @@ const academicYearOptions = ['2025 - 2026', '2026 - 2027', '2027 - 2028', '2028 
 const semesterOptions = ['1st Semester', '2nd Semester', 'Summer'];
 const miniCalendarWeekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const classroomTimeLabels = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
+const classroomQuickSlots = Array.from({ length: 12 }, (_, index) => {
+  const startHour = 7 + index;
+  const endHour = Math.min(startHour + 2, 19);
+
+  return {
+    index,
+    label: formatHourLabel(startHour),
+    startTime: `${String(startHour).padStart(2, '0')}:00`,
+    endTime: `${String(endHour).padStart(2, '0')}:00`,
+  };
+});
 const todayDateKey = getTodayDateInputValue();
 
 const searchedAndSortedVenues = computed(() => filterAndSortVenues(
@@ -1117,7 +1154,12 @@ const selectedClassroomDateMonthShort = computed(() => new Intl.DateTimeFormat('
 const selectedClassroomDateDayNumber = computed(() => new Date(`${selectedClassroomDate.value}T00:00:00`).getDate());
 const classroomMonthDays = computed(() => buildMiniCalendarDays(classroomMonthCursor.value, classScheduleList.value));
 const activeClassScheduleDuration = computed(() => formatScheduleDuration(classScheduleForm.value.startTime, classScheduleForm.value.endTime));
-const quickAddScheduleSummary = computed(() => `${formatDisplayDateHeading(quickClassScheduleForm.value.dateRangeStart)} | ${formatClassroomScheduleTime(quickClassScheduleForm.value.startTime, quickClassScheduleForm.value.endTime)}`);
+const quickAddScheduleSummary = computed(() => {
+  const selectedVenue = classroomVenueOptions.value.find((venueRecord) => Number(venueRecord.venueIdentifier) === Number(quickClassScheduleForm.value.venueIdentifier));
+  const venueName = selectedVenue?.venueName || 'Select room';
+
+  return `${formatDisplayDateHeading(quickClassScheduleForm.value.dateRangeStart)} | ${formatClassroomScheduleTime(quickClassScheduleForm.value.startTime, quickClassScheduleForm.value.endTime)} | ${venueName}`;
+});
 
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
@@ -1796,6 +1838,13 @@ function buildClassroomScheduleStyle(scheduleRecord) {
   };
 }
 
+function buildQuickSlotStyle(quickSlot) {
+  return {
+    top: `${quickSlot.index * 60}px`,
+    height: '60px',
+  };
+}
+
 function convertTimeToMinutes(timeValue) {
   const [hourValue, minuteValue] = String(timeValue || '00:00').split(':').map((value) => Number(value));
   return (hourValue * 60) + (minuteValue || 0);
@@ -1863,7 +1912,7 @@ function openAddScheduleForDate(dateKey) {
   showClassScheduleModal.value = true;
 }
 
-function openQuickAddScheduleModal(dateKey = selectedClassroomDate.value) {
+function openQuickAddScheduleModal(dateKey = selectedClassroomDate.value, startTime = '13:00', endTime = '15:00') {
   showClassScheduleActionMenu.value = false;
   quickClassScheduleError.value = '';
   quickClassScheduleForm.value = {
@@ -1871,6 +1920,8 @@ function openQuickAddScheduleModal(dateKey = selectedClassroomDate.value) {
     dateRangeStart: dateKey,
     dateRangeEnd: dateKey,
     blockDate: dateKey,
+    startTime,
+    endTime,
     daysOfWeek: [new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date(`${dateKey}T00:00:00`))],
   };
   showQuickClassScheduleModal.value = true;
@@ -2067,6 +2118,13 @@ function formatScheduleDuration(startTime, endTime) {
   }
 
   return `${durationHours} hour${durationHours === 1 ? '' : 's'} ${remainderMinutes} min`;
+}
+
+function formatHourLabel(hourValue) {
+  const normalizedHour = hourValue % 24;
+  const suffix = normalizedHour >= 12 ? 'PM' : 'AM';
+  const displayHour = normalizedHour % 12 || 12;
+  return `${displayHour} ${suffix}`;
 }
 
 function formatImportFileSize(fileSize) {
