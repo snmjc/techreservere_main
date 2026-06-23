@@ -6,13 +6,10 @@
     <section class="borrower-request-list-page">
       <div class="borrower-request-list-page__hero">
         <div>
-          <p class="borrower-request-list-page__eyebrow">Request Database</p>
-          <h1>My Request Listings</h1>
-          <p>Review every reservation request you submitted, preview the full details, and withdraw pending ones when needed.</p>
+          <p class="borrower-request-list-page__eyebrow">Reservation Board</p>
+          <h1>Active Reservations</h1>
+          <p>Review your currently active and scheduled-for-today reservations from one page.</p>
         </div>
-        <button type="button" class="borrower-request-list-page__create-button" @click="router.push({ name: ROUTE_NAMES.borrowerCreateReservation })">
-          Create Request
-        </button>
       </div>
 
       <div class="borrower-request-list-page__toolbar">
@@ -57,7 +54,6 @@
                 <th>Schedule</th>
                 <th>Facility / Type</th>
                 <th>Status</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -76,21 +72,6 @@
                     {{ requestRecord.requestStatus }}
                   </span>
                 </td>
-                <td>
-                  <div class="borrower-request-list-page__actions">
-                    <button type="button" class="borrower-request-list-page__action-button" @click="selectedRequest = requestRecord">
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      class="borrower-request-list-page__action-button borrower-request-list-page__action-button--danger"
-                      :disabled="!canCancelRequest(requestRecord)"
-                      @click="openCancelModal(requestRecord)"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </td>
               </tr>
             </tbody>
           </table>
@@ -108,31 +89,19 @@
       </div>
     </section>
 
-    <BorrowerRequestViewModal :request-record="selectedRequest" @close="selectedRequest = null" />
-    <BorrowerRequestCancelModal
-      :request-record="requestToCancel"
-      :is-submitting="isCancelling"
-      @close="closeCancelModal"
-      @confirm="handleCancelRequest"
-    />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
-import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
-import BorrowerRequestViewModal from '@/modules/request/components/BorrowerRequestViewModal.vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
-import { ROUTE_NAMES } from '@/router/routeNames.js';
 import { formatDisplayDateTimeRange } from '@/shared/utils/dateTimeDisplay.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ViewReservationList.css';
 
-const router = useRouter();
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQuery = ref('');
@@ -141,22 +110,12 @@ const sortBy = ref('requestedDate');
 const sortOrder = ref('desc');
 const currentPage = ref(1);
 const pageSize = 8;
-const selectedRequest = ref(null);
-const requestToCancel = ref(null);
-const isCancelling = ref(false);
 
 onMounted(async () => {
   await requestStore.fetchReservations();
 });
 
-const requestRecords = computed(() => {
-  return [
-    ...(requestStore.pendingRequestsList || []),
-    ...(requestStore.approvedRequestsList || []),
-    ...(requestStore.activeReservationsList || []),
-    ...(requestStore.pastRecordsList || []),
-  ];
-});
+const requestRecords = computed(() => requestStore.activeReservationsList || []);
 
 const statusOptions = computed(() => [...new Set(requestRecords.value.map((requestRecord) => requestRecord.requestStatus))]);
 
@@ -201,38 +160,6 @@ watch(totalPages, (nextTotalPages) => {
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
-}
-
-function canCancelRequest(requestRecord) {
-  return ['Pending', 'Pending Review', 'Submitted'].includes(String(requestRecord.requestStatus || ''));
-}
-
-function openCancelModal(requestRecord) {
-  if (!canCancelRequest(requestRecord)) {
-    return;
-  }
-
-  requestToCancel.value = requestRecord;
-}
-
-function closeCancelModal() {
-  requestToCancel.value = null;
-}
-
-async function handleCancelRequest({ reason }) {
-  if (!requestToCancel.value) {
-    return;
-  }
-
-  try {
-    isCancelling.value = true;
-    await requestStore.cancelOwnRequest(requestToCancel.value, reason);
-    closeCancelModal();
-  } catch (error) {
-    console.error('Unable to cancel request.', error);
-  } finally {
-    isCancelling.value = false;
-  }
 }
 
 function getStatusBadgeClass(status) {
