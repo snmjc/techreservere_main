@@ -708,7 +708,6 @@ body {
 }
 
 .classroom-schedule-date-card,
-.classroom-schedule-room-filter-card,
 .classroom-schedule-mini-calendar,
 .classroom-schedule-selected-card,
 .classroom-schedule-legend-card,
@@ -772,31 +771,9 @@ body {
 }
 
 .classroom-schedule-mini-calendar,
-.classroom-schedule-room-filter-card,
 .classroom-schedule-selected-card,
 .classroom-schedule-legend-card {
   padding: 1rem;
-}
-
-.classroom-schedule-room-filter {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.classroom-schedule-room-filter span {
-  color: #425448;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.classroom-schedule-room-filter select {
-  min-height: 42px;
-  padding: 0.65rem 0.75rem;
-  color: #15291d;
-  background: #ffffff;
-  border: 1px solid #d7dfda;
-  border-radius: 10px;
-  font: inherit;
 }
 
 .classroom-schedule-mini-calendar__header {
@@ -964,20 +941,20 @@ body {
 }
 
 .classroom-schedule-board-card {
-  padding: 1rem;
+  padding: 0.9rem;
 }
 
 .classroom-schedule-board-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 1rem;
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
 }
 
 .classroom-schedule-board-toolbar-group {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.45rem;
 }
 
 .classroom-schedule-board-toolbar-group--end {
@@ -986,25 +963,27 @@ body {
 
 .classroom-schedule-board-icon-button,
 .classroom-schedule-board-today {
-  min-height: 36px;
-  padding: 0 0.8rem;
-  border: 1px solid #d7e3db;
-  border-radius: 10px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border: 1px solid #dde6e1;
+  border-radius: 9px;
   background: #ffffff;
-  color: #173322;
+  color: #203528;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
 
 .classroom-schedule-board-icon-button {
-  width: 36px;
+  width: 34px;
   padding: 0;
   font-size: 0;
 }
 
 .classroom-schedule-board-icon-button svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .classroom-schedule-board-icon-button:not(.classroom-schedule-board-icon-button--search)::before {
@@ -1025,19 +1004,32 @@ body {
 }
 
 .classroom-schedule-board-view-select {
-  min-height: 38px;
-  padding: 0 2.3rem 0 0.9rem;
-  color: #173322;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 2.2rem 0 0.8rem;
+  color: #203528;
   background: #ffffff;
-  border: 1px solid #dce7df;
-  border-radius: 10px;
+  border: 1px solid #dde6e1;
+  border-radius: 9px;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
 
 .classroom-schedule-add-button {
-  min-height: 38px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.9rem !important;
+  border-radius: 9px !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 8px 18px rgba(15, 128, 68, 0.16);
+}
+
+.classroom-schedule-add-button svg {
+  width: 13px;
+  height: 13px;
 }
 
 .classroom-schedule-action-menu {
@@ -1094,23 +1086,25 @@ body {
 
 .classroom-schedule-board-day-header {
   display: grid;
-  gap: 0.18rem;
-  min-height: 64px;
-  padding: 0.85rem 0.65rem;
+  gap: 0.08rem;
+  min-height: 56px;
+  padding: 0.7rem 0.55rem;
   border-left: 1px solid #edf2ee;
   border-bottom: 1px solid #edf2ee;
+  text-align: center;
 }
 
 .classroom-schedule-board-day-header span {
-  color: #708171;
-  font-size: 0.72rem;
-  font-weight: 700;
+  color: #7a8b7f;
+  font-size: 0.66rem;
+  font-weight: 600;
 }
 
 .classroom-schedule-board-day-header strong {
-  color: #173322;
-  font-size: 0.92rem;
+  color: #203528;
+  font-size: 0.78rem;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .classroom-schedule-board-day-header.is-selected {
@@ -1127,10 +1121,10 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 0.35rem;
-  color: #6f8274;
-  font-size: 0.72rem;
-  font-weight: 700;
+  padding-top: 0.32rem;
+  color: #819185;
+  font-size: 0.65rem;
+  font-weight: 600;
   border-bottom: 1px solid #edf2ee;
 }
 
@@ -1142,55 +1136,20 @@ body {
   background-size: 100% 60px;
 }
 
-.classroom-schedule-quick-slot {
-  position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0.6rem;
-  color: #1b5e3b;
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px dashed transparent;
-  border-radius: 12px;
-  opacity: 0;
-  transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-}
-
-.classroom-schedule-board-day-column:hover .classroom-schedule-quick-slot {
-  opacity: 1;
-}
-
-.classroom-schedule-quick-slot:hover {
-  background: #edf9f1;
-  border-color: #9fd5b1;
-}
-
-.classroom-schedule-quick-slot span {
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.classroom-schedule-quick-slot strong {
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
 .classroom-schedule-event {
   position: absolute;
-  left: 0.45rem;
-  right: 0.45rem;
-  z-index: 2;
+  left: 0.38rem;
+  right: 0.38rem;
+  z-index: 1;
   display: grid;
-  gap: 0.12rem;
-  padding: 0.45rem 0.5rem;
-  border-radius: 12px;
+  gap: 0.08rem;
+  padding: 0.38rem 0.45rem;
+  border-radius: 10px;
   border: 1px solid transparent;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
 .classroom-schedule-event strong,
@@ -1202,44 +1161,50 @@ body {
 }
 
 .classroom-schedule-event strong {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .classroom-schedule-event span,
 .classroom-schedule-event small {
-  font-size: 0.66rem;
-  line-height: 1.3;
+  font-size: 0.58rem;
+  line-height: 1.22;
+}
+
+.classroom-schedule-event small:first-child {
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 .classroom-schedule-event--class {
-  color: #12643a;
-  background: #edf9f1;
-  border-color: #9fd5b1;
+  color: #117243;
+  background: linear-gradient(180deg, #f3fcf6 0%, #ebf8f0 100%);
+  border-color: #92d2a8;
 }
 
 .classroom-schedule-event--reserved {
-  color: #b42318;
-  background: #fff1f0;
-  border-color: #f5b4ae;
+  color: #cf3e34;
+  background: linear-gradient(180deg, #fff4f3 0%, #fff0ee 100%);
+  border-color: #f2b2ab;
 }
 
 .classroom-schedule-event--equipment {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #b7d0ff;
+  color: #3e78ea;
+  background: linear-gradient(180deg, #f3f8ff 0%, #edf5ff 100%);
+  border-color: #b4ccff;
 }
 
 .classroom-schedule-event--pending {
-  color: #b45309;
-  background: #fff7ed;
-  border-color: #f6c38b;
+  color: #d67a1c;
+  background: linear-gradient(180deg, #fff8ef 0%, #fff5e8 100%);
+  border-color: #f1c07e;
 }
 
 .classroom-schedule-event--maintenance {
-  color: #7c3aed;
-  background: #f5f3ff;
-  border-color: #d2c4ff;
+  color: #8a63d9;
+  background: linear-gradient(180deg, #f7f4ff 0%, #f2efff 100%);
+  border-color: #d4c3ff;
 }
 
 .classroom-schedule-modal,

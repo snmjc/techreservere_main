@@ -164,21 +164,6 @@
               </div>
             </section>
 
-            <section class="classroom-schedule-room-filter-card">
-              <label class="classroom-schedule-room-filter">
-                <span>Room</span>
-                <select v-model="showingFilterValue">
-                  <option
-                    v-for="filterOption in showingFilterOptions"
-                    :key="filterOption.value"
-                    :value="filterOption.value"
-                  >
-                    {{ filterOption.label }}
-                  </option>
-                </select>
-              </label>
-            </section>
-
             <section class="classroom-schedule-mini-calendar">
               <div class="classroom-schedule-mini-calendar__header">
                 <button type="button" @click="shiftClassroomMonth(-1)">‹</button>
@@ -294,17 +279,6 @@
                 class="classroom-schedule-board-day-column"
                 @dblclick="openQuickAddScheduleModal(weekDate.dateKey)"
               >
-                <button
-                  v-for="quickSlot in classroomQuickSlots"
-                  :key="`${weekDate.dateKey}-${quickSlot.startTime}`"
-                  type="button"
-                  class="classroom-schedule-quick-slot"
-                  :style="buildQuickSlotStyle(quickSlot)"
-                  @click.stop="openQuickAddScheduleModal(weekDate.dateKey, quickSlot.startTime, quickSlot.endTime)"
-                >
-                  <span>{{ quickSlot.label }}</span>
-                  <strong>+</strong>
-                </button>
                 <button
                   v-for="scheduleRecord in getSchedulesForClassroomDay(weekDate.dateKey)"
                   :key="scheduleRecord.scheduleBlockIdentifier"
