@@ -676,9 +676,16 @@ class DashboardAggregationService
             ];
         }
 
-        usort($result, static fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
+        usort($result, static function (array $left, array $right): int {
+            $valueComparison = $right['value'] <=> $left['value'];
+            if ($valueComparison !== 0) {
+                return $valueComparison;
+            }
 
-        return $result;
+            return strcmp($left['label'], $right['label']);
+        });
+
+        return array_slice($result, 0, 5);
     }
 
     /**
