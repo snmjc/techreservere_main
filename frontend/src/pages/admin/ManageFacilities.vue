@@ -4,38 +4,12 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <section class="manage-facilities-hero">
-      <div class="manage-facilities-hero-copy">
-        <p class="manage-facilities-hero-kicker">Facilities Command Center</p>
-        <h2 class="manage-facilities-page-heading">Manage spaces, equipment, and daily readiness.</h2>
-        <p class="manage-facilities-hero-description">
-          Keep venue availability current, surface rooms that need attention, and maintain an accurate inventory for reservation teams.
-        </p>
-      </div>
-    </section>
-
-    <section class="manage-facilities-summary-grid" aria-label="Facilities summary">
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Venues tracked' : 'Equipment tracked' }}</span>
-        <strong class="manage-facilities-summary-value">{{ totalManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Active spaces on the roster' : 'Reservable items in inventory' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">Ready now</span>
-        <strong class="manage-facilities-summary-value">{{ availableManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Open for the selected date' : 'Currently available for checkout' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">Needs attention</span>
-        <strong class="manage-facilities-summary-value">{{ unavailableManagedCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Blocked, booked, or inactive rooms' : 'Unavailable or inactive equipment' }}</p>
-      </article>
-      <article class="manage-facilities-summary-card">
-        <span class="manage-facilities-summary-label">{{ activeFacilityTab === 'venue' ? 'Floors in view' : 'Categories in view' }}</span>
-        <strong class="manage-facilities-summary-value">{{ currentGroupingCount }}</strong>
-        <p class="manage-facilities-summary-note">{{ activeFacilityTab === 'venue' ? 'Organized by floor for faster scanning' : 'Grouped through the category filter' }}</p>
-      </article>
-    </section>
+    <div class="logs-page-header manage-facilities-page-header">
+      <h2 class="logs-page-heading">Manage Facilities</h2>
+      <button class="logs-go-back-button" type="button" @click="handleGoBack">
+        ← Go Back
+      </button>
+    </div>
 
     <section class="manage-facilities-workspace">
       <div class="manage-facilities-tabs-row">
@@ -335,6 +309,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
+import '@/pages/borrower/css/Logs.css';
 import './css/ManageFacilities.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import FacilityVenueListComponent from '@/modules/facility/components/FacilityVenueListComponent.vue';
@@ -1068,5 +1043,9 @@ function updateFacilityTabQuery(tabName) {
   }
 
   router.replace({ query: nextQuery });
+}
+
+function handleGoBack() {
+  router.back();
 }
 </script>

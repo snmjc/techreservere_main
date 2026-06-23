@@ -17,6 +17,10 @@ body {
   --manage-facilities-shadow: 0 24px 64px rgba(17, 34, 23, 0.08);
 }
 
+.manage-facilities-page-header {
+  margin-bottom: 1.35rem;
+}
+
 .manage-facilities-hero {
   display: flex;
   justify-content: space-between;
@@ -144,7 +148,7 @@ body {
 
 .manage-facilities-workspace,
 .manage-facilities-equipment-section {
-  padding: 0;
+  padding: 1rem 0 0;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -226,7 +230,7 @@ body {
 }
 
 .manage-facilities-filter-row {
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.9rem;
 }
 
 .manage-facilities-filter-pill {
@@ -252,7 +256,7 @@ body {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .manage-facilities-search-group {
