@@ -201,34 +201,6 @@
   height: 100%;
 }
 
-.reports-chart-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.2rem;
-  margin-bottom: 0.45rem;
-  color: #4b5563;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.legend-dot {
-  display: inline-block;
-  width: 18px;
-  height: 3px;
-  margin-right: 0.35rem;
-  vertical-align: middle;
-  border-radius: 999px;
-}
-
-.legend-dot--actual {
-  background: #2563eb;
-}
-
-.legend-dot--forecast {
-  background: #60a5fa;
-}
-
 .reports-line-chart {
   width: 100%;
   min-height: 250px;

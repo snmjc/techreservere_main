@@ -66,10 +66,6 @@
 
           <div class="reports-forecast-layout">
             <div class="reports-chart-card">
-              <div class="reports-chart-legend">
-                <span><i class="legend-dot legend-dot--actual"></i>Actual Demand</span>
-                <span><i class="legend-dot legend-dot--forecast"></i>Forecasted Demand</span>
-              </div>
               <div v-if="forecastSeries.length === 0" class="reports-inline-message">No reservation demand data is available for this range.</div>
               <div v-else class="reports-chart-canvas-wrap">
                 <canvas ref="forecastChartRef" class="reports-chart-canvas" aria-label="Demand forecasting line chart"></canvas>
