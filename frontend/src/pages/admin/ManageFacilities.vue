@@ -4,12 +4,16 @@
     :role-label="'ADMINISTRATOR'"
     :navigation-items="adminNavigationItems"
   >
-    <div class="logs-page-header manage-facilities-page-header">
-      <h2 class="logs-page-heading">Manage Facilities</h2>
-      <button class="logs-go-back-button" type="button" @click="handleGoBack">
+    <section class="manage-facilities-hero-header">
+      <div class="manage-facilities-hero-copy">
+        <p class="manage-facilities-hero-eyebrow">Facility Operations</p>
+        <h1>Manage Facilities</h1>
+        <p class="manage-facilities-hero-subcopy">Review venue availability, maintain equipment records, and manage classroom schedules from one admin workspace.</p>
+      </div>
+      <button class="manage-facilities-hero-back" type="button" @click="handleGoBack">
         ← Go Back
       </button>
-    </div>
+    </section>
 
     <section class="manage-facilities-workspace">
       <div class="manage-facilities-tabs-row">
@@ -44,7 +48,7 @@
           </button>
         </div>
 
-        <div v-if="activeFacilityTab !== 'classroom-schedules'" class="manage-facilities-inline-actions">
+        <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-inline-actions">
           <button
             v-if="activeFacilityTab === 'classroom-schedules'"
             class="manage-facilities-add-button manage-facilities-add-button--compact"
@@ -62,7 +66,7 @@
         </div>
       </div>
 
-      <div v-if="activeFacilityTab !== 'classroom-schedules'" class="manage-facilities-filter-row">
+      <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-filter-row">
         <button
           class="manage-facilities-filter-pill"
           :class="{ 'manage-facilities-filter-pill--active': availabilityFilter === 'all' }"
@@ -86,7 +90,7 @@
         </button>
       </div>
 
-      <div v-if="activeFacilityTab !== 'classroom-schedules'" class="manage-facilities-search-sort-row">
+      <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-search-sort-row">
         <div class="manage-facilities-search-group">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/>
@@ -120,7 +124,221 @@
         </div>
       </div>
 
-      <div v-if="activeFacilityTab === 'venue' || activeFacilityTab === 'all'">
+      <div v-if="activeFacilityTab === 'venue'">
+        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <section v-else class="manage-facilities-venue-shell">
+          <div class="manage-facilities-venue-surface">
+            <div class="manage-facilities-venue-surface-toolbar">
+              <div class="manage-facilities-venue-toolbar-actions">
+                <button type="button" class="manage-facilities-venue-icon-button" aria-label="Search venues">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                </button>
+
+                <div class="manage-facilities-venue-date-nav">
+                  <button type="button" class="manage-facilities-venue-icon-button" aria-label="Previous day" @click="shiftSelectedVenueDate(-1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button type="button" class="manage-facilities-venue-today-button" @click="setSelectedVenueDateToToday">Today</button>
+                  <button type="button" class="manage-facilities-venue-icon-button" aria-label="Next day" @click="shiftSelectedVenueDate(1)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+
+                <label class="manage-facilities-venue-view-select">
+                  <select v-model="venueCalendarViewMode">
+                    <option value="weekly">Weekly View</option>
+                  </select>
+                </label>
+
+                <button type="button" class="manage-facilities-venue-reserve-button" @click="handleAddFacility">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  Add Venue
+                </button>
+              </div>
+            </div>
+
+            <div class="manage-facilities-venue-date-banner">
+              <div class="manage-facilities-venue-date-tile">
+                <span>{{ selectedVenueMonthShortLabel }}</span>
+                <strong>{{ selectedVenueDayNumberLabel }}</strong>
+              </div>
+              <div class="manage-facilities-venue-date-copy">
+                <h2>{{ selectedVenueLongDateLabel }}</h2>
+                <p>{{ selectedVenueWeekdayLabel }}</p>
+              </div>
+            </div>
+
+            <div class="manage-facilities-venue-calendar-layout">
+              <aside class="manage-facilities-venue-calendar-sidebar">
+                <section class="manage-facilities-venue-sidebar-card manage-facilities-venue-sidebar-card--calendar">
+                  <div class="manage-facilities-venue-mini-calendar-head">
+                    <button type="button" class="manage-facilities-venue-mini-nav" aria-label="Previous month" @click="shiftSelectedVenueMonth(-1)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <strong>{{ selectedVenueMonthLabel }}</strong>
+                    <button type="button" class="manage-facilities-venue-mini-nav" aria-label="Next month" @click="shiftSelectedVenueMonth(1)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div class="manage-facilities-venue-mini-weekdays">
+                    <span v-for="weekday in compactWeekdayLabels" :key="weekday">{{ weekday }}</span>
+                  </div>
+
+                  <div class="manage-facilities-venue-mini-grid">
+                    <button
+                      v-for="dayCell in venueMonthCalendarCells"
+                      :key="dayCell.key"
+                      type="button"
+                      class="manage-facilities-venue-mini-day"
+                      :class="{
+                        'manage-facilities-venue-mini-day--muted': !dayCell.inCurrentMonth,
+                        'manage-facilities-venue-mini-day--active': dayCell.dateValue === selectedVenueCalendarDate,
+                      }"
+                      @click="selectVenueDate(dayCell.dateValue)"
+                    >
+                      {{ dayCell.dayNumber }}
+                    </button>
+                  </div>
+                </section>
+
+                <section class="manage-facilities-venue-sidebar-card">
+                  <p class="manage-facilities-venue-card-label">Selected Date Details</p>
+                  <div class="manage-facilities-venue-detail-list">
+                    <div class="manage-facilities-venue-detail-item">
+                      <span class="manage-facilities-venue-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 7v5l3 3" />
+                        </svg>
+                      </span>
+                      <div>
+                        <strong>{{ selectedVenueSummary.visibleCount }}</strong>
+                        <p>venues surfaced for this date</p>
+                      </div>
+                    </div>
+                    <div class="manage-facilities-venue-detail-item">
+                      <span class="manage-facilities-venue-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4" />
+                          <path d="M8 2v4" />
+                          <path d="M3 10h18" />
+                        </svg>
+                      </span>
+                      <div>
+                        <strong>{{ selectedVenueLongDateLabel }}</strong>
+                        <p>{{ selectedVenueWeekdayLabel }}</p>
+                      </div>
+                    </div>
+                    <div class="manage-facilities-venue-detail-item">
+                      <span class="manage-facilities-venue-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </span>
+                      <div>
+                        <strong>Weekly View</strong>
+                        <p>{{ selectedVenueSummary.availableCount }} available and {{ selectedVenueSummary.blockedCount }} blocked on this date</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="manage-facilities-venue-sidebar-card">
+                  <p class="manage-facilities-venue-card-label">Legend</p>
+                  <div class="manage-facilities-venue-legend-list">
+                    <div class="manage-facilities-venue-legend-row">
+                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--available"></span>
+                      <div>
+                        <strong>Available</strong>
+                        <p>Venue is open for reservations on that date.</p>
+                      </div>
+                    </div>
+                    <div class="manage-facilities-venue-legend-row">
+                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--blocked"></span>
+                      <div>
+                        <strong>Reserved Block</strong>
+                        <p>Venue is already reserved or blocked for the selected date.</p>
+                      </div>
+                    </div>
+                    <div class="manage-facilities-venue-legend-row">
+                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--partial"></span>
+                      <div>
+                        <strong>Limited</strong>
+                        <p>Venue has schedule constraints or partial reservation blocks.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </aside>
+
+              <section class="manage-facilities-venue-board-panel">
+                <div class="manage-facilities-venue-board">
+                  <div class="manage-facilities-venue-week-grid">
+                    <article
+                      v-for="dayColumn in venueCalendarColumns"
+                      :key="dayColumn.dateValue"
+                      class="manage-facilities-venue-day-column"
+                      :class="{ 'manage-facilities-venue-day-column--selected': dayColumn.dateValue === selectedVenueCalendarDate }"
+                    >
+                      <header class="manage-facilities-venue-day-header">
+                        <span>{{ dayColumn.weekdayLabel }}</span>
+                        <strong>{{ dayColumn.shortDateLabel }}</strong>
+                        <small>{{ dayColumn.entryCountLabel }}</small>
+                      </header>
+
+                      <div class="manage-facilities-venue-day-body">
+                        <article
+                          v-for="entry in dayColumn.entries"
+                          :key="`${dayColumn.dateValue}-${entry.venueIdentifier}`"
+                          class="manage-facilities-venue-availability-card"
+                          :class="`manage-facilities-venue-availability-card--${entry.statusTone}`"
+                        >
+                          <span class="manage-facilities-venue-availability-meta">{{ entry.metaLine }}</span>
+                          <strong>{{ entry.venueName }}</strong>
+                          <p>{{ entry.descriptionLine }}</p>
+                          <div class="manage-facilities-venue-availability-footer">
+                            <span>{{ entry.footerLabel }}</span>
+                            <span>{{ entry.capacityLabel }}</span>
+                          </div>
+                          <div class="manage-facilities-venue-availability-actions">
+                            <button type="button" @click="handleViewVenue(entry.sourceRecord)">View</button>
+                            <button type="button" @click="handleEditVenue(entry.sourceRecord)">Edit</button>
+                            <button type="button" class="manage-facilities-venue-availability-delete" @click="handleDeleteVenue(entry.sourceRecord)">Delete</button>
+                          </div>
+                        </article>
+
+                        <div v-if="dayColumn.entries.length === 0" class="manage-facilities-venue-empty-day">
+                          <strong>No venues surfaced</strong>
+                          <p>No venues matched the current filters for this date.</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div v-else-if="activeFacilityTab === 'all'">
         <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
         <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
         <div v-else class="manage-facilities-venue-layout">
@@ -845,6 +1063,8 @@ const venueError = ref('');
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
 const selectedVenueCalendarDate = ref(getTodayDateInputValue());
+const venueMonthCursor = ref(selectedVenueCalendarDate.value.slice(0, 7));
+const venueCalendarViewMode = ref('weekly');
 const deleteEquipmentRecord = ref(null);
 const deleteEquipmentConfirmEmail = ref('');
 const deleteEquipmentConfirmPassword = ref('');
@@ -911,6 +1131,7 @@ const classroomScheduleTypeOptions = ['Class Schedule', 'Reserved', 'Equipment R
 const academicYearOptions = ['2025 - 2026', '2026 - 2027', '2027 - 2028', '2028 - 2029'];
 const semesterOptions = ['1st Semester', '2nd Semester', 'Summer'];
 const miniCalendarWeekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const compactWeekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const classroomTimeLabels = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
 const classroomQuickSlots = Array.from({ length: 12 }, (_, index) => {
   const startHour = 7 + index;
@@ -951,6 +1172,38 @@ const venueFloorGroups = computed(() => buildVenueFloorGroups(
   floorOrder,
   selectedVenueCalendarDate.value,
 ));
+const venueWeekDates = computed(() => buildWeekDates(selectedVenueCalendarDate.value));
+const selectedVenueMonthLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(`${venueMonthCursor.value}-01T00:00:00`)));
+const selectedVenueLongDateLabel = computed(() => formatDisplayDateHeading(selectedVenueCalendarDate.value));
+const selectedVenueWeekdayLabel = computed(() => new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date(`${selectedVenueCalendarDate.value}T00:00:00`)));
+const selectedVenueMonthShortLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(`${selectedVenueCalendarDate.value}T00:00:00`)).toUpperCase());
+const selectedVenueDayNumberLabel = computed(() => new Date(`${selectedVenueCalendarDate.value}T00:00:00`).getDate());
+const venueMonthCalendarCells = computed(() => buildSimpleCalendarDays(venueMonthCursor.value));
+const selectedVenueSummary = computed(() => {
+  const visibleCount = filteredVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
+    venueRecord,
+    availabilityFilter.value,
+    selectedVenueCalendarDate.value,
+  )).length;
+  const availableCount = filteredVenueRecords.value.filter((venueRecord) => deriveVenueAvailabilityForDate(venueRecord, selectedVenueCalendarDate.value) === 'Available').length;
+
+  return {
+    visibleCount,
+    availableCount,
+    blockedCount: Math.max(filteredVenueRecords.value.length - availableCount, 0),
+  };
+});
+const venueCalendarColumns = computed(() => venueWeekDates.value.map((weekDate) => {
+  const entries = getVenueEntriesForDate(weekDate.dateKey);
+
+  return {
+    dateValue: weekDate.dateKey,
+    weekdayLabel: weekDate.weekday,
+    shortDateLabel: weekDate.monthDay,
+    entryCountLabel: `${entries.length} venue${entries.length === 1 ? '' : 's'}`,
+    entries,
+  };
+}));
 
 const filteredVenueRecords = computed(() => {
   const selectedFloor = showingFilterValue.value;
@@ -1440,6 +1693,7 @@ watch(showingFilterOptions, (nextOptions) => {
 });
 
 watch(selectedVenueCalendarDate, () => {
+  venueMonthCursor.value = selectedVenueCalendarDate.value.slice(0, 7);
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     fetchVenues();
   }
@@ -1718,6 +1972,57 @@ function getScheduleQueryWindow(selectedDate) {
   };
 }
 
+function shiftSelectedVenueDate(dayOffset) {
+  const nextDate = new Date(`${selectedVenueCalendarDate.value}T00:00:00`);
+  nextDate.setDate(nextDate.getDate() + dayOffset);
+  selectedVenueCalendarDate.value = formatDateInputValue(nextDate);
+}
+
+function setSelectedVenueDateToToday() {
+  selectedVenueCalendarDate.value = todayDateKey;
+}
+
+function shiftSelectedVenueMonth(offset) {
+  const [year, month] = venueMonthCursor.value.split('-').map((value) => Number(value));
+  const nextDate = new Date(year, month - 1 + offset, 1);
+  venueMonthCursor.value = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function selectVenueDate(dateValue) {
+  selectedVenueCalendarDate.value = dateValue;
+}
+
+function getVenueEntriesForDate(dateValue) {
+  return filteredVenueRecords.value
+    .filter((venueRecord) => matchesCalendarAvailability(venueRecord, availabilityFilter.value, dateValue))
+    .map((venueRecord) => buildVenueCalendarEntry(venueRecord, dateValue));
+}
+
+function buildVenueCalendarEntry(venueRecord, dateValue) {
+  const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, dateValue);
+  const statusTone = availabilityStatus === 'Available'
+    ? 'available'
+    : availabilityStatus === 'Partially Booked'
+      ? 'partial'
+      : 'blocked';
+  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+  const primaryRange = reservationRanges[0] || null;
+  const metaLine = primaryRange
+    ? `${formatTimeDisplay(primaryRange.startTime || '08:00')} - ${formatTimeDisplay(primaryRange.endTime || '17:00')}`
+    : availabilityStatus;
+
+  return {
+    sourceRecord: venueRecord,
+    venueIdentifier: venueRecord.venueIdentifier,
+    venueName: venueRecord.venueName,
+    statusTone,
+    metaLine,
+    descriptionLine: venueRecord.venueLocation || venueRecord.floorLevel || 'Venue location not set',
+    footerLabel: availabilityStatus,
+    capacityLabel: `Cap ${venueRecord.capacityLimit || 'N/A'}`,
+  };
+}
+
 function normalizeClassScheduleRecord(scheduleRecord) {
   return {
     scheduleBlockIdentifier: Number(scheduleRecord?.scheduleBlockIdentifier || 0),
@@ -1776,6 +2081,26 @@ function buildMiniCalendarDays(monthCursor, scheduleRecords) {
       dayNumber: currentDate.getDate(),
       isCurrentMonth: currentDate.getMonth() === month - 1,
       hasSchedules: (scheduleRecords || []).some((scheduleRecord) => scheduleRecord.blockDate === dateKey),
+    };
+  });
+}
+
+function buildSimpleCalendarDays(monthCursor) {
+  const [year, month] = monthCursor.split('-').map((value) => Number(value));
+  const firstDay = new Date(year, month - 1, 1);
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const currentDate = new Date(gridStart);
+    currentDate.setDate(gridStart.getDate() + index);
+    const dateKey = formatDateInputValue(currentDate);
+
+    return {
+      key: `${dateKey}-${index}`,
+      dateValue: dateKey,
+      dayNumber: currentDate.getDate(),
+      inCurrentMonth: currentDate.getMonth() === month - 1,
     };
   });
 }
