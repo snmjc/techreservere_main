@@ -71,40 +71,9 @@
                 <span><i class="legend-dot legend-dot--forecast"></i>Forecasted Demand</span>
               </div>
               <div v-if="forecastSeries.length === 0" class="reports-inline-message">No reservation demand data is available for this range.</div>
-              <svg v-else class="reports-line-chart" :viewBox="`0 0 ${forecastChart.width} ${forecastChart.height}`" role="img" aria-label="Demand forecasting line chart">
-                <g class="reports-grid-lines">
-                  <path
-                    v-for="(line, index) in forecastChart.gridLinesY"
-                    :key="`grid-y-${index}`"
-                    :d="`M52 ${line.y}H730`"
-                  />
-                  <path
-                    v-for="(line, index) in forecastChart.gridLinesX"
-                    :key="`grid-x-${index}`"
-                    :d="`M${line.x} 30V230`"
-                  />
-                </g>
-                <g class="reports-axis-labels">
-                  <text
-                    v-for="(label, index) in forecastChart.yAxisLabels"
-                    :key="`label-y-${index}`"
-                    :x="label.x"
-                    :y="label.y"
-                  >
-                    {{ label.value }}
-                  </text>
-                  <text
-                    v-for="(label, index) in forecastChart.xAxisLabels"
-                    :key="`label-x-${index}`"
-                    :x="label.x"
-                    :y="label.y"
-                  >
-                    {{ label.label }}
-                  </text>
-                </g>
-                <polyline class="reports-line reports-line--actual" :points="forecastChart.actualPolylinePoints" />
-                <polyline class="reports-line reports-line--forecast" :points="forecastChart.forecastPolylinePoints" />
-              </svg>
+              <div v-else class="reports-chart-canvas-wrap">
+                <canvas ref="forecastChartRef" class="reports-chart-canvas" aria-label="Demand forecasting line chart"></canvas>
+              </div>
             </div>
 
             <aside class="reports-insights-card">
@@ -132,20 +101,22 @@
             <h2>Readiness Risk Detection (Operational Risk Bands)</h2>
             <p>Risk level distribution across tracked equipment inventory.</p>
             <div class="reports-risk-layout">
-              <div class="reports-donut" :style="riskDonutStyle" aria-label="Risk level distribution">
-                <span>{{ safeRateLabel }}</span>
+              <div class="reports-chart-canvas-wrap reports-chart-canvas-wrap--donut">
+                <canvas ref="riskChartRef" class="reports-chart-canvas" :aria-label="highRiskTooltip"></canvas>
               </div>
               <ul class="reports-risk-list">
                 <li v-for="risk in riskBands" :key="risk.label">
-                  <i :style="{ background: risk.color }"></i>
-                  <span>{{ risk.label }}</span>
-                  <strong>{{ risk.count }} equipment</strong>
+                  <i :style="{ background: risk.color }" :title="resolveRiskBandColorTooltip(risk)"></i>
+                  <span :title="resolveRiskBandLabelTooltip(risk)">{{ risk.label }}</span>
+                  <strong :title="resolveRiskBandCountTooltip(risk)">{{ risk.count }} equipment</strong>
                 </li>
               </ul>
               <div class="reports-top-risk-card">
                 <h3>Top Risk Factors</h3>
                 <ol>
-                  <li v-for="factor in topRiskFactors" :key="factor">{{ factor }}</li>
+                  <li v-for="factor in topRiskFactors" :key="factor">
+                    <span :title="resolveRiskFactorTooltip(factor)">{{ factor }}</span>
+                  </li>
                 </ol>
               </div>
             </div>
@@ -172,10 +143,10 @@
             <h2>Equipment Utilization Overview</h2>
             <div v-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
             <div v-else class="reports-bar-chart">
-              <div v-for="item in utilizationItems" :key="item.label">
+              <div v-for="item in utilizationItems" :key="item.label" :title="resolveUtilizationTooltip(item)">
                 <span>{{ formatMetricNumber(item.value, 0) }}%</span>
-                <i :style="{ height: `${Math.max(12, Number(item.value || 0))}%` }"></i>
-                <small>{{ item.label }}</small>
+                <i :style="{ height: `${Math.max(12, Number(item.value || 0))}%` }" :title="resolveUtilizationTooltip(item)"></i>
+                <small :title="resolveUtilizationTooltip(item)">{{ item.label }}</small>
               </div>
             </div>
           </section>
@@ -274,7 +245,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { Chart, registerables } from 'chart.js';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
@@ -291,6 +263,8 @@ import {
   resolveAdminAnalyticsDateRange,
 } from './adminAnalyticsHelpers.js';
 
+Chart.register(...registerables);
+
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
 const isExporting = ref(false);
@@ -303,8 +277,12 @@ const analyticsRunStatus = ref('');
 const analyticsRunStatusType = ref('info');
 const pdfError = ref('');
 const reportSurfaceRef = ref(null);
+const forecastChartRef = ref(null);
+const riskChartRef = ref(null);
 const reportsAnalytics = ref(createEmptyReport());
 const reportsSourceLabel = ref('Loading stored analytics...');
+let forecastChartInstance = null;
+let riskChartInstance = null;
 
 const analyticsScenarios = [
   { key: 'clean_data', title: 'Clean Data', description: 'Reset to a neutral demo state with balanced inputs.' },
@@ -350,12 +328,12 @@ const forecastProjectionSeries = computed(() => (forecastData.value.forecastSeri
   ...item,
   label: formatShortDate(item.label),
 })));
-const forecastChart = computed(() => buildDualLineChartModel(forecastSeries.value, forecastProjectionSeries.value, { width: 760, height: 260 }));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
 const riskBands = computed(() => reportsAnalytics.value.riskDistribution?.bands || []);
 const topRiskFactors = computed(() => reportsAnalytics.value.riskDistribution?.topRiskFactors || []);
-const riskDonutStyle = computed(() => buildRiskDonutStyle(riskBands.value));
+const highRiskEquipment = computed(() => reportsAnalytics.value.riskDistribution?.highRiskEquipment || []);
 const safeRateLabel = computed(() => `${formatMetricNumber(reportsAnalytics.value.riskDistribution?.safeRate || 0, 0)}%`);
+const highRiskTooltip = computed(() => resolveHighRiskTooltip());
 const optimizationMetrics = computed(() => reportsAnalytics.value.optimizationMetrics || []);
 const utilizationItems = computed(() => reportsAnalytics.value.utilizationByCategory || []);
 const topEquipment = computed(() => reportsAnalytics.value.topEquipment || []);
@@ -372,9 +350,21 @@ onMounted(() => {
   loadReportsAnalytics();
 });
 
+onBeforeUnmount(() => {
+  destroyCharts();
+});
+
 watch(selectedRangeKey, () => {
   loadReportsAnalytics();
 });
+
+watch(
+  () => reportsAnalytics.value,
+  () => {
+    renderCharts();
+  },
+  { deep: true }
+);
 
 async function loadReportsAnalytics(options = {}) {
   const preferLiveOnly = options.preferLiveOnly === true;
@@ -386,6 +376,7 @@ async function loadReportsAnalytics(options = {}) {
     reportsAnalytics.value = createEmptyReport();
     reportsAnalytics.value = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
     reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
+    await renderCharts();
   } catch (error) {
     if (preferLiveOnly) {
       reportsAnalytics.value = createEmptyReport();
@@ -412,6 +403,7 @@ async function loadReportsAnalytics(options = {}) {
     }
   } finally {
     isReportsLoading.value = false;
+    await renderCharts();
   }
 }
 
@@ -562,6 +554,154 @@ function createEmptyReport() {
   };
 }
 
+function destroyCharts() {
+  if (forecastChartInstance) {
+    forecastChartInstance.destroy();
+    forecastChartInstance = null;
+  }
+
+  if (riskChartInstance) {
+    riskChartInstance.destroy();
+    riskChartInstance = null;
+  }
+}
+
+async function renderCharts() {
+  await nextTick();
+  renderForecastChart();
+  renderRiskChart();
+}
+
+function renderForecastChart() {
+  const canvas = forecastChartRef.value;
+  if (!canvas || forecastSeries.value.length === 0) {
+    if (forecastChartInstance) {
+      forecastChartInstance.destroy();
+      forecastChartInstance = null;
+    }
+    return;
+  }
+
+  if (forecastChartInstance) {
+    forecastChartInstance.destroy();
+  }
+
+  forecastChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: forecastSeries.value.map((item) => item.label),
+      datasets: [
+        {
+          label: 'Actual Demand',
+          data: forecastSeries.value.map((item) => Number(item.value || 0)),
+          borderColor: '#1d4ed8',
+          backgroundColor: 'rgba(29, 78, 216, 0.12)',
+          tension: 0.35,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+        {
+          label: 'Forecasted Demand',
+          data: forecastProjectionSeries.value.map((item) => Number(item.value || 0)),
+          borderColor: '#60a5fa',
+          borderDash: [8, 6],
+          tension: 0.35,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { usePointStyle: true } },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label(context) {
+              const label = context.dataset?.label || '';
+              const value = Number(context.raw || 0);
+              return `${label}: ${formatMetricNumber(value, 1)} requests`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid: { color: '#e5e7eb' } },
+        y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+      },
+    },
+  });
+}
+
+function renderRiskChart() {
+  const canvas = riskChartRef.value;
+  if (!canvas || riskBands.value.length === 0) {
+    if (riskChartInstance) {
+      riskChartInstance.destroy();
+      riskChartInstance = null;
+    }
+    return;
+  }
+
+  if (riskChartInstance) {
+    riskChartInstance.destroy();
+  }
+
+  riskChartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: riskBands.value.map((item) => item.label),
+      datasets: [
+        {
+          data: riskBands.value.map((item) => Number(item.count || 0)),
+          backgroundColor: riskBands.value.map((item) => item.color),
+          borderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const label = context.label || '';
+              const value = Number(context.raw || 0);
+              if (label === 'High Risk') {
+                const names = highRiskEquipment.value.map((item) => item?.name).filter(Boolean);
+                return [`${label}: ${value} equipment`, ...names.slice(0, 5).map((name) => `• ${name}`)];
+              }
+              return `${label}: ${value} equipment`;
+            },
+          },
+        },
+      },
+    },
+    plugins: [
+      {
+        id: 'centerText',
+        afterDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+          ctx.save();
+          ctx.fillStyle = '#15803d';
+          ctx.font = '700 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(safeRateLabel.value, (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
+          ctx.restore();
+        },
+      },
+    ],
+  });
+}
+
 function resolveReportsError(error) {
   return error?.response?.data?.errorMessage
     || error?.message
@@ -597,6 +737,7 @@ function normalizeStoredAnalyticsResponse(response) {
   normalized.riskDistribution = {
     bands: normalizeBands(readinessPayload),
     topRiskFactors: readinessPayload.topRiskFactors || readinessPayload.top_risk_factors || [],
+    highRiskEquipment: readinessPayload.highRiskEquipment || readinessPayload.high_risk_equipment || [],
     safeRate: Number(readinessPayload.safeRate || readinessPayload.safe_rate || 0),
   };
 
@@ -693,5 +834,100 @@ function formatLongDate(value) {
   const date = parseDateOnly(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+function resolveRiskBandColorTooltip(risk) {
+  if (!risk) {
+    return 'Risk band color';
+  }
+
+  switch (risk.label) {
+    case 'High Risk':
+      return resolveHighRiskTooltip();
+    case 'Medium Risk':
+      return 'Amber: moderate equipment pressure.';
+    case 'Low Risk':
+      return 'Yellow: low equipment pressure.';
+    case 'Very Low Risk':
+      return 'Green: healthy equipment pressure.';
+    default:
+      return `${risk.label} color`;
+  }
+}
+
+function resolveHighRiskTooltip() {
+  if (highRiskEquipment.value.length === 0) {
+    return `Safe equipment rate: ${safeRateLabel.value}`;
+  }
+
+  const topNames = highRiskEquipment.value
+    .map((item) => item?.name)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  return `Red: top high risk equipment — ${topNames.join(', ')}.`;
+}
+
+function resolveRiskBandLabelTooltip(risk) {
+  if (!risk) {
+    return 'Risk band';
+  }
+
+  switch (risk.label) {
+    case 'High Risk':
+      return 'High urgency risk band.';
+    case 'Medium Risk':
+      return 'Moderate pressure risk band.';
+    case 'Low Risk':
+      return 'Low pressure risk band.';
+    case 'Very Low Risk':
+      return 'Stable and low concern band.';
+    default:
+      return risk.label;
+  }
+}
+
+function resolveRiskBandCountTooltip(risk) {
+  if (!risk) {
+    return 'Equipment count in this band';
+  }
+
+  const countLabel = formatMetricNumber(risk.count || 0, 0);
+  switch (risk.label) {
+    case 'High Risk':
+      return `${countLabel} equipment in the highest risk band.`;
+    case 'Medium Risk':
+      return `${countLabel} equipment in the medium risk band.`;
+    case 'Low Risk':
+      return `${countLabel} equipment in the low risk band.`;
+    case 'Very Low Risk':
+      return `${countLabel} equipment in the very low risk band.`;
+    default:
+      return `${countLabel} equipment.`;
+  }
+}
+
+function resolveRiskFactorTooltip(factor) {
+  switch (factor) {
+    case 'Low stock pressure':
+      return 'Available stock is at or below 20% of total inventory.';
+    case 'Inactive availability state':
+      return 'Equipment is marked unavailable or inactive.';
+    case 'Overdue release linkage':
+      return 'Linked to a reservation that is overdue for return.';
+    case 'High usage frequency':
+      return 'Requested at least three times in the current period.';
+    default:
+      return factor || '';
+  }
+}
+
+function resolveUtilizationTooltip(item) {
+  if (!item) {
+    return 'Equipment utilization';
+  }
+
+  const value = formatMetricNumber(item.value || 0, 0);
+  return `${item.label || 'Category'} utilization: ${value}%`;
 }
 </script>

@@ -542,6 +542,7 @@ class DashboardAggregationService
             'Overdue release linkage' => 0,
             'High usage frequency' => 0,
         ];
+        $highRiskEquipment = [];
         $distribution = [
             ['label' => 'High Risk', 'count' => 0, 'color' => '#ef4444'],
             ['label' => 'Medium Risk', 'count' => 0, 'color' => '#f59e0b'],
@@ -586,6 +587,11 @@ class DashboardAggregationService
 
             if ($score >= 6) {
                 $distribution[0]['count']++;
+                $highRiskEquipment[] = [
+                    'name' => $equipmentRecord->getEquipmentName(),
+                    'score' => $score,
+                    'usageCount' => (int) ($usageRecord['usageCount'] ?? 0),
+                ];
             } elseif ($score >= 4) {
                 $distribution[1]['count']++;
             } elseif ($score >= 2) {
@@ -594,6 +600,12 @@ class DashboardAggregationService
                 $distribution[3]['count']++;
             }
         }
+
+        usort($highRiskEquipment, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score'])
+                ?: ($right['usageCount'] <=> $left['usageCount'])
+                ?: strcmp((string) $left['name'], (string) $right['name']);
+        });
 
         arsort($factorCounts);
         $topRiskFactors = array_slice(array_keys($factorCounts), 0, 4);
@@ -604,6 +616,7 @@ class DashboardAggregationService
         return [
             'bands' => $distribution,
             'topRiskFactors' => $topRiskFactors,
+            'highRiskEquipment' => array_slice($highRiskEquipment, 0, 5),
             'safeRate' => $safeRate,
             'overdueReservations' => count($overdueReservations),
         ];
