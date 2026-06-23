@@ -266,7 +266,23 @@ class DashboardAggregationService
         $currentLabels = array_keys($currentDailyDemandMap);
         $currentValues = array_values($currentDailyDemandMap);
         $previousValues = array_values($previousDailyDemandMap);
-        $forecastValues = $previousValues;
+        $forecastValues = [];
+        $forecastLabels = [];
+        $lastCurrentDate = $currentLabels === [] ? $endDate : new \DateTimeImmutable(end($currentLabels));
+        $baseline = $currentValues === [] ? 0.0 : array_sum($currentValues) / count($currentValues);
+        $recentBaseline = array_sum(array_slice($currentValues, -3)) / max(1, count(array_slice($currentValues, -3)));
+
+        for ($offset = 1; $offset <= 3; $offset++) {
+            $futureDate = $lastCurrentDate->modify(sprintf('+%d day', $offset));
+            $forecastLabels[] = $futureDate->format('Y-m-d');
+
+            $historicalIndex = count($currentValues) - 1 - (3 - $offset);
+            $historicalValue = $historicalIndex >= 0 ? (float) $currentValues[$historicalIndex] : $baseline;
+            $weekdayBoost = in_array((int) $futureDate->format('N'), [6, 7], true) ? 1.15 : 1.0;
+            $trendBoost = $recentBaseline > $baseline ? 1.12 : ($recentBaseline < $baseline ? 0.92 : 1.0);
+            $forecastValues[] = round(max(0.0, (($historicalValue * 0.55) + ($recentBaseline * 0.45)) * $weekdayBoost * $trendBoost), 2);
+        }
+
         $peakIndex = $forecastValues === [] ? null : array_keys($forecastValues, max($forecastValues), true)[0];
         $currentTotal = array_sum($currentValues);
         $previousTotal = array_sum($previousValues);
@@ -279,10 +295,10 @@ class DashboardAggregationService
             ),
             'forecastSeries' => array_map(
                 static fn (string $label, float|int $value): array => ['label' => $label, 'value' => (float) $value],
-                $currentLabels,
+                $forecastLabels,
                 $forecastValues
             ),
-            'peakDate' => $peakIndex === null ? null : $currentLabels[$peakIndex],
+            'peakDate' => $peakIndex === null ? null : $forecastLabels[$peakIndex],
             'peakValue' => $peakIndex === null ? 0.0 : (float) $forecastValues[$peakIndex],
             'growthPercent' => round($this->calculateDirectionalDelta($previousTotal, $currentTotal), 1),
         ];

@@ -72,6 +72,10 @@
               </div>
               <div class="reports-accordion">
                 <details>
+                  <summary>TLDR</summary>
+                  <p>{{ forecastNarrative.tldr }}</p>
+                </details>
+                <details>
                   <summary>What this graph shows</summary>
                   <p>{{ forecastNarrative.summary }}</p>
                 </details>
@@ -360,12 +364,34 @@ const modelCards = [
 const forecastData = computed(() => reportsAnalytics.value.forecast || {});
 const forecastSeries = computed(() => (forecastData.value.actualSeries || []).map((item) => ({
   ...item,
-  label: formatShortDate(item.label),
+  label: formatShortDate(item.date || item.label),
 })));
 const forecastProjectionSeries = computed(() => (forecastData.value.forecastSeries || []).map((item) => ({
   ...item,
-  label: formatShortDate(item.label),
+  label: formatShortDate(item.date || item.label),
 })));
+const forecastDisplaySeries = computed(() => buildForecastDisplaySeries(forecastSeries.value, forecastProjectionSeries.value));
+const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels.map((_, index) => {
+  const actualValue = forecastDisplaySeries.value.actualValues[index];
+  const forecastValue = forecastDisplaySeries.value.forecastValues[index];
+  const hasActual = actualValue !== null && actualValue !== undefined;
+  const hasForecast = forecastValue !== null && forecastValue !== undefined;
+
+  if (!hasActual && !hasForecast) {
+    return null;
+  }
+
+  const actualNumber = Number(actualValue || 0);
+  const forecastNumber = Number(forecastValue || 0);
+  if (!hasActual) {
+    return forecastNumber;
+  }
+  if (!hasForecast) {
+    return actualNumber;
+  }
+
+  return roundForecastValue((actualNumber + forecastNumber) / 2);
+}));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
 const forecastNarrative = computed(() => buildForecastNarrative(forecastData.value, forecastSeries.value, forecastProjectionSeries.value));
 const riskBands = computed(() => reportsAnalytics.value.riskDistribution?.bands || []);
@@ -631,11 +657,11 @@ function renderForecastChart() {
   forecastChartInstance = new Chart(canvas, {
     type: 'line',
     data: {
-      labels: forecastSeries.value.map((item) => item.label),
+      labels: forecastDisplaySeries.value.labels.map((label) => formatShortDate(label)),
       datasets: [
         {
           label: 'Actual Demand',
-          data: forecastSeries.value.map((item) => Number(item.value || 0)),
+          data: forecastDisplaySeries.value.actualValues,
           borderColor: '#1d4ed8',
           backgroundColor: 'rgba(29, 78, 216, 0.12)',
           tension: 0.35,
@@ -644,12 +670,22 @@ function renderForecastChart() {
         },
         {
           label: 'Forecasted Demand',
-          data: forecastProjectionSeries.value.map((item) => Number(item.value || 0)),
+          data: forecastDisplaySeries.value.forecastValues,
           borderColor: '#60a5fa',
           borderDash: [8, 6],
           tension: 0.35,
           pointRadius: 2,
           pointHoverRadius: 4,
+        },
+        {
+          label: 'Midpoint Trend',
+          data: forecastMidpointSeries.value,
+          borderColor: '#10b981',
+          borderDash: [2, 4],
+          tension: 0.35,
+          pointRadius: 1,
+          pointHoverRadius: 3,
+          borderWidth: 2,
         },
       ],
     },
@@ -1009,6 +1045,16 @@ function buildForecastNarrative(forecast = {}, actualSeries = [], forecastSeries
     : forecastValues.reduce((sum, value) => sum + value, 0);
   const actualAverage = actualValues.length > 0 ? actualValues.reduce((sum, value) => sum + value, 0) / actualValues.length : 0;
   const forecastAverage = forecastValues.length > 0 ? forecastValues.reduce((sum, value) => sum + value, 0) / forecastValues.length : 0;
+  const forecastLookAheadAverage = forecastValues.slice(-3).reduce((sum, value) => sum + value, 0) / Math.max(1, Math.min(3, forecastValues.length));
+  const midpointTail = forecastValues.length >= 1
+    ? forecastValues
+        .slice(-3)
+        .map((value, index, values) => {
+          const actualValue = actualValues.slice(-values.length)[index] ?? actualAverage;
+          return (Number(actualValue || 0) + Number(value || 0)) / 2;
+        })
+    : [];
+  const midpointTrend = midpointTail.length > 0 ? midpointTail.reduce((sum, value) => sum + value, 0) / midpointTail.length : 0;
   const growthPercent = Number(forecast?.growthPercent || 0);
   const peakDate = formatLongDate(forecast?.peakDate);
   const forecastGap = forecastPeak - actualPeak;
@@ -1019,6 +1065,24 @@ function buildForecastNarrative(forecast = {}, actualSeries = [], forecastSeries
   const summary = actualValues.length > 0 || forecastValues.length > 0
     ? `This graph compares ${formatMetricNumber(actualValues.length, 0)} actual demand points with ${formatMetricNumber(forecastValues.length, 0)} forecast points over the selected range. The forecast peaks at ${formatMetricNumber(forecastPeak, 1)} requests on ${peakDate}, while actual demand peaks at ${formatMetricNumber(actualPeak, 1)} requests.`
     : 'No demand series is available for this range.';
+
+  const tldr = forecastValues.length > 0
+    ? [
+        forecastLookAheadAverage >= actualAverage + 2
+          ? `If the next 3 days stay above ${formatMetricNumber(actualAverage, 1)} requests, prepare more equipment and staff now.`
+          : forecastLookAheadAverage <= actualAverage - 2
+            ? `If the next 3 days fall below ${formatMetricNumber(actualAverage, 1)} requests, keep inventory lean and avoid over-preparing.`
+            : `If the next 3 days stay near ${formatMetricNumber(actualAverage, 1)} requests, hold current allocation and monitor for changes.`,
+        midpointTrend >= forecastLookAheadAverage
+          ? 'If the midpoint trend stays above the look-ahead average, keep a cautious buffer because demand may flatten later.'
+          : 'If the midpoint trend stays below the look-ahead average, move to a proactive allocation plan because demand may rise later.',
+        forecastGap >= 3
+          ? 'If the forecast peak is higher than the current peak, expect a sharper surge and stage resources earlier.'
+          : forecastGap <= -3
+            ? 'If the forecast peak is lower than the current peak, the surge may already be passing and the load should ease.'
+            : 'If the forecast peak stays close to the current peak, keep the same operating rhythm and review daily.',
+      ].join(' ')
+    : 'No forecast trend is available yet for a decision check.';
 
   const interpretation = forecastValues.length > 0
     ? [
@@ -1039,6 +1103,14 @@ function buildForecastNarrative(forecast = {}, actualSeries = [], forecastSeries
           : averageGap <= -3
             ? 'Average forecast volume is noticeably below actual demand, so current usage may be tapering off.'
             : 'Average forecast volume is close to actual demand, so the overall pattern is steady.',
+        forecastLookAheadAverage >= actualAverage + 2
+          ? `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so prepare for a short-term rise in demand.`
+          : forecastLookAheadAverage <= actualAverage - 2
+            ? `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so demand should ease slightly.`
+            : `The next 3 days average ${formatMetricNumber(forecastLookAheadAverage, 1)} requests, so demand should stay near the current baseline.`,
+        midpointTrend >= forecastLookAheadAverage
+          ? `The midpoint trend sits at ${formatMetricNumber(midpointTrend, 1)} requests, which leans closer to the actual demand line and supports a cautious allocation plan.`
+          : `The midpoint trend sits at ${formatMetricNumber(midpointTrend, 1)} requests, which leans toward the forecast line and supports a more proactive allocation plan.`,
         peakInForecast
           ? 'The forecast peak arrives at or after the actual peak, which usually means the pressure is moving later in the period.'
           : 'The forecast peak appears earlier than the actual peak, which may indicate an early spike followed by a taper.',
@@ -1048,7 +1120,77 @@ function buildForecastNarrative(forecast = {}, actualSeries = [], forecastSeries
       ].join(' ')
     : 'There is no forecast trend to interpret for this range.';
 
-  return { summary, interpretation };
+  return { tldr, summary, interpretation };
+}
+
+function buildForecastDisplaySeries(actualSeries = [], forecastSeries = []) {
+  const actualMap = new Map();
+  const forecastMap = new Map();
+
+  actualSeries.forEach((item) => {
+    const key = item?.date || item?.label || '';
+    if (key) {
+      actualMap.set(key, Number(item?.value || 0));
+    }
+  });
+
+  forecastSeries.forEach((item) => {
+    const key = item?.date || item?.label || '';
+    if (key) {
+      forecastMap.set(key, Number(item?.value || 0));
+    }
+  });
+
+  const dateComparator = (left, right) => parseDateOnly(left).getTime() - parseDateOnly(right).getTime();
+  const actualKeys = [...actualMap.keys()].sort(dateComparator);
+  const forecastKeys = [...forecastMap.keys()].sort(dateComparator);
+  const lastActualKey = actualKeys[actualKeys.length - 1];
+  const lastActualDate = lastActualKey ? parseDateOnly(lastActualKey) : null;
+  const normalizedForecastKeys = forecastKeys.filter((key) => {
+    if (!lastActualDate) {
+      return true;
+    }
+    const date = parseDateOnly(key);
+    return Number.isNaN(date.getTime()) || date > lastActualDate;
+  });
+
+  if (normalizedForecastKeys.length === 0 && lastActualDate && actualKeys.length > 0) {
+    const tailValues = actualKeys.slice(-3).map((key) => actualMap.get(key) || 0);
+    const tailAverage = tailValues.length > 0 ? tailValues.reduce((sum, value) => sum + value, 0) / tailValues.length : 0;
+    for (let offset = 1; offset <= 3; offset += 1) {
+      const futureDate = new Date(lastActualDate);
+      futureDate.setDate(futureDate.getDate() + offset);
+      const key = formatDateKeyLocal(futureDate);
+      normalizedForecastKeys.push(key);
+      if (!forecastMap.has(key)) {
+        forecastMap.set(key, roundForecastValue(tailAverage));
+      }
+    }
+  }
+
+  const labels = [...new Set([...actualKeys, ...normalizedForecastKeys])].sort(dateComparator);
+  const actualValues = labels.map((label) => {
+    const isFutureForecastLabel = lastActualDate && parseDateOnly(label).getTime() > lastActualDate.getTime();
+    return isFutureForecastLabel ? null : Number(actualMap.get(label) ?? 0);
+  });
+  const forecastValues = labels.map((label) => Number(forecastMap.get(label) ?? 0));
+
+  return { labels, actualValues, forecastValues };
+}
+
+function roundForecastValue(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function formatDateKeyLocal(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function buildOptimizationNarrative(metrics = [], summary = {}) {

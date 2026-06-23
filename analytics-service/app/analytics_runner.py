@@ -7,13 +7,13 @@ from psycopg import Connection
 
 
 DEFAULT_CONFIG = {
-    "forecast": {
-        "enabled": True,
-        "model": "sarima",
-        "historyDays": 180,
-        "forecastDays": 30,
-        "seasonalPeriod": 7,
-    },
+        "forecast": {
+            "enabled": True,
+            "model": "sarima",
+            "historyDays": 180,
+            "forecastDays": 3,
+            "seasonalPeriod": 7,
+        },
     "readiness": {
         "enabled": True,
         "model": "random_forest",
@@ -210,6 +210,7 @@ class AnalyticsRunner:
                 "averageActualDemand": round(average_actual, 2),
                 "averageForecastDemand": round(average_forecast, 2),
                 "expectedChangePercent": expected_change_percent,
+                "forecastHorizonDays": forecast_days,
             },
             "notes": "FastAPI storage path is live. SARIMA training will replace this placeholder output.",
         }

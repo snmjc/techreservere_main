@@ -186,7 +186,7 @@ class AnalyticsController
                     'enabled' => true,
                     'model' => 'sarima',
                     'historyDays' => 180,
-                    'forecastDays' => 30,
+                    'forecastDays' => 3,
                     'seasonalPeriod' => 7,
                 ],
                 'readiness' => [
