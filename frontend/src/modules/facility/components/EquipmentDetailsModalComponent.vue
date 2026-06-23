@@ -118,8 +118,8 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal {
   position: relative;
-  width: min(760px, 100%);
-  max-height: 92vh;
+  width: min(680px, 100%);
+  max-height: 88vh;
   overflow-y: auto;
   background: #ffffff;
   border-radius: 20px;
@@ -144,7 +144,7 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-heading,
 .equipment-details-modal-actions {
-  padding: 1.25rem;
+  padding: 1rem 1.1rem;
 }
 
 .equipment-details-modal-heading {
@@ -175,9 +175,9 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: 1.25rem;
-  padding: 1.25rem;
+  grid-template-columns: minmax(200px, 230px) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem 1.1rem;
 }
 
 .equipment-details-modal-photo-card {
@@ -187,7 +187,7 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-photo {
   width: 100%;
-  min-height: 220px;
+  min-height: 180px;
   border-radius: 16px;
   border: 1px solid #d9e3dd;
   background: #f7faf8;
