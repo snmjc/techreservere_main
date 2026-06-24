@@ -243,84 +243,84 @@
 
         <section
           v-if="activeFacilityTab === 'all' || activeFacilityTab === 'venue'"
-          class="borrower-facilities__section-card"
+          class="borrower-facilities__section-card borrower-facilities__section-card--venues"
         >
-          <div class="borrower-facilities__section-head">
+          <div class="borrower-facilities__section-head borrower-facilities__section-head--venues">
             <div>
-              <p class="borrower-facilities__section-eyebrow">Venue Directory</p>
-              <h3>Reserved Rooms for {{ selectedLongDateLabel }}</h3>
+              <h3>List of Venues</h3>
             </div>
 
-            <div class="borrower-facilities__section-actions">
+            <div class="borrower-facilities__section-actions borrower-facilities__section-actions--venues">
               <label class="borrower-facilities__inline-field">
-                <span>Status</span>
-                <select v-model="venueFilterValue">
-                  <option value="all">All Reserved Rooms</option>
-                  <option value="available">Reserved</option>
-                  <option value="future">Reserved Blocks</option>
-                  <option value="maintenance">Other Blocks</option>
+                <span>Sort by:</span>
+                <select v-model="venueDirectorySortOrder">
+                  <option value="asc">Name (A-Z)</option>
+                  <option value="desc">Name (Z-A)</option>
                 </select>
               </label>
-
-              <button
-                type="button"
-                class="borrower-facilities__sort-button"
-                :title="venueSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'"
-                @click="venueSortOrder = venueSortOrder === 'asc' ? 'desc' : 'asc'"
-              >
-                <svg v-if="venueSortOrder === 'asc'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <polyline points="19 12 12 19 5 12" />
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="19" x2="12" y2="5" />
-                  <polyline points="5 12 12 5 19 12" />
-                </svg>
-              </button>
             </div>
           </div>
 
-          <div v-if="venueCardRecords.length === 0" class="borrower-facilities__empty-state">
-            <p>No reserved rooms were returned for the current date.</p>
+          <p v-if="venueDirectoryError" class="borrower-facilities__feedback borrower-facilities__feedback--error">{{ venueDirectoryError }}</p>
+
+          <div v-if="venueDirectoryLoading" class="borrower-facilities__empty-state">
+            <p>Loading venues...</p>
           </div>
 
-          <div v-else class="borrower-facilities__venue-grid">
-            <button
-              v-for="venue in paginatedVenueCards"
+          <div v-else-if="paginatedVenueDirectoryCards.length === 0" class="borrower-facilities__empty-state">
+            <p>No venues were returned for the selected date.</p>
+          </div>
+
+          <div v-else class="borrower-facilities__venue-grid borrower-facilities__venue-grid--directory">
+            <article
+              v-for="venue in paginatedVenueDirectoryCards"
               :key="venue.venueIdentifier || venue.venueName"
-              type="button"
-              class="borrower-facilities__venue-card"
-              :class="`borrower-facilities__venue-card--${venue.venueStatusTone}`"
-              @click="handleViewVenueDetails(venue)"
+              class="borrower-facilities__venue-card borrower-facilities__venue-card--directory"
             >
-              <div class="borrower-facilities__venue-media">
+              <div class="borrower-facilities__venue-media borrower-facilities__venue-media--directory">
                 <img
                   :src="resolveVenuePhoto(venue)"
                   :alt="`${venue.venueName} photo`"
                   class="borrower-facilities__venue-image"
                 />
               </div>
-              <div class="borrower-facilities__venue-copy">
+              <div class="borrower-facilities__venue-copy borrower-facilities__venue-copy--directory">
                 <div class="borrower-facilities__venue-topline">
-                  <h4>{{ venue.venueName }}</h4>
+                  <div>
+                    <h4>{{ venue.venueName }}</h4>
+                    <p>{{ venue.floorLevel || 'Other Floor' }} <span class="borrower-facilities__meta-separator">|</span> {{ venue.venueLocation || 'Tech Center' }}</p>
+                  </div>
                   <span class="borrower-facilities__status-pill" :class="`borrower-facilities__status-pill--${venue.venueStatusTone}`">
                     {{ venue.venueStatusLabel }}
                   </span>
                 </div>
-                <p>{{ venue.venueLocation || 'Location unavailable' }}</p>
                 <div class="borrower-facilities__venue-meta">
                   <span>Capacity {{ venue.capacityLimit || 'N/A' }}</span>
-                  <span>{{ venue.floorLevel || 'Other Floor' }}</span>
+                  <span>{{ venue.venueLocation || 'Venue Space' }}</span>
                 </div>
+                <p>{{ venue.description || 'Venue details are available when you open this facility card.' }}</p>
                 <small>Reservation Availability Start Date: {{ formatDisplayDate(venue.availabilityDate) }}</small>
+
+                <div class="borrower-facilities__venue-actions">
+                  <button
+                    type="button"
+                    class="borrower-facilities__card-action-button"
+                    @click="handleViewVenueDetails(venue)"
+                  >
+                    View
+                  </button>
+                </div>
               </div>
-            </button>
+            </article>
           </div>
 
-          <div v-if="venueTotalPages > 1" class="borrower-facilities__pagination">
-            <button type="button" :disabled="venueCurrentPage === 1" @click="venueCurrentPage -= 1">Previous</button>
-            <span>Page {{ venueCurrentPage }} of {{ venueTotalPages }}</span>
-            <button type="button" :disabled="venueCurrentPage === venueTotalPages" @click="venueCurrentPage += 1">Next</button>
+          <div class="borrower-facilities__venues-footer">
+            <span>Showing {{ venueDirectoryDisplayStart }} to {{ venueDirectoryDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
+            <div v-if="venueDirectoryTotalPages > 1" class="borrower-facilities__pagination">
+              <button type="button" :disabled="venueDirectoryCurrentPage === 1" @click="venueDirectoryCurrentPage -= 1">Previous</button>
+              <span>Page {{ venueDirectoryCurrentPage }} of {{ venueDirectoryTotalPages }}</span>
+              <button type="button" :disabled="venueDirectoryCurrentPage === venueDirectoryTotalPages" @click="venueDirectoryCurrentPage += 1">Next</button>
+            </div>
           </div>
         </section>
 
@@ -480,11 +480,10 @@ const compactWeekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const timeRailLabels = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM'];
 const activeFacilityTab = ref('all');
 const calendarViewMode = ref('weekly');
-const venueFilterValue = ref('all');
-const venueSortOrder = ref('asc');
 const selectedVenueDate = ref(getTodayDateInputValue());
-const venueCurrentPage = ref(1);
-const venuePageSize = 6;
+const venueDirectorySortOrder = ref('asc');
+const venueDirectoryCurrentPage = ref(1);
+const venueDirectoryPageSize = 4;
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentSearchQuery = ref('');
@@ -493,6 +492,9 @@ const equipmentPageSize = 8;
 const weeklyVenueMap = ref({});
 const venueLoading = ref(false);
 const venueError = ref('');
+const venueDirectoryRecords = ref([]);
+const venueDirectoryLoading = ref(false);
+const venueDirectoryError = ref('');
 const viewVenueRecord = ref(null);
 const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
@@ -568,25 +570,33 @@ const visibleCalendarColumns = computed(() => {
 });
 
 const monthCalendarCells = computed(() => buildMonthCalendarCells(selectedDateObject.value, selectedVenueDate.value));
-const venueCardRecords = computed(() => (
-  [...selectedDayVenues.value]
-    .filter((venueRecord) => matchesVenueAvailability(venueRecord, venueFilterValue.value))
-    .sort((left, right) => compareByName(left?.venueName, right?.venueName, venueSortOrder.value))
+const sortedVenueDirectoryRecords = computed(() => (
+  [...venueDirectoryRecords.value]
+    .sort((left, right) => compareByName(left?.venueName, right?.venueName, venueDirectorySortOrder.value))
     .map((venueRecord) => {
-      const venueStatusTone = resolveVenueStatusTone(venueRecord, selectedVenueDate.value);
+      const venueStatusTone = resolveVenueDirectoryStatusTone(venueRecord, selectedVenueDate.value);
       return {
         ...venueRecord,
         venueStatusTone,
-        venueStatusLabel: resolveVenueStatusLabel(venueStatusTone),
+        venueStatusLabel: resolveVenueDirectoryStatusLabel(venueStatusTone),
       };
     })
 ));
 
-const venueTotalPages = computed(() => Math.max(1, Math.ceil(venueCardRecords.value.length / venuePageSize)));
-const paginatedVenueCards = computed(() => {
-  const startIndex = (venueCurrentPage.value - 1) * venuePageSize;
-  return venueCardRecords.value.slice(startIndex, startIndex + venuePageSize);
+const venueDirectoryTotalPages = computed(() => Math.max(1, Math.ceil(sortedVenueDirectoryRecords.value.length / venueDirectoryPageSize)));
+const paginatedVenueDirectoryCards = computed(() => {
+  const startIndex = (venueDirectoryCurrentPage.value - 1) * venueDirectoryPageSize;
+  return sortedVenueDirectoryRecords.value.slice(startIndex, startIndex + venueDirectoryPageSize);
 });
+const venueDirectoryDisplayStart = computed(() => (
+  sortedVenueDirectoryRecords.value.length === 0
+    ? 0
+    : ((venueDirectoryCurrentPage.value - 1) * venueDirectoryPageSize) + 1
+));
+const venueDirectoryDisplayEnd = computed(() => Math.min(
+  venueDirectoryCurrentPage.value * venueDirectoryPageSize,
+  sortedVenueDirectoryRecords.value.length,
+));
 
 const filteredEquipment = computed(() => {
   const normalizedQuery = normalizeSearchText(equipmentSearchQuery.value);
@@ -626,22 +636,26 @@ const equipmentCardsToRender = computed(() => (
 ));
 
 watch(selectedVenueDate, async () => {
-  venueCurrentPage.value = 1;
+  venueDirectoryCurrentPage.value = 1;
   await fetchVenuesForVisibleWeek();
 }, { immediate: true });
 
 watch(activeFacilityTab, () => {
-  venueCurrentPage.value = 1;
+  venueDirectoryCurrentPage.value = 1;
   equipmentCurrentPage.value = 1;
+});
+
+watch(venueDirectorySortOrder, () => {
+  venueDirectoryCurrentPage.value = 1;
 });
 
 watch([equipmentFilterValue, equipmentSortOrder, equipmentSearchQuery], () => {
   equipmentCurrentPage.value = 1;
 });
 
-watch(venueTotalPages, (nextPageCount) => {
-  if (venueCurrentPage.value > nextPageCount) {
-    venueCurrentPage.value = nextPageCount;
+watch(venueDirectoryTotalPages, (nextPageCount) => {
+  if (venueDirectoryCurrentPage.value > nextPageCount) {
+    venueDirectoryCurrentPage.value = nextPageCount;
   }
 });
 
@@ -658,30 +672,44 @@ async function fetchVenuesForVisibleWeek() {
   activeWeekRequestSequence = currentRequestSequence;
   venueLoading.value = true;
   venueError.value = '';
+  venueDirectoryLoading.value = true;
+  venueDirectoryError.value = '';
 
   try {
     const weekDateValues = buildWeekDateValues(selectedVenueDate.value);
-    const responses = await Promise.all(weekDateValues.map(async (dateValue) => {
-      const response = await venueApi.listVenues({
-        selectedDate: dateValue,
-        reservedOnly: true,
-      });
-      const venuePayload = response?.data?.venues || response?.venues || [];
-      const normalizedVenues = Array.isArray(venuePayload)
-        ? venuePayload
-          .map((venueRecord) => normalizeVenueRecord(venueRecord))
-          .filter(Boolean)
-          .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
-          .filter((venueRecord) => Array.isArray(venueRecord.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0)
-        : [];
+    const [responses, venueDirectoryResponse] = await Promise.all([
+      Promise.all(weekDateValues.map(async (dateValue) => {
+        const response = await venueApi.listVenues({
+          selectedDate: dateValue,
+          reservedOnly: true,
+        });
+        const venuePayload = response?.data?.venues || response?.venues || [];
+        const normalizedVenues = Array.isArray(venuePayload)
+          ? venuePayload
+            .map((venueRecord) => normalizeVenueRecord(venueRecord))
+            .filter(Boolean)
+            .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+            .filter((venueRecord) => Array.isArray(venueRecord.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0)
+          : [];
 
-      return [dateValue, normalizedVenues];
-    }));
+        return [dateValue, normalizedVenues];
+      })),
+      venueApi.listVenues({
+        selectedDate: selectedVenueDate.value,
+      }),
+    ]);
 
     if (currentRequestSequence !== activeWeekRequestSequence) {
       return;
     }
 
+    const venueDirectoryPayload = venueDirectoryResponse?.data?.venues || venueDirectoryResponse?.venues || [];
+    venueDirectoryRecords.value = Array.isArray(venueDirectoryPayload)
+      ? venueDirectoryPayload
+        .map((venueRecord) => normalizeVenueRecord(venueRecord))
+        .filter(Boolean)
+        .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+      : [];
     weeklyVenueMap.value = Object.fromEntries(responses);
   } catch (error) {
     if (currentRequestSequence !== activeWeekRequestSequence) {
@@ -689,10 +717,13 @@ async function fetchVenuesForVisibleWeek() {
     }
 
     weeklyVenueMap.value = {};
+    venueDirectoryRecords.value = [];
     venueError.value = error?.response?.data?.errorMessage || 'Failed to load weekly venue availability.';
+    venueDirectoryError.value = error?.response?.data?.errorMessage || 'Failed to load venue directory.';
   } finally {
     if (currentRequestSequence === activeWeekRequestSequence) {
       venueLoading.value = false;
+      venueDirectoryLoading.value = false;
     }
   }
 }
@@ -784,23 +815,25 @@ function normalizeVenueRecord(venue) {
   };
 }
 
-function matchesVenueAvailability(venueRecord, filterValue) {
-  const statusTone = resolveVenueStatusTone(venueRecord, selectedVenueDate.value);
-  const hasReservationBlocks = Array.isArray(venueRecord?.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0;
-
-  if (filterValue === 'available') {
-    return hasReservationBlocks && statusTone !== 'maintenance';
+function resolveVenueDirectoryStatusTone(venueRecord, dateValue) {
+  const operationalStatus = String(venueRecord?.operationalStatus || '').trim();
+  if (operationalStatus === 'Maintenance' || operationalStatus === 'Inactive') {
+    return 'maintenance';
   }
 
-  if (filterValue === 'future') {
-    return statusTone === 'future';
+  return deriveVenueAvailabilityForDate(venueRecord, dateValue) === 'Available' ? 'available' : 'future';
+}
+
+function resolveVenueDirectoryStatusLabel(statusTone) {
+  if (statusTone === 'maintenance') {
+    return 'Under Maintenance';
   }
 
-  if (filterValue === 'maintenance') {
-    return statusTone === 'maintenance';
+  if (statusTone === 'future') {
+    return 'Unavailable';
   }
 
-  return true;
+  return 'Available';
 }
 
 function resolveVenueStatusTone(venueRecord, dateValue) {
@@ -811,18 +844,6 @@ function resolveVenueStatusTone(venueRecord, dateValue) {
 
   const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, dateValue);
   return availabilityStatus === 'Available' ? 'available' : 'future';
-}
-
-function resolveVenueStatusLabel(statusTone) {
-  if (statusTone === 'maintenance') {
-    return 'Maintenance';
-  }
-
-  if (statusTone === 'future') {
-    return 'Reserved Block';
-  }
-
-  return 'Reserved';
 }
 
 function resolveAvailabilityMetaLine(venueRecord, dateValue) {
