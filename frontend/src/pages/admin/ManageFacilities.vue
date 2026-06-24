@@ -122,6 +122,24 @@
             <option value="desc">Name (Z-A)</option>
           </select>
         </div>
+        <div v-if="activeFacilityTab === 'equipment'" class="manage-facilities-view-toggle" aria-label="Equipment view type">
+          <button
+            type="button"
+            class="manage-facilities-view-toggle-button"
+            :class="{ 'manage-facilities-view-toggle-button--active': equipmentViewMode === 'card' }"
+            @click="equipmentViewMode = 'card'"
+          >
+            Card Type
+          </button>
+          <button
+            type="button"
+            class="manage-facilities-view-toggle-button"
+            :class="{ 'manage-facilities-view-toggle-button--active': equipmentViewMode === 'list' }"
+            @click="equipmentViewMode = 'list'"
+          >
+            List Type
+          </button>
+        </div>
       </div>
 
       <div v-if="activeFacilityTab === 'venue'">
@@ -569,6 +587,7 @@
         :equipment-records="filteredEquipmentRecords"
         :availability-filter="availabilityFilter"
         :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
+        :view-mode="equipmentViewMode"
         @edit-equipment="handleEditEquipment"
         @delete-equipment="openDeleteEquipmentModal"
         @view-equipment="handleViewEquipment"
@@ -1083,6 +1102,7 @@ const loading = ref(false);
 const venueError = ref('');
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
+const equipmentViewMode = ref('card');
 const selectedVenueCalendarDate = ref(getTodayDateInputValue());
 const venueMonthCursor = ref(selectedVenueCalendarDate.value.slice(0, 7));
 const venueCalendarViewMode = ref('weekly');

@@ -61,6 +61,7 @@ body {
 }
 
 .manage-facilities-hero-back {
+  display: none;
   align-self: center;
   min-height: 40px;
   padding: 0 1rem;
@@ -311,7 +312,7 @@ body {
 
 .manage-facilities-search-sort-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
@@ -373,6 +374,35 @@ body {
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+.manage-facilities-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem;
+  background: #f4f8f5;
+  border: 1px solid #dbe4dd;
+  border-radius: 10px;
+}
+
+.manage-facilities-view-toggle-button {
+  min-height: 34px;
+  padding: 0 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #577061;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.manage-facilities-view-toggle-button--active {
+  background: #ffffff;
+  color: #0f5c39;
+  box-shadow: 0 4px 12px rgba(15, 92, 57, 0.12);
 }
 
 .manage-facilities-loading {
@@ -2554,6 +2584,14 @@ body {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .manage-facilities-search-sort-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-view-toggle {
+    justify-self: start;
+  }
 }
 
 @media (max-width: 560px) {
@@ -2578,5 +2616,13 @@ body {
 
   .manage-facilities-search-group {
     flex-basis: 100%;
+  }
+
+  .manage-facilities-view-toggle {
+    width: 100%;
+  }
+
+  .manage-facilities-view-toggle-button {
+    flex: 1;
   }
 }
