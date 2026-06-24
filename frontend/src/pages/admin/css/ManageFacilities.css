@@ -556,7 +556,8 @@ body {
 .manage-facilities-venue-dashboard {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
-  gap: 1.5rem;
+  column-gap: 1.75rem;
+  row-gap: 1.5rem;
   align-items: start;
 }
 
@@ -1101,6 +1102,11 @@ body {
 .manage-facilities-venue-calendar-sidebar {
   display: grid;
   gap: 0.9rem;
+}
+
+.manage-facilities-venue-board-panel {
+  min-width: 0;
+  padding-left: 0.35rem;
 }
 
 .manage-facilities-venue-sidebar-card,
