@@ -2,6 +2,7 @@
 
 namespace App\Domain\Venue\Service;
 
+use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Venue\DTO\VenueResponseDTO;
 use App\Domain\Venue\Entity\VenueEntity;
 use App\Domain\Venue\Repository\VenueRepository;
@@ -26,6 +27,7 @@ class VenueManagementService
     public function __construct(
         VenueRepository $venueRepository,
         ReservationRepository $reservationRepository,
+        private readonly AccountRepository $accountRepository,
         private readonly Connection $connection,
         private readonly ReservationPolicyConfigService $reservationPolicyConfigService
     )
@@ -148,7 +150,12 @@ class VenueManagementService
         $this->venueRepository->removeVenue($entity);
     }
 
-    private function transformEntityToDTO(VenueEntity $entity, string $availabilityStatus, array $reservationTimeRanges = []): VenueResponseDTO
+    private function transformEntityToDTO(
+        VenueEntity $entity,
+        string $availabilityStatus,
+        array $reservationTimeRanges = [],
+        array $reservationDetails = []
+    ): VenueResponseDTO
     {
         return new VenueResponseDTO(
             venueIdentifier: $entity->getVenueIdentifier(),
@@ -162,7 +169,8 @@ class VenueManagementService
             description: $entity->getDescription(),
             imageUrl: $entity->getImageUrl(),
             createdTimestamp: $entity->getCreatedTimestamp()->format(\DateTime::ATOM),
-            reservationTimeRanges: $reservationTimeRanges
+            reservationTimeRanges: $reservationTimeRanges,
+            reservationDetails: $reservationDetails
         );
     }
 
@@ -294,7 +302,11 @@ class VenueManagementService
                 [
                     ...array_map([$this, 'formatReservationWindow'], $reservationRows),
                     ...array_map([$this, 'formatScheduleBlockWindow'], $scheduleBlocks),
-                ]
+                ],
+                [
+                    ...array_map([$this, 'buildReservationDetail'], $reservationRows),
+                    ...array_map([$this, 'buildScheduleBlockDetail'], $scheduleBlocks),
+                ],
             );
         }, $entities);
     }
@@ -410,6 +422,54 @@ class VenueManagementService
         } catch (\Throwable) {
             return sprintf('%s: %s - %s', $label, $startTime, $endTime);
         }
+    }
+
+    private function buildReservationDetail(ReservationEntity $reservation): array
+    {
+        $borrowerAccount = $this->accountRepository->find($reservation->getBorrowerAccountId());
+        $borrowerName = trim(sprintf(
+            '%s %s',
+            (string) ($borrowerAccount?->getFirstName() ?? ''),
+            (string) ($borrowerAccount?->getLastName() ?? '')
+        ));
+        $startDateTime = $reservation->getEventDateTime();
+        $endDateTime = $reservation->getEndDateTime() ?? $startDateTime;
+
+        return [
+            'entryType' => 'reservation',
+            'reservationIdentifier' => $reservation->getReservationIdentifier(),
+            'reservationCode' => $reservation->getReservationCode(),
+            'timeRangeLabel' => $this->formatReservationWindow($reservation),
+            'reservedByName' => $borrowerName !== '' ? $borrowerName : 'Borrower record unavailable',
+            'organizationName' => $reservation->getOrganizationName(),
+            'purposeDescription' => $reservation->getPurposeDescription(),
+            'activityType' => $reservation->getActivityType(),
+            'statusLabel' => $reservation->getCurrentStatus(),
+            'eventDateLabel' => $startDateTime->format('F j, Y'),
+            'startDateTimeLabel' => $startDateTime->format('F j, Y g:i A'),
+            'endDateTimeLabel' => $endDateTime->format('F j, Y g:i A'),
+        ];
+    }
+
+    private function buildScheduleBlockDetail(array $scheduleBlock): array
+    {
+        $label = trim((string) ($scheduleBlock['blockLabel'] ?? 'Class Schedule'));
+        $description = trim((string) ($scheduleBlock['description'] ?? ''));
+
+        return [
+            'entryType' => 'schedule_block',
+            'reservationIdentifier' => null,
+            'reservationCode' => null,
+            'timeRangeLabel' => $this->formatScheduleBlockWindow($scheduleBlock),
+            'reservedByName' => $label,
+            'organizationName' => '',
+            'purposeDescription' => $description,
+            'activityType' => 'Scheduled block',
+            'statusLabel' => 'Blocked',
+            'eventDateLabel' => '',
+            'startDateTimeLabel' => '',
+            'endDateTimeLabel' => '',
+        ];
     }
 
     private function isValidJpgImagePayload(string $imageUrl): bool

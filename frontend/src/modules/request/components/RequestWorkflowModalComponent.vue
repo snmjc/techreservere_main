@@ -248,10 +248,14 @@ function handleCancelClick() {
 function formatTaskSummary(taskRecord) {
   const title = String(taskRecord?.taskTitle || 'Untitled task').trim();
   const staffName = String(taskRecord?.assignedStaffName || '').trim();
+  const staffId = String(taskRecord?.assignedStaffIdNumber || '').trim();
   const venueName = String(taskRecord?.venueName || taskRecord?.facilityName || props.requestRecord?.facilityName || '').trim();
   const status = String(taskRecord?.taskStatus || 'Pending').trim();
+  const staffLabel = staffName !== ''
+    ? [staffName, staffId].filter(Boolean).join(' - ')
+    : 'Pending Assignment';
 
-  return [title, staffName || 'Pending Assignment', venueName, status]
+  return [title, staffLabel, venueName, status]
     .filter(Boolean)
     .join(' | ');
 }

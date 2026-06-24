@@ -218,7 +218,7 @@
                         type="button"
                         class="borrower-facilities__availability-card"
                         :class="`borrower-facilities__availability-card--${entry.statusTone}`"
-                        @click="handleViewVenueDetails(entry)"
+                        @click="handleOpenCalendarReservation(entry)"
                       >
                         <span class="borrower-facilities__availability-meta">{{ entry.metaLine }}</span>
                         <strong>{{ entry.venueName }}</strong>
@@ -509,6 +509,83 @@
         :show-admin-fields="false"
         @close="closeEquipmentDetails"
       />
+
+      <div
+        v-if="calendarReservationModalRecord"
+        class="borrower-facilities__reservation-modal-overlay"
+        @click.self="closeCalendarReservationModal"
+      >
+        <section class="borrower-facilities__reservation-modal">
+          <button
+            type="button"
+            class="borrower-facilities__reservation-modal-close"
+            aria-label="Close reservation details"
+            @click="closeCalendarReservationModal"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="borrower-facilities__reservation-modal-heading">
+            <p>Venue Reservation Details</p>
+            <h2>{{ calendarReservationModalRecord.venueName }}</h2>
+            <span>{{ calendarReservationModalRecord.floorLevel || 'Other Floor' }} | {{ calendarReservationModalRecord.venueLocation || 'Venue location unavailable' }}</span>
+          </div>
+
+          <div class="borrower-facilities__reservation-modal-list">
+            <article
+              v-for="detail in calendarReservationDetails"
+              :key="detail.reservationIdentifier || `${detail.entryType}-${detail.timeRangeLabel}-${detail.reservedByName}`"
+              class="borrower-facilities__reservation-modal-card"
+            >
+              <div class="borrower-facilities__reservation-modal-card-top">
+                <strong>{{ detail.timeRangeLabel }}</strong>
+                <span
+                  class="borrower-facilities__reservation-modal-status"
+                  :class="detail.entryType === 'reservation'
+                    ? 'borrower-facilities__reservation-modal-status--reserved'
+                    : 'borrower-facilities__reservation-modal-status--blocked'"
+                >
+                  {{ detail.entryType === 'reservation' ? 'Reserved' : 'Blocked' }}
+                </span>
+              </div>
+
+              <dl class="borrower-facilities__reservation-modal-grid">
+                <div>
+                  <dt>Reserved By</dt>
+                  <dd>{{ detail.reservedByName || 'Unavailable' }}</dd>
+                </div>
+                <div>
+                  <dt>Organization</dt>
+                  <dd>{{ detail.organizationName || 'N/A' }}</dd>
+                </div>
+                <div>
+                  <dt>Reservation Code</dt>
+                  <dd>{{ detail.reservationCode || 'N/A' }}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{{ detail.statusLabel || 'N/A' }}</dd>
+                </div>
+                <div>
+                  <dt>Activity</dt>
+                  <dd>{{ detail.activityType || 'N/A' }}</dd>
+                </div>
+                <div>
+                  <dt>Schedule</dt>
+                  <dd>{{ detail.startDateTimeLabel && detail.endDateTimeLabel ? `${detail.startDateTimeLabel} - ${detail.endDateTimeLabel}` : detail.timeRangeLabel }}</dd>
+                </div>
+                <div class="borrower-facilities__reservation-modal-grid-full">
+                  <dt>Purpose / Notes</dt>
+                  <dd>{{ detail.purposeDescription || 'No additional details provided.' }}</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+        </section>
+      </div>
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -525,6 +602,7 @@ import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetailsModalComponent.vue';
 import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
+import { groupBorrowerEquipmentRecords } from '@/modules/facility/utils/equipmentGrouping.js';
 import { formatEquipmentStatus, resolveEquipmentPhoto } from '@/modules/facility/utils/equipmentPresentation.js';
 import {
   deriveVenueAvailabilityForDate,
@@ -564,6 +642,7 @@ const venueDirectoryError = ref('');
 const viewVenueRecord = ref(null);
 const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
+const calendarReservationModalRecord = ref(null);
 const viewEquipmentRecord = ref(null);
 const viewEquipmentLoading = ref(false);
 const viewEquipmentError = ref('');
@@ -635,6 +714,11 @@ const visibleCalendarColumns = computed(() => {
   });
 });
 
+const calendarReservationDetails = computed(() => {
+  const reservationDetails = calendarReservationModalRecord.value?.reservationDetails;
+  return Array.isArray(reservationDetails) ? reservationDetails : [];
+});
+
 const monthCalendarCells = computed(() => buildMonthCalendarCells(selectedDateObject.value, selectedVenueDate.value));
 const sortedVenueDirectoryRecords = computed(() => (
   [...venueDirectoryRecords.value]
@@ -664,10 +748,12 @@ const venueDirectoryDisplayEnd = computed(() => Math.min(
   sortedVenueDirectoryRecords.value.length,
 ));
 
+const groupedEquipmentRecords = computed(() => groupBorrowerEquipmentRecords(equipmentList.value));
+
 const filteredEquipment = computed(() => {
   const normalizedQuery = normalizeSearchText(equipmentSearchQuery.value);
 
-  let filtered = equipmentList.value.filter((equipment) => (
+  let filtered = groupedEquipmentRecords.value.filter((equipment) => (
     normalizedQuery === ''
     || getEquipmentSearchableValues(equipment).some((value) => normalizeSearchText(value).includes(normalizedQuery))
   ));
@@ -831,29 +917,28 @@ async function handleViewVenueDetails(venueRecord) {
   }
 }
 
+function handleOpenCalendarReservation(venueRecord) {
+  calendarReservationModalRecord.value = normalizeVenueRecord(venueRecord);
+}
+
 async function handleViewEquipmentDetails(equipmentRecord) {
   if (!equipmentRecord?.equipmentIdentifier) {
     return;
   }
 
-  viewEquipmentLoading.value = true;
   viewEquipmentError.value = '';
-  viewEquipmentRecord.value = null;
-
-  try {
-    const response = await equipmentApi.getEquipmentById(equipmentRecord.equipmentIdentifier);
-    viewEquipmentRecord.value = response?.data || response;
-  } catch (error) {
-    viewEquipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment details.';
-  } finally {
-    viewEquipmentLoading.value = false;
-  }
+  viewEquipmentLoading.value = false;
+  viewEquipmentRecord.value = equipmentRecord;
 }
 
 function closeVenueDetails() {
   viewVenueRecord.value = null;
   viewVenueError.value = '';
   viewVenueLoading.value = false;
+}
+
+function closeCalendarReservationModal() {
+  calendarReservationModalRecord.value = null;
 }
 
 function closeEquipmentDetails() {
@@ -879,6 +964,7 @@ function normalizeVenueRecord(venue) {
     description: venue.description || '',
     imageUrl: venue.imageUrl || '',
     reservationTimeRanges: Array.isArray(venue.reservationTimeRanges) ? venue.reservationTimeRanges : [],
+    reservationDetails: Array.isArray(venue.reservationDetails) ? venue.reservationDetails : [],
   };
 }
 
@@ -925,7 +1011,11 @@ function resolveAvailabilityMetaLine(venueRecord, dateValue) {
   }
 
   if (Array.isArray(venueRecord?.reservationTimeRanges) && venueRecord.reservationTimeRanges.length > 0) {
-    return venueRecord.reservationTimeRanges[0];
+    const primaryReservationDetail = Array.isArray(venueRecord?.reservationDetails)
+      ? venueRecord.reservationDetails[0]
+      : null;
+
+    return primaryReservationDetail?.timeRangeLabel || venueRecord.reservationTimeRanges[0];
   }
 
   return 'Reserved room';
@@ -946,6 +1036,10 @@ function getEquipmentSearchableValues(equipment) {
     equipment?.equipmentCategory || equipment?.categoryName,
     equipment?.equipmentBrand,
     equipment?.description || equipment?.scheduleDescription,
+    ...(Array.isArray(equipment?.remarksNotes) ? equipment.remarksNotes : []),
+    ...(Array.isArray(equipment?.inventoryItems)
+      ? equipment.inventoryItems.flatMap((item) => [item?.assetId, item?.barcode])
+      : []),
   ];
 }
 

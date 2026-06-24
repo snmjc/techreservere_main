@@ -18,10 +18,21 @@ export function useReservationData() {
           equipmentIdentifier: eq.equipmentIdentifier,
           equipmentName: eq.equipmentName,
           categoryName: eq.categoryName,
+          equipmentCategory: eq.equipmentCategory || eq.categoryName,
+          equipmentBrand: eq.equipmentBrand,
           totalQuantity: eq.totalQuantity,
           availableQuantity: eq.availableQuantity,
           operationalStatus: eq.operationalStatus,
           equipmentState: eq.equipmentState,
+          description: eq.description || eq.scheduleDescription || '',
+          scheduleDescription: eq.scheduleDescription || eq.description || '',
+          barcode: eq.barcode || '',
+          assetId: eq.assetId || eq.serialNumber || '',
+          serialNumber: eq.serialNumber || eq.assetId || '',
+          photoData: eq.photoData || null,
+          photoDisplayMode: eq.photoDisplayMode || 'contain',
+          photoPositionX: eq.photoPositionX ?? 50,
+          photoPositionY: eq.photoPositionY ?? 50,
         }));
     } catch (err) {
       error.value = err.message || 'Failed to fetch equipment';

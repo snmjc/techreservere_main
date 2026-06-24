@@ -36,7 +36,7 @@ export function normalizeStaffPhoneNumber(value) {
 }
 
 export function sanitizeIdNumberInput(value) {
-  return String(value || '').replace(/\D/g, '').slice(0, 10);
+  return String(value || '').replace(/\D/g, '').slice(0, 9);
 }
 
 export function validatePersonName(value) {
@@ -50,7 +50,7 @@ export function normalizeIdNumber(value) {
 }
 
 export function validateRequiredIdNumber(value) {
-  return /^\d{10}$/.test(normalizeIdNumber(value));
+  return /^\d{9}$/.test(normalizeIdNumber(value));
 }
 
 export function isAllowedAdminEmail(value) {

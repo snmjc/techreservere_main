@@ -77,7 +77,10 @@
                   id="idNumber"
                   v-model="formData.idNumber"
                   type="text"
+                  inputmode="numeric"
+                  maxlength="9"
                   :required="!isInvitationMode"
+                  @input="sanitizeIdNumberField"
                 />
               </div>
 
@@ -217,7 +220,7 @@
                     </button>
                   </div>
                   <p class="custom-signup-role-boundary-note">
-                    Required for student requests: upload a PDF, DOC, DOCX, JPG, or PNG file. Maximum file size: 5 MB.
+                    Required for student requests: upload a PDF, DOC, DOCX, JPG, or PNG file. You may submit a Certificate of Officership, Student ID, or proof that you are from the organization. Maximum file size: 5 MB.
                   </p>
                 </div>
 
@@ -325,6 +328,7 @@ import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
     isInvitationMode,
     invitationCopy,
     supportingFileAccept,
+    sanitizeIdNumberField,
     openStudentSupportingFile,
   handleStudentSupportingFileChange,
   removeStudentSupportingFile,

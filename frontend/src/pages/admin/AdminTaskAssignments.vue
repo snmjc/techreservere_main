@@ -768,11 +768,20 @@ function normalizeStaff(accounts) {
       value: String(account.accountIdentifier || account.account_identifier),
       label: [
         `${account.firstName || account.first_name || ''} ${account.lastName || account.last_name || ''}`.trim(),
-        account.idNumber || account.id_number,
+        resolveStaffIdNumber(account),
         account.roleLabel || account.department,
       ].filter(Boolean).join(' - '),
     }))
     .filter((staff) => staff.value);
+}
+
+function resolveStaffIdNumber(account) {
+  return account.staffEmployeeIdNumber
+    || account.staff_employee_id_number
+    || account.rawIdNumber
+    || account.idNumber
+    || account.id_number
+    || '';
 }
 
 function resolveAccountType(account) {
