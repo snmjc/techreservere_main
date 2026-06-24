@@ -456,7 +456,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ApprovedRequests.css';
@@ -470,6 +470,7 @@ import { taskWorkflowApi } from '@/modules/task/services/taskWorkflowApi.js';
 
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
+const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const selectedRequestRecord = ref(null);
@@ -614,6 +615,7 @@ async function submitDeployRequest() {
     });
     closeDeployModal();
     selectedRequestRecord.value = null;
+    router.push({ name: 'adminActiveReservationsPage' });
   } catch (error) {
     window.alert(error?.message || 'Unable to deploy this request.');
   }

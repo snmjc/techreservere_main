@@ -57,24 +57,7 @@ function addReservationToBucket(buckets, reservation, linkedTasks = []) {
     return;
   }
 
-  if (SCHEDULED_STATUSES.includes(normalizedStatus)) {
-    if (scheduleState === 'active') {
-      buckets.active.push({
-        ...mappedRecord,
-        assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-        deploymentStatus: resolveActiveDeploymentLabel(status),
-      });
-      return;
-    }
-
-    if (scheduleState === 'upcoming') {
-      buckets.approved.push({
-        ...mappedRecord,
-        assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-      });
-      return;
-    }
-
+  if (normalizedStatus === 'approved' || normalizedStatus === 'prepared') {
     if (scheduleState === 'past') {
       buckets.past.push({
         ...mappedRecord,
@@ -82,9 +65,32 @@ function addReservationToBucket(buckets, reservation, linkedTasks = []) {
       });
       return;
     }
+
+    buckets.approved.push({
+      ...mappedRecord,
+      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
+    });
+    return;
   }
 
-  if (normalizedStatus === 'approved') {
+  if (normalizedStatus === 'deployed' || normalizedStatus === 'active') {
+    if (scheduleState === 'past') {
+      buckets.past.push({
+        ...mappedRecord,
+        recordStatus: status,
+      });
+      return;
+    }
+
+    buckets.active.push({
+      ...mappedRecord,
+      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
+      deploymentStatus: resolveActiveDeploymentLabel(status),
+    });
+    return;
+  }
+
+  if (SCHEDULED_STATUSES.includes(normalizedStatus)) {
     buckets.approved.push({
       ...mappedRecord,
       assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',

@@ -90,7 +90,8 @@ class ReservationReviewService
             throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
         }
 
-        $allowedStatuses = ['Approved', 'Rejected', 'Request Revision', 'Prepared', 'Deployed', 'Returned', 'Completed', 'Cancelled'];
+        $newStatus = $this->normalizeReservationStatusLabel($newStatus);
+        $allowedStatuses = ['Approved', 'Rejected', 'Request Revision', 'Prepared', 'Deployed', 'Active', 'Returned', 'Completed', 'Cancelled'];
         if (!in_array($newStatus, $allowedStatuses, true)) {
             throw new DomainValidationException('Invalid status: ' . $newStatus);
         }
@@ -127,7 +128,9 @@ class ReservationReviewService
             throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
         }
 
-        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+        $newStatus = $this->normalizeReservationStatusLabel($newStatus);
+
+        if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
             return $this->updateReservationStatus($reservationIdentifier, $newStatus, $reason);
         }
 
@@ -151,6 +154,24 @@ class ReservationReviewService
         $this->notifyAdminsOfBorrowerCancellation($entity);
 
         return $this->transformEntityToDTO($entity);
+    }
+
+    private function normalizeReservationStatusLabel(string $status): string
+    {
+        $normalizedStatus = strtolower(trim($status));
+
+        return match ($normalizedStatus) {
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'request revision' => 'Request Revision',
+            'prepared' => 'Prepared',
+            'deployed' => 'Deployed',
+            'returned' => 'Returned',
+            'completed' => 'Completed',
+            'cancelled', 'canceled' => 'Cancelled',
+            'active' => 'Active',
+            default => trim($status),
+        };
     }
 
     private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
