@@ -547,6 +547,8 @@
   display: grid;
   gap: 0.5rem;
   padding: 0.85rem;
+  min-height: 140px;
+  align-content: start;
   border-radius: 18px;
   background: #f7fbf8;
 }
@@ -596,7 +598,9 @@
   display: grid;
   place-items: center;
   gap: 0.3rem;
-  min-height: 180px;
+  min-height: 140px;
+  max-width: 140px;
+  margin: 0 auto;
   padding: 1rem;
   border: 1px dashed #d5e0d9;
   border-radius: 18px;

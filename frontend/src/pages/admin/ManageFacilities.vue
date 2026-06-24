@@ -200,28 +200,50 @@
 
               <div class="manage-facilities-venue-stat-grid">
                 <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--available">
-                  <span class="manage-facilities-venue-stat-icon">A</span>
+                  <span class="manage-facilities-venue-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="7" y="3" width="10" height="18" rx="2" />
+                      <path d="M10 7h4" />
+                      <path d="M10 11h4" />
+                    </svg>
+                  </span>
                   <div>
                     <strong>{{ venueDashboardSummary.availableCount }}</strong>
                     <p>Available</p>
                   </div>
                 </article>
                 <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--reserved">
-                  <span class="manage-facilities-venue-stat-icon">R</span>
+                  <span class="manage-facilities-venue-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="7" y="3" width="10" height="18" rx="2" />
+                      <path d="M12 7v10" />
+                    </svg>
+                  </span>
                   <div>
                     <strong>{{ venueDashboardSummary.reservedCount }}</strong>
                     <p>Reserved</p>
                   </div>
                 </article>
                 <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--maintenance">
-                  <span class="manage-facilities-venue-stat-icon">M</span>
+                  <span class="manage-facilities-venue-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 3h6" />
+                      <path d="M10 3v4l-4.5 7.5A4 4 0 0 0 8.9 21h6.2a4 4 0 0 0 3.4-6.5L14 7V3" />
+                      <path d="M9 14h6" />
+                    </svg>
+                  </span>
                   <div>
                     <strong>{{ venueDashboardSummary.maintenanceCount }}</strong>
                     <p>Under Maintenance</p>
                   </div>
                 </article>
                 <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--peak">
-                  <span class="manage-facilities-venue-stat-icon">P</span>
+                  <span class="manage-facilities-venue-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="8" />
+                      <path d="M12 8v4l2.5 2.5" />
+                    </svg>
+                  </span>
                   <div>
                     <strong>Peak Time</strong>
                     <p>{{ venueDashboardSummary.peakTimeLabel }}</p>
