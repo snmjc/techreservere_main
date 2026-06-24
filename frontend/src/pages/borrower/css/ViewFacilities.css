@@ -118,6 +118,26 @@
   flex-wrap: wrap;
 }
 
+.borrower-facilities__equipment-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.borrower-facilities__equipment-filter-stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.borrower-facilities__equipment-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
 .borrower-facilities__icon-button,
 .borrower-facilities__today-button,
 .borrower-facilities__view-select,
@@ -640,6 +660,11 @@
   min-width: min(320px, 100%);
 }
 
+.borrower-facilities__inline-field--status {
+  min-width: 220px;
+  justify-content: space-between;
+}
+
 .borrower-facilities__inline-field input {
   min-width: 0;
   width: 100%;
@@ -651,6 +676,120 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
+}
+
+.borrower-facilities__equipment-list {
+  display: grid;
+  background: #ffffff;
+  border: 1px solid #d9e5de;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.borrower-facilities__equipment-list-head,
+.borrower-facilities__equipment-list-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) minmax(120px, 0.8fr) minmax(150px, 1fr) minmax(100px, 0.7fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.borrower-facilities__equipment-list-head {
+  color: #5c6f62;
+  background: #f4faf6;
+  border-bottom: 1px solid #e2ece5;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.borrower-facilities__equipment-list-row {
+  border-bottom: 1px solid #edf3ee;
+}
+
+.borrower-facilities__equipment-list-row:last-child {
+  border-bottom: none;
+}
+
+.borrower-facilities__equipment-list-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.borrower-facilities__equipment-list-image {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #eff7f1 0%, #dcefe2 100%);
+  object-fit: cover;
+}
+
+.borrower-facilities__equipment-list-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.borrower-facilities__equipment-list-copy strong {
+  color: #133125;
+  font-size: 0.92rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.borrower-facilities__equipment-list-copy p,
+.borrower-facilities__equipment-list-row > span {
+  margin: 0;
+  color: #546a5e;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.borrower-facilities__equipment-list-status {
+  font-weight: 800;
+}
+
+.borrower-facilities__equipment-list-status--available {
+  color: #127b45;
+}
+
+.borrower-facilities__equipment-list-status--maintenance {
+  color: #485287;
+}
+
+.borrower-facilities__view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.24rem;
+  background: rgba(244, 248, 245, 0.92);
+  border: 1px solid #d7e0da;
+  border-radius: 14px;
+}
+
+.borrower-facilities__view-toggle-button {
+  min-height: 42px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #53685d;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.borrower-facilities__view-toggle-button--active {
+  background: #ffffff;
+  color: #14784d;
+  box-shadow: 0 10px 22px rgba(20, 120, 77, 0.12);
 }
 
 .borrower-facilities__venue-grid--directory {
@@ -944,6 +1083,11 @@
     justify-content: flex-start;
   }
 
+  .borrower-facilities__equipment-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .borrower-facilities__segment {
     min-width: 0;
     flex: 1 1 0;
@@ -966,5 +1110,28 @@
 
   .borrower-facilities__week-grid {
     grid-auto-columns: minmax(210px, 1fr);
+  }
+
+  .borrower-facilities__equipment-filter-stack,
+  .borrower-facilities__equipment-filter-row,
+  .borrower-facilities__view-toggle {
+    width: 100%;
+  }
+
+  .borrower-facilities__view-toggle-button {
+    flex: 1;
+  }
+
+  .borrower-facilities__equipment-list {
+    border-radius: 16px;
+  }
+
+  .borrower-facilities__equipment-list-head {
+    display: none;
+  }
+
+  .borrower-facilities__equipment-list-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 }
