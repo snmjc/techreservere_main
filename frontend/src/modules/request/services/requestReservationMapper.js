@@ -1,6 +1,6 @@
-const PENDING_STATUSES = ['Pending Review', 'Pending'];
-const SCHEDULED_STATUSES = ['Approved', 'Prepared', 'Deployed', 'Active'];
-const PAST_RECORD_STATUSES = ['Completed', 'Rejected', 'Cancelled'];
+const PENDING_STATUSES = ['pending review', 'pending', 'submitted'];
+const SCHEDULED_STATUSES = ['approved', 'prepared', 'deployed', 'active'];
+const PAST_RECORD_STATUSES = ['completed', 'rejected', 'cancelled', 'returned', 'request revision'];
 
 export function normalizeReservationListResponse(response) {
   if (Array.isArray(response)) {
@@ -48,15 +48,16 @@ function createEmptyReservationBuckets() {
 
 function addReservationToBucket(buckets, reservation, linkedTasks = []) {
   const mappedRecord = mapReservationRecord(reservation, linkedTasks);
-  const status = reservation?.currentStatus || '';
+  const status = String(reservation?.currentStatus || '').trim();
+  const normalizedStatus = normalizeReservationStatus(status);
   const scheduleState = resolveReservationScheduleState(reservation);
 
-  if (PENDING_STATUSES.includes(status)) {
+  if (PENDING_STATUSES.includes(normalizedStatus)) {
     buckets.pending.push(mappedRecord);
     return;
   }
 
-  if (SCHEDULED_STATUSES.includes(status)) {
+  if (SCHEDULED_STATUSES.includes(normalizedStatus)) {
     if (scheduleState === 'active') {
       buckets.active.push({
         ...mappedRecord,
@@ -83,7 +84,7 @@ function addReservationToBucket(buckets, reservation, linkedTasks = []) {
     }
   }
 
-  if (status === 'Approved') {
+  if (normalizedStatus === 'approved') {
     buckets.approved.push({
       ...mappedRecord,
       assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
@@ -91,7 +92,7 @@ function addReservationToBucket(buckets, reservation, linkedTasks = []) {
     return;
   }
 
-  if (PAST_RECORD_STATUSES.includes(status)) {
+  if (PAST_RECORD_STATUSES.includes(normalizedStatus)) {
     buckets.past.push({
       ...mappedRecord,
       recordStatus: status,
@@ -152,6 +153,10 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     reservedResources: buildReservedResources(reservation, requestedEquipmentList),
     scheduleBucket: resolveReservationScheduleState(reservation),
   };
+}
+
+function normalizeReservationStatus(status) {
+  return String(status || '').trim().toLowerCase();
 }
 
 function resolveReservationScheduleState(reservation) {
