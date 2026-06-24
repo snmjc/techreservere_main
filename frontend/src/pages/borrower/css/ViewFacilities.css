@@ -602,6 +602,18 @@
   padding: 1.15rem;
 }
 
+.borrower-facilities__section-card--venues {
+  gap: 1.25rem;
+}
+
+.borrower-facilities__section-head--venues {
+  align-items: center;
+}
+
+.borrower-facilities__section-actions--venues {
+  justify-content: flex-end;
+}
+
 .borrower-facilities__section-head h3 {
   color: #122d21;
   font-size: 1.35rem;
@@ -641,12 +653,21 @@
   gap: 1rem;
 }
 
+.borrower-facilities__venue-grid--directory {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 .borrower-facilities__venue-card,
 .borrower-facilities__equipment-card {
   display: grid;
   overflow: hidden;
   border-radius: 22px;
   background: #ffffff;
+}
+
+.borrower-facilities__venue-card--directory {
+  border: 1px solid #dce7e0;
+  box-shadow: 0 14px 28px rgba(15, 61, 41, 0.06);
 }
 
 .borrower-facilities__venue-card--available {
@@ -667,6 +688,10 @@
   background: linear-gradient(135deg, #eff7f1 0%, #dcefe2 100%);
 }
 
+.borrower-facilities__venue-media--directory {
+  height: 132px;
+}
+
 .borrower-facilities__venue-image,
 .borrower-facilities__equipment-image {
   display: block;
@@ -678,6 +703,10 @@
 .borrower-facilities__venue-copy,
 .borrower-facilities__equipment-copy {
   padding: 1rem;
+}
+
+.borrower-facilities__venue-copy--directory {
+  gap: 0.8rem;
 }
 
 .borrower-facilities__venue-topline,
@@ -726,6 +755,46 @@
 .borrower-facilities__venue-copy small {
   color: #6a7d73;
   font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.borrower-facilities__venue-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.2rem;
+}
+
+.borrower-facilities__card-action-button {
+  min-width: 96px;
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 1px solid #d8e3dc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #143124;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(16, 53, 36, 0.05);
+}
+
+.borrower-facilities__card-action-button:hover {
+  background: #f7fbf8;
+}
+
+.borrower-facilities__meta-separator {
+  margin: 0 0.25rem;
+  color: #9aada2;
+}
+
+.borrower-facilities__venues-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #587063;
+  font-size: 0.88rem;
   font-weight: 700;
 }
 
