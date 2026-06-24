@@ -233,7 +233,16 @@ export function useCustomSignUpPage() {
   function validateRequiredText(fieldName, message) {
     if (!formData.value[fieldName].trim()) {
       errors.value[fieldName] = message;
+      return;
     }
+
+    if (fieldName === 'idNumber' && !/^\d{9}$/.test(formData.value[fieldName].trim())) {
+      errors.value[fieldName] = 'ID number must be exactly 9 digits.';
+    }
+  }
+
+  function sanitizeIdNumberField() {
+    formData.value.idNumber = String(formData.value.idNumber || '').replace(/\D/g, '').slice(0, 9);
   }
 
   function validateEmail() {
@@ -288,6 +297,7 @@ export function useCustomSignUpPage() {
     isInvitationMode,
     invitationCopy,
     supportingFileAccept,
+    sanitizeIdNumberField,
     openStudentSupportingFile,
     handleStudentSupportingFileChange,
     removeStudentSupportingFile,

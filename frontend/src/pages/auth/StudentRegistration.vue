@@ -58,13 +58,16 @@
 
         <!-- ID Number -->
         <div class="student-registration-form-group">
-          <label for="idNumber" class="student-registration-label">ID Number (e.g. 2023*****) *</label>
+          <label for="idNumber" class="student-registration-label">ID Number (9 digits) *</label>
           <input
             id="idNumber"
             v-model="formData.idNumber"
             type="text"
             class="student-registration-input"
-            placeholder="e.g. 2023-00001"
+            inputmode="numeric"
+            maxlength="9"
+            placeholder="e.g. 202300001"
+            @input="formData.idNumber = formData.idNumber.replace(/\\D/g, '').slice(0, 9)"
             @blur="validateField('idNumber')"
           />
           <span v-if="errors.idNumber" class="student-registration-error-text">{{ errors.idNumber }}</span>
@@ -244,8 +247,8 @@ function validateField(fieldName) {
     case 'idNumber':
       if (!formData.value.idNumber.trim()) {
         errors.value.idNumber = 'ID number is required';
-      } else if (!/^\d{4}-?\d{5}$/.test(formData.value.idNumber)) {
-        errors.value.idNumber = 'ID number must be in format: 2023-00001 or 202300001';
+      } else if (!/^\d{9}$/.test(formData.value.idNumber)) {
+        errors.value.idNumber = 'ID number must be exactly 9 digits';
       }
       break;
 

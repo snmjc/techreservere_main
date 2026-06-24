@@ -31,11 +31,28 @@
           <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(equipment?.equipmentBrand) }}</dd></div>
           <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(equipment?.availableQuantity) }}</dd></div>
           <div><dt>Operational Status / Status</dt><dd>{{ formatEquipmentStatus(equipment) }}</dd></div>
+          <div v-if="Array.isArray(equipment?.inventoryItems) && equipment.inventoryItems.length"><dt>Grouped Units</dt><dd>{{ equipment.inventoryItems.length }}</dd></div>
           <div v-if="showAdminFields"><dt>QR Code</dt><dd>{{ formatEquipmentText(equipment?.barcode) }}</dd></div>
           <div v-if="showAdminFields"><dt>Asset ID</dt><dd>{{ formatEquipmentText(equipment?.assetId || equipment?.serialNumber) }}</dd></div>
           <div class="equipment-details-modal-grid__full">
-            <dt>Description</dt>
+            <dt>Remarks / Notes</dt>
             <dd>{{ formatEquipmentText(equipment?.description || equipment?.scheduleDescription) }}</dd>
+          </div>
+          <div
+            v-if="!showAdminFields && Array.isArray(equipment?.inventoryItems) && equipment.inventoryItems.length"
+            class="equipment-details-modal-grid__full"
+          >
+            <dt>Inventory Items</dt>
+            <dd>
+              <ul class="equipment-details-modal-item-list">
+                <li v-for="item in equipment.inventoryItems" :key="item.equipmentIdentifier">
+                  <strong>{{ formatEquipmentText(item.assetId || item.serialNumber) }}</strong>
+                  <span>Barcode {{ formatEquipmentText(item.barcode) }}</span>
+                  <span>{{ formatEquipmentStatus(item) }}</span>
+                  <small v-if="item.description">{{ item.description }}</small>
+                </li>
+              </ul>
+            </dd>
           </div>
         </dl>
       </div>
@@ -225,6 +242,30 @@ const emit = defineEmits(['close', 'secondary-action']);
 
 .equipment-details-modal-grid__full {
   grid-column: 1 / -1;
+}
+
+.equipment-details-modal-item-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipment-details-modal-item-list li {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.7rem 0.8rem;
+  background: #ffffff;
+  border: 1px solid #dde7e0;
+  border-radius: 10px;
+}
+
+.equipment-details-modal-item-list span,
+.equipment-details-modal-item-list small {
+  color: #607165;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .equipment-details-modal-actions {

@@ -1245,6 +1245,15 @@ let activeReservedVenueWeekRequestSequence = 0;
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
 );
+const excludedFacilityFloors = new Set([
+  '4th Floor',
+  '5th Floor',
+  '6th Floor',
+  '7th Floor',
+  '9th Floor',
+  '11th Floor',
+  '4th-7th Floors',
+]);
 const currentAdminDisplayName = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   const firstName = String(account.firstName || '').trim();
@@ -1458,6 +1467,7 @@ const showingFilterOptions = computed(() => {
       searchedAndSortedVenues.value
         .map((venueRecord) => venueRecord.floorLevel)
         .filter(Boolean)
+        .filter((floorLabel) => !excludedFacilityFloors.has(String(floorLabel).trim()))
     ));
 
     return [

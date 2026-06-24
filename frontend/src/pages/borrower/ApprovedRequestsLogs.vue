@@ -63,6 +63,7 @@
             <th class="logs-th">Purpose</th>
             <th class="logs-th">Status</th>
             <th class="logs-th">Approved By</th>
+            <th class="logs-th">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -93,6 +94,15 @@
               </span>
             </td>
             <td class="logs-td">{{ log.approvedBy }}</td>
+            <td class="logs-td">
+              <button
+                type="button"
+                class="logs-action-button"
+                @click="handleViewLog(log)"
+              >
+                View
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -120,6 +130,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
+import { ROUTE_NAMES } from '@/router/routeNames.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { filterLogsBySearch, mapRequestRecordToLog, sortLogs } from './borrowerReservationLogUtils.js';
 
@@ -157,5 +168,15 @@ function handleGoBack() {
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+function handleViewLog(log) {
+  router.push({
+    name: ROUTE_NAMES.borrowerViewReservationList,
+    query: {
+      request: log?.reservationId || '',
+      status: 'approved',
+    },
+  });
 }
 </script>

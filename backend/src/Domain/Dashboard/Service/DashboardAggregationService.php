@@ -480,10 +480,7 @@ class DashboardAggregationService
                 $lowStockCount++;
             }
 
-            if (
-                self::normalizeText($equipmentRecord->getEquipmentState()) !== 'available'
-                || self::normalizeText($equipmentRecord->getOperationalStatus()) !== 'active'
-            ) {
+            if (!$this->isEquipmentOperationallyAvailable($equipmentRecord)) {
                 $inactiveEquipmentCount++;
             }
         }
@@ -598,10 +595,7 @@ class DashboardAggregationService
                 $factorCounts['Low stock pressure']++;
             }
 
-            if (
-                self::normalizeText($equipmentRecord->getEquipmentState()) !== 'available'
-                || self::normalizeText($equipmentRecord->getOperationalStatus()) !== 'active'
-            ) {
+            if (!$this->isEquipmentOperationallyAvailable($equipmentRecord)) {
                 $score += 3;
                 $factorCounts['Inactive availability state']++;
             }
@@ -959,10 +953,21 @@ class DashboardAggregationService
 
         foreach ($equipment as $equipmentRecord) {
             $totalEquipmentUnits += max(0, $equipmentRecord->getTotalQuantity());
-            $availableEquipmentUnits += max(0, $equipmentRecord->getAvailableQuantity());
+            if ($this->isEquipmentOperationallyAvailable($equipmentRecord)) {
+                $availableEquipmentUnits += max(0, $equipmentRecord->getAvailableQuantity());
+            }
         }
 
         return [$totalEquipmentUnits, $availableEquipmentUnits];
+    }
+
+    private function isEquipmentOperationallyAvailable(EquipmentEntity $equipmentRecord): bool
+    {
+        $normalizedState = self::normalizeText($equipmentRecord->getEquipmentState());
+        $normalizedStatus = self::normalizeText($equipmentRecord->getOperationalStatus());
+
+        return $normalizedState === 'available'
+            && in_array($normalizedStatus, ['available', 'active'], true);
     }
 
     /**

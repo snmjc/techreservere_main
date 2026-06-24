@@ -241,6 +241,7 @@ import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationIt
 import { useReservationFormStore } from '@/modules/reservation/store/reservationFormStore.js';
 import { useReservationData } from '@/modules/reservation/composables/useReservationData.js';
 import { MAX_EQUIPMENT_SELECTION_COUNT } from '@/modules/reservation/utils/reservationWizard.js';
+import { groupBorrowerEquipmentRecords } from '@/modules/facility/utils/equipmentGrouping.js';
 import { isVenueFloorPlaceholderRecord } from '@/modules/facility/utils/venueFormValidation.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
@@ -331,12 +332,25 @@ const equipmentRecords = computed(() => {
   const apiRecords = equipmentList.value.map((item) => ({
     equipmentIdentifier: item.equipmentIdentifier,
     equipmentName: item.equipmentName,
-    equipmentCategory: item.categoryName || 'Miscellaneous',
+    equipmentCategory: item.equipmentCategory || item.categoryName || 'Miscellaneous',
     equipmentBrand: item.equipmentBrand || item.categoryName || 'Equipment',
+    totalQuantity: Number(item.totalQuantity ?? item.availableQuantity ?? 0),
     availableQuantity: Number(item.availableQuantity ?? item.totalQuantity ?? 0),
+    operationalStatus: item.operationalStatus || item.equipmentState || 'Available',
+    equipmentState: item.equipmentState || item.operationalStatus || 'Available',
+    description: item.description || item.scheduleDescription || '',
+    scheduleDescription: item.scheduleDescription || item.description || '',
+    barcode: item.barcode || '',
+    assetId: item.assetId || item.serialNumber || '',
+    serialNumber: item.serialNumber || item.assetId || '',
+    photoData: item.photoData || null,
+    photoDisplayMode: item.photoDisplayMode || 'contain',
+    photoPositionX: item.photoPositionX ?? 50,
+    photoPositionY: item.photoPositionY ?? 50,
   }));
 
-  return apiRecords.length ? apiRecords : fallbackEquipment;
+  const sourceRecords = apiRecords.length ? apiRecords : fallbackEquipment;
+  return groupBorrowerEquipmentRecords(sourceRecords);
 });
 
 watch(
