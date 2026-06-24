@@ -44,7 +44,7 @@ class VenueController extends AbstractController
         $endTime = $request->query->get('endTime');
         $reservedOnly = filter_var($request->query->get('reservedOnly', false), FILTER_VALIDATE_BOOL);
 
-        if ($role === RoleConstants::ROLE_BORROWER && $reservedOnly) {
+        if ($reservedOnly) {
             $dtos = array_values(array_filter(
                 $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime),
                 static fn ($venueDto): bool => !empty($venueDto->reservationTimeRanges)

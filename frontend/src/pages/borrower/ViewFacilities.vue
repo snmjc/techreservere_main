@@ -542,7 +542,7 @@ const visibleCalendarColumns = computed(() => {
   return sourceDates.map((dateValue) => {
     const dateObject = parseDateValue(dateValue) || selectedDateObject.value;
     const venues = weeklyVenueMap.value[dateValue] || [];
-    const entries = venues.slice(0, calendarViewMode.value === 'daily' ? 8 : 5).map((venue) => {
+    const entries = venues.map((venue) => {
       const statusTone = resolveVenueStatusTone(venue, dateValue);
 
       return {

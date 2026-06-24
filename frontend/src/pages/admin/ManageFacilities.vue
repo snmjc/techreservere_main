@@ -229,7 +229,7 @@
                       </span>
                       <div>
                         <strong>{{ selectedVenueSummary.visibleCount }}</strong>
-                        <p>venues surfaced for this date</p>
+                        <p>reserved venues surfaced for this date</p>
                       </div>
                     </div>
                     <div class="manage-facilities-venue-detail-item">
@@ -254,7 +254,7 @@
                       </span>
                       <div>
                         <strong>Weekly View</strong>
-                        <p>{{ selectedVenueSummary.availableCount }} available and {{ selectedVenueSummary.blockedCount }} blocked on this date</p>
+                        <p>{{ selectedVenueSummary.blockedCount }} reserved venue{{ selectedVenueSummary.blockedCount === 1 ? '' : 's' }} currently surfaced</p>
                       </div>
                     </div>
                   </div>
@@ -264,24 +264,17 @@
                   <p class="manage-facilities-venue-card-label">Legend</p>
                   <div class="manage-facilities-venue-legend-list">
                     <div class="manage-facilities-venue-legend-row">
-                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--available"></span>
-                      <div>
-                        <strong>Available</strong>
-                        <p>Venue is open for reservations on that date.</p>
-                      </div>
-                    </div>
-                    <div class="manage-facilities-venue-legend-row">
                       <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--blocked"></span>
                       <div>
-                        <strong>Reserved Block</strong>
-                        <p>Venue is already reserved or blocked for the selected date.</p>
+                        <strong>Reserved Venue</strong>
+                        <p>The venue already has a reservation on that date.</p>
                       </div>
                     </div>
                     <div class="manage-facilities-venue-legend-row">
-                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--partial"></span>
+                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--available"></span>
                       <div>
-                        <strong>Limited</strong>
-                        <p>Venue has schedule constraints or partial reservation blocks.</p>
+                        <strong>No Reservation</strong>
+                        <p>No reserved venue entries were surfaced for that date.</p>
                       </div>
                     </div>
                   </div>
@@ -307,31 +300,58 @@
                         <article
                           v-for="entry in dayColumn.entries"
                           :key="`${dayColumn.dateValue}-${entry.venueIdentifier}`"
-                          class="manage-facilities-venue-availability-card"
-                          :class="`manage-facilities-venue-availability-card--${entry.statusTone}`"
+                          class="manage-facilities-venue-reserved-chip"
                         >
                           <span class="manage-facilities-venue-availability-meta">{{ entry.metaLine }}</span>
                           <strong>{{ entry.venueName }}</strong>
                           <p>{{ entry.descriptionLine }}</p>
-                          <div class="manage-facilities-venue-availability-footer">
-                            <span>{{ entry.footerLabel }}</span>
-                            <span>{{ entry.capacityLabel }}</span>
-                          </div>
-                          <div class="manage-facilities-venue-availability-actions">
-                            <button type="button" @click="handleViewVenue(entry.sourceRecord)">View</button>
-                            <button type="button" @click="handleEditVenue(entry.sourceRecord)">Edit</button>
-                            <button type="button" class="manage-facilities-venue-availability-delete" @click="handleDeleteVenue(entry.sourceRecord)">Delete</button>
-                          </div>
                         </article>
 
                         <div v-if="dayColumn.entries.length === 0" class="manage-facilities-venue-empty-day">
-                          <strong>No venues surfaced</strong>
-                          <p>No venues matched the current filters for this date.</p>
+                          <strong>No reserved venues</strong>
+                          <p>No reservations were surfaced for this date.</p>
                         </div>
                       </div>
                     </article>
                   </div>
                 </div>
+
+                <section class="manage-facilities-venue-card-section">
+                  <div class="manage-facilities-section-heading manage-facilities-section-heading--inline">
+                    <div>
+                      <h3>Reserved Venues for {{ selectedVenueLongDateLabel }}</h3>
+                      <p class="manage-facilities-section-note">
+                        Venue cards now sit below the calendar and focus only on reservations scheduled for the selected date.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div v-if="selectedVenueReservedEntries.length > 0" class="manage-facilities-venue-card-grid">
+                    <article
+                      v-for="entry in selectedVenueReservedEntries"
+                      :key="`selected-${entry.venueIdentifier}`"
+                      class="manage-facilities-venue-availability-card manage-facilities-venue-availability-card--blocked"
+                    >
+                      <span class="manage-facilities-venue-availability-meta">{{ entry.metaLine }}</span>
+                      <strong>{{ entry.venueName }}</strong>
+                      <p>{{ entry.descriptionLine }}</p>
+                      <div class="manage-facilities-venue-availability-footer">
+                        <span>{{ entry.footerLabel }}</span>
+                        <span>{{ entry.capacityLabel }}</span>
+                      </div>
+                      <div class="manage-facilities-venue-availability-actions">
+                        <button type="button" @click="handleViewVenue(entry.sourceRecord)">View</button>
+                        <button type="button" @click="handleEditVenue(entry.sourceRecord)">Edit</button>
+                        <button type="button" class="manage-facilities-venue-availability-delete" @click="handleDeleteVenue(entry.sourceRecord)">Delete</button>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div v-else class="manage-facilities-venue-card-empty">
+                    <strong>No reserved venues for {{ selectedVenueLongDateLabel }}</strong>
+                    <p>Once a venue is reserved for this date, it will appear here with its admin actions.</p>
+                  </div>
+                </section>
               </section>
             </div>
           </div>
@@ -1057,6 +1077,7 @@ const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
 
 const venuesList = ref([]);
+const reservedVenueMap = ref({});
 const equipmentList = ref([]);
 const loading = ref(false);
 const venueError = ref('');
@@ -1096,6 +1117,7 @@ const isDeletingClassSchedule = ref(false);
 const importScheduleFile = ref(null);
 const classScheduleForm = ref(createEmptyClassScheduleForm());
 const quickClassScheduleForm = ref(createEmptyQuickAddScheduleForm());
+let activeReservedVenueWeekRequestSequence = 0;
 
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
@@ -1180,17 +1202,14 @@ const selectedVenueMonthShortLabel = computed(() => new Intl.DateTimeFormat('en-
 const selectedVenueDayNumberLabel = computed(() => new Date(`${selectedVenueCalendarDate.value}T00:00:00`).getDate());
 const venueMonthCalendarCells = computed(() => buildSimpleCalendarDays(venueMonthCursor.value));
 const selectedVenueSummary = computed(() => {
-  const visibleCount = filteredVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
-    venueRecord,
-    availabilityFilter.value,
-    selectedVenueCalendarDate.value,
-  )).length;
+  const reservedEntries = getVenueEntriesForDate(selectedVenueCalendarDate.value);
+  const visibleCount = reservedEntries.length;
   const availableCount = filteredVenueRecords.value.filter((venueRecord) => deriveVenueAvailabilityForDate(venueRecord, selectedVenueCalendarDate.value) === 'Available').length;
 
   return {
     visibleCount,
     availableCount,
-    blockedCount: Math.max(filteredVenueRecords.value.length - availableCount, 0),
+    blockedCount: reservedEntries.length,
   };
 });
 const venueCalendarColumns = computed(() => venueWeekDates.value.map((weekDate) => {
@@ -1200,10 +1219,11 @@ const venueCalendarColumns = computed(() => venueWeekDates.value.map((weekDate) 
     dateValue: weekDate.dateKey,
     weekdayLabel: weekDate.weekday,
     shortDateLabel: weekDate.monthDay,
-    entryCountLabel: `${entries.length} venue${entries.length === 1 ? '' : 's'}`,
+    entryCountLabel: `${entries.length} reserved`,
     entries,
   };
 }));
+const selectedVenueReservedEntries = computed(() => getVenueEntriesForDate(selectedVenueCalendarDate.value));
 
 const filteredVenueRecords = computed(() => {
   const selectedFloor = showingFilterValue.value;
@@ -1541,6 +1561,42 @@ async function fetchEquipment() {
   }
 }
 
+async function fetchReservedVenuesForVisibleWeek() {
+  const currentRequestSequence = activeReservedVenueWeekRequestSequence + 1;
+  activeReservedVenueWeekRequestSequence = currentRequestSequence;
+
+  try {
+    const weekDateValues = buildWeekDates(selectedVenueCalendarDate.value).map((weekDate) => weekDate.dateKey);
+    const responses = await Promise.all(weekDateValues.map(async (dateValue) => {
+      const response = await venueApi.listVenues({
+        selectedDate: dateValue,
+        reservedOnly: true,
+      });
+      const venuePayload = response?.data?.venues || response?.venues || [];
+      const normalizedVenues = Array.isArray(venuePayload)
+        ? venuePayload
+          .map(normalizeVenueRecord)
+          .filter(Boolean)
+          .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+        : [];
+
+      return [dateValue, normalizedVenues];
+    }));
+
+    if (currentRequestSequence !== activeReservedVenueWeekRequestSequence) {
+      return;
+    }
+
+    reservedVenueMap.value = Object.fromEntries(responses);
+  } catch (error) {
+    if (currentRequestSequence !== activeReservedVenueWeekRequestSequence) {
+      return;
+    }
+
+    reservedVenueMap.value = {};
+  }
+}
+
 async function fetchClassSchedules() {
   try {
     classScheduleLoading.value = true;
@@ -1671,6 +1727,7 @@ async function confirmDeleteVenue() {
 onMounted(() => {
   syncActiveFacilityTabFromRoute(route.query.tab);
   fetchVenues();
+  fetchReservedVenuesForVisibleWeek();
   fetchEquipment();
   fetchClassSchedules();
 });
@@ -1684,6 +1741,10 @@ watch(
 
 watch(activeFacilityTab, () => {
   showingFilterValue.value = 'all';
+  if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
+    fetchVenues();
+    fetchReservedVenuesForVisibleWeek();
+  }
 });
 
 watch(showingFilterOptions, (nextOptions) => {
@@ -1696,6 +1757,7 @@ watch(selectedVenueCalendarDate, () => {
   venueMonthCursor.value = selectedVenueCalendarDate.value.slice(0, 7);
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     fetchVenues();
+    fetchReservedVenuesForVisibleWeek();
   }
 });
 
@@ -1993,32 +2055,51 @@ function selectVenueDate(dateValue) {
 }
 
 function getVenueEntriesForDate(dateValue) {
-  return filteredVenueRecords.value
-    .filter((venueRecord) => matchesCalendarAvailability(venueRecord, availabilityFilter.value, dateValue))
+  return (reservedVenueMap.value[dateValue] || [])
+    .filter((venueRecord) => hasReservedVenueEntry(venueRecord, dateValue))
     .map((venueRecord) => buildVenueCalendarEntry(venueRecord, dateValue));
 }
 
-function buildVenueCalendarEntry(venueRecord, dateValue) {
-  const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, dateValue);
-  const statusTone = availabilityStatus === 'Available'
-    ? 'available'
-    : availabilityStatus === 'Partially Booked'
-      ? 'partial'
-      : 'blocked';
+function hasReservedVenueEntry(venueRecord, dateValue) {
   const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
-  const primaryRange = reservationRanges[0] || null;
+  if (reservationRanges.length === 0) {
+    return false;
+  }
+
+  return reservationRanges.some((rangeRecord) => isReservationRangeScheduledForDate(rangeRecord, dateValue));
+}
+
+function isReservationRangeScheduledForDate(rangeRecord, dateValue) {
+  const normalizedDate = String(dateValue || '').trim();
+  const rangeDate = String(
+    rangeRecord?.reservationDate
+      || rangeRecord?.date
+      || rangeRecord?.scheduleDate
+      || rangeRecord?.startDate
+      || '',
+  ).trim();
+
+  if (rangeDate !== '') {
+    return rangeDate === normalizedDate;
+  }
+
+  return true;
+}
+
+function buildVenueCalendarEntry(venueRecord, dateValue) {
+  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+  const primaryRange = reservationRanges.find((rangeRecord) => isReservationRangeScheduledForDate(rangeRecord, dateValue)) || reservationRanges[0] || null;
   const metaLine = primaryRange
     ? `${formatTimeDisplay(primaryRange.startTime || '08:00')} - ${formatTimeDisplay(primaryRange.endTime || '17:00')}`
-    : availabilityStatus;
+    : 'Reserved schedule';
 
   return {
     sourceRecord: venueRecord,
     venueIdentifier: venueRecord.venueIdentifier,
     venueName: venueRecord.venueName,
-    statusTone,
     metaLine,
     descriptionLine: venueRecord.venueLocation || venueRecord.floorLevel || 'Venue location not set',
-    footerLabel: availabilityStatus,
+    footerLabel: 'Reserved',
     capacityLabel: `Cap ${venueRecord.capacityLimit || 'N/A'}`,
   };
 }
