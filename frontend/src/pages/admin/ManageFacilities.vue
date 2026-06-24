@@ -374,16 +374,18 @@
                         class="manage-facilities-venue-matrix-cell"
                         :class="`manage-facilities-venue-matrix-cell--${dayCell.tone}`"
                       >
-                        <article
+                        <button
                           v-for="block in dayCell.blocks"
                           :key="block.key"
+                          type="button"
                           class="manage-facilities-venue-block"
                           :class="`manage-facilities-venue-block--${block.tone}`"
+                          @click="handleViewVenue(venueRow)"
                         >
                           <span>{{ block.timeLabel }}</span>
                           <strong>{{ block.title }}</strong>
                           <p>{{ block.meta }}</p>
-                        </article>
+                        </button>
                       </div>
                     </template>
                   </div>

@@ -701,8 +701,17 @@ body {
   display: grid;
   gap: 0.2rem;
   padding: 0.55rem;
+  width: 100%;
+  text-align: left;
+  appearance: none;
   border: 1px solid transparent;
   border-radius: 12px;
+  cursor: pointer;
+}
+
+.manage-facilities-venue-block:focus-visible {
+  outline: 2px solid rgba(19, 130, 70, 0.35);
+  outline-offset: 2px;
 }
 
 .manage-facilities-venue-block span {
