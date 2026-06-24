@@ -551,7 +551,7 @@ body {
 .manage-facilities-venue-dashboard {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
