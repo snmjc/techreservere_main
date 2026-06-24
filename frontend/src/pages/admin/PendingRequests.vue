@@ -378,6 +378,7 @@
 
 <script setup>
 import { ref, onMounted, computed, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PendingRequests.css';
@@ -389,6 +390,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
+const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const selectedRequestRecord = ref(null);
@@ -491,6 +493,7 @@ async function confirmApproveRequest() {
     });
     closeApproveModal();
     selectedRequestRecord.value = null;
+    router.push({ name: 'adminApprovedRequestsPage' });
   } catch (error) {
     approveModalError.value = error?.message || 'Unable to approve this request.';
   } finally {
