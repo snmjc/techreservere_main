@@ -129,7 +129,7 @@
             :class="{ 'manage-facilities-view-toggle-button--active': equipmentViewMode === 'card' }"
             @click="equipmentViewMode = 'card'"
           >
-            Card Type
+            Card View
           </button>
           <button
             type="button"
@@ -137,7 +137,7 @@
             :class="{ 'manage-facilities-view-toggle-button--active': equipmentViewMode === 'list' }"
             @click="equipmentViewMode = 'list'"
           >
-            List Type
+            List View
           </button>
         </div>
       </div>
@@ -334,7 +334,6 @@
               <section class="manage-facilities-venue-board-panel">
                 <div class="manage-facilities-venue-board manage-facilities-venue-board--matrix">
                   <div class="manage-facilities-venue-matrix">
-                    <div class="manage-facilities-venue-matrix-corner">Venue / Time</div>
                     <div
                       v-for="dayColumn in venueMatrixColumns"
                       :key="dayColumn.dateValue"
@@ -347,15 +346,6 @@
                     </div>
 
                     <template v-for="venueRow in venueMatrixRows" :key="venueRow.venueIdentifier">
-                      <div class="manage-facilities-venue-matrix-venue-card">
-                        <img :src="resolveVenuePhoto(venueRow.sourceRecord)" :alt="`${venueRow.venueName} photo`" class="manage-facilities-venue-matrix-venue-photo" />
-                        <div>
-                          <strong>{{ venueRow.venueName }}</strong>
-                          <p>{{ venueRow.floorLabel }}</p>
-                          <small>Cap {{ venueRow.capacityLabel }}</small>
-                        </div>
-                      </div>
-
                       <div
                         v-for="dayCell in venueRow.dayCells"
                         :key="`${venueRow.venueIdentifier}-${dayCell.dateValue}`"
@@ -2354,23 +2344,7 @@ function buildVenueDirectoryCardRecord(venueRecord) {
 
 function buildVenueMatrixCell(venueRecord, dateValue) {
   const reservedVenueRecord = findReservedVenueRecord(venueRecord, dateValue);
-  const matrixTone = resolveVenueMatrixTone(venueRecord, dateValue, reservedVenueRecord);
-
-  if (matrixTone === 'maintenance') {
-    return {
-      dateValue,
-      tone: 'maintenance',
-      blocks: [{
-        key: `${venueRecord.venueIdentifier}-${dateValue}-maintenance`,
-        tone: 'maintenance',
-        timeLabel: 'All Day',
-        title: 'Under Maintenance',
-        meta: 'Maintenance Activity',
-      }],
-    };
-  }
-
-  if (matrixTone === 'reserved') {
+  if (reservedVenueRecord && hasReservedVenueEntry(reservedVenueRecord, dateValue)) {
     return {
       dateValue,
       tone: 'reserved',
@@ -2380,14 +2354,8 @@ function buildVenueMatrixCell(venueRecord, dateValue) {
 
   return {
     dateValue,
-    tone: 'available',
-    blocks: [{
-      key: `${venueRecord.venueIdentifier}-${dateValue}-available`,
-      tone: 'available',
-      timeLabel: '8:00 AM - 5:00 PM',
-      title: 'Available',
-      meta: venueRecord.venueLocation || 'Open for reservations',
-    }],
+    tone: 'empty',
+    blocks: [],
   };
 }
 

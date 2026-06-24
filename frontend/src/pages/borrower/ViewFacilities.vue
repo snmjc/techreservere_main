@@ -335,38 +335,63 @@
             </div>
 
             <div class="borrower-facilities__section-actions">
-              <label class="borrower-facilities__inline-field borrower-facilities__inline-field--search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
-                <input v-model.trim="equipmentSearchQuery" type="text" placeholder="Search equipment" />
-              </label>
+              <div class="borrower-facilities__equipment-controls">
+                <div class="borrower-facilities__equipment-filter-stack">
+                  <label class="borrower-facilities__inline-field borrower-facilities__inline-field--search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+                    <input v-model.trim="equipmentSearchQuery" type="text" placeholder="Search equipment" />
+                  </label>
 
-              <label class="borrower-facilities__inline-field">
-                <span>Status</span>
-                <select v-model="equipmentFilterValue">
-                  <option value="all">All</option>
-                  <option value="available">Available</option>
-                  <option value="maintenance">Under Maintenance</option>
-                </select>
-              </label>
+                  <div class="borrower-facilities__equipment-filter-row">
+                    <label class="borrower-facilities__inline-field borrower-facilities__inline-field--status">
+                      <span>Status</span>
+                      <select v-model="equipmentFilterValue">
+                        <option value="all">All</option>
+                        <option value="available">Available</option>
+                        <option value="maintenance">Under Maintenance</option>
+                      </select>
+                    </label>
 
-              <button
-                type="button"
-                class="borrower-facilities__sort-button"
-                :title="equipmentSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'"
-                @click="equipmentSortOrder = equipmentSortOrder === 'asc' ? 'desc' : 'asc'"
-              >
-                <svg v-if="equipmentSortOrder === 'asc'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <polyline points="19 12 12 19 5 12" />
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="19" x2="12" y2="5" />
-                  <polyline points="5 12 12 5 19 12" />
-                </svg>
-              </button>
+                    <button
+                      type="button"
+                      class="borrower-facilities__sort-button"
+                      :title="equipmentSortOrder === 'asc' ? 'Sort A-Z' : 'Sort Z-A'"
+                      @click="equipmentSortOrder = equipmentSortOrder === 'asc' ? 'desc' : 'asc'"
+                    >
+                      <svg v-if="equipmentSortOrder === 'asc'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <polyline points="19 12 12 19 5 12" />
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="19" x2="12" y2="5" />
+                        <polyline points="5 12 12 5 19 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="borrower-facilities__view-toggle" aria-label="Equipment view type">
+                  <button
+                    type="button"
+                    class="borrower-facilities__view-toggle-button"
+                    :class="{ 'borrower-facilities__view-toggle-button--active': equipmentViewMode === 'card' }"
+                    @click="equipmentViewMode = 'card'"
+                  >
+                    Card View
+                  </button>
+                  <button
+                    type="button"
+                    class="borrower-facilities__view-toggle-button"
+                    :class="{ 'borrower-facilities__view-toggle-button--active': equipmentViewMode === 'list' }"
+                    @click="equipmentViewMode = 'list'"
+                  >
+                    List View
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -380,7 +405,7 @@
             <p>No equipment matched your current filter.</p>
           </div>
 
-          <div v-else class="borrower-facilities__equipment-grid">
+          <div v-else-if="equipmentViewMode === 'card'" class="borrower-facilities__equipment-grid">
             <button
               v-for="equipment in equipmentCardsToRender"
               :key="equipment.equipmentIdentifier"
@@ -414,6 +439,46 @@
                 </div>
               </div>
             </button>
+          </div>
+
+          <div v-else class="borrower-facilities__equipment-list">
+            <div class="borrower-facilities__equipment-list-head">
+              <span>Equipment</span>
+              <span>Status</span>
+              <span>Category</span>
+              <span>Quantity</span>
+              <span>Action</span>
+            </div>
+
+            <article
+              v-for="equipment in equipmentCardsToRender"
+              :key="`list-${equipment.equipmentIdentifier}`"
+              class="borrower-facilities__equipment-list-row"
+            >
+              <div class="borrower-facilities__equipment-list-primary">
+                <img
+                  :src="resolveEquipmentPhoto(equipment)"
+                  :alt="`${equipment.equipmentName} photo`"
+                  class="borrower-facilities__equipment-list-image"
+                />
+                <div class="borrower-facilities__equipment-list-copy">
+                  <strong>{{ equipment.equipmentName }}</strong>
+                  <p>{{ equipment.description || equipment.scheduleDescription || 'No description provided.' }}</p>
+                </div>
+              </div>
+              <span class="borrower-facilities__equipment-list-status" :class="equipment.equipmentState === 'Available' ? 'borrower-facilities__equipment-list-status--available' : 'borrower-facilities__equipment-list-status--maintenance'">
+                {{ formatEquipmentStatus(equipment) }}
+              </span>
+              <span>{{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</span>
+              <span>Qty {{ equipment.availableQuantity }}</span>
+              <button
+                type="button"
+                class="borrower-facilities__card-action-button"
+                @click="handleViewEquipmentDetails(equipment)"
+              >
+                View
+              </button>
+            </article>
           </div>
 
           <div v-if="activeFacilityTab === 'equipment' && equipmentTotalPages > 1" class="borrower-facilities__pagination">
@@ -487,6 +552,7 @@ const venueDirectoryPageSize = 4;
 const equipmentFilterValue = ref('all');
 const equipmentSortOrder = ref('asc');
 const equipmentSearchQuery = ref('');
+const equipmentViewMode = ref('card');
 const equipmentCurrentPage = ref(1);
 const equipmentPageSize = 8;
 const weeklyVenueMap = ref({});
