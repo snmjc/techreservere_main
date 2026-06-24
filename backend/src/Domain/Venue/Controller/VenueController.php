@@ -43,6 +43,7 @@ class VenueController extends AbstractController
         $startTime = $request->query->get('startTime');
         $endTime = $request->query->get('endTime');
         $reservedOnly = filter_var($request->query->get('reservedOnly', false), FILTER_VALIDATE_BOOL);
+        $includeUnavailable = filter_var($request->query->get('includeUnavailable', false), FILTER_VALIDATE_BOOL);
 
         if ($reservedOnly) {
             $dtos = array_values(array_filter(
@@ -50,7 +51,7 @@ class VenueController extends AbstractController
                 static fn ($venueDto): bool => !empty($venueDto->reservationTimeRanges)
             ));
         } else {
-            $dtos = ($role === RoleConstants::ROLE_BORROWER)
+            $dtos = ($role === RoleConstants::ROLE_BORROWER && !$includeUnavailable)
                 ? $this->venueManagementService->getAvailableVenues($selectedDate, $startTime, $endTime)
                 : $this->venueManagementService->getAllVenues($selectedDate, $startTime, $endTime);
         }

@@ -186,18 +186,51 @@
               </div>
             </div>
 
-            <div class="manage-facilities-venue-date-banner">
-              <div class="manage-facilities-venue-date-tile">
-                <span>{{ selectedVenueMonthShortLabel }}</span>
-                <strong>{{ selectedVenueDayNumberLabel }}</strong>
+            <div class="manage-facilities-venue-overview-strip">
+              <div class="manage-facilities-venue-date-banner manage-facilities-venue-date-banner--dashboard">
+                <div class="manage-facilities-venue-date-tile">
+                  <span>{{ selectedVenueMonthShortLabel }}</span>
+                  <strong>{{ selectedVenueDayNumberLabel }}</strong>
+                </div>
+                <div class="manage-facilities-venue-date-copy">
+                  <h2>{{ selectedVenueLongDateLabel }}</h2>
+                  <p>{{ selectedVenueWeekdayLabel }}</p>
+                </div>
               </div>
-              <div class="manage-facilities-venue-date-copy">
-                <h2>{{ selectedVenueLongDateLabel }}</h2>
-                <p>{{ selectedVenueWeekdayLabel }}</p>
+
+              <div class="manage-facilities-venue-stat-grid">
+                <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--available">
+                  <span class="manage-facilities-venue-stat-icon">A</span>
+                  <div>
+                    <strong>{{ venueDashboardSummary.availableCount }}</strong>
+                    <p>Available</p>
+                  </div>
+                </article>
+                <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--reserved">
+                  <span class="manage-facilities-venue-stat-icon">R</span>
+                  <div>
+                    <strong>{{ venueDashboardSummary.reservedCount }}</strong>
+                    <p>Reserved</p>
+                  </div>
+                </article>
+                <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--maintenance">
+                  <span class="manage-facilities-venue-stat-icon">M</span>
+                  <div>
+                    <strong>{{ venueDashboardSummary.maintenanceCount }}</strong>
+                    <p>Under Maintenance</p>
+                  </div>
+                </article>
+                <article class="manage-facilities-venue-stat-card manage-facilities-venue-stat-card--peak">
+                  <span class="manage-facilities-venue-stat-icon">P</span>
+                  <div>
+                    <strong>Peak Time</strong>
+                    <p>{{ venueDashboardSummary.peakTimeLabel }}</p>
+                  </div>
+                </article>
               </div>
             </div>
 
-            <div class="manage-facilities-venue-calendar-layout">
+            <div class="manage-facilities-venue-dashboard">
               <aside class="manage-facilities-venue-calendar-sidebar">
                 <section class="manage-facilities-venue-sidebar-card manage-facilities-venue-sidebar-card--calendar">
                   <div class="manage-facilities-venue-mini-calendar-head">
@@ -236,138 +269,191 @@
                 </section>
 
                 <section class="manage-facilities-venue-sidebar-card">
-                  <p class="manage-facilities-venue-card-label">Selected Date Details</p>
-                  <div class="manage-facilities-venue-detail-list">
-                    <div class="manage-facilities-venue-detail-item">
-                      <span class="manage-facilities-venue-detail-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <circle cx="12" cy="12" r="9" />
-                          <path d="M12 7v5l3 3" />
-                        </svg>
-                      </span>
+                  <p class="manage-facilities-venue-card-label">Venue Summary</p>
+                  <div class="manage-facilities-venue-summary-list">
+                    <div class="manage-facilities-venue-summary-row">
+                      <span class="manage-facilities-venue-summary-dot manage-facilities-venue-summary-dot--available"></span>
                       <div>
-                        <strong>{{ selectedVenueSummary.visibleCount }}</strong>
-                        <p>reserved venues surfaced for this date</p>
+                        <strong>{{ venueDashboardSummary.availableCount }}</strong>
+                        <p>Available venues</p>
                       </div>
                     </div>
-                    <div class="manage-facilities-venue-detail-item">
-                      <span class="manage-facilities-venue-detail-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <rect x="3" y="4" width="18" height="18" rx="2" />
-                          <path d="M16 2v4" />
-                          <path d="M8 2v4" />
-                          <path d="M3 10h18" />
-                        </svg>
-                      </span>
+                    <div class="manage-facilities-venue-summary-row">
+                      <span class="manage-facilities-venue-summary-dot manage-facilities-venue-summary-dot--reserved"></span>
                       <div>
-                        <strong>{{ selectedVenueLongDateLabel }}</strong>
-                        <p>{{ selectedVenueWeekdayLabel }}</p>
+                        <strong>{{ venueDashboardSummary.reservedCount }}</strong>
+                        <p>Reserved venues</p>
                       </div>
                     </div>
-                    <div class="manage-facilities-venue-detail-item">
-                      <span class="manage-facilities-venue-detail-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                        </svg>
-                      </span>
+                    <div class="manage-facilities-venue-summary-row">
+                      <span class="manage-facilities-venue-summary-dot manage-facilities-venue-summary-dot--maintenance"></span>
                       <div>
-                        <strong>Weekly View</strong>
-                        <p>{{ selectedVenueSummary.blockedCount }} reserved venue{{ selectedVenueSummary.blockedCount === 1 ? '' : 's' }} currently surfaced</p>
+                        <strong>{{ venueDashboardSummary.maintenanceCount }}</strong>
+                        <p>Under maintenance</p>
+                      </div>
+                    </div>
+                    <div class="manage-facilities-venue-summary-row">
+                      <span class="manage-facilities-venue-summary-dot manage-facilities-venue-summary-dot--peak"></span>
+                      <div>
+                        <strong>Peak Time</strong>
+                        <p>{{ venueDashboardSummary.peakTimeLabel }}</p>
                       </div>
                     </div>
                   </div>
                 </section>
 
                 <section class="manage-facilities-venue-sidebar-card">
-                  <p class="manage-facilities-venue-card-label">Legend</p>
-                  <div class="manage-facilities-venue-legend-list">
-                    <div class="manage-facilities-venue-legend-row">
-                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--blocked"></span>
-                      <div>
-                        <strong>Reserved Venue</strong>
-                        <p>The venue already has a reservation on that date.</p>
-                      </div>
-                    </div>
-                    <div class="manage-facilities-venue-legend-row">
-                      <span class="manage-facilities-venue-legend-dot manage-facilities-venue-legend-dot--available"></span>
-                      <div>
-                        <strong>No Reservation</strong>
-                        <p>No reserved venue entries were surfaced for that date.</p>
-                      </div>
-                    </div>
+                  <p class="manage-facilities-venue-card-label">Filters</p>
+                  <div class="manage-facilities-venue-filter-list">
+                    <label class="manage-facilities-venue-filter-field">
+                      <span>Floor</span>
+                      <select v-model="showingFilterValue">
+                        <option v-for="filterOption in showingFilterOptions" :key="filterOption.value" :value="filterOption.value">
+                          {{ filterOption.label }}
+                        </option>
+                      </select>
+                    </label>
+                    <label class="manage-facilities-venue-filter-field">
+                      <span>Building</span>
+                      <select v-model="venueBuildingFilter">
+                        <option value="all">All Buildings</option>
+                      </select>
+                    </label>
+                    <label class="manage-facilities-venue-filter-field">
+                      <span>Capacity</span>
+                      <select v-model="venueCapacityFilter">
+                        <option v-for="capacityOption in venueCapacityOptions" :key="capacityOption.value" :value="capacityOption.value">
+                          {{ capacityOption.label }}
+                        </option>
+                      </select>
+                    </label>
                   </div>
                 </section>
               </aside>
 
               <section class="manage-facilities-venue-board-panel">
-                <div class="manage-facilities-venue-board">
-                  <div class="manage-facilities-venue-week-grid">
-                    <article
-                      v-for="dayColumn in venueCalendarColumns"
+                <div class="manage-facilities-venue-board manage-facilities-venue-board--matrix">
+                  <div class="manage-facilities-venue-matrix">
+                    <div class="manage-facilities-venue-matrix-corner">Venue / Time</div>
+                    <div
+                      v-for="dayColumn in venueMatrixColumns"
                       :key="dayColumn.dateValue"
-                      class="manage-facilities-venue-day-column"
-                      :class="{ 'manage-facilities-venue-day-column--selected': dayColumn.dateValue === selectedVenueCalendarDate }"
+                      class="manage-facilities-venue-matrix-day-header"
+                      :class="{ 'manage-facilities-venue-matrix-day-header--selected': dayColumn.dateValue === selectedVenueCalendarDate }"
                     >
-                      <header class="manage-facilities-venue-day-header">
-                        <span>{{ dayColumn.weekdayLabel }}</span>
-                        <strong>{{ dayColumn.shortDateLabel }}</strong>
-                        <small>{{ dayColumn.entryCountLabel }}</small>
-                      </header>
+                      <span>{{ dayColumn.weekdayLabel }}</span>
+                      <strong>{{ dayColumn.shortDateLabel }}</strong>
+                      <small>{{ dayColumn.entryCountLabel }}</small>
+                    </div>
 
-                      <div class="manage-facilities-venue-day-body">
-                        <article
-                          v-for="entry in dayColumn.entries"
-                          :key="`${dayColumn.dateValue}-${entry.venueIdentifier}`"
-                          class="manage-facilities-venue-reserved-chip"
-                        >
-                          <span class="manage-facilities-venue-availability-meta">{{ entry.metaLine }}</span>
-                          <strong>{{ entry.venueName }}</strong>
-                          <p>{{ entry.descriptionLine }}</p>
-                        </article>
-
-                        <div v-if="dayColumn.entries.length === 0" class="manage-facilities-venue-empty-day">
-                          <strong>No reserved venues</strong>
-                          <p>No reservations were surfaced for this date.</p>
+                    <template v-for="venueRow in venueMatrixRows" :key="venueRow.venueIdentifier">
+                      <div class="manage-facilities-venue-matrix-venue-card">
+                        <img :src="resolveVenuePhoto(venueRow.sourceRecord)" :alt="`${venueRow.venueName} photo`" class="manage-facilities-venue-matrix-venue-photo" />
+                        <div>
+                          <strong>{{ venueRow.venueName }}</strong>
+                          <p>{{ venueRow.floorLabel }}</p>
+                          <small>Cap {{ venueRow.capacityLabel }}</small>
                         </div>
                       </div>
-                    </article>
+
+                      <div
+                        v-for="dayCell in venueRow.dayCells"
+                        :key="`${venueRow.venueIdentifier}-${dayCell.dateValue}`"
+                        class="manage-facilities-venue-matrix-cell"
+                        :class="`manage-facilities-venue-matrix-cell--${dayCell.tone}`"
+                      >
+                        <article
+                          v-for="block in dayCell.blocks"
+                          :key="block.key"
+                          class="manage-facilities-venue-block"
+                          :class="`manage-facilities-venue-block--${block.tone}`"
+                        >
+                          <span>{{ block.timeLabel }}</span>
+                          <strong>{{ block.title }}</strong>
+                          <p>{{ block.meta }}</p>
+                        </article>
+                      </div>
+                    </template>
                   </div>
                 </div>
 
-                <section class="manage-facilities-venue-card-section">
-                  <div class="manage-facilities-section-heading manage-facilities-section-heading--inline">
+                <section class="manage-facilities-venue-card-section manage-facilities-venue-card-section--directory">
+                  <div class="manage-facilities-section-heading manage-facilities-section-heading--directory">
                     <div>
-                      <h3>Reserved Venues for {{ selectedVenueLongDateLabel }}</h3>
-                      <p class="manage-facilities-section-note">
-                        Venue cards now sit below the calendar and focus only on reservations scheduled for the selected date.
-                      </p>
+                      <h3>List of Venues</h3>
+                    </div>
+                    <div class="manage-facilities-venue-directory-actions">
+                      <label class="manage-facilities-sort-group manage-facilities-sort-group--sort">
+                        <span class="manage-facilities-sort-label manage-facilities-sort-label--inline">Sort by:</span>
+                        <select v-model="sortValue" class="manage-facilities-sort-select">
+                          <option value="asc">Name (A-Z)</option>
+                          <option value="desc">Name (Z-A)</option>
+                        </select>
+                      </label>
                     </div>
                   </div>
 
-                  <div v-if="selectedVenueReservedEntries.length > 0" class="manage-facilities-venue-card-grid">
+                  <div v-if="paginatedVenueListRecords.length > 0" class="manage-facilities-venue-directory-grid">
                     <article
-                      v-for="entry in selectedVenueReservedEntries"
-                      :key="`selected-${entry.venueIdentifier}`"
-                      class="manage-facilities-venue-availability-card manage-facilities-venue-availability-card--blocked"
+                      v-for="venueRecord in paginatedVenueListRecords"
+                      :key="`directory-${venueRecord.venueIdentifier}`"
+                      class="manage-facilities-venue-directory-card"
                     >
-                      <span class="manage-facilities-venue-availability-meta">{{ entry.metaLine }}</span>
-                      <strong>{{ entry.venueName }}</strong>
-                      <p>{{ entry.descriptionLine }}</p>
-                      <div class="manage-facilities-venue-availability-footer">
-                        <span>{{ entry.footerLabel }}</span>
-                        <span>{{ entry.capacityLabel }}</span>
+                      <div class="manage-facilities-venue-directory-media">
+                        <img :src="resolveVenuePhoto(venueRecord)" :alt="`${venueRecord.venueName} photo`" class="manage-facilities-venue-directory-photo" />
                       </div>
-                      <div class="manage-facilities-venue-availability-actions">
-                        <button type="button" @click="handleViewVenue(entry.sourceRecord)">View</button>
-                        <button type="button" @click="handleEditVenue(entry.sourceRecord)">Edit</button>
-                        <button type="button" class="manage-facilities-venue-availability-delete" @click="handleDeleteVenue(entry.sourceRecord)">Delete</button>
+                      <div class="manage-facilities-venue-directory-copy">
+                        <div class="manage-facilities-venue-directory-topline">
+                          <div>
+                            <h4>{{ venueRecord.venueName }}</h4>
+                            <p>{{ venueRecord.floorLevel || 'Other Floor' }} <span>|</span> {{ venueRecord.venueLocation || 'Tech Center' }}</p>
+                          </div>
+                          <span class="manage-facilities-venue-directory-status" :class="`manage-facilities-venue-directory-status--${venueRecord.directoryStatusTone}`">
+                            {{ venueRecord.directoryStatusLabel }}
+                          </span>
+                        </div>
+                        <div class="manage-facilities-venue-directory-meta">
+                          <span>Capacity {{ venueRecord.capacityLimit || 'N/A' }}</span>
+                          <span>{{ venueRecord.directoryMetaLabel }}</span>
+                        </div>
+                        <p>{{ venueRecord.description || 'Venue details and availability notes are available through the admin actions below.' }}</p>
+                        <div class="manage-facilities-venue-directory-utilization">
+                          <div class="manage-facilities-venue-directory-utilization-copy">
+                            <span>Utilization</span>
+                            <strong>{{ venueRecord.utilizationPercent }}%</strong>
+                          </div>
+                          <div class="manage-facilities-venue-directory-progress">
+                            <div class="manage-facilities-venue-directory-progress-bar" :style="{ width: `${venueRecord.utilizationPercent}%` }"></div>
+                          </div>
+                        </div>
+                        <div class="manage-facilities-venue-directory-actions-row">
+                          <button type="button" @click="handleViewVenue(venueRecord)">View</button>
+                          <button type="button" @click="handleEditVenue(venueRecord)">Edit</button>
+                          <button type="button" class="manage-facilities-venue-directory-delete" @click="handleDeleteVenue(venueRecord)">Delete</button>
+                        </div>
                       </div>
                     </article>
                   </div>
 
                   <div v-else class="manage-facilities-venue-card-empty">
-                    <strong>No reserved venues for {{ selectedVenueLongDateLabel }}</strong>
-                    <p>Once a venue is reserved for this date, it will appear here with its admin actions.</p>
+                    <strong>No venues match the active filters</strong>
+                    <p>Try changing the floor or capacity filters to surface more venue records.</p>
+                  </div>
+
+                  <div class="manage-facilities-venue-directory-footer">
+                    <span>Showing {{ venueListDisplayStart }} to {{ venueListDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
+                    <div class="manage-facilities-venue-directory-pagination">
+                      <button type="button" :disabled="venueListCurrentPage === 1" @click="venueListCurrentPage -= 1">Previous</button>
+                      <span>{{ venueListCurrentPage }}</span>
+                      <button type="button" :disabled="venueListCurrentPage === venueListTotalPages" @click="venueListCurrentPage += 1">Next</button>
+                      <label>
+                        <select v-model.number="venueListPageSize">
+                          <option :value="4">4 per page</option>
+                          <option :value="8">8 per page</option>
+                          <option :value="12">12 per page</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
                 </section>
               </section>
@@ -1066,6 +1152,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import {
   deriveVenueAvailabilityForDate,
   isVenueFloorPlaceholderRecord,
+  resolveVenuePhoto,
 } from '@/modules/facility/utils/venueFormValidation.js';
 import {
   formatEquipmentQuantity,
@@ -1103,6 +1190,10 @@ const venueError = ref('');
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
 const equipmentViewMode = ref('card');
+const venueBuildingFilter = ref('all');
+const venueCapacityFilter = ref('all');
+const venueListCurrentPage = ref(1);
+const venueListPageSize = ref(4);
 const selectedVenueCalendarDate = ref(getTodayDateInputValue());
 const venueMonthCursor = ref(selectedVenueCalendarDate.value.slice(0, 7));
 const venueCalendarViewMode = ref('weekly');
@@ -1253,6 +1344,86 @@ const filteredVenueRecords = computed(() => {
 
   return searchedAndSortedVenues.value.filter((venueRecord) => venueRecord.floorLevel === selectedFloor);
 });
+
+const venueCapacityOptions = computed(() => {
+  const capacityValues = filteredVenueRecords.value
+    .map((venueRecord) => Number(venueRecord.capacityLimit ?? 0))
+    .filter((capacityValue) => Number.isFinite(capacityValue) && capacityValue > 0);
+
+  if (capacityValues.length === 0) {
+    return [{ value: 'all', label: 'Any Capacity' }];
+  }
+
+  const maxCapacity = Math.max(...capacityValues);
+  const options = [{ value: 'all', label: 'Any Capacity' }];
+
+  if (capacityValues.some((capacityValue) => capacityValue <= 50)) {
+    options.push({ value: '1-50', label: '1 - 50' });
+  }
+  if (capacityValues.some((capacityValue) => capacityValue >= 51 && capacityValue <= 100)) {
+    options.push({ value: '51-100', label: '51 - 100' });
+  }
+  if (capacityValues.some((capacityValue) => capacityValue >= 101 && capacityValue <= 200)) {
+    options.push({ value: '101-200', label: '101 - 200' });
+  }
+  if (maxCapacity > 200) {
+    options.push({ value: '201+', label: '201+' });
+  }
+
+  return options;
+});
+
+const venueDirectoryRecords = computed(() => filteredVenueRecords.value.filter((venueRecord) => matchesVenueCapacityFilter(
+  venueRecord,
+  venueCapacityFilter.value,
+)));
+
+const venueDashboardSummary = computed(() => {
+  const selectedDate = selectedVenueCalendarDate.value;
+  const availableCount = venueDirectoryRecords.value.filter((venueRecord) => resolveVenueMatrixTone(venueRecord, selectedDate) === 'available').length;
+  const reservedCount = venueDirectoryRecords.value.filter((venueRecord) => resolveVenueMatrixTone(venueRecord, selectedDate) === 'reserved').length;
+  const maintenanceCount = venueDirectoryRecords.value.filter((venueRecord) => resolveVenueMatrixTone(venueRecord, selectedDate) === 'maintenance').length;
+
+  return {
+    availableCount,
+    reservedCount,
+    maintenanceCount,
+    peakTimeLabel: resolveVenuePeakTimeLabel(selectedDate),
+  };
+});
+
+const venueMatrixColumns = computed(() => venueWeekDates.value.map((weekDate) => ({
+  dateValue: weekDate.dateKey,
+  weekdayLabel: weekDate.weekday,
+  shortDateLabel: weekDate.monthDay,
+  entryCountLabel: `${getVenueEntriesForDate(weekDate.dateKey).length} reserved`,
+})));
+
+const venueMatrixRows = computed(() => venueDirectoryRecords.value.map((venueRecord) => ({
+  sourceRecord: venueRecord,
+  venueIdentifier: venueRecord.venueIdentifier,
+  venueName: venueRecord.venueName,
+  floorLabel: venueRecord.floorLevel || 'Other Floor',
+  capacityLabel: venueRecord.capacityLimit || 'N/A',
+  dayCells: venueWeekDates.value.map((weekDate) => buildVenueMatrixCell(venueRecord, weekDate.dateKey)),
+})));
+
+const venueListTotalPages = computed(() => Math.max(1, Math.ceil(venueDirectoryRecords.value.length / venueListPageSize.value)));
+const paginatedVenueListRecords = computed(() => {
+  const startIndex = (venueListCurrentPage.value - 1) * venueListPageSize.value;
+  return venueDirectoryRecords.value
+    .map((venueRecord) => buildVenueDirectoryCardRecord(venueRecord))
+    .slice(startIndex, startIndex + venueListPageSize.value);
+});
+const venueListDisplayStart = computed(() => (
+  venueDirectoryRecords.value.length === 0
+    ? 0
+    : ((venueListCurrentPage.value - 1) * venueListPageSize.value) + 1
+));
+const venueListDisplayEnd = computed(() => Math.min(
+  venueListCurrentPage.value * venueListPageSize.value,
+  venueDirectoryRecords.value.length,
+));
 
 const visibleVenueRecords = computed(() => filteredVenueRecords.value.filter((venueRecord) => matchesCalendarAvailability(
   venueRecord,
@@ -1773,6 +1944,12 @@ watch(showingFilterOptions, (nextOptions) => {
   }
 });
 
+watch(venueCapacityOptions, (nextOptions) => {
+  if (!nextOptions.some((option) => option.value === venueCapacityFilter.value)) {
+    venueCapacityFilter.value = 'all';
+  }
+});
+
 watch(selectedVenueCalendarDate, () => {
   venueMonthCursor.value = selectedVenueCalendarDate.value.slice(0, 7);
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
@@ -1787,6 +1964,16 @@ watch(selectedClassroomDate, () => {
 
   if (activeFacilityTab.value === 'classroom-schedules') {
     fetchClassSchedules();
+  }
+});
+
+watch([showingFilterValue, venueCapacityFilter, sortValue], () => {
+  venueListCurrentPage.value = 1;
+});
+
+watch([venueListPageSize, venueDirectoryRecords], () => {
+  if (venueListCurrentPage.value > venueListTotalPages.value) {
+    venueListCurrentPage.value = venueListTotalPages.value;
   }
 });
 
@@ -2107,11 +2294,9 @@ function isReservationRangeScheduledForDate(rangeRecord, dateValue) {
 }
 
 function buildVenueCalendarEntry(venueRecord, dateValue) {
-  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
-  const primaryRange = reservationRanges.find((rangeRecord) => isReservationRangeScheduledForDate(rangeRecord, dateValue)) || reservationRanges[0] || null;
-  const metaLine = primaryRange
-    ? `${formatTimeDisplay(primaryRange.startTime || '08:00')} - ${formatTimeDisplay(primaryRange.endTime || '17:00')}`
-    : 'Reserved schedule';
+  const parsedRanges = parseVenueTimeRanges(venueRecord, dateValue);
+  const primaryRange = parsedRanges[0] || null;
+  const metaLine = primaryRange?.timeLabel || 'Reserved schedule';
 
   return {
     sourceRecord: venueRecord,
@@ -2122,6 +2307,289 @@ function buildVenueCalendarEntry(venueRecord, dateValue) {
     footerLabel: 'Reserved',
     capacityLabel: `Cap ${venueRecord.capacityLimit || 'N/A'}`,
   };
+}
+
+function matchesVenueCapacityFilter(venueRecord, capacityFilter) {
+  if (capacityFilter === 'all') {
+    return true;
+  }
+
+  const capacityValue = Number(venueRecord?.capacityLimit ?? 0);
+  if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
+    return false;
+  }
+
+  if (capacityFilter === '1-50') {
+    return capacityValue <= 50;
+  }
+  if (capacityFilter === '51-100') {
+    return capacityValue >= 51 && capacityValue <= 100;
+  }
+  if (capacityFilter === '101-200') {
+    return capacityValue >= 101 && capacityValue <= 200;
+  }
+  if (capacityFilter === '201+') {
+    return capacityValue >= 201;
+  }
+
+  return true;
+}
+
+function buildVenueDirectoryCardRecord(venueRecord) {
+  const directoryStatusTone = resolveVenueMatrixTone(venueRecord, selectedVenueCalendarDate.value);
+  const reservedBlocks = countVenueReservedBlocksForWeek(venueRecord);
+  const utilizationPercent = Math.min(
+    directoryStatusTone === 'maintenance' ? 90 : Math.max(15, Math.round((reservedBlocks / Math.max(venueWeekDates.value.length, 1)) * 100)),
+    100,
+  );
+
+  return {
+    ...venueRecord,
+    directoryStatusTone,
+    directoryStatusLabel: resolveVenueDirectoryStatusLabel(directoryStatusTone),
+    directoryMetaLabel: venueRecord.operationalStatus === 'Maintenance' ? 'Maintenance' : (venueRecord.description ? 'Managed Venue' : 'Venue Space'),
+    utilizationPercent,
+  };
+}
+
+function buildVenueMatrixCell(venueRecord, dateValue) {
+  const reservedVenueRecord = findReservedVenueRecord(venueRecord, dateValue);
+  const matrixTone = resolveVenueMatrixTone(venueRecord, dateValue, reservedVenueRecord);
+
+  if (matrixTone === 'maintenance') {
+    return {
+      dateValue,
+      tone: 'maintenance',
+      blocks: [{
+        key: `${venueRecord.venueIdentifier}-${dateValue}-maintenance`,
+        tone: 'maintenance',
+        timeLabel: 'All Day',
+        title: 'Under Maintenance',
+        meta: 'Maintenance Activity',
+      }],
+    };
+  }
+
+  if (matrixTone === 'reserved') {
+    return {
+      dateValue,
+      tone: 'reserved',
+      blocks: buildVenueReservedBlocks(reservedVenueRecord || venueRecord, dateValue),
+    };
+  }
+
+  return {
+    dateValue,
+    tone: 'available',
+    blocks: [{
+      key: `${venueRecord.venueIdentifier}-${dateValue}-available`,
+      tone: 'available',
+      timeLabel: '8:00 AM - 5:00 PM',
+      title: 'Available',
+      meta: venueRecord.venueLocation || 'Open for reservations',
+    }],
+  };
+}
+
+function resolveVenueMatrixTone(venueRecord, dateValue, reservedVenueRecord = null) {
+  const operationalStatus = String(venueRecord?.operationalStatus || '').trim();
+  if (operationalStatus === 'Maintenance' || operationalStatus === 'Inactive') {
+    return 'maintenance';
+  }
+
+  const reservedRecord = reservedVenueRecord || findReservedVenueRecord(venueRecord, dateValue);
+  if (reservedRecord && hasReservedVenueEntry(reservedRecord, dateValue)) {
+    return 'reserved';
+  }
+
+  return deriveVenueAvailabilityForDate(venueRecord, dateValue) === 'Available' ? 'available' : 'maintenance';
+}
+
+function resolveVenueDirectoryStatusLabel(statusTone) {
+  if (statusTone === 'maintenance') {
+    return 'Under Maintenance';
+  }
+
+  if (statusTone === 'reserved') {
+    return 'Reserved';
+  }
+
+  return 'Available';
+}
+
+function resolveVenuePeakTimeLabel(dateValue) {
+  const peakTimeCounter = new Map();
+
+  getVenueEntriesForDate(dateValue).forEach((entry) => {
+    const counterKey = entry.metaLine || 'No peak time';
+    peakTimeCounter.set(counterKey, (peakTimeCounter.get(counterKey) || 0) + 1);
+  });
+
+  const [peakEntry] = [...peakTimeCounter.entries()].sort((leftEntry, rightEntry) => rightEntry[1] - leftEntry[1]);
+  return peakEntry?.[0] || 'No peak time';
+}
+
+function countVenueReservedBlocksForWeek(venueRecord) {
+  return venueWeekDates.value.reduce((totalBlocks, weekDate) => {
+    const reservedVenueRecord = findReservedVenueRecord(venueRecord, weekDate.dateKey);
+    return totalBlocks + (reservedVenueRecord ? buildVenueTimeBlocksForDate(reservedVenueRecord, weekDate.dateKey).reservedBlocks.length : 0);
+  }, 0);
+}
+
+function findReservedVenueRecord(venueRecord, dateValue) {
+  return (reservedVenueMap.value[dateValue] || []).find((reservedVenue) => (
+    Number(reservedVenue?.venueIdentifier) === Number(venueRecord?.venueIdentifier)
+  )) || null;
+}
+
+function buildVenueReservedBlocks(venueRecord, dateValue) {
+  const { reservedBlocks, availableBlocks } = buildVenueTimeBlocksForDate(venueRecord, dateValue);
+  const blocks = [];
+
+  reservedBlocks.forEach((reservedBlock, index) => {
+    if (availableBlocks[index]) {
+      blocks.push(createVenueAvailableBlock(venueRecord, dateValue, availableBlocks[index], index));
+    }
+
+    blocks.push({
+      key: `${venueRecord.venueIdentifier}-${dateValue}-reserved-${index}`,
+      tone: 'reserved',
+      timeLabel: reservedBlock.timeLabel,
+      title: reservedBlock.title,
+      meta: reservedBlock.meta,
+    });
+  });
+
+  if (availableBlocks[reservedBlocks.length]) {
+    blocks.push(createVenueAvailableBlock(venueRecord, dateValue, availableBlocks[reservedBlocks.length], reservedBlocks.length));
+  }
+
+  return blocks.length > 0
+    ? blocks
+    : [{
+      key: `${venueRecord.venueIdentifier}-${dateValue}-reserved-fallback`,
+      tone: 'reserved',
+      timeLabel: 'Reserved',
+      title: 'Reserved',
+      meta: venueRecord.venueLocation || 'Reserved schedule',
+    }];
+}
+
+function createVenueAvailableBlock(venueRecord, dateValue, availableBlock, blockIndex) {
+  return {
+    key: `${venueRecord.venueIdentifier}-${dateValue}-available-gap-${blockIndex}`,
+    tone: 'available',
+    timeLabel: availableBlock.timeLabel,
+    title: 'Available',
+    meta: venueRecord.venueLocation || 'Open for reservations',
+  };
+}
+
+function buildVenueTimeBlocksForDate(venueRecord, dateValue) {
+  const parsedRanges = parseVenueTimeRanges(venueRecord, dateValue);
+  if (parsedRanges.length === 0) {
+    return {
+      reservedBlocks: [],
+      availableBlocks: [{ startMinutes: 480, endMinutes: 1020, timeLabel: '8:00 AM - 5:00 PM' }],
+    };
+  }
+
+  const availableBlocks = [];
+  const reservedBlocks = [];
+  let currentMinute = 480;
+
+  parsedRanges.forEach((rangeRecord) => {
+    if (rangeRecord.startMinutes > currentMinute) {
+      availableBlocks.push({
+        startMinutes: currentMinute,
+        endMinutes: rangeRecord.startMinutes,
+        timeLabel: `${formatMinutesDisplay(currentMinute)} - ${formatMinutesDisplay(rangeRecord.startMinutes)}`,
+      });
+    }
+
+    reservedBlocks.push(rangeRecord);
+    currentMinute = Math.max(currentMinute, rangeRecord.endMinutes);
+  });
+
+  if (currentMinute < 1020) {
+    availableBlocks.push({
+      startMinutes: currentMinute,
+      endMinutes: 1020,
+      timeLabel: `${formatMinutesDisplay(currentMinute)} - ${formatMinutesDisplay(1020)}`,
+    });
+  }
+
+  return { reservedBlocks, availableBlocks };
+}
+
+function parseVenueTimeRanges(venueRecord, dateValue) {
+  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+
+  return reservationRanges
+    .filter((rangeRecord) => isReservationRangeScheduledForDate(rangeRecord, dateValue))
+    .map((rangeRecord, rangeIndex) => normalizeVenueTimeRange(rangeRecord, rangeIndex))
+    .filter(Boolean)
+    .sort((leftRecord, rightRecord) => leftRecord.startMinutes - rightRecord.startMinutes);
+}
+
+function normalizeVenueTimeRange(rangeRecord, rangeIndex) {
+  const rawLabel = typeof rangeRecord === 'string'
+    ? rangeRecord
+    : `${rangeRecord?.label || rangeRecord?.blockLabel || rangeRecord?.title || 'Reserved'}: ${rangeRecord?.startTime || ''} - ${rangeRecord?.endTime || ''}`;
+
+  const [labelPart, timePartRaw] = rawLabel.includes(':')
+    ? rawLabel.split(/:(.+)/)
+    : ['Reserved', rawLabel];
+  const timePart = String(timePartRaw || '').trim();
+  const timeMatch = timePart.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+
+  if (!timeMatch) {
+    return {
+      key: `fallback-${rangeIndex}`,
+      timeLabel: timePart || 'Reserved',
+      title: String(labelPart || 'Reserved').trim(),
+      meta: 'Scheduled block',
+      startMinutes: 480 + (rangeIndex * 30),
+      endMinutes: 540 + (rangeIndex * 30),
+    };
+  }
+
+  const startMinutes = convertClockLabelToMinutes(timeMatch[1]);
+  const endMinutes = convertClockLabelToMinutes(timeMatch[2]);
+
+  return {
+    key: `parsed-${rangeIndex}-${startMinutes}`,
+    timeLabel: `${timeMatch[1].replace(/\s+/g, ' ').trim()} - ${timeMatch[2].replace(/\s+/g, ' ').trim()}`,
+    title: String(labelPart || 'Reserved').trim() || 'Reserved',
+    meta: 'Reserved schedule',
+    startMinutes,
+    endMinutes: endMinutes > startMinutes ? endMinutes : startMinutes + 60,
+  };
+}
+
+function convertClockLabelToMinutes(clockLabel) {
+  const normalizedLabel = String(clockLabel || '').trim().toUpperCase();
+  const timeMatch = normalizedLabel.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+  if (!timeMatch) {
+    return 480;
+  }
+
+  let hourValue = Number(timeMatch[1]) % 12;
+  const minuteValue = Number(timeMatch[2]) || 0;
+  if (timeMatch[3] === 'PM') {
+    hourValue += 12;
+  }
+
+  return (hourValue * 60) + minuteValue;
+}
+
+function formatMinutesDisplay(totalMinutes) {
+  const referenceDate = new Date();
+  referenceDate.setHours(0, totalMinutes, 0, 0);
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(referenceDate);
 }
 
 function normalizeClassScheduleRecord(scheduleRecord) {

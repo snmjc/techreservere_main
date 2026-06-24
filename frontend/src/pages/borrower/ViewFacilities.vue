@@ -696,6 +696,7 @@ async function fetchVenuesForVisibleWeek() {
       })),
       venueApi.listVenues({
         selectedDate: selectedVenueDate.value,
+        includeUnavailable: true,
       }),
     ]);
 
