@@ -94,6 +94,10 @@ function buildVenueListQueryParams(options) {
     params.reservedOnly = true;
   }
 
+  if (options.includeUnavailable === true) {
+    params.includeUnavailable = true;
+  }
+
   return params;
 }
 
