@@ -20,6 +20,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
   const activityTimeTo = ref(cachedState.activityTimeTo || '');
   const activityNameTitle = ref(cachedState.activityNameTitle || '');
   const purposeText = ref(cachedState.purposeText || '');
+  const purposeOtherText = ref(cachedState.purposeOtherText || '');
   const departmentName = ref(cachedState.departmentName || '');
   const participantCount = ref(cachedState.participantCount || '');
   const selectedVenueName = ref(cachedState.selectedVenueName || null);
@@ -27,6 +28,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
   const selectedEquipmentItems = ref(Array.isArray(cachedState.selectedEquipmentItems) ? cachedState.selectedEquipmentItems : []);
   const securityGuardCount = ref(cachedState.securityGuardCount || 'None');
   const securityCrewCount = ref(cachedState.securityCrewCount || 'None');
+  const borrowerRemarks = ref(cachedState.borrowerRemarks || '');
   const supportingDocumentsList = ref(Array.isArray(cachedState.supportingDocumentsList) ? cachedState.supportingDocumentsList : []);
   const recommendationDocumentsList = ref(Array.isArray(cachedState.recommendationDocumentsList) ? cachedState.recommendationDocumentsList : []);
   const additionalDocumentsList = ref(Array.isArray(cachedState.additionalDocumentsList) ? cachedState.additionalDocumentsList : []);
@@ -42,6 +44,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
       activityTimeTo: activityTimeTo.value,
       activityNameTitle: activityNameTitle.value,
       purposeText: purposeText.value,
+      purposeOtherText: purposeOtherText.value,
       departmentName: departmentName.value,
       participantCount: participantCount.value,
       selectedVenueName: selectedVenueName.value,
@@ -49,6 +52,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
       selectedEquipmentItems: selectedEquipmentItems.value,
       securityGuardCount: securityGuardCount.value,
       securityCrewCount: securityCrewCount.value,
+      borrowerRemarks: borrowerRemarks.value,
       supportingDocumentsList: supportingDocumentsList.value,
       recommendationDocumentsList: recommendationDocumentsList.value,
       additionalDocumentsList: additionalDocumentsList.value,
@@ -69,6 +73,10 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
       && String(activityTimeTo.value || '').trim()
       && String(activityNameTitle.value || '').trim()
       && String(purposeText.value || '').trim()
+      && (
+        String(purposeText.value || '').trim() !== 'Others: Specify'
+        || String(purposeOtherText.value || '').trim()
+      )
       && String(participantCount.value || '').trim()
     );
   }
@@ -98,6 +106,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     activityTimeTo.value = '';
     activityNameTitle.value = '';
     purposeText.value = '';
+    purposeOtherText.value = '';
     departmentName.value = '';
     participantCount.value = '';
     selectedVenueName.value = null;
@@ -105,6 +114,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     selectedEquipmentItems.value = [];
     securityGuardCount.value = 'None';
     securityCrewCount.value = 'None';
+    borrowerRemarks.value = '';
     supportingDocumentsList.value = [];
     recommendationDocumentsList.value = [];
     additionalDocumentsList.value = [];
@@ -121,6 +131,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     activityTimeTo,
     activityNameTitle,
     purposeText,
+    purposeOtherText,
     departmentName,
     participantCount,
     selectedVenueName,
@@ -128,6 +139,7 @@ export const useReservationFormStore = defineStore('reservationFormStore', () =>
     selectedEquipmentItems,
     securityGuardCount,
     securityCrewCount,
+    borrowerRemarks,
     supportingDocumentsList,
     recommendationDocumentsList,
     additionalDocumentsList,

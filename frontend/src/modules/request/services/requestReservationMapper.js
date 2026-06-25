@@ -143,6 +143,7 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     activityNameTitle: reservation?.activityType || 'N/A',
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
+    borrowerRemarks: reservation?.borrowerRemarks || '',
     cancellationReason: reservation?.rejectionReason || '',
     remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
     uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),

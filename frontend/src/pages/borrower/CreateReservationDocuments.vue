@@ -1,6 +1,6 @@
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="''"
     :navigation-items="borrowerNavigationItems"
   >
     <section class="borrower-reservation-page">
@@ -15,10 +15,6 @@
           <div class="borrower-reservation-panel">
             <h2>Supporting Documents</h2>
             <p>Upload the necessary documents to support your reservation request.</p>
-            <div class="borrower-reservation-note">
-              <strong>Accepted proof examples</strong>
-              <p>For organization-based requests, you may upload a Certificate of Officership, Student ID, or other proof that you are part of the organization.</p>
-            </div>
 
             <div class="reservation-documents-layout">
               <section class="reservation-documents-required">

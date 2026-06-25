@@ -45,6 +45,9 @@ class ReservationEntity
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $activityType = '';
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $borrowerRemarks = null;
+
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $currentStatus = 'Pending Review';
 
@@ -97,6 +100,8 @@ class ReservationEntity
     public function setPurposeDescription(string $purposeDescription): self { $this->purposeDescription = $purposeDescription; return $this; }
     public function getActivityType(): string { return $this->activityType; }
     public function setActivityType(string $activityType): self { $this->activityType = $activityType; return $this; }
+    public function getBorrowerRemarks(): ?string { return $this->borrowerRemarks; }
+    public function setBorrowerRemarks(?string $borrowerRemarks): self { $this->borrowerRemarks = $borrowerRemarks; return $this; }
     public function getCurrentStatus(): string { return $this->currentStatus; }
     public function setCurrentStatus(string $currentStatus): self { $this->currentStatus = $currentStatus; return $this; }
     public function getPriorityLevel(): ?string { return $this->priorityLevel; }

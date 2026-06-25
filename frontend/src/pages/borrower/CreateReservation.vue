@@ -1,6 +1,6 @@
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="''"
     :navigation-items="borrowerNavigationItems"
   >
     <section class="borrower-reservation-page">
@@ -234,6 +234,19 @@
                 <small class="borrower-reservation-help">Select the main purpose of your reservation.</small>
                 <small v-if="validationErrors.purposeText" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.purposeText }}</small>
               </div>
+
+              <div v-if="isOtherPurposeSelected" class="borrower-reservation-field borrower-reservation-field--full">
+                <label for="purposeOtherText">Please specify <em>*</em></label>
+                <textarea
+                  id="purposeOtherText"
+                  v-model.trim="formState.purposeOtherText"
+                  rows="3"
+                  maxlength="300"
+                  placeholder="Enter the specific purpose of your reservation..."
+                ></textarea>
+                <small class="borrower-reservation-help">Provide the exact purpose when you choose `Others: Specify`.</small>
+                <small v-if="validationErrors.purposeOtherText" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.purposeOtherText }}</small>
+              </div>
             </div>
           </div>
 
@@ -294,7 +307,7 @@ const timePickerHours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const timePickerMinutes = ['00', '30'];
 const timePickerPeriods = ['AM', 'PM'];
 const BUSINESS_START_MINUTES = 7 * 60;
-const BUSINESS_END_MINUTES = 21 * 60;
+const BUSINESS_END_MINUTES = 19 * 60;
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
@@ -307,6 +320,7 @@ const validationErrors = reactive({
   activityTime: '',
   activityNameTitle: '',
   purposeText: '',
+  purposeOtherText: '',
 });
 
 const formState = ref({
@@ -317,12 +331,14 @@ const formState = ref({
   activityTimeTo: reservationFormStore.activityTimeTo || '',
   activityNameTitle: reservationFormStore.activityNameTitle || '',
   purposeText: reservationFormStore.purposeText || '',
+  purposeOtherText: reservationFormStore.purposeOtherText || '',
   participantCount: reservationFormStore.participantCount || '',
   reservationType: reservationFormStore.reservationType || 'Venue',
 });
 
 const selectedStartTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeFrom, 'Choose a start time'));
 const selectedEndTimeLabel = computed(() => formatSelectedSlotLabel(formState.value.activityTimeTo, 'Choose an end time'));
+const isOtherPurposeSelected = computed(() => formState.value.purposeText === 'Others: Specify');
 const activityStartMinDate = computed(() => maxIsoDate(
   maxIsoDate(todayIsoDate, formState.value.requestDate || todayIsoDate),
   bookingWindow.value.activeBookingStartDate || todayIsoDate,
@@ -533,6 +549,9 @@ function handleNextPage() {
   reservationFormStore.activityTimeTo = formState.value.activityTimeTo;
   reservationFormStore.activityNameTitle = formState.value.activityNameTitle.trim();
   reservationFormStore.purposeText = formState.value.purposeText;
+  reservationFormStore.purposeOtherText = isOtherPurposeSelected.value
+    ? formState.value.purposeOtherText.trim()
+    : '';
   reservationFormStore.participantCount = String(formState.value.participantCount);
   reservationFormStore.reservationType = formState.value.reservationType;
   reservationFormStore.persistForm();
@@ -576,7 +595,7 @@ function validateReservationDetails() {
     if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
       validationErrors.activityTime = 'End time must be later than the start time.';
     } else if (!isAllowedTimeSlot(formState.value.activityTimeFrom) || !isAllowedTimeSlot(formState.value.activityTimeTo)) {
-      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
+      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
     }
   }
 
@@ -588,6 +607,8 @@ function validateReservationDetails() {
 
   if (!formState.value.purposeText) {
     validationErrors.purposeText = 'Purpose is required.';
+  } else if (isOtherPurposeSelected.value && !formState.value.purposeOtherText.trim()) {
+    validationErrors.purposeOtherText = 'Please specify the purpose of your reservation.';
   }
 
   return Object.values(validationErrors).every((value) => value === '');

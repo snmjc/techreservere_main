@@ -15,6 +15,9 @@
         <div v-if="loading" class="loading-state">
           Loading invitations...
         </div>
+        <div v-else-if="pageError" class="empty-state">
+          {{ pageError }}
+        </div>
         <div v-else-if="invitations.length === 0" class="empty-state">
           No invitations sent yet.
         </div>
@@ -103,6 +106,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { adminManageAccountsApi } from '@/services/adminManageAccountsApi.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 
 const authStore = useAuthenticationStore();
@@ -111,6 +115,7 @@ const showInviteModal = ref(false);
 const loading = ref(false);
 const isProcessing = ref(false);
 const invitations = ref([]);
+const pageError = ref('');
 
 const inviteForm = ref({
   emailAddress: '',
@@ -140,21 +145,27 @@ onMounted(() => {
 async function fetchInvitations() {
   loading.value = true;
   try {
-    // In a real implementation, you would fetch invitations from the API
-    // For now, we'll use mock data
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    invitations.value = [
-      {
-        id: 1,
-        emailAddress: 'newuser@example.com',
-        role: 'ROLE_BORROWER',
-        status: 'pending',
-        sentAt: new Date(Date.now() - 86400000).toISOString(),
-      },
-    ];
+    pageError.value = '';
+    const result = await adminManageAccountsApi.getAccounts(authStore.authToken);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch invitation records.');
+    }
+
+    const accounts = Array.isArray(result.data?.accounts) ? result.data.accounts : [];
+    invitations.value = accounts
+      .filter((account) => account.inviteSentAt || account.inviteAcceptedAt || account.invitationStatus)
+      .map((account) => ({
+        id: account.accountIdentifier,
+        emailAddress: account.emailAddress,
+        role: account.roleDesignation || account.roleLabel || account.accountType,
+        status: String(account.invitationStatus || 'not_sent').toLowerCase(),
+        sentAt: account.inviteSentAt || account.invitedAt || null,
+      }))
+      .filter((invitation) => invitation.sentAt || invitation.status !== 'not_sent');
   } catch (error) {
     console.error('Error fetching invitations:', error);
+    invitations.value = [];
+    pageError.value = error.message || 'Failed to load invitation records.';
   } finally {
     loading.value = false;
   }
@@ -200,40 +211,50 @@ async function sendInvitation() {
 }
 
 async function resendInvitation(invitationId) {
+  const invitationRecord = invitations.value.find((invitation) => invitation.id === invitationId);
+  if (!invitationRecord) {
+    alert('Invitation record not found.');
+    return;
+  }
+
   if (!confirm('Resend this invitation?')) {
     return;
   }
 
   isProcessing.value = true;
   try {
-    // In a real implementation, you would call the resend API
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const token = authStore.authToken;
+    const response = await fetch(apiUrl('/api/v1/users/invite'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        emailAddress: invitationRecord.emailAddress,
+        role: invitationRecord.role,
+        invitedBy: authStore.accountData?.accountIdentifier,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to resend invitation');
+    }
+
     alert('Invitation resent successfully');
+    fetchInvitations();
   } catch (error) {
     console.error('Error resending invitation:', error);
-    alert('Error resending invitation');
+    alert(error.message || 'Error resending invitation');
   } finally {
     isProcessing.value = false;
   }
 }
 
 async function deleteInvitation(invitationId) {
-  if (!confirm('Delete this invitation?')) {
-    return;
-  }
-
-  isProcessing.value = true;
-  try {
-    // In a real implementation, you would call the delete API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    invitations.value = invitations.value.filter(inv => inv.id !== invitationId);
-    alert('Invitation deleted successfully');
-  } catch (error) {
-    console.error('Error deleting invitation:', error);
-    alert('Error deleting invitation');
-  } finally {
-    isProcessing.value = false;
-  }
+  void invitationId;
+  alert('Deleting invitation records is not supported by the current backend API.');
 }
 
 function formatDate(dateString) {

@@ -1,6 +1,6 @@
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="''"
     :navigation-items="borrowerNavigationItems"
   >
     <section class="borrower-reservation-page">
@@ -43,6 +43,18 @@
                 </select>
                 <small class="borrower-reservation-help">Select if security crew is required for your event.</small>
               </div>
+
+              <div class="borrower-reservation-field borrower-reservation-field--full">
+                <label for="borrowerRemarks">Remarks</label>
+                <textarea
+                  id="borrowerRemarks"
+                  v-model="formState.borrowerRemarks"
+                  rows="4"
+                  maxlength="500"
+                  placeholder="Add any optional notes or special instructions for your reservation."
+                ></textarea>
+                <small class="borrower-reservation-help">Optional. This will be included in your reservation summary and request details.</small>
+              </div>
             </div>
           </div>
 
@@ -78,6 +90,7 @@ const isStepLoading = ref(false);
 const formState = reactive({
   securityGuardCount: reservationFormStore.securityGuardCount || 'None',
   securityCrewCount: reservationFormStore.securityCrewCount || 'None',
+  borrowerRemarks: reservationFormStore.borrowerRemarks || '',
 });
 
 onMounted(() => {
@@ -93,6 +106,7 @@ function navigateToPreviousPage() {
 function navigateToNextPage() {
   reservationFormStore.securityGuardCount = formState.securityGuardCount;
   reservationFormStore.securityCrewCount = formState.securityCrewCount;
+  reservationFormStore.borrowerRemarks = String(formState.borrowerRemarks || '').trim();
   reservationFormStore.persistForm();
   isStepLoading.value = true;
   window.setTimeout(() => {

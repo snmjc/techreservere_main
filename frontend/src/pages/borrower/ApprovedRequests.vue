@@ -1,7 +1,7 @@
 <!-- ===== AI GENERATED: BorrowerApprovedRequestsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="''"
     :navigation-items="borrowerNavigationItems"
   >
     <!-- Page Header -->

@@ -53,6 +53,11 @@
         </ul>
       </section>
 
+      <section class="borrower-request-modal__footer-block">
+        <h3>Borrower Remarks</h3>
+        <p>{{ borrowerRemarks }}</p>
+      </section>
+
       <section v-if="statusNotes" class="borrower-request-modal__footer-block">
         <h3>Status Notes</h3>
         <p>{{ statusNotes }}</p>
@@ -84,6 +89,10 @@ const statusClass = computed(() => {
 
 const statusNotes = computed(() => {
   return String(props.requestRecord?.remarks || props.requestRecord?.cancellationReason || '').trim();
+});
+
+const borrowerRemarks = computed(() => {
+  return String(props.requestRecord?.borrowerRemarks || '').trim() || 'No remarks added.';
 });
 
 function formatDateTime(value) {
