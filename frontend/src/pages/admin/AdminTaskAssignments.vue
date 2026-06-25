@@ -19,6 +19,9 @@
           <button class="admin-task-assignments-secondary" type="button" :disabled="isLoading" @click="loadPageData">
             {{ isLoading ? 'Refreshing...' : 'Refresh' }}
           </button>
+          <button class="admin-task-assignments-secondary" type="button" @click="openSmsTestModal">
+            Test SMS
+          </button>
           <button class="admin-task-assignments-primary" type="button" @click="openCreateModal">
             + Assign Task
           </button>
@@ -317,6 +320,110 @@
       </section>
     </div>
 
+    <div v-if="showSmsTestModal" class="admin-task-assignments-modal-overlay" @click.self="closeSmsTestModal">
+      <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
+        <header class="admin-task-assignments-modal-header">
+          <div>
+            <h2>Send Test SMS</h2>
+            <p>Send a direct TextBee test message without creating a task assignment.</p>
+          </div>
+          <button type="button" aria-label="Close" @click="closeSmsTestModal">x</button>
+        </header>
+
+        <p v-if="smsTestError" class="admin-task-assignments-error">{{ smsTestError }}</p>
+
+        <form class="admin-task-assignments-form admin-task-sms-test-form" @submit.prevent="submitSmsTest">
+          <div class="admin-task-sms-test-mode">
+            <button
+              type="button"
+              :class="{ 'is-active': smsTestForm.messageMode === 'template' }"
+              @click="smsTestForm.messageMode = 'template'"
+            >
+              Fill Template
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': smsTestForm.messageMode === 'custom' }"
+              @click="smsTestForm.messageMode = 'custom'"
+            >
+              Custom Message
+            </button>
+          </div>
+
+          <label>
+            <span>Recipient Number</span>
+            <input
+              v-model.trim="smsTestForm.phoneNumber"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="09171234567"
+            />
+            <small>Use 09XXXXXXXXX or +639XXXXXXXXX.</small>
+          </label>
+
+          <template v-if="smsTestForm.messageMode === 'template'">
+            <div class="admin-task-sms-template-grid">
+              <label>
+                <span>Assigned Staff</span>
+                <input v-model.trim="smsTestForm.assignedStaff" type="text" placeholder="Alex Santos" />
+              </label>
+
+              <label>
+                <span>Due Date</span>
+                <input v-model.trim="smsTestForm.dueDate" type="text" placeholder="Jun 30, 2026 10:00 AM" />
+              </label>
+
+              <label>
+                <span>Task Name</span>
+                <input v-model.trim="smsTestForm.taskName" type="text" placeholder="Academic Preparation" />
+              </label>
+
+              <label>
+                <span>Reservation Code</span>
+                <input v-model.trim="smsTestForm.reservationCode" type="text" placeholder="TR-2026-010" />
+              </label>
+
+              <label class="admin-task-sms-template-purpose">
+                <span>Reservation Purpose</span>
+                <textarea
+                  v-model.trim="smsTestForm.reservationPurpose"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Prepare the requested equipment."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="admin-task-sms-preview">
+              <strong>Message Preview</strong>
+              <pre>{{ templateSmsMessage }}</pre>
+            </div>
+          </template>
+
+          <label v-else>
+            <span>Custom Message</span>
+            <textarea
+              v-model="smsTestForm.customMessage"
+              rows="8"
+              maxlength="1000"
+              placeholder="Write the SMS message here."
+            ></textarea>
+            <small>{{ smsTestForm.customMessage.length }}/1000 characters</small>
+          </label>
+
+          <footer class="admin-task-assignments-modal-actions">
+            <button type="button" class="admin-task-assignments-secondary" :disabled="isSendingTestSms" @click="closeSmsTestModal">
+              Cancel
+            </button>
+            <button type="submit" class="admin-task-assignments-primary" :disabled="isSendingTestSms">
+              {{ isSendingTestSms ? 'Sending...' : 'Send Test SMS' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
     <div v-if="verifyTask" class="admin-task-assignments-modal-overlay" @click.self="closeVerifyModal">
       <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
         <header class="admin-task-assignments-modal-header">
@@ -370,8 +477,10 @@ import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
+const isSendingTestSms = ref(false);
 const loadError = ref('');
 const modalError = ref('');
+const smsTestError = ref('');
 const taskToastMessage = ref('');
 const taskSubmissionFeedback = reactive({
   message: '',
@@ -381,6 +490,7 @@ const tasks = ref([]);
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
 const showTaskModal = ref(false);
+const showSmsTestModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
 const viewTask = ref(null);
@@ -414,6 +524,30 @@ const taskForm = reactive({
 const deleteForm = reactive({
   confirmedAdminEmail: '',
   confirmedAdminPassword: '',
+});
+
+const smsTestForm = reactive({
+  phoneNumber: '',
+  messageMode: 'template',
+  assignedStaff: '',
+  dueDate: '',
+  taskName: '',
+  reservationCode: '',
+  reservationPurpose: '',
+  customMessage: '',
+});
+
+const templateSmsMessage = computed(() => {
+  const assignedStaff = smsTestForm.assignedStaff.trim() || '<Assigned Staff>';
+  const dueDate = smsTestForm.dueDate.trim() || '<Due Date>';
+  const taskName = smsTestForm.taskName.trim() || '<Task Name>';
+  const reservationCode = smsTestForm.reservationCode.trim() || '<Reservation Code>';
+  const reservationPurpose = smsTestForm.reservationPurpose.trim() || '<Reservation Purpose>';
+
+  return `hi! ${assignedStaff}.\n\n`
+    + `You have task on ${dueDate}, ${taskName}: ${reservationCode}.\n`
+    + `${reservationPurpose}\n\n`
+    + "If you can't please do contact the Facilities Office for changing of staff";
 });
 
 const currentAdminEmail = computed(() => {
@@ -575,6 +709,19 @@ function openCreateModal() {
   showTaskModal.value = true;
 }
 
+function openSmsTestModal() {
+  smsTestError.value = '';
+  smsTestForm.phoneNumber = '';
+  smsTestForm.messageMode = 'template';
+  smsTestForm.assignedStaff = '';
+  smsTestForm.dueDate = '';
+  smsTestForm.taskName = '';
+  smsTestForm.reservationCode = '';
+  smsTestForm.reservationPurpose = '';
+  smsTestForm.customMessage = '';
+  showSmsTestModal.value = true;
+}
+
 function openViewModal(task) {
   viewTask.value = task;
 }
@@ -614,6 +761,12 @@ function closeTaskModal() {
   modalError.value = '';
 }
 
+function closeSmsTestModal() {
+  if (isSendingTestSms.value) return;
+  showSmsTestModal.value = false;
+  smsTestError.value = '';
+}
+
 function closeVerifyModal() {
   verifyTask.value = null;
   resetDeleteForm();
@@ -646,7 +799,11 @@ async function submitTaskForm() {
   }
 
   await loadPageData();
-  const feedback = buildTaskSubmissionFeedback(result.data?.warning);
+  const smsExpected = taskModalMode.value === 'create'
+    ? Boolean(payload.assignedToAccountId)
+    : Boolean(payload.assignedToAccountId)
+      && Number(payload.assignedToAccountId) !== Number(editingTask.value?.assignedToAccountId || 0);
+  const feedback = buildTaskSubmissionFeedback(result.data?.warning, smsExpected);
   taskSubmissionFeedback.message = feedback.message;
   taskSubmissionFeedback.tone = feedback.tone;
   showTaskToast(feedback.message);
@@ -656,6 +813,56 @@ async function submitTaskForm() {
       closeTaskModal();
     }
   }, feedback.tone === 'warning' ? 2600 : 1800);
+}
+
+async function submitSmsTest() {
+  if (isSendingTestSms.value) return;
+
+  if (smsTestForm.phoneNumber.trim() === '') {
+    smsTestError.value = 'Recipient number is required.';
+    return;
+  }
+
+  if (smsTestForm.messageMode === 'template') {
+    const missingFields = [
+      ['Assigned staff', smsTestForm.assignedStaff],
+      ['Due date', smsTestForm.dueDate],
+      ['Task name', smsTestForm.taskName],
+      ['Reservation code', smsTestForm.reservationCode],
+      ['Reservation purpose', smsTestForm.reservationPurpose],
+    ].filter(([, value]) => value.trim() === '').map(([label]) => label);
+
+    if (missingFields.length > 0) {
+      smsTestError.value = `Please fill in: ${missingFields.join(', ')}.`;
+      return;
+    }
+  } else if (smsTestForm.customMessage.trim() === '') {
+    smsTestError.value = 'Custom message is required.';
+    return;
+  }
+
+  const message = smsTestForm.messageMode === 'template'
+    ? templateSmsMessage.value
+    : smsTestForm.customMessage.trim();
+
+  isSendingTestSms.value = true;
+  smsTestError.value = '';
+  const result = await requestJson('/api/v1/tasks/sms/test', {
+    method: 'POST',
+    body: JSON.stringify({
+      phoneNumber: smsTestForm.phoneNumber.trim(),
+      message,
+    }),
+  });
+  isSendingTestSms.value = false;
+
+  if (!result.success) {
+    smsTestError.value = result.error || 'Unable to send the test SMS.';
+    return;
+  }
+
+  showSmsTestModal.value = false;
+  showTaskToast(`Test SMS submitted to ${result.data?.delivery?.recipient || smsTestForm.phoneNumber}.`);
 }
 
 async function confirmVerifyTask() {
@@ -938,7 +1145,7 @@ function showTaskToast(message) {
 showTaskToast.timeoutId = null;
 submitTaskForm.closeTimeoutId = null;
 
-function buildTaskSubmissionFeedback(warning) {
+function buildTaskSubmissionFeedback(warning, smsExpected = true) {
   const normalizedWarning = typeof warning === 'string' ? warning.trim() : '';
   if (normalizedWarning !== '') {
     return {
@@ -948,7 +1155,9 @@ function buildTaskSubmissionFeedback(warning) {
   }
 
   return {
-    message: 'Task assignment saved and SMS sent to assigned staff.',
+    message: smsExpected
+      ? 'Task assignment saved and SMS sent to assigned staff.'
+      : 'Task assignment saved. No SMS was needed because the assigned staff did not change.',
     tone: 'success',
   };
 }
@@ -1538,6 +1747,77 @@ button:disabled {
   resize: vertical;
 }
 
+.admin-task-sms-test-form {
+  grid-template-columns: 1fr;
+}
+
+.admin-task-sms-test-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-task-sms-test-mode button {
+  padding: 0.7rem 0.9rem;
+  color: #315647;
+  background: #f4f8f6;
+  border: 1px solid #cbdad2;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-task-sms-test-mode button.is-active {
+  color: #ffffff;
+  background: #16724b;
+  border-color: #16724b;
+}
+
+.admin-task-sms-test-form label {
+  grid-column: 1 / -1;
+}
+
+.admin-task-sms-test-form label small {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.admin-task-sms-test-form textarea {
+  max-height: 240px;
+}
+
+.admin-task-sms-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.admin-task-sms-template-purpose {
+  grid-column: 1 / -1 !important;
+}
+
+.admin-task-sms-preview {
+  padding: 0.85rem;
+  background: #f7faf8;
+  border: 1px solid #dbe4df;
+  border-radius: 12px;
+}
+
+.admin-task-sms-preview strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #193d2c;
+}
+
+.admin-task-sms-preview pre {
+  margin: 0;
+  color: #334155;
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .admin-task-assignments-checkbox {
   display: flex !important;
   align-items: center;
@@ -1610,6 +1890,11 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  .admin-task-sms-test-mode,
+  .admin-task-sms-template-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-task-assignments-page {
     max-width: 100%;
     padding-top: 0.2rem;
