@@ -34,6 +34,13 @@ class TaskController extends AbstractController
         return $this->serviceResultResponse($this->taskWorkflowService->createTask($request, $this->jsonBody($request)));
     }
 
+    #[Route('/sms/test', name: 'task_test_sms', methods: ['POST'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function sendTestSms(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse($this->taskWorkflowService->sendTestSms($this->jsonBody($request)));
+    }
+
     #[Route('/{taskIdentifier}', name: 'task_update', requirements: ['taskIdentifier' => '\d+'], methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function updateTask(int $taskIdentifier, Request $request): JsonResponse

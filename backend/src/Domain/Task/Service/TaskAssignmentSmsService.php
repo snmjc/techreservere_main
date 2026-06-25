@@ -2,16 +2,22 @@
 
 namespace App\Domain\Task\Service;
 
+use App\Shared\Exceptions\DomainValidationException;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class TaskAssignmentSmsService
 {
-    private const TWILIO_API_BASE = 'https://api.twilio.com/2010-04-01/Accounts/';
+    private const TEXTBEE_API_BASE = 'https://api.textbee.dev/api/v1';
+    private const DEFAULT_TEST_MESSAGE = "hi! <Assigned Staff>.\n\n"
+        . "You have task on <Due Date>, <Task Name>: <Reservation Code>.\n"
+        . "<Reservation Purpose>\n\n"
+        . "If you can't please do contact the Facilities Office for changing of staff";
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly SmsMessageLogService $smsMessageLogService
     ) {
     }
 
@@ -32,8 +38,18 @@ class TaskAssignmentSmsService
             return null;
         }
 
-        $destinationPhoneNumber = $this->normalizePhoneNumber($currentTask['assignedStaffPhone'] ?? null);
+        $messageBody = $this->buildMessageBody($currentTask);
+        $rawPhoneNumber = trim((string)($currentTask['assignedStaffPhone'] ?? ''));
+        $destinationPhoneNumber = $this->normalizePhoneNumber($rawPhoneNumber);
         if ($destinationPhoneNumber === null) {
+            $this->recordFailureSafely(
+                'task_assignment',
+                $rawPhoneNumber !== '' ? [$rawPhoneNumber] : [],
+                $messageBody,
+                'Assigned staff has no valid phone number.',
+                (int)($currentTask['taskIdentifier'] ?? 0) ?: null,
+                $currentAssignedTo
+            );
             $this->logger->warning('Task assignment SMS skipped because assigned staff has no valid phone number.', [
                 'taskIdentifier' => $currentTask['taskIdentifier'] ?? null,
                 'assignedToAccountId' => $currentTask['assignedToAccountId'] ?? null,
@@ -43,7 +59,15 @@ class TaskAssignmentSmsService
         }
 
         if (!$this->isSmsConfigured()) {
-            $this->logger->warning('Task assignment SMS skipped because Twilio is not configured.', [
+            $this->recordFailureSafely(
+                'task_assignment',
+                [$destinationPhoneNumber],
+                $messageBody,
+                'TextBee SMS notifications are not configured.',
+                (int)($currentTask['taskIdentifier'] ?? 0) ?: null,
+                $currentAssignedTo
+            );
+            $this->logger->warning('Task assignment SMS skipped because TextBee is not configured.', [
                 'taskIdentifier' => $currentTask['taskIdentifier'] ?? null,
                 'assignedToAccountId' => $currentTask['assignedToAccountId'] ?? null,
             ]);
@@ -51,18 +75,14 @@ class TaskAssignmentSmsService
             return 'Task assignment saved, but SMS notifications are not configured yet.';
         }
 
-        $messageBody = $this->buildMessageBody($currentTask, $isCreate ? 'create' : 'reassign');
-
         try {
-            $response = $this->httpClient->request('POST', self::TWILIO_API_BASE . rawurlencode($this->twilioAccountSid()) . '/Messages.json', [
-                'auth_basic' => [$this->twilioAccountSid(), $this->twilioAuthToken()],
-                'body' => [
-                    'To' => $destinationPhoneNumber,
-                    'From' => $this->twilioFromNumber(),
-                    'Body' => $messageBody,
-                ],
-            ]);
-            $response->getContent();
+            $this->sendMessage(
+                $destinationPhoneNumber,
+                $messageBody,
+                'task_assignment',
+                (int)($currentTask['taskIdentifier'] ?? 0) ?: null,
+                $currentAssignedTo
+            );
 
             return null;
         } catch (\Throwable $exception) {
@@ -76,39 +96,88 @@ class TaskAssignmentSmsService
         }
     }
 
-    private function buildMessageBody(array $task, string $mode): string
+    public function sendTestSms(string $phoneNumber, ?string $message = null): array
+    {
+        $normalizedMessage = trim((string)$message);
+        if ($normalizedMessage === '') {
+            $normalizedMessage = self::DEFAULT_TEST_MESSAGE;
+        }
+
+        if (mb_strlen($normalizedMessage) > 1000) {
+            throw new DomainValidationException('Test message must not exceed 1000 characters.');
+        }
+
+        $rawPhoneNumber = trim($phoneNumber);
+        $destinationPhoneNumber = $this->normalizePhoneNumber($rawPhoneNumber);
+        if ($destinationPhoneNumber === null) {
+            $this->recordFailureSafely(
+                'manual_test',
+                $rawPhoneNumber !== '' ? [$rawPhoneNumber] : [],
+                $normalizedMessage,
+                'Invalid Philippine mobile number.'
+            );
+
+            throw new DomainValidationException(
+                'Phone number must be a valid Philippine mobile number, such as 09171234567 or +639171234567.'
+            );
+        }
+
+        if (!$this->isSmsConfigured()) {
+            $this->recordFailureSafely(
+                'manual_test',
+                [$destinationPhoneNumber],
+                $normalizedMessage,
+                'TextBee SMS notifications are not configured.'
+            );
+            throw new DomainValidationException('TextBee SMS notifications are not configured.');
+        }
+
+        try {
+            $providerResponse = $this->sendMessage(
+                $destinationPhoneNumber,
+                $normalizedMessage,
+                'manual_test'
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->error('TextBee test SMS failed.', [
+                'recipient' => $destinationPhoneNumber,
+                'error' => $exception->getMessage(),
+            ]);
+
+            throw new DomainValidationException('The TextBee test SMS could not be delivered.');
+        }
+
+        return [
+            'recipient' => $destinationPhoneNumber,
+            'message' => $normalizedMessage,
+            'providerMessageId' => $providerResponse['data']['_id'] ?? null,
+            'status' => $providerResponse['data']['status'] ?? null,
+            'providerCreatedAt' => $providerResponse['data']['createdAt'] ?? null,
+        ];
+    }
+
+    private function buildMessageBody(array $task): string
     {
         $staffName = trim((string)($task['assignedStaffName'] ?? ''));
-        $greeting = $staffName !== '' ? sprintf('Hello %s.', $staffName) : 'Hello.';
+        $greeting = $staffName !== '' ? sprintf('hi! %s.', $staffName) : 'hi!';
         $taskLabel = trim((string)($task['taskTitle'] ?? '')) ?: trim((string)($task['taskType'] ?? 'Assigned task')) ?: 'Assigned task';
         $reservationCode = trim((string)($task['reservationCode'] ?? ''));
-        $facilityName = trim((string)($task['facilityName'] ?? '')) ?: trim((string)($task['organizationName'] ?? ''));
+        $reservationLabel = $reservationCode !== ''
+            ? $reservationCode
+            : (trim((string)($task['reservationLabel'] ?? '')) ?: 'Reservation');
+        $description = trim((string)($task['taskDescription'] ?? ''));
+        $description = $description !== '' ? $description : 'No description provided.';
         $dueDateTime = $this->formatDueDateTime($task['dueDateTimestamp'] ?? null, $task['eventDateTime'] ?? null, $task['endDateTime'] ?? null);
-        $intro = $mode === 'reassign'
-            ? 'TechReserve: A task has been assigned to you.'
-            : 'TechReserve: You have a new assigned task.';
+        $dueDateTime = $dueDateTime !== '' ? $dueDateTime : 'the scheduled date';
 
-        $segments = [
-            $intro,
+        return sprintf(
+            "%s\n\nYou have task on %s, %s: %s.\n%s\n\nIf you can't please do contact the Facilities Office for changing of staff",
             $greeting,
-            sprintf('Task: %s.', $taskLabel),
-        ];
-
-        if ($reservationCode !== '') {
-            $segments[] = sprintf('Reservation: %s.', $reservationCode);
-        }
-
-        if ($facilityName !== '') {
-            $segments[] = sprintf('Facility: %s.', $facilityName);
-        }
-
-        if ($dueDateTime !== '') {
-            $segments[] = sprintf('Due: %s.', $dueDateTime);
-        }
-
-        $segments[] = 'Please coordinate with the admin office if you have questions.';
-
-        return implode(' ', $segments);
+            $dueDateTime,
+            $taskLabel,
+            $reservationLabel,
+            $description
+        );
     }
 
     private function formatDueDateTime(?string $dueDateTimestamp, ?string $startTimestamp, ?string $endTimestamp): string
@@ -165,25 +234,129 @@ class TaskAssignmentSmsService
         return null;
     }
 
+    private function sendMessage(
+        string $destinationPhoneNumber,
+        string $message,
+        string $source,
+        ?int $taskIdentifier = null,
+        ?int $assignedToAccountId = null
+    ): array
+    {
+        try {
+            $response = $this->httpClient->request(
+                'POST',
+                sprintf(
+                    '%s/gateway/devices/%s/send-sms',
+                    self::TEXTBEE_API_BASE,
+                    rawurlencode($this->textBeeDeviceId())
+                ),
+                [
+                    'headers' => [
+                        'x-api-key' => $this->textBeeApiKey(),
+                        'Accept' => 'application/json',
+                    ],
+                    'json' => [
+                        'recipients' => [$destinationPhoneNumber],
+                        'message' => $message,
+                    ],
+                ],
+            );
+            $responseContent = $response->getContent();
+            $responsePayload = json_decode($responseContent, true);
+            if (!is_array($responsePayload)) {
+                $responsePayload = ['rawResponse' => $responseContent];
+            }
+
+            $this->recordSuccessSafely(
+                $source,
+                [$destinationPhoneNumber],
+                $message,
+                $responsePayload,
+                $taskIdentifier,
+                $assignedToAccountId
+            );
+
+            return $responsePayload;
+        } catch (\Throwable $exception) {
+            $this->recordFailureSafely(
+                $source,
+                [$destinationPhoneNumber],
+                $message,
+                $exception->getMessage(),
+                $taskIdentifier,
+                $assignedToAccountId
+            );
+
+            throw $exception;
+        }
+    }
+
+    private function recordSuccessSafely(
+        string $source,
+        array $recipients,
+        string $message,
+        array $responsePayload,
+        ?int $taskIdentifier = null,
+        ?int $assignedToAccountId = null
+    ): void {
+        try {
+            $this->smsMessageLogService->recordSuccess(
+                $source,
+                $recipients,
+                $message,
+                $responsePayload,
+                $taskIdentifier,
+                $assignedToAccountId
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->error('SMS was submitted, but its database log could not be saved.', [
+                'source' => $source,
+                'taskIdentifier' => $taskIdentifier,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function recordFailureSafely(
+        string $source,
+        array $recipients,
+        string $message,
+        string $errorMessage,
+        ?int $taskIdentifier = null,
+        ?int $assignedToAccountId = null
+    ): void {
+        try {
+            $this->smsMessageLogService->recordFailure(
+                $source,
+                $recipients,
+                $message,
+                $errorMessage,
+                null,
+                $taskIdentifier,
+                $assignedToAccountId
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->error('Failed SMS attempt could not be saved to the database log.', [
+                'source' => $source,
+                'taskIdentifier' => $taskIdentifier,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     private function isSmsConfigured(): bool
     {
-        return $this->twilioAccountSid() !== ''
-            && $this->twilioAuthToken() !== ''
-            && $this->twilioFromNumber() !== '';
+        return $this->textBeeApiKey() !== ''
+            && $this->textBeeDeviceId() !== '';
     }
 
-    private function twilioAccountSid(): string
+    private function textBeeApiKey(): string
     {
-        return trim((string)($_ENV['TWILIO_ACCOUNT_SID'] ?? $_SERVER['TWILIO_ACCOUNT_SID'] ?? ''));
+        return trim((string)($_ENV['API_KEY'] ?? $_SERVER['API_KEY'] ?? ''));
     }
 
-    private function twilioAuthToken(): string
+    private function textBeeDeviceId(): string
     {
-        return trim((string)($_ENV['TWILIO_AUTH_TOKEN'] ?? $_SERVER['TWILIO_AUTH_TOKEN'] ?? ''));
-    }
-
-    private function twilioFromNumber(): string
-    {
-        return trim((string)($_ENV['TWILIO_FROM_NUMBER'] ?? $_SERVER['TWILIO_FROM_NUMBER'] ?? ''));
+        return trim((string)($_ENV['DEVICE_ID'] ?? $_SERVER['DEVICE_ID'] ?? ''));
     }
 }
