@@ -132,8 +132,10 @@ class DashboardAggregationService
         $relevantReservations = $this->mergeReservationsByIdentifier($submissionReservations, $eventReservations);
         $previousSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousRange['start'], $previousRange['end']);
         $previousEventReservations = $this->reservationRepository->findByEventDateRange($previousRange['start'], $previousRange['end']);
+        $previousYearSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousYearRange['start'], $previousYearRange['end']);
         $previousYearEventReservations = $this->reservationRepository->findByEventDateRange($previousYearRange['start'], $previousYearRange['end']);
         $previousRelevantReservations = $this->mergeReservationsByIdentifier($previousSubmissionReservations, $previousEventReservations);
+        $previousYearRelevantReservations = $this->mergeReservationsByIdentifier($previousYearSubmissionReservations, $previousYearEventReservations);
         $releaseReturnsInRange = $this->releaseReturnRepository->findByProcessedDateRange($range['start'], $range['end']);
         $previousReleaseReturns = $this->releaseReturnRepository->findByProcessedDateRange($previousRange['start'], $previousRange['end']);
         $overdueReservations = $this->buildOverdueReservationMap(
@@ -144,6 +146,7 @@ class DashboardAggregationService
         $forecast = $this->buildForecastData($eventReservations, $previousYearEventReservations, $range['start'], $range['end']);
         $equipmentUsageMap = $this->buildEquipmentUsageMap($relevantReservations, $overdueReservations);
         $previousEquipmentUsageMap = $this->buildEquipmentUsageMap($previousRelevantReservations, []);
+        $previousYearEquipmentUsageMap = $this->buildEquipmentUsageMap($previousYearRelevantReservations, []);
         $riskDistribution = $this->buildRiskDistribution($equipment, $equipmentUsageMap, $overdueReservations);
         $currentPending = $this->countReservationsByStatuses($relevantReservations, ['Pending', 'Pending Review']);
         $previousPending = $this->countReservationsByStatuses($previousRelevantReservations, ['Pending', 'Pending Review']);
@@ -151,6 +154,10 @@ class DashboardAggregationService
         $previousResolvedRate = $this->calculateResolvedRate($previousRelevantReservations);
         $currentEquipmentUtilization = $this->calculateRequestedEquipmentUtilization($equipment, $equipmentUsageMap);
         $previousEquipmentUtilization = $this->calculateRequestedEquipmentUtilization($equipment, $previousEquipmentUsageMap);
+        $previousYearUtilizationByCategory = $this->buildUtilizationByCategory($equipment, $previousYearEquipmentUsageMap);
+        $comparisonUtilizationByCategory = $this->hasVisibleUtilization($previousYearUtilizationByCategory)
+            ? $previousYearUtilizationByCategory
+            : $this->buildUtilizationByCategory($equipment, $previousEquipmentUsageMap);
 
         return [
             'dateRange' => [
@@ -191,6 +198,7 @@ class DashboardAggregationService
                 ],
             ],
             'utilizationByCategory' => $this->buildUtilizationByCategory($equipment, $equipmentUsageMap),
+            'utilizationComparisonByCategory' => $comparisonUtilizationByCategory,
             'topEquipment' => $this->buildTopEquipment($equipment, $equipmentUsageMap),
             'summary' => [
                 'totalEquipment' => count($equipment),
@@ -730,6 +738,14 @@ class DashboardAggregationService
         });
 
         return array_slice($result, 0, 5);
+    }
+
+    private function hasVisibleUtilization(array $items): bool
+    {
+        return count(array_filter(
+            $items,
+            static fn (array $item): bool => (float) ($item['value'] ?? 0) > 0.0
+        )) > 0;
     }
 
     /**

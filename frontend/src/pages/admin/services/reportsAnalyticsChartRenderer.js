@@ -70,7 +70,7 @@ export function createReportsAnalyticsChartRenderer() {
           {
             label: 'Midpoint Demand',
             data: midpointSeries || [],
-            borderColor: '#e59500',
+            borderColor: '#ffd23f',
             borderDash: [2, 4],
             tension: 0.35,
             pointRadius: 1,
