@@ -5,10 +5,11 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt ./
+COPY analytics-service/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+COPY analytics-service/app ./app
+COPY docs/demo-seeds ./demo-seeds
 
 EXPOSE 9000
 

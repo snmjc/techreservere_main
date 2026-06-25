@@ -132,8 +132,10 @@ class DashboardAggregationService
         $relevantReservations = $this->mergeReservationsByIdentifier($submissionReservations, $eventReservations);
         $previousSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousRange['start'], $previousRange['end']);
         $previousEventReservations = $this->reservationRepository->findByEventDateRange($previousRange['start'], $previousRange['end']);
+        $previousYearSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousYearRange['start'], $previousYearRange['end']);
         $previousYearEventReservations = $this->reservationRepository->findByEventDateRange($previousYearRange['start'], $previousYearRange['end']);
         $previousRelevantReservations = $this->mergeReservationsByIdentifier($previousSubmissionReservations, $previousEventReservations);
+        $previousYearRelevantReservations = $this->mergeReservationsByIdentifier($previousYearSubmissionReservations, $previousYearEventReservations);
         $releaseReturnsInRange = $this->releaseReturnRepository->findByProcessedDateRange($range['start'], $range['end']);
         $previousReleaseReturns = $this->releaseReturnRepository->findByProcessedDateRange($previousRange['start'], $previousRange['end']);
         $overdueReservations = $this->buildOverdueReservationMap(
@@ -144,6 +146,7 @@ class DashboardAggregationService
         $forecast = $this->buildForecastData($eventReservations, $previousYearEventReservations, $range['start'], $range['end']);
         $equipmentUsageMap = $this->buildEquipmentUsageMap($relevantReservations, $overdueReservations);
         $previousEquipmentUsageMap = $this->buildEquipmentUsageMap($previousRelevantReservations, []);
+        $previousYearEquipmentUsageMap = $this->buildEquipmentUsageMap($previousYearRelevantReservations, []);
         $riskDistribution = $this->buildRiskDistribution($equipment, $equipmentUsageMap, $overdueReservations);
         $currentPending = $this->countReservationsByStatuses($relevantReservations, ['Pending', 'Pending Review']);
         $previousPending = $this->countReservationsByStatuses($previousRelevantReservations, ['Pending', 'Pending Review']);
@@ -151,6 +154,11 @@ class DashboardAggregationService
         $previousResolvedRate = $this->calculateResolvedRate($previousRelevantReservations);
         $currentEquipmentUtilization = $this->calculateRequestedEquipmentUtilization($equipment, $equipmentUsageMap);
         $previousEquipmentUtilization = $this->calculateRequestedEquipmentUtilization($equipment, $previousEquipmentUsageMap);
+        $previousYearUtilizationByCategory = $this->buildUtilizationByCategory($equipment, $previousYearEquipmentUsageMap);
+        $comparisonUtilizationByCategory = $this->hasVisibleUtilization($previousYearUtilizationByCategory)
+            ? $previousYearUtilizationByCategory
+            : $this->buildUtilizationByCategory($equipment, $previousEquipmentUsageMap);
+        $topEquipment = $this->buildTopEquipment($equipment, $equipmentUsageMap);
 
         return [
             'dateRange' => [
@@ -191,7 +199,14 @@ class DashboardAggregationService
                 ],
             ],
             'utilizationByCategory' => $this->buildUtilizationByCategory($equipment, $equipmentUsageMap),
-            'topEquipment' => $this->buildTopEquipment($equipment, $equipmentUsageMap),
+            'utilizationComparisonByCategory' => $comparisonUtilizationByCategory,
+            'topEquipment' => $topEquipment,
+            'possibleBorrowedEquipment' => $this->buildPossibleBorrowedEquipment(
+                $equipment,
+                $equipmentUsageMap,
+                $previousEquipmentUsageMap,
+                $previousYearEquipmentUsageMap
+            ),
             'summary' => [
                 'totalEquipment' => count($equipment),
                 'activeReservations' => $this->countReservationsByStatuses($relevantReservations, ['Approved', 'Prepared', 'Deployed']),
@@ -726,6 +741,14 @@ class DashboardAggregationService
         return array_slice($result, 0, 5);
     }
 
+    private function hasVisibleUtilization(array $items): bool
+    {
+        return count(array_filter(
+            $items,
+            static fn (array $item): bool => (float) ($item['value'] ?? 0) > 0.0
+        )) > 0;
+    }
+
     /**
      * @param EquipmentEntity[] $equipment
      * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $equipmentUsageMap
@@ -751,7 +774,105 @@ class DashboardAggregationService
 
         usort($items, static fn (array $left, array $right): int => $right['count'] <=> $left['count']);
 
-        return array_slice($items, 0, 5);
+        return array_slice($items, 0, 10);
+    }
+
+    /**
+     * @param EquipmentEntity[] $equipment
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $equipmentUsageMap
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousEquipmentUsageMap
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousYearEquipmentUsageMap
+     * @return array<int, array{name:string,count:int,reason:string}>
+     */
+    private function buildPossibleBorrowedEquipment(
+        array $equipment,
+        array $equipmentUsageMap,
+        array $previousEquipmentUsageMap,
+        array $previousYearEquipmentUsageMap
+    ): array {
+        $candidates = [];
+        foreach ($equipment as $equipmentRecord) {
+            $name = $equipmentRecord->getEquipmentName();
+            $nameKey = self::normalizeText($name);
+            if ($nameKey === '') {
+                continue;
+            }
+
+            $currentUsage = (int) ($equipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            $previousUsage = (int) ($previousEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            $previousYearUsage = (int) ($previousYearEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            if ($currentUsage <= 0) {
+                continue;
+            }
+
+            $totalQuantity = max(1, $equipmentRecord->getTotalQuantity());
+            $availableQuantity = max(0, $equipmentRecord->getAvailableQuantity());
+            $stockPressure = max(0, $totalQuantity - $availableQuantity);
+            $availabilityRate = $availableQuantity / $totalQuantity;
+            $score = ($previousYearUsage * 1.4) + ($previousUsage * 1.1) + ($currentUsage * 0.6) + ($stockPressure * 0.4);
+
+            if ($score <= 0.0) {
+                continue;
+            }
+
+            $signal = $this->resolveBorrowingCandidateSignal($currentUsage, $previousUsage, $previousYearUsage, $availabilityRate);
+            $candidates[] = [
+                'name' => $name,
+                'count' => $currentUsage,
+                'reason' => $this->resolveBorrowingCandidateReason($signal, $currentUsage, $previousUsage, $previousYearUsage, $availabilityRate),
+                'score' => $score,
+            ];
+        }
+
+        usort($candidates, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score']) ?: strcmp((string) $left['name'], (string) $right['name']);
+        });
+
+        return array_map(
+            static fn (array $item): array => [
+                'name' => $item['name'],
+                'count' => $item['count'],
+                'reason' => $item['reason'],
+            ],
+            array_slice($candidates, 0, 5)
+        );
+    }
+
+    private function resolveBorrowingCandidateSignal(int $currentUsage, int $previousUsage, int $previousYearUsage, float $availabilityRate): string
+    {
+        if ($previousYearUsage > max($currentUsage, $previousUsage)) {
+            return 'Seasonal';
+        }
+
+        if ($previousUsage > $currentUsage) {
+            return 'Recent';
+        }
+
+        if ($currentUsage > 0) {
+            return 'Emerging';
+        }
+
+        if ($availabilityRate <= 0.35) {
+            return 'Stock';
+        }
+
+        return 'Watch';
+    }
+
+    private function resolveBorrowingCandidateReason(
+        string $signal,
+        int $currentUsage,
+        int $previousUsage,
+        int $previousYearUsage,
+        float $availabilityRate
+    ): string {
+        return match ($signal) {
+            'Seasonal' => sprintf('Used %d times in the same days last year, so this item may return next cycle.', $previousYearUsage),
+            'Recent' => sprintf('Used %d times in the previous period, which suggests it may rebound soon.', $previousUsage),
+            'Emerging' => sprintf('Used %d times in the selected period, indicating continued borrowing demand.', $currentUsage),
+            'Stock' => sprintf('Available stock is low at %d%%, so even light demand can create pressure.', (int) round($availabilityRate * 100)),
+            default => 'Historical and inventory signals make this a secondary borrowing candidate.',
+        };
     }
 
     /**

@@ -12,19 +12,29 @@
             <p class="reports-analytics-source">{{ reportsSourceLabel }}</p>
           </div>
 
-          <label class="reports-analytics-date-range">
-            <span>Date Range:</span>
-            <select v-model="selectedRangeKey">
-              <option
-                v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
-                :key="preset.key"
-                :value="preset.key"
-              >
-                {{ preset.label }}
-              </option>
-            </select>
-            <small>{{ activeRangeLabel }}</small>
-          </label>
+          <div class="reports-analytics-controls">
+            <label class="reports-analytics-date-range">
+              <span>Date Range:</span>
+              <select v-model="selectedRangeKey">
+                <option
+                  v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
+                  :key="preset.key"
+                  :value="preset.key"
+                >
+                  {{ preset.label }}
+                </option>
+              </select>
+              <small>{{ activeRangeLabel }}</small>
+            </label>
+            <button
+              class="reports-refresh-button"
+              type="button"
+              :disabled="isReportsLoading"
+              @click="handleRefreshReports"
+            >
+              {{ isReportsLoading ? 'Refreshing...' : 'Refresh' }}
+            </button>
+          </div>
 
         </header>
 
@@ -172,7 +182,8 @@
         <div class="reports-bottom-grid">
           <section class="reports-panel">
             <h2>Equipment Utilization Overview</h2>
-            <div v-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+            <div v-if="isUtilizationRefreshing" class="reports-inline-message">Refreshing live utilization data from the backend...</div>
+            <div v-else-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
             <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
               <canvas ref="utilizationChartRef" class="reports-chart-canvas" aria-label="Equipment utilization comparison chart"></canvas>
             </div>
@@ -195,16 +206,15 @@
                 <h3>Top Frequently Used Equipment</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
+                    <tr><th>Equipment</th><th>Times Used</th></tr>
                   </thead>
                   <tbody>
-                    <tr v-if="topEquipment.length === 0">
-                      <td colspan="3">No equipment requests were recorded in the selected range.</td>
+                    <tr v-if="topFrequentlyUsedEquipment.length === 0">
+                      <td colspan="2">No equipment requests were recorded in the selected range.</td>
                     </tr>
-                    <tr v-for="item in topEquipment" :key="item.name">
+                    <tr v-for="item in topFrequentlyUsedEquipment" :key="item.name">
                       <td>{{ item.name }}</td>
                       <td>{{ formatMetricNumber(item.count, 0) }}</td>
-                      <td>{{ formatMetricNumber(item.rate, 1) }}%</td>
                     </tr>
                   </tbody>
                 </table>
@@ -214,15 +224,15 @@
                 <h3>Top Possible Borrowed Equipment</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Trend Signal</th><th>Why it may move</th></tr>
+                    <tr><th>Equipment</th><th>Times Used</th><th>Why it may move</th></tr>
                   </thead>
                   <tbody>
                     <tr v-if="possibleBorrowedEquipment.length === 0">
                       <td colspan="3">No trend-based borrowing candidates are available yet.</td>
                     </tr>
-                    <tr v-for="item in possibleBorrowedEquipment" :key="item.name">
+                    <tr v-for="item in possibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
                       <td>{{ item.name }}</td>
-                      <td>{{ item.signal }}</td>
+                      <td>{{ formatMetricNumber(item.count || item.usageCount || 0, 0) }}</td>
                       <td>{{ item.reason }}</td>
                     </tr>
                   </tbody>
@@ -315,13 +325,10 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import {
   createEmptyForecastReport,
-  createEmptyReport,
   createEmptyRiskReport,
   createEmptySummaryReport,
   createEmptyUtilizationReport,
-  hasRiskDistribution,
   normalizeStoredAnalyticsResponse,
-  pickNonEmptyArray,
 } from './services/reportsAnalyticsDataAdapter.js';
 import { createReportsAnalyticsChartRenderer } from './services/reportsAnalyticsChartRenderer.js';
 import {
@@ -356,11 +363,13 @@ const analyticsToastMessage = ref('');
 const analyticsRunStatus = ref('');
 const analyticsRunStatusType = ref('info');
 const pdfError = ref('');
+const isUtilizationRefreshing = ref(false);
 const reportSurfaceRef = ref(null);
 const forecastChartRef = ref(null);
 const riskChartRef = ref(null);
 const utilizationChartRef = ref(null);
 const chartRenderer = createReportsAnalyticsChartRenderer();
+let reportsLoadSequence = 0;
 const forecastReport = ref(createEmptyForecastReport());
 const riskReport = ref(createEmptyRiskReport());
 const optimizationReport = ref([]);
@@ -374,6 +383,7 @@ const analyticsScenarios = [
   { key: 'high_last_high_this', title: 'High demand last year, high this sem', description: 'Strong demand in both periods for stress testing.' },
   { key: 'low_last_low_this', title: 'Low demand last year, low this sem', description: 'Quiet baseline across both periods.' },
   { key: 'low_last_high_this', title: 'Low demand last year, high this sem', description: 'Recovery pattern with a current-term spike.' },
+  { key: 'mixed', title: 'Mixed', description: 'Volatile pattern with realistic peaks, dips, and steady months.' },
 ];
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
@@ -412,26 +422,27 @@ const forecastProjectionSeries = computed(() => (forecastData.value.forecastSeri
   ...item,
   label: formatShortDate(item.date || item.label),
 })));
-const forecastDisplaySeries = computed(() => buildForecastDisplaySeries(forecastSeries.value, forecastProjectionSeries.value));
+const forecastHistorySeries = computed(() => (forecastData.value.historySeries || []).map((item) => ({
+  ...item,
+  label: formatShortDate(item.date || item.label),
+})));
+const forecastDisplaySeries = computed(() => buildForecastDisplaySeries(
+  forecastSeries.value,
+  forecastProjectionSeries.value,
+  forecastHistorySeries.value,
+));
 const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels.map((_, index) => {
   const actualValue = forecastDisplaySeries.value.actualValues[index];
   const forecastValue = forecastDisplaySeries.value.forecastValues[index];
   const hasActual = actualValue !== null && actualValue !== undefined;
   const hasForecast = forecastValue !== null && forecastValue !== undefined;
 
-  if (!hasActual && !hasForecast) {
+  if (!hasActual || !hasForecast) {
     return null;
   }
 
   const actualNumber = Number(actualValue || 0);
   const forecastNumber = Number(forecastValue || 0);
-  if (!hasActual) {
-    return forecastNumber;
-  }
-  if (!hasForecast) {
-    return actualNumber;
-  }
-
   return roundForecastValue((actualNumber + forecastNumber) / 2);
 }));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
@@ -445,16 +456,12 @@ const riskNarrative = computed(() => buildRiskNarrative(riskBands.value));
 const optimizationMetrics = computed(() => optimizationReport.value || []);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
-const topEquipment = computed(() => utilizationReport.value.topEquipment || []);
-const possibleBorrowedEquipment = computed(() => topEquipment.value.slice(0, 5).map((item, index) => ({
-  name: item.name,
-  signal: `${index + 1}`,
-  reason: Number(item.rate || 0) >= 50
-    ? 'Already trending high, so it may stay in demand next cycle.'
-    : Number(item.count || 0) >= 3
-      ? 'Repeat usage suggests this item may reappear in the next 3 days.'
-      : 'Light but consistent usage makes it a possible next-cycle borrow.',
-})));
+const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
+const topFrequentlyUsedEquipment = computed(() => topEquipment.value.slice(0, 5));
+const possibleBorrowedEquipment = computed(() => {
+  const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
+  return candidates.filter((item) => item?.name);
+});
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
 const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'N/A');
@@ -476,6 +483,12 @@ onBeforeUnmount(() => {
 
 watch(selectedRangeKey, () => {
   loadReportsAnalytics();
+});
+
+watch(isUtilizationRefreshing, (isRefreshing) => {
+  if (!isRefreshing) {
+    renderUtilizationChartAfterUpdate();
+  }
 });
 
 watch(
@@ -502,42 +515,36 @@ watch(
   { deep: true }
 );
 
-async function loadReportsAnalytics(options = {}) {
-  const preferLiveOnly = options.preferLiveOnly === true;
+async function loadReportsAnalytics() {
+  const loadSequence = ++reportsLoadSequence;
   isReportsLoading.value = true;
+  isUtilizationRefreshing.value = true;
   reportsError.value = '';
   pdfError.value = '';
+  reportsSourceLabel.value = `Loading FastAPI analytics for ${activeRangeLabel.value}...`;
 
   try {
-    applyEmptyAnalyticsSections();
-    applyLiveAnalyticsSections(await adminAnalyticsApi.getReportsAnalytics(activeRange.value));
-    reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
-  } catch (error) {
-    if (preferLiveOnly) {
-      applyEmptyAnalyticsSections();
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeResults(activeRange.value);
+    if (loadSequence !== reportsLoadSequence) {
       return;
     }
 
-    try {
-      const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
-      const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
-
-      if (storedAnalytics !== null) {
-        applyStoredAnalyticsSections(storedAnalytics);
-        reportsSourceLabel.value = buildStoredAnalyticsLabel(latestResultsResponse?.run);
-        return;
-      }
-
-      applyEmptyAnalyticsSections();
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-    } catch (fallbackError) {
-      applyEmptyAnalyticsSections();
-      reportsError.value = resolveReportsError(fallbackError || error);
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
+  } catch (error) {
+    if (loadSequence !== reportsLoadSequence) {
+      return;
     }
+
+    reportsError.value = resolveReportsError(error);
+    reportsSourceLabel.value = 'Unable to refresh FastAPI analytics; keeping the last completed result.';
   } finally {
+    if (loadSequence !== reportsLoadSequence) {
+      return;
+    }
+
     isReportsLoading.value = false;
+    isUtilizationRefreshing.value = false;
   }
 }
 
@@ -554,9 +561,12 @@ async function handleTriggerAnalyticsRun() {
 
   try {
     analyticsRunStatus.value = 'Running analytics service...';
-    await adminAnalyticsApi.triggerAnalyticsRun(selectedAnalyticsScenario.value);
-    analyticsRunStatus.value = 'Refreshing dashboard data...';
-    await refreshReportsAfterRun();
+    const analyticsResponse = await adminAnalyticsApi.triggerAnalyticsRun(
+      selectedAnalyticsScenario.value,
+      activeRange.value,
+    );
+    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
     analyticsToastMessage.value = 'Analytics run completed successfully.';
     analyticsRunStatus.value = 'Analytics run completed successfully.';
     analyticsRunStatusType.value = 'success';
@@ -576,90 +586,35 @@ async function handleTriggerAnalyticsRun() {
   }
 }
 
-async function refreshReportsAfterRun() {
-  const maxAttempts = 4;
-  let attempt = 0;
-
-  while (attempt < maxAttempts) {
-    const liveAnalytics = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
-    const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
-    const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
-
-    if (storedAnalytics !== null) {
-      applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics);
-      reportsSourceLabel.value = `${buildStoredAnalyticsLabel(latestResultsResponse?.run)} Forecast uses live aggregation for ${activeRangeLabel.value}.`;
-      return;
-    }
-
-    attempt += 1;
-    await wait(600);
-  }
-
-  applyEmptyAnalyticsSections();
-  reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-}
-
-function applyEmptyAnalyticsSections() {
-  forecastReport.value = createEmptyForecastReport();
-  riskReport.value = createEmptyRiskReport();
-  optimizationReport.value = [];
-  utilizationReport.value = createEmptyUtilizationReport();
-  summaryReport.value = createEmptySummaryReport();
-}
-
-function applyLiveAnalyticsSections(liveAnalytics) {
-  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = liveAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
-  utilizationReport.value = {
-    items: Array.isArray(liveAnalytics?.utilizationByCategory) ? liveAnalytics.utilizationByCategory : [],
-    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
-      ? liveAnalytics.utilizationComparisonByCategory
-      : [],
-    topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
-  };
-  summaryReport.value = liveAnalytics?.summary || createEmptySummaryReport();
+function handleRefreshReports() {
+  loadReportsAnalytics();
 }
 
 function applyStoredAnalyticsSections(storedAnalytics) {
-  forecastReport.value = storedAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = storedAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = Array.isArray(storedAnalytics?.optimizationMetrics) ? storedAnalytics.optimizationMetrics : [];
+  forecastReport.value = storedAnalytics.forecast;
+  riskReport.value = storedAnalytics.riskDistribution;
+  optimizationReport.value = storedAnalytics.optimizationMetrics;
   utilizationReport.value = {
-    items: Array.isArray(storedAnalytics?.utilizationByCategory) ? storedAnalytics.utilizationByCategory : [],
-    comparisonItems: Array.isArray(storedAnalytics?.utilizationComparisonByCategory)
-      ? storedAnalytics.utilizationComparisonByCategory
-      : [],
-    topEquipment: Array.isArray(storedAnalytics?.topEquipment) ? storedAnalytics.topEquipment : [],
+    items: storedAnalytics.utilizationByCategory,
+    comparisonItems: storedAnalytics.utilizationComparisonByCategory,
+    topEquipment: storedAnalytics.topEquipment,
+    possibleBorrowedEquipment: storedAnalytics.possibleBorrowedEquipment,
   };
-  summaryReport.value = storedAnalytics?.summary || createEmptySummaryReport();
+  summaryReport.value = storedAnalytics.summary;
 }
 
-function applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics) {
-  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = hasRiskDistribution(storedAnalytics?.riskDistribution)
-    ? storedAnalytics.riskDistribution
-    : liveAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = pickNonEmptyArray(storedAnalytics?.optimizationMetrics, liveAnalytics?.optimizationMetrics);
-  utilizationReport.value = {
-    items: pickNonEmptyArray(storedAnalytics?.utilizationByCategory, liveAnalytics?.utilizationByCategory),
-    comparisonItems: pickNonEmptyArray(
-      storedAnalytics?.utilizationComparisonByCategory,
-      liveAnalytics?.utilizationComparisonByCategory,
-    ),
-    topEquipment: pickNonEmptyArray(storedAnalytics?.topEquipment, liveAnalytics?.topEquipment),
-  };
-  summaryReport.value = {
-    ...(liveAnalytics?.summary || createEmptySummaryReport()),
-    ...(storedAnalytics?.summary || {}),
-    generatedAt: storedAnalytics?.summary?.generatedAt || liveAnalytics?.summary?.generatedAt || 'N/A',
-  };
-}
+function normalizeEquipmentTrendItems(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
 
-function wait(milliseconds) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
+  return items
+    .map((item) => ({
+      name: item?.name || item?.equipment || item?.equipmentName || item?.equipment_name || '',
+      count: Number(item?.count ?? item?.usageCount ?? item?.usage_count ?? item?.timesUsed ?? item?.times_used ?? 0),
+      reason: item?.reason || item?.note || item?.why || '',
+    }))
+    .filter((item) => item.name);
 }
 
 function closeScenarioModal() {
@@ -770,17 +725,6 @@ function resolveReportsError(error) {
   return error?.response?.data?.errorMessage
     || error?.message
     || 'Unable to load analytics data right now.';
-}
-
-function buildStoredAnalyticsLabel(run) {
-  if (!run) {
-    return 'Using stored analytics results.';
-  }
-
-  const startedAt = run.started_at || run.startedAt || 'unknown time';
-  const runType = run.run_type || run.runType || 'analytics';
-  const status = run.status || 'unknown';
-  return `Using latest stored ${runType} run (${status}) from ${startedAt}.`;
 }
 
 function formatShortDate(value) {
