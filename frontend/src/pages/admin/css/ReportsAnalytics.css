@@ -807,7 +807,7 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-analytics-controls {
-  gap: 0.6rem;
+  display: none;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-refresh-button {
