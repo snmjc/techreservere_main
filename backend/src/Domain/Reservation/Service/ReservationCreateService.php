@@ -362,10 +362,16 @@ class ReservationCreateService
             throw new \RuntimeException('No compatible reservation columns were found for fallback persistence.');
         }
 
+        $returningColumns = ['reservation_identifier'];
+        if (isset($columnsByName['submission_timestamp'])) {
+            $returningColumns[] = 'submission_timestamp';
+        }
+
         $sql = sprintf(
-            'INSERT INTO reservations (%s) VALUES (%s) RETURNING reservation_identifier, submission_timestamp',
+            'INSERT INTO reservations (%s) VALUES (%s) RETURNING %s',
             implode(', ', $insertColumns),
-            implode(', ', $placeholders)
+            implode(', ', $placeholders),
+            implode(', ', $returningColumns)
         );
 
         $row = $this->connection->fetchAssociative($sql, $parameters, $parameterTypes);
@@ -407,6 +413,12 @@ class ReservationCreateService
 
     private function persistReservationViaLegacyInsert(ReservationEntity $entity): void
     {
+        $columnsByName = $this->fetchReservationColumnsByName();
+        if ($columnsByName !== []) {
+            $this->persistReservationViaAdaptiveLegacyInsert($entity, $columnsByName);
+            return;
+        }
+
         $requestedEquipmentJson = json_encode($entity->getRequestedEquipmentList(), JSON_THROW_ON_ERROR);
         $supportingDocuments = $entity->getSupportingDocuments();
         $supportingDocumentsJson = $supportingDocuments === null ? null : json_encode($supportingDocuments, JSON_THROW_ON_ERROR);
@@ -422,7 +434,6 @@ class ReservationCreateService
                 event_date_time,
                 purpose_description,
                 activity_type,
-                borrower_remarks,
                 current_status,
                 priority_level,
                 rejection_reason,
@@ -438,7 +449,6 @@ class ReservationCreateService
                 :event_date_time,
                 :purpose_description,
                 :activity_type,
-                :borrower_remarks,
                 :current_status,
                 :priority_level,
                 :rejection_reason,
@@ -455,7 +465,6 @@ class ReservationCreateService
                 'event_date_time' => $entity->getEventDateTime()->format('Y-m-d H:i:s'),
                 'purpose_description' => $entity->getPurposeDescription(),
                 'activity_type' => $entity->getActivityType(),
-                'borrower_remarks' => $entity->getBorrowerRemarks(),
                 'current_status' => $entity->getCurrentStatus(),
                 'priority_level' => $entity->getPriorityLevel(),
                 'rejection_reason' => $entity->getRejectionReason(),
@@ -472,7 +481,6 @@ class ReservationCreateService
                 'event_date_time' => ParameterType::STRING,
                 'purpose_description' => ParameterType::STRING,
                 'activity_type' => ParameterType::STRING,
-                'borrower_remarks' => $entity->getBorrowerRemarks() === null ? ParameterType::NULL : ParameterType::STRING,
                 'current_status' => ParameterType::STRING,
                 'priority_level' => $entity->getPriorityLevel() === null ? ParameterType::NULL : ParameterType::STRING,
                 'rejection_reason' => $entity->getRejectionReason() === null ? ParameterType::NULL : ParameterType::STRING,
@@ -483,6 +491,72 @@ class ReservationCreateService
 
         if ($row === false || $row === []) {
             throw new \RuntimeException('Legacy reservation insert did not return a reservation identifier.');
+        }
+
+        $this->hydratePersistedReservationEntity($entity, $row);
+    }
+
+    private function persistReservationViaAdaptiveLegacyInsert(ReservationEntity $entity, array $columnsByName): void
+    {
+        $requestedEquipmentJson = json_encode($entity->getRequestedEquipmentList(), JSON_THROW_ON_ERROR);
+        $supportingDocuments = $entity->getSupportingDocuments();
+        $supportingDocumentsJson = $supportingDocuments === null ? null : json_encode($supportingDocuments, JSON_THROW_ON_ERROR);
+
+        $rawValues = [
+            'reservation_code' => $entity->getReservationCode(),
+            'borrower_account_id' => $entity->getBorrowerAccountId(),
+            'organization_name' => $entity->getOrganizationName(),
+            'venue_identifier' => $entity->getVenueIdentifier(),
+            'requested_equipment_list' => $requestedEquipmentJson,
+            'requested_quantity' => $entity->getRequestedQuantity(),
+            'event_date_time' => $entity->getEventDateTime()->format('Y-m-d H:i:s'),
+            'end_date_time' => $entity->getEndDateTime()?->format('Y-m-d H:i:s'),
+            'purpose_description' => $entity->getPurposeDescription(),
+            'activity_type' => $entity->getActivityType(),
+            'borrower_remarks' => $entity->getBorrowerRemarks(),
+            'current_status' => $entity->getCurrentStatus(),
+            'priority_level' => $entity->getPriorityLevel(),
+            'rejection_reason' => $entity->getRejectionReason(),
+            'supporting_documents' => $supportingDocumentsJson,
+            'submission_timestamp' => $entity->getSubmissionTimestamp()->format('Y-m-d H:i:s'),
+            'updated_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ];
+
+        $insertColumns = [];
+        $placeholders = [];
+        $parameters = [];
+        $parameterTypes = [];
+
+        foreach ($rawValues as $columnName => $value) {
+            if (!isset($columnsByName[$columnName])) {
+                continue;
+            }
+
+            $insertColumns[] = $columnName;
+            $placeholders[] = $this->buildInsertPlaceholder($columnName, $columnsByName[$columnName]);
+            $parameters[$columnName] = $value;
+            $parameterTypes[$columnName] = $this->resolveParameterType($value);
+        }
+
+        if ($insertColumns === []) {
+            throw new \RuntimeException('No compatible reservation columns were found for adaptive legacy persistence.');
+        }
+
+        $returningColumns = ['reservation_identifier'];
+        if (isset($columnsByName['submission_timestamp'])) {
+            $returningColumns[] = 'submission_timestamp';
+        }
+
+        $sql = sprintf(
+            'INSERT INTO reservations (%s) VALUES (%s) RETURNING %s',
+            implode(', ', $insertColumns),
+            implode(', ', $placeholders),
+            implode(', ', $returningColumns)
+        );
+
+        $row = $this->connection->fetchAssociative($sql, $parameters, $parameterTypes);
+        if ($row === false || $row === []) {
+            throw new \RuntimeException('Adaptive legacy reservation insert did not return a reservation identifier.');
         }
 
         $this->hydratePersistedReservationEntity($entity, $row);
@@ -621,7 +695,7 @@ class ReservationCreateService
         $countSql = $hasEndDateTimeColumn
             ? 'SELECT COUNT(*) FROM reservations
                 WHERE venue_identifier = :venueIdentifier
-                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (:excludedStatuses)
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
                   AND event_date_time < :rangeEnd
                   AND (
                     (end_date_time IS NULL AND event_date_time >= :rangeStart)
@@ -629,7 +703,7 @@ class ReservationCreateService
                   )'
             : 'SELECT COUNT(*) FROM reservations
                 WHERE venue_identifier = :venueIdentifier
-                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (:excludedStatuses)
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
                   AND event_date_time >= :rangeStart
                   AND event_date_time < :rangeEnd';
 
@@ -638,13 +712,11 @@ class ReservationCreateService
                 $countSql,
                 [
                     'venueIdentifier' => $venueIdentifier,
-                    'excludedStatuses' => ['rejected', 'cancelled', 'request revision'],
                     'rangeStart' => $eventDateTime->format('Y-m-d H:i:s'),
                     'rangeEnd' => $endDateTime->format('Y-m-d H:i:s'),
                 ],
                 [
                     'venueIdentifier' => ParameterType::INTEGER,
-                    'excludedStatuses' => \Doctrine\DBAL\ArrayParameterType::STRING,
                     'rangeStart' => ParameterType::STRING,
                     'rangeEnd' => ParameterType::STRING,
                 ]
@@ -658,11 +730,45 @@ class ReservationCreateService
                 $exception->getMessage()
             ));
 
-            return $this->reservationRepository->findVenueReservationsOverlappingRange(
-                [$venueIdentifier],
-                $eventDateTime,
-                $endDateTime
-            ) !== [];
+            $selectedDate = $eventDateTime->format('Y-m-d');
+            $calendarFallbackSql = $hasEndDateTimeColumn
+                ? 'SELECT COUNT(*) FROM reservations
+                    WHERE venue_identifier = :venueIdentifier
+                      AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
+                      AND DATE(event_date_time) <= :selectedDate
+                      AND DATE(COALESCE(end_date_time, event_date_time)) >= :selectedDate
+                      AND event_date_time < :rangeEnd'
+                : 'SELECT COUNT(*) FROM reservations
+                    WHERE venue_identifier = :venueIdentifier
+                      AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
+                      AND DATE(event_date_time) = :selectedDate
+                      AND event_date_time < :rangeEnd';
+
+            try {
+                $conflictCount = (int) $this->connection->fetchOne(
+                    $calendarFallbackSql,
+                    [
+                        'venueIdentifier' => $venueIdentifier,
+                        'selectedDate' => $selectedDate,
+                        'rangeEnd' => $endDateTime->format('Y-m-d H:i:s'),
+                    ],
+                    [
+                        'venueIdentifier' => ParameterType::INTEGER,
+                        'selectedDate' => ParameterType::STRING,
+                        'rangeEnd' => ParameterType::STRING,
+                    ]
+                );
+
+                return $conflictCount > 0;
+            } catch (\Throwable $fallbackException) {
+                error_log(sprintf(
+                    'Reservation Creation - Venue conflict calendar fallback failed [%s]: %s',
+                    $fallbackException::class,
+                    $fallbackException->getMessage()
+                ));
+
+                return false;
+            }
         }
     }
 
