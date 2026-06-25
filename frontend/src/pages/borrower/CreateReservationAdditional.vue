@@ -44,14 +44,26 @@
                 <small class="borrower-reservation-help">Select if security crew is required for your event.</small>
               </div>
 
+              <div class="borrower-reservation-field">
+                <label for="borrowerRemarksChoice">Borrower Remarks</label>
+                <select id="borrowerRemarksChoice" v-model="formState.borrowerRemarksChoice">
+                  <option value="no">No remarks</option>
+                  <option value="yes">Add remarks</option>
+                </select>
+                <small class="borrower-reservation-help">Choose if you want to add special instructions or extra notes.</small>
+              </div>
+
               <div class="borrower-reservation-field borrower-reservation-field--full">
                 <label for="borrowerRemarks">Remarks</label>
                 <textarea
                   id="borrowerRemarks"
                   v-model="formState.borrowerRemarks"
+                  :disabled="formState.borrowerRemarksChoice !== 'yes'"
                   rows="4"
                   maxlength="500"
-                  placeholder="Add any optional notes or special instructions for your reservation."
+                  :placeholder="formState.borrowerRemarksChoice === 'yes'
+                    ? 'Add any optional notes or special instructions for your reservation.'
+                    : 'Select Add remarks first if you want to enter notes.'"
                 ></textarea>
                 <small class="borrower-reservation-help">Optional. This will be included in your reservation summary and request details.</small>
               </div>
@@ -90,6 +102,7 @@ const isStepLoading = ref(false);
 const formState = reactive({
   securityGuardCount: reservationFormStore.securityGuardCount || 'None',
   securityCrewCount: reservationFormStore.securityCrewCount || 'None',
+  borrowerRemarksChoice: String(reservationFormStore.borrowerRemarks || '').trim() !== '' ? 'yes' : 'no',
   borrowerRemarks: reservationFormStore.borrowerRemarks || '',
 });
 
@@ -106,7 +119,9 @@ function navigateToPreviousPage() {
 function navigateToNextPage() {
   reservationFormStore.securityGuardCount = formState.securityGuardCount;
   reservationFormStore.securityCrewCount = formState.securityCrewCount;
-  reservationFormStore.borrowerRemarks = String(formState.borrowerRemarks || '').trim();
+  reservationFormStore.borrowerRemarks = formState.borrowerRemarksChoice === 'yes'
+    ? String(formState.borrowerRemarks || '').trim()
+    : '';
   reservationFormStore.persistForm();
   isStepLoading.value = true;
   window.setTimeout(() => {

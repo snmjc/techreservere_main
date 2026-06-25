@@ -1284,6 +1284,7 @@ import {
   isVenueFloorPlaceholderRecord,
   resolveVenuePhoto,
 } from '@/modules/facility/utils/venueFormValidation.js';
+import { sortVenueFloorLabels, VENUE_FLOOR_OPTIONS } from '@/modules/facility/utils/venueFloorOptions.js';
 import {
   formatEquipmentQuantity,
   formatEquipmentStatus,
@@ -1366,15 +1367,6 @@ let activeReservedVenueWeekRequestSequence = 0;
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
 );
-const excludedFacilityFloors = new Set([
-  '4th Floor',
-  '5th Floor',
-  '6th Floor',
-  '7th Floor',
-  '9th Floor',
-  '11th Floor',
-  '4th-7th Floors',
-]);
 const currentAdminDisplayName = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   const firstName = String(account.firstName || '').trim();
@@ -1396,11 +1388,7 @@ const isDeleteEquipmentReady = computed(() =>
   && deleteEquipmentConfirmPassword.value.trim() !== ''
 );
 
-const floorOrder = [
-  '18th Floor', '17th Floor', '16th Floor', '15th Floor', '8th Floor',
-  '7th Floor', '6th Floor', '5th Floor', '4th Floor', '3rd Floor',
-  '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor',
-];
+const floorOrder = VENUE_FLOOR_OPTIONS;
 const classroomDayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const classroomScheduleTypeOptions = ['Class Schedule', 'Reserved', 'Equipment Reservation', 'Pending', 'Maintenance'];
 const academicYearOptions = ['2025 - 2026', '2026 - 2027', '2027 - 2028', '2028 - 2029'];
@@ -1589,21 +1577,15 @@ const filteredEquipmentBaseRecords = computed(() => {
 
 const showingFilterOptions = computed(() => {
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
-    const floorOptions = Array.from(new Set(
+    const floorOptions = sortVenueFloorLabels(
       searchedAndSortedVenues.value
         .map((venueRecord) => venueRecord.floorLevel)
         .filter(Boolean)
-        .filter((floorLabel) => !excludedFacilityFloors.has(String(floorLabel).trim()))
-    ));
+    );
 
     return [
       { value: 'all', label: 'All floors' },
-      ...floorOrder
-        .filter((floorLabel) => floorOptions.includes(floorLabel))
-        .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
       ...floorOptions
-        .filter((floorLabel) => !floorOrder.includes(floorLabel))
-        .sort((left, right) => left.localeCompare(right))
         .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
     ];
   }
