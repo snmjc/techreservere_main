@@ -12,6 +12,7 @@ HIGH_LAST_LOW_THIS_SEED = DEMO_SEED_DIR / "HighToLow.sql"
 HIGH_LAST_HIGH_THIS_SEED = DEMO_SEED_DIR / "HighToHigh.sql"
 LOW_LAST_LOW_THIS_SEED = DEMO_SEED_DIR / "LowToLow.sql"
 LOW_LAST_HIGH_THIS_SEED = DEMO_SEED_DIR / "LowToHigh.sql"
+MIXED_SEED = DEMO_SEED_DIR / "Mixed.sql"
 
 
 DEFAULT_CONFIG = {
@@ -61,6 +62,8 @@ class AnalyticsRunner:
             self._execute_seed_sql_file(connection, LOW_LAST_LOW_THIS_SEED, normalized_scenario)
         elif normalized_scenario == 'low_last_high_this':
             self._execute_seed_sql_file(connection, LOW_LAST_HIGH_THIS_SEED, normalized_scenario)
+        elif normalized_scenario == 'mixed':
+            self._execute_seed_sql_file(connection, MIXED_SEED, normalized_scenario)
 
         seeded_row = connection.execute('SELECT COUNT(*) AS reservation_count FROM reservations').fetchone()
         seeded_count = int(seeded_row['reservation_count'] if seeded_row is not None else 0)

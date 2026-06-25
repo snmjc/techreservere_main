@@ -374,6 +374,7 @@ const analyticsScenarios = [
   { key: 'high_last_high_this', title: 'High demand last year, high this sem', description: 'Strong demand in both periods for stress testing.' },
   { key: 'low_last_low_this', title: 'Low demand last year, low this sem', description: 'Quiet baseline across both periods.' },
   { key: 'low_last_high_this', title: 'Low demand last year, high this sem', description: 'Recovery pattern with a current-term spike.' },
+  { key: 'mixed', title: 'Mixed', description: 'Volatile pattern with realistic peaks, dips, and steady months.' },
 ];
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
