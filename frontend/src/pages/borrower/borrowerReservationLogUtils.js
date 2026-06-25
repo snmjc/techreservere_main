@@ -76,8 +76,10 @@ export function formatSchedule(startValue, endValue) {
 }
 
 function resolveSortValue(log, sortBy) {
+  if (sortBy === 'request') return String(log.reservationId || '').toLowerCase();
   if (sortBy === 'name') return String(log.name || '').toLowerCase();
   if (sortBy === 'facility') return String(log.facility || '').toLowerCase();
+  if (sortBy === 'status') return String(log.status || '').toLowerCase();
   return log.sortDate || 0;
 }
 

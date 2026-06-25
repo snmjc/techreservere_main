@@ -1,72 +1,118 @@
-<!-- ===== AI GENERATED: BorrowerActiveReservationsLogsPage ===== -->
 <template>
   <AdminSidebarLayoutComponent
     :role-label="'BORROWER'"
     :navigation-items="borrowerNavigationItems"
   >
-    <!-- Page Header with Go Back Button -->
-    <div class="logs-page-header">
-      <h2 class="logs-page-heading">Active Reservations Logs</h2>
-      <button class="logs-go-back-button" @click="handleGoBack">
-        ← Go Back
-      </button>
-    </div>
+    <section class="logs-shell">
+      <section class="logs-hero">
+        <p class="logs-hero-eyebrow">Reservation Board</p>
+        <h1 class="logs-hero-title">Active Reservations Logs</h1>
+        <p class="logs-hero-copy">Track active or deployed reservations, review their schedules, and jump to the borrower reservation list when needed.</p>
+      </section>
 
-    <!-- Search and Filter Controls -->
-    <div class="logs-controls">
-      <div class="logs-search-group">
-        <label class="logs-search-label" for="logsSearch">Search:</label>
-        <input
-          id="logsSearch"
-          v-model="searchQuery"
-          type="text"
-          class="logs-search-input"
-          placeholder="Reservation ID or Name"
-        />
-      </div>
-    </div>
+      <section class="logs-toolbar-card">
+        <div class="logs-toolbar-grid">
+          <label class="logs-toolbar-field">
+            <span class="logs-toolbar-label">Search</span>
+            <input
+              v-model.trim="searchQuery"
+              type="search"
+              class="logs-toolbar-input"
+              placeholder="Search code, facility, or activity"
+            />
+          </label>
 
-    <!-- Logs Timeline -->
-    <div class="logs-timeline">
-      <div v-for="log in filteredLogs" :key="log.id" class="logs-entry">
-        <div class="logs-entry-header">
-          <span class="logs-entry-id">{{ log.reservationId }}</span>
-          <span class="logs-entry-name">{{ log.name }}</span>
-          <span class="logs-entry-date">{{ log.date }}</span>
+          <label class="logs-toolbar-field">
+            <span class="logs-toolbar-label">Status</span>
+            <select v-model="statusFilter" class="logs-toolbar-select">
+              <option value="all">All statuses</option>
+              <option v-for="statusOption in statusOptions" :key="statusOption" :value="statusOption">{{ statusOption }}</option>
+            </select>
+          </label>
+
+          <label class="logs-toolbar-field">
+            <span class="logs-toolbar-label">Sort By</span>
+            <select v-model="sortBy" class="logs-toolbar-select">
+              <option value="date">Submitted Date</option>
+              <option value="request">Request Code</option>
+              <option value="facility">Facility</option>
+              <option value="status">Status</option>
+            </select>
+          </label>
+
+          <div class="logs-toolbar-field">
+            <span class="logs-toolbar-label">Order</span>
+            <button type="button" class="logs-toolbar-order" @click="toggleSortOrder">
+              {{ sortOrder === 'desc' ? 'Descending' : 'Ascending' }}
+            </button>
+          </div>
         </div>
-        <div class="logs-entry-details">
-          <p><strong>Facility:</strong> {{ log.facility }}</p>
-          <p><strong>Purpose:</strong> {{ log.purpose }}</p>
-          <p><strong>Status:</strong> <span class="logs-status-badge logs-status-badge--active">{{ log.status }}</span></p>
-          <p><strong>Activity:</strong> {{ log.activity }}</p>
-          <button
-            type="button"
-            class="logs-action-button"
-            @click="handleViewLog(log)"
-          >
-            View
-          </button>
+      </section>
+
+      <section class="logs-board">
+        <div class="logs-board-head">
+          <span>Request</span>
+          <span>Schedule</span>
+          <span>Facility / Type</span>
+          <span>Status</span>
+          <span>Action</span>
         </div>
-      </div>
 
-      <!-- No Results Message -->
-      <div v-if="isLoading" class="logs-no-results">
-        Loading active reservation logs...
-      </div>
-      <div v-else-if="filteredLogs.length === 0" class="logs-no-results">
-        No active reservation logs found matching your search.
-      </div>
-    </div>
+        <template v-if="isLoading">
+          <div class="logs-board-empty">Loading active reservations...</div>
+        </template>
 
-    <!-- Footer -->
-    <div class="logs-page-footer">
-      &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
-    </div>
+        <template v-else-if="filteredLogs.length === 0">
+          <div class="logs-board-empty">No active reservation logs found.</div>
+        </template>
+
+        <article v-for="log in filteredLogs" :key="log.id" class="logs-board-row">
+          <div class="logs-cell">
+            <strong>{{ log.reservationId }}</strong>
+            <span>{{ log.name }}</span>
+            <small>{{ log.role }}</small>
+          </div>
+
+          <div class="logs-cell">
+            <strong>{{ log.date }}</strong>
+            <small>Submitted {{ log.submitted }}</small>
+          </div>
+
+          <div class="logs-cell">
+            <strong>{{ log.facility }}</strong>
+            <span>
+              <i class="logs-type-pill" :class="log.type === 'Equipment' ? 'logs-type-pill--equipment' : 'logs-type-pill--venue'">
+                {{ log.type }}
+              </i>
+            </span>
+            <small>{{ log.purpose }}</small>
+          </div>
+
+          <div class="logs-cell">
+            <span class="logs-status-pill logs-status-pill--active">{{ log.status }}</span>
+          </div>
+
+          <div class="logs-cell logs-cell-action">
+            <button
+              type="button"
+              class="logs-action-button"
+              @click="handleViewLog(log)"
+            >
+              View
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <div class="logs-page-footer">
+        &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
+      </div>
+    </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -74,11 +120,14 @@ import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
-import { filterLogsBySearch, mapRequestRecordToLog } from './borrowerReservationLogUtils.js';
+import { filterLogsBySearch, mapRequestRecordToLog, sortLogs } from './borrowerReservationLogUtils.js';
 
 const router = useRouter();
 const requestStore = useRequestStore();
 const searchQuery = ref('');
+const statusFilter = ref('all');
+const sortBy = ref('date');
+const sortOrder = ref('desc');
 const isLoading = ref(false);
 
 onMounted(async () => {
@@ -94,15 +143,26 @@ onMounted(async () => {
 });
 
 const activeLogs = computed(() =>
-  (requestStore.activeReservationsList || []).map((record) => mapRequestRecordToLog(record, 'Active'))
+  (requestStore.activeReservationsList || []).map((record) => ({
+    ...mapRequestRecordToLog(record, 'Active'),
+    status: normalizeActiveStatus(record.requestStatus),
+  }))
 );
 
+const statusOptions = computed(() => [...new Set(activeLogs.value.map((log) => log.status).filter(Boolean))]);
+
 const filteredLogs = computed(() => {
-  return filterLogsBySearch(activeLogs.value, searchQuery.value);
+  let logs = filterLogsBySearch(activeLogs.value, searchQuery.value);
+
+  if (statusFilter.value !== 'all') {
+    logs = logs.filter((log) => log.status === statusFilter.value);
+  }
+
+  return sortLogs(logs, sortBy.value, sortOrder.value);
 });
 
-function handleGoBack() {
-  router.back();
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
 }
 
 function handleViewLog(log) {
@@ -113,5 +173,9 @@ function handleViewLog(log) {
       status: 'active',
     },
   });
+}
+
+function normalizeActiveStatus(status) {
+  return status || 'Active';
 }
 </script>
