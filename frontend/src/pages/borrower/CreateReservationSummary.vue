@@ -1,6 +1,6 @@
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="''"
+    :role-label="'DELA CRUZ, JUAN'"
     :navigation-items="borrowerNavigationItems"
   >
     <section class="borrower-reservation-page">
@@ -27,7 +27,7 @@
                     <div><span>Activity Name / Title</span><strong>{{ reservationFormStore.activityNameTitle || 'N/A' }}</strong></div>
                     <div><span>Activity Start Date</span><strong>{{ formatDisplayDate(reservationFormStore.activityDate) }}</strong></div>
                     <div><span>Activity End Date</span><strong>{{ formatDisplayDate(reservationFormStore.activityEndDate || reservationFormStore.activityDate) }}</strong></div>
-                    <div><span>Purpose</span><strong>{{ reservationPurposeLabel }}</strong></div>
+                    <div><span>Purpose</span><strong>{{ reservationFormStore.purposeText || 'N/A' }}</strong></div>
                     <div><span>Activity Time</span><strong>{{ formatDisplayTime(reservationFormStore.activityTimeFrom) }} - {{ formatDisplayTime(reservationFormStore.activityTimeTo) }}</strong></div>
                     <div><span>No. of Participants</span><strong>{{ reservationFormStore.participantCount || '0' }}</strong></div>
                     <div><span>Reservation Type</span><strong>{{ reservationFormStore.reservationType }}</strong></div>
@@ -187,6 +187,9 @@ async function handleSubmitReservationRequest() {
       return;
     }
 
+    const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
+    const endDateTime = new Date(`${reservationFormStore.activityEndDate || reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
+
     const reservationData = {
       organizationName: reservationFormStore.activityNameTitle.trim(),
       venueIdentifier: reservationFormStore.selectedVenueRecord?.venueIdentifier || null,
@@ -197,14 +200,8 @@ async function handleSubmitReservationRequest() {
         quantity: item.selectedQuantity,
       })),
       requestedQuantity: Number(reservationFormStore.participantCount),
-      eventDateTime: buildReservationDateTime(
-        reservationFormStore.activityDate,
-        reservationFormStore.activityTimeFrom || '00:00',
-      ),
-      endDateTime: buildReservationDateTime(
-        reservationFormStore.activityEndDate || reservationFormStore.activityDate,
-        reservationFormStore.activityTimeTo || '00:00',
-      ),
+      eventDateTime: eventDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString(),
       purposeDescription: reservationPurposeLabel.value,
       activityType: reservationFormStore.activityNameTitle.trim(),
       borrowerRemarks: String(reservationFormStore.borrowerRemarks || '').trim() || null,
@@ -259,7 +256,7 @@ function validateReservationSubmission() {
   }
 
   if (!isAllowedTimeSlot(reservationFormStore.activityTimeFrom) || !isAllowedTimeSlot(reservationFormStore.activityTimeTo)) {
-    return 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+    return 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
   }
 
   if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
@@ -331,10 +328,6 @@ function isAllowedTimeSlot(timeValue) {
   }
 
   const totalMinutes = (hours * 60) + minutes;
-  return totalMinutes >= 7 * 60 && totalMinutes <= 19 * 60;
-}
-
-function buildReservationDateTime(dateValue, timeValue) {
-  return `${dateValue}T${timeValue}:00+08:00`;
+  return totalMinutes >= 7 * 60 && totalMinutes <= 21 * 60;
 }
 </script>
