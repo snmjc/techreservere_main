@@ -39,6 +39,7 @@ class DashboardAggregationService
         $completedReservations = $this->countReservationsByStatuses($reservations, ['Completed', 'Returned']);
 
         [$totalEquipmentUnits, $availableEquipmentUnits] = $this->summarizeEquipmentInventory($equipment);
+        $maintenanceEquipmentCount = $this->countMaintenanceEquipment($equipment);
         $activeEquipmentCount = max(0, $totalEquipmentUnits - $availableEquipmentUnits);
         $activeFacilityUsageCount = $this->countActiveFacilityReservations($reservations);
         $equipmentUtilizationRate = $totalEquipmentUnits > 0
@@ -55,6 +56,7 @@ class DashboardAggregationService
             'completedReservations' => $completedReservations,
             'activeEquipmentCount' => $activeEquipmentCount,
             'activeFacilityUsageCount' => $activeFacilityUsageCount,
+            'maintenanceEquipmentCount' => $maintenanceEquipmentCount,
             'overdueEquipment' => count($this->buildOverdueReservationMap($reservations, $releaseReturns)),
             'equipmentUtilizationRate' => $equipmentUtilizationRate,
         ];
@@ -75,6 +77,7 @@ class DashboardAggregationService
         $overdueReservations = $this->buildOverdueReservationMap($allReservations, $allReleaseReturns);
 
         [$totalEquipmentUnits, $availableEquipmentUnits] = $this->summarizeEquipmentInventory($equipment);
+        $maintenanceEquipmentCount = $this->countMaintenanceEquipment($equipment);
         $demandByDay = $this->buildDailyDemandMap($submissionReservations, $range['start'], $range['end']);
         $equipmentUsageByDay = $this->buildDailyEquipmentUsageMap($eventReservations, $range['start'], $range['end']);
         $resourceUtilization = $this->buildResourceUtilizationSeries($range['start'], $range['end'], $demandByDay, $equipmentUsageByDay, $totalEquipmentUnits);
@@ -102,6 +105,7 @@ class DashboardAggregationService
                 'pendingReservations' => $this->countReservationsByStatuses($relevantReservations, ['Pending', 'Pending Review']),
                 'approvedReservations' => $this->countReservationsByScheduleState($relevantReservations, ['Approved', 'Prepared', 'Deployed', 'Active'], 'upcoming'),
                 'activeEquipmentCount' => max(0, $totalEquipmentUnits - $availableEquipmentUnits),
+                'maintenanceEquipmentCount' => $maintenanceEquipmentCount,
                 'activeFacilityCount' => $facilityUsageCount,
                 'overdueEquipmentCount' => $this->countOverdueReservationsInRange($overdueReservations, $range['start'], $range['end']),
             ],
@@ -469,7 +473,7 @@ class DashboardAggregationService
     private function buildReadinessAlerts(array $equipment, array $overdueReservations, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
         $lowStockCount = 0;
-        $inactiveEquipmentCount = 0;
+        $maintenanceEquipmentCount = 0;
 
         foreach ($equipment as $equipmentRecord) {
             $totalQuantity = max(0, $equipmentRecord->getTotalQuantity());
@@ -480,8 +484,8 @@ class DashboardAggregationService
                 $lowStockCount++;
             }
 
-            if (!$this->isEquipmentOperationallyAvailable($equipmentRecord)) {
-                $inactiveEquipmentCount++;
+            if ($this->isEquipmentUnderMaintenance($equipmentRecord)) {
+                $maintenanceEquipmentCount++;
             }
         }
 
@@ -502,10 +506,10 @@ class DashboardAggregationService
             ],
             [
                 'severity' => 'Low',
-                'count' => $inactiveEquipmentCount,
+                'count' => $maintenanceEquipmentCount,
                 'className' => 'is-low',
-                'title' => 'Equipment needing attention',
-                'detail' => 'Equipment currently marked unavailable or inactive in inventory records.',
+                'title' => 'Equipment under maintenance',
+                'detail' => 'Inventory units currently marked as under maintenance and unavailable for borrower requests.',
             ],
         ];
     }
@@ -968,6 +972,27 @@ class DashboardAggregationService
 
         return $normalizedState === 'available'
             && in_array($normalizedStatus, ['available', 'active'], true);
+    }
+
+    /**
+     * @param EquipmentEntity[] $equipment
+     */
+    private function countMaintenanceEquipment(array $equipment): int
+    {
+        return count(array_filter(
+            $equipment,
+            fn (EquipmentEntity $equipmentRecord): bool => $this->isEquipmentUnderMaintenance($equipmentRecord)
+        ));
+    }
+
+    private function isEquipmentUnderMaintenance(EquipmentEntity $equipmentRecord): bool
+    {
+        $normalizedState = self::normalizeText($equipmentRecord->getEquipmentState());
+        $normalizedStatus = self::normalizeText($equipmentRecord->getOperationalStatus());
+
+        return $normalizedState === 'under maintenance'
+            || $normalizedStatus === 'under maintenance'
+            || $normalizedStatus === 'maintenance';
     }
 
     /**

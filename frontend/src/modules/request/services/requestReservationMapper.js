@@ -49,61 +49,7 @@ function createEmptyReservationBuckets() {
 function addReservationToBucket(buckets, reservation, linkedTasks = []) {
   const mappedRecord = mapReservationRecord(reservation, linkedTasks);
   const status = String(reservation?.currentStatus || '').trim();
-  const normalizedStatus = normalizeReservationStatus(status);
-  const scheduleState = resolveReservationScheduleState(reservation);
-
-  if (PENDING_STATUSES.includes(normalizedStatus)) {
-    buckets.pending.push(mappedRecord);
-    return;
-  }
-
-  if (normalizedStatus === 'approved' || normalizedStatus === 'prepared') {
-    if (scheduleState === 'past') {
-      buckets.past.push({
-        ...mappedRecord,
-        recordStatus: status,
-      });
-      return;
-    }
-
-    buckets.approved.push({
-      ...mappedRecord,
-      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-    });
-    return;
-  }
-
-  if (normalizedStatus === 'deployed' || normalizedStatus === 'active') {
-    if (scheduleState === 'past') {
-      buckets.past.push({
-        ...mappedRecord,
-        recordStatus: status,
-      });
-      return;
-    }
-
-    buckets.active.push({
-      ...mappedRecord,
-      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-      deploymentStatus: resolveActiveDeploymentLabel(status),
-    });
-    return;
-  }
-
-  if (SCHEDULED_STATUSES.includes(normalizedStatus)) {
-    buckets.approved.push({
-      ...mappedRecord,
-      assignedPersonnel: mappedRecord.assignedPersonnel || 'Pending Assignment',
-    });
-    return;
-  }
-
-  if (PAST_RECORD_STATUSES.includes(normalizedStatus)) {
-    buckets.past.push({
-      ...mappedRecord,
-      recordStatus: status,
-    });
-  }
+  addReservationRecordToBuckets(buckets, mappedRecord, status, reservation);
 }
 
 function mapReservationRecord(reservation, linkedTasks = []) {
@@ -166,9 +112,17 @@ function normalizeReservationStatus(status) {
   return String(status || '').trim().toLowerCase();
 }
 
-function resolveReservationScheduleState(reservation) {
-  const start = parseReservationDate(reservation?.eventDateTime);
-  const end = parseReservationDate(reservation?.endDateTime) || start;
+export function resolveReservationScheduleState(reservation) {
+  const start = parseReservationDate(
+    reservation?.eventDateTime
+      || reservation?.requestScheduleStart
+      || reservation?.activityTime
+  );
+  const end = parseReservationDate(
+    reservation?.endDateTime
+      || reservation?.requestScheduleEnd
+      || reservation?.activityEndTime
+  ) || start;
   if (!start || !end) {
     return 'upcoming';
   }
@@ -186,6 +140,50 @@ function resolveReservationScheduleState(reservation) {
   }
 
   return 'active';
+}
+
+export function addReservationRecordToBuckets(buckets, record, status, scheduleSource = record) {
+  const normalizedStatus = normalizeReservationStatus(status);
+  const scheduleState = resolveReservationScheduleState(scheduleSource);
+
+  if (PENDING_STATUSES.includes(normalizedStatus)) {
+    buckets.pending.push(record);
+    return;
+  }
+
+  if (PAST_RECORD_STATUSES.includes(normalizedStatus)) {
+    buckets.past.push({
+      ...record,
+      recordStatus: status,
+    });
+    return;
+  }
+
+  if (SCHEDULED_STATUSES.includes(normalizedStatus)) {
+    if (scheduleState === 'past') {
+      buckets.past.push({
+        ...record,
+        recordStatus: status,
+      });
+      return;
+    }
+
+    const scheduledRecord = {
+      ...record,
+      assignedPersonnel: record.assignedPersonnel || 'Pending Assignment',
+      scheduleBucket: scheduleState,
+    };
+
+    if (scheduleState === 'active') {
+      buckets.active.push({
+        ...scheduledRecord,
+        deploymentStatus: resolveActiveDeploymentLabel(status),
+      });
+      return;
+    }
+
+    buckets.approved.push(scheduledRecord);
+  }
 }
 
 function resolveActiveDeploymentLabel(status) {

@@ -278,6 +278,7 @@ import { useReservationData } from '@/modules/reservation/composables/useReserva
 import { MAX_EQUIPMENT_SELECTION_COUNT } from '@/modules/reservation/utils/reservationWizard.js';
 import { groupBorrowerEquipmentRecords } from '@/modules/facility/utils/equipmentGrouping.js';
 import { isVenueFloorPlaceholderRecord } from '@/modules/facility/utils/venueFormValidation.js';
+import { sortVenueFloorLabels } from '@/modules/facility/utils/venueFloorOptions.js';
 import { ROUTE_NAMES } from '@/router/routeNames.js';
 
 const router = useRouter();
@@ -347,7 +348,9 @@ const normalizedVenueRecords = computed(() => venueList.value
     };
   }));
 
-const venueFloorOptions = computed(() => [...new Set(normalizedVenueRecords.value.map((venue) => venue.floorLabel))]);
+const venueFloorOptions = computed(() => sortVenueFloorLabels(
+  normalizedVenueRecords.value.map((venue) => venue.floorLabel)
+));
 
 const filteredVenues = computed(() => {
   const query = venueSearchQuery.value.toLowerCase();

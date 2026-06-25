@@ -21,9 +21,15 @@ const reservationApi = {
       });
       return response.data;
     } catch (apiError) {
-      const backendMessage = apiError?.response?.data?.errorMessage || apiError?.response?.data?.message;
+      const backendPayload = apiError?.response?.data || {};
+      const backendMessage = backendPayload?.errorMessage || backendPayload?.message;
       if (backendMessage) {
-        throw new Error(backendMessage);
+        const normalizedError = new Error(backendMessage);
+        normalizedError.name = backendPayload?.errorType || 'ReservationCreateFailed';
+        normalizedError.code = backendPayload?.errorType || 'ReservationCreateFailed';
+        normalizedError.status = apiError?.response?.status || 0;
+        normalizedError.failureBucket = backendPayload?.data?.failureBucket || '';
+        throw normalizedError;
       }
       throw apiError;
     }

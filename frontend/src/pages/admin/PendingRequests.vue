@@ -49,12 +49,18 @@
 
       <div class="admin-ops-table-card">
         <RequestPendingTableComponent
-          :request-list="pendingRequestsList"
+          :request-list="paginatedPendingRequests"
           :search-query-text="searchQueryText"
           @view-request-details="handleViewRequestDetails"
           @approve-request-record="handleApproveRequest"
           @reject-request-record="handleRejectRequest"
         />
+      </div>
+
+      <div v-if="pendingRequestsTotalPages > 1" class="pending-requests-pagination">
+        <button type="button" :disabled="pendingRequestsCurrentPage === 1" @click="pendingRequestsCurrentPage -= 1">Previous</button>
+        <span>Page {{ pendingRequestsCurrentPage }} of {{ pendingRequestsTotalPages }}</span>
+        <button type="button" :disabled="pendingRequestsCurrentPage === pendingRequestsTotalPages" @click="pendingRequestsCurrentPage += 1">Next</button>
       </div>
 
       <div class="admin-ops-page-footer pending-requests-page-footer">
@@ -377,7 +383,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -393,6 +399,8 @@ const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const pendingRequestsCurrentPage = ref(1);
+const pendingRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);
 const approveRequestRecord = ref(null);
 const deleteRequestRecord = ref(null);
@@ -410,6 +418,26 @@ const deleteForm = reactive({
 });
 
 const pendingRequestsList = computed(() => requestStore.pendingRequestsList || []);
+const filteredPendingRequests = computed(() => {
+  const queryLower = searchQueryText.value.toLowerCase().trim();
+
+  return pendingRequestsList.value.filter((requestRecord) => {
+    const requestType = String(requestRecord?.requestType || '').toLowerCase();
+    const matchesShowing = showingFilterValue.value === 'all'
+      || requestType === showingFilterValue.value;
+    const matchesQuery = queryLower === ''
+      || String(requestRecord?.requesterFullName || '').toLowerCase().includes(queryLower)
+      || String(requestRecord?.requestIdentifier || '').toLowerCase().includes(queryLower)
+      || String(requestRecord?.requestDisplayIdentifier || '').toLowerCase().includes(queryLower);
+
+    return matchesShowing && matchesQuery;
+  });
+});
+const pendingRequestsTotalPages = computed(() => Math.max(1, Math.ceil(filteredPendingRequests.value.length / pendingRequestsPageSize)));
+const paginatedPendingRequests = computed(() => {
+  const startIndex = (pendingRequestsCurrentPage.value - 1) * pendingRequestsPageSize;
+  return filteredPendingRequests.value.slice(startIndex, startIndex + pendingRequestsPageSize);
+});
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim().toLowerCase();
@@ -422,6 +450,16 @@ onMounted(async () => {
     console.log('Admin Pending Requests - Count:', list.length);
   } catch (error) {
     console.error('Error fetching pending requests:', error);
+  }
+});
+
+watch([searchQueryText, showingFilterValue], () => {
+  pendingRequestsCurrentPage.value = 1;
+});
+
+watch(pendingRequestsTotalPages, (pageCount) => {
+  if (pendingRequestsCurrentPage.value > pageCount) {
+    pendingRequestsCurrentPage.value = pageCount;
   }
 });
 

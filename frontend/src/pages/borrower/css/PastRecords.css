@@ -392,6 +392,32 @@
   font-size: 0.82rem;
 }
 
+.past-records-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0 18px 18px;
+}
+
+.past-records-pagination button {
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(24, 47, 84, 0.12);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--past-records-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.past-records-pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .past-records-detail-card {
   align-self: start;
   border-radius: 28px;

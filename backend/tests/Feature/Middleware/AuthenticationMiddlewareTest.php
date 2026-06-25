@@ -59,6 +59,21 @@ class AuthenticationMiddlewareTest extends TestCase
         $this->assertSame('AuthenticationRequired', $body['errorCode']);
     }
 
+    public function testReservationCreateRouteRequiresAuthentication(): void
+    {
+        $request = Request::create('/api/v1/reservations', 'POST');
+        $event = $this->createRequestEvent($request);
+
+        $this->middleware->onKernelRequest($event);
+
+        $response = $event->getResponse();
+        $this->assertInstanceOf(JsonResponse::class, $response);
+        $this->assertSame(401, $response->getStatusCode());
+
+        $body = json_decode($response->getContent(), true);
+        $this->assertSame('AuthenticationRequired', $body['errorCode']);
+    }
+
     public function testInvalidBearerTokenReturns401(): void
     {
         $request = Request::create('/api/v1/accounts/me', 'GET');

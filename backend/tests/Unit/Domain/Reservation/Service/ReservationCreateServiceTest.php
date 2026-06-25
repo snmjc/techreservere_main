@@ -90,6 +90,42 @@ class ReservationCreateServiceTest extends TestCase
         ));
     }
 
+    public function testCreateReservationRejectsSubmissionWithoutVenueOrEquipment(): void
+    {
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Please select a venue, equipment, or both before submitting.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: null,
+            requestedEquipmentList: [],
+            requestedQuantity: 120,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsPurposeDescriptionLongerThanDatabaseLimit(): void
+    {
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Purpose must be 200 characters or fewer.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: str_repeat('A', 201),
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
     public function testCreateReservationPropagatesBookingWindowValidation(): void
     {
         $this->expectException(DomainValidationException::class);
@@ -399,7 +435,7 @@ class ReservationCreateServiceTest extends TestCase
         $schemaReadyProperty->setValue($this->service, false);
 
         $this->connection
-            ->expects($this->exactly(4))
+            ->expects($this->exactly(2))
             ->method('fetchAllAssociative')
             ->willThrowException(new \RuntimeException('information_schema access denied'));
 
@@ -455,23 +491,24 @@ class ReservationCreateServiceTest extends TestCase
     private function buildReservationColumnRows(): array
     {
         return [
-            ['column_name' => 'reservation_identifier', 'data_type' => 'integer', 'udt_name' => 'int4'],
-            ['column_name' => 'reservation_code', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'borrower_account_id', 'data_type' => 'integer', 'udt_name' => 'int4'],
-            ['column_name' => 'organization_name', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'venue_identifier', 'data_type' => 'integer', 'udt_name' => 'int4'],
-            ['column_name' => 'requested_equipment_list', 'data_type' => 'json', 'udt_name' => 'json'],
-            ['column_name' => 'requested_quantity', 'data_type' => 'integer', 'udt_name' => 'int4'],
-            ['column_name' => 'event_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
-            ['column_name' => 'end_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
-            ['column_name' => 'purpose_description', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'activity_type', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'current_status', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'priority_level', 'data_type' => 'character varying', 'udt_name' => 'varchar'],
-            ['column_name' => 'rejection_reason', 'data_type' => 'text', 'udt_name' => 'text'],
-            ['column_name' => 'supporting_documents', 'data_type' => 'json', 'udt_name' => 'json'],
-            ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
-            ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
+            ['column_name' => 'reservation_identifier', 'data_type' => 'integer', 'udt_name' => 'int4', 'character_maximum_length' => null],
+            ['column_name' => 'reservation_code', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 20],
+            ['column_name' => 'borrower_account_id', 'data_type' => 'integer', 'udt_name' => 'int4', 'character_maximum_length' => null],
+            ['column_name' => 'organization_name', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 200],
+            ['column_name' => 'venue_identifier', 'data_type' => 'integer', 'udt_name' => 'int4', 'character_maximum_length' => null],
+            ['column_name' => 'requested_equipment_list', 'data_type' => 'json', 'udt_name' => 'json', 'character_maximum_length' => null],
+            ['column_name' => 'requested_quantity', 'data_type' => 'integer', 'udt_name' => 'int4', 'character_maximum_length' => null],
+            ['column_name' => 'event_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp', 'character_maximum_length' => null],
+            ['column_name' => 'end_date_time', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp', 'character_maximum_length' => null],
+            ['column_name' => 'purpose_description', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 200],
+            ['column_name' => 'activity_type', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 100],
+            ['column_name' => 'borrower_remarks', 'data_type' => 'text', 'udt_name' => 'text', 'character_maximum_length' => null],
+            ['column_name' => 'current_status', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 50],
+            ['column_name' => 'priority_level', 'data_type' => 'character varying', 'udt_name' => 'varchar', 'character_maximum_length' => 20],
+            ['column_name' => 'rejection_reason', 'data_type' => 'text', 'udt_name' => 'text', 'character_maximum_length' => null],
+            ['column_name' => 'supporting_documents', 'data_type' => 'json', 'udt_name' => 'json', 'character_maximum_length' => null],
+            ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp', 'character_maximum_length' => null],
+            ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp', 'character_maximum_length' => null],
         ];
     }
 
