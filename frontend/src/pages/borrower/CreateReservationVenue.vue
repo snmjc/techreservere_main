@@ -1,6 +1,6 @@
 <template>
   <AdminSidebarLayoutComponent
-    :role-label="'DELA CRUZ, JUAN'"
+    :role-label="''"
     :navigation-items="borrowerNavigationItems"
   >
     <section class="borrower-reservation-page">
@@ -302,15 +302,6 @@ const equipmentPage = ref(1);
 const venuePageSize = 6;
 const equipmentPageSize = 6;
 
-const fallbackEquipment = [
-  { equipmentIdentifier: 1, equipmentName: 'Wireless Microphone', equipmentCategory: 'Audio', equipmentBrand: 'Shure', availableQuantity: 10 },
-  { equipmentIdentifier: 2, equipmentName: 'Portable Speaker', equipmentCategory: 'Audio', equipmentBrand: 'JBL', availableQuantity: 4 },
-  { equipmentIdentifier: 3, equipmentName: 'LCD Projector', equipmentCategory: 'Visual', equipmentBrand: 'Epson', availableQuantity: 3 },
-  { equipmentIdentifier: 4, equipmentName: 'Laptop', equipmentCategory: 'Others', equipmentBrand: 'Dell', availableQuantity: 8 },
-  { equipmentIdentifier: 5, equipmentName: 'HDMI Cable', equipmentCategory: 'Accessories', equipmentBrand: 'UGreen', availableQuantity: 25 },
-  { equipmentIdentifier: 6, equipmentName: 'Audio Mixer', equipmentCategory: 'Audio', equipmentBrand: 'Yamaha', availableQuantity: 0 },
-];
-
 onMounted(async () => {
   if (!reservationFormStore.hasReservationDetails()) {
     router.replace({ name: ROUTE_NAMES.borrowerCreateReservation });
@@ -410,8 +401,7 @@ const equipmentRecords = computed(() => {
     photoPositionY: item.photoPositionY ?? 50,
   }));
 
-  const sourceRecords = apiRecords.length ? apiRecords : fallbackEquipment;
-  return groupBorrowerEquipmentRecords(sourceRecords);
+  return groupBorrowerEquipmentRecords(apiRecords);
 });
 
 watch(

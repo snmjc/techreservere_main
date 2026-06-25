@@ -61,6 +61,7 @@ class ReservationController extends AbstractController
                 endDateTime: $requestBody['endDateTime'] ?? '',
                 purposeDescription: $requestBody['purposeDescription'] ?? '',
                 activityType: $requestBody['activityType'] ?? '',
+                borrowerRemarks: $requestBody['borrowerRemarks'] ?? null,
                 supportingDocuments: $requestBody['supportingDocuments'] ?? null
             );
 
@@ -129,10 +130,14 @@ class ReservationController extends AbstractController
         $responseList = array_map(fn($dto) => $dto->toResponseArray(), $dtos); // DTO → array map
         return $this->createSuccessResponse(['reservations' => $responseList]);
         } catch (\Throwable $exception) {
-            error_log('Reservation List - Error: ' . $exception->getMessage());
-            // Dev-friendly fallback: avoid crashing the UI when the database isn't ready yet.
-            // The underlying error is still logged server-side.
-            return $this->createSuccessResponse(['reservations' => []]);
+            error_log(sprintf(
+                'Reservation List - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+            return $this->createErrorResponse('ReservationListFailed', 'Unable to load reservations at this time.', 500);
         }
     }
 

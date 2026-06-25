@@ -27,6 +27,7 @@ class ReservationResponseDTO
     public string $activityTimeRange;
     public string $purposeDescription;
     public string $activityType;
+    public ?string $borrowerRemarks;
     public string $currentStatus;
     public ?string $priorityLevel;
     public ?string $rejectionReason;
@@ -47,6 +48,7 @@ class ReservationResponseDTO
         string $activityTimeRange,
         string $purposeDescription,
         string $activityType,
+        ?string $borrowerRemarks,
         string $currentStatus,
         ?string $priorityLevel,
         ?string $rejectionReason,
@@ -76,6 +78,7 @@ class ReservationResponseDTO
         $this->activityTimeRange = $activityTimeRange;
         $this->purposeDescription = $purposeDescription;
         $this->activityType = $activityType;
+        $this->borrowerRemarks = $borrowerRemarks;
         $this->currentStatus = $currentStatus;
         $this->priorityLevel = $priorityLevel;
         $this->rejectionReason = $rejectionReason;
@@ -104,6 +107,7 @@ class ReservationResponseDTO
             'activityTimeRange' => $this->activityTimeRange,
             'purposeDescription' => $this->purposeDescription,
             'activityType' => $this->activityType,
+            'borrowerRemarks' => $this->borrowerRemarks,
             'currentStatus' => $this->currentStatus,
             'priorityLevel' => $this->priorityLevel,
             'rejectionReason' => $this->rejectionReason,

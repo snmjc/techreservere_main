@@ -190,6 +190,7 @@ class ReservationReviewService
             activityTimeRange: $this->buildActivityTimeRange($entity),
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
+            borrowerRemarks: $entity->getBorrowerRemarks(),
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),

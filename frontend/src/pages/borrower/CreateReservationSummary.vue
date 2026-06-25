@@ -48,6 +48,7 @@
                   <div class="reservation-summary-grid">
                     <div><span>Security Guard</span><strong>{{ reservationFormStore.securityGuardCount || 'None' }}</strong></div>
                     <div><span>Security Crew</span><strong>{{ reservationFormStore.securityCrewCount || 'None' }}</strong></div>
+                    <div><span>Remarks</span><strong>{{ reservationFormStore.borrowerRemarks || 'No remarks added.' }}</strong></div>
                   </div>
                 </article>
 
@@ -125,6 +126,14 @@ const allDocumentNames = computed(() => [
   ...(reservationFormStore.additionalDocumentsList || []).map((item) => item.documentFileName),
 ]);
 
+const reservationPurposeLabel = computed(() => {
+  if (reservationFormStore.purposeText === 'Others: Specify') {
+    return reservationFormStore.purposeOtherText || 'Others: Specify';
+  }
+
+  return reservationFormStore.purposeText || 'N/A';
+});
+
 const reservationSummaryLabel = computed(() => {
   const venueName = reservationFormStore.selectedVenueRecord?.venueName;
   const equipmentNames = (reservationFormStore.selectedEquipmentItems || [])
@@ -193,8 +202,9 @@ async function handleSubmitReservationRequest() {
       requestedQuantity: Number(reservationFormStore.participantCount),
       eventDateTime: eventDateTime.toISOString(),
       endDateTime: endDateTime.toISOString(),
-      purposeDescription: reservationFormStore.purposeText,
+      purposeDescription: reservationPurposeLabel.value,
       activityType: reservationFormStore.activityNameTitle.trim(),
+      borrowerRemarks: String(reservationFormStore.borrowerRemarks || '').trim() || null,
       supportingDocuments: allDocumentNames.value,
     };
 
@@ -263,6 +273,13 @@ function validateReservationSubmission() {
 
   if (!reservationFormStore.purposeText) {
     return 'Purpose is required.';
+  }
+
+  if (
+    reservationFormStore.purposeText === 'Others: Specify'
+    && !String(reservationFormStore.purposeOtherText || '').trim()
+  ) {
+    return 'Please specify the purpose of your reservation.';
   }
 
   if (reservationFormStore.reservationType !== 'Equipment' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {

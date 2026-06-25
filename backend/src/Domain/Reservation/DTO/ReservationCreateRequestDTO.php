@@ -20,6 +20,7 @@ class ReservationCreateRequestDTO
     public string $endDateTime;
     public string $purposeDescription;
     public string $activityType;
+    public ?string $borrowerRemarks;
     public ?array $supportingDocuments;
 
     public function __construct(
@@ -31,6 +32,7 @@ class ReservationCreateRequestDTO
         string $endDateTime,
         string $purposeDescription,
         string $activityType,
+        ?string $borrowerRemarks = null,
         ?array $supportingDocuments = null
     ) {
         $this->organizationName = $organizationName;
@@ -41,6 +43,7 @@ class ReservationCreateRequestDTO
         $this->endDateTime = $endDateTime;
         $this->purposeDescription = $purposeDescription;
         $this->activityType = $activityType;
+        $this->borrowerRemarks = $borrowerRemarks;
         $this->supportingDocuments = $supportingDocuments;
     }
 }

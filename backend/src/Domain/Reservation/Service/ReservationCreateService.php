@@ -20,7 +20,7 @@ use Doctrine\DBAL\ParameterType;
 class ReservationCreateService
 {
     private const BUSINESS_START_MINUTES = 420;
-    private const BUSINESS_END_MINUTES = 1260;
+    private const BUSINESS_END_MINUTES = 1140;
 
     private ReservationRepository $reservationRepository;
     private bool $reservationSchemaEnsured = false;
@@ -50,10 +50,11 @@ class ReservationCreateService
     public function createReservation(int $borrowerAccountId, ReservationCreateRequestDTO $requestDTO): ReservationResponseDTO
     {
         $this->ensureReservationSchemaReady();
-        $today = new \DateTimeImmutable('today');
+        $today = AppClock::now()->setTime(0, 0);
         $activityTitle = trim($requestDTO->organizationName);
         $activityType = trim($requestDTO->activityType);
         $purposeDescription = trim($requestDTO->purposeDescription);
+        $borrowerRemarks = trim((string)($requestDTO->borrowerRemarks ?? ''));
 
         if ($activityTitle === '') {
             throw new DomainValidationException('Organization name is required.');
@@ -75,8 +76,10 @@ class ReservationCreateService
         }
 
         try {
-            $eventDateTime = new \DateTime($requestDTO->eventDateTime);
-            $endDateTime = new \DateTime($requestDTO->endDateTime);
+            $eventDateTime = (new \DateTimeImmutable($requestDTO->eventDateTime))
+                ->setTimezone(AppClock::timezone());
+            $endDateTime = (new \DateTimeImmutable($requestDTO->endDateTime))
+                ->setTimezone(AppClock::timezone());
         } catch (\Throwable) {
             throw new DomainValidationException('Reservation time range is invalid.');
         }
@@ -86,7 +89,7 @@ class ReservationCreateService
         }
 
         if (!$this->isAllowedReservationTimeSlot($eventDateTime) || !$this->isAllowedReservationTimeSlot($endDateTime)) {
-            throw new DomainValidationException('Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.');
+            throw new DomainValidationException('Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.');
         }
 
         if ($eventDateTime < $today || $endDateTime < $today) {
@@ -110,6 +113,7 @@ class ReservationCreateService
         $entity->setEndDateTime($endDateTime);
         $entity->setPurposeDescription($purposeDescription);
         $entity->setActivityType($activityType === '' ? $activityTitle : $activityType);
+        $entity->setBorrowerRemarks($borrowerRemarks !== '' ? $borrowerRemarks : null);
         $entity->setCurrentStatus('Pending Review');
         $entity->setSupportingDocuments($requestDTO->supportingDocuments);
 
@@ -145,6 +149,7 @@ class ReservationCreateService
             activityTimeRange: $this->buildActivityTimeRange($entity),
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
+            borrowerRemarks: $entity->getBorrowerRemarks(),
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
@@ -181,6 +186,7 @@ class ReservationCreateService
             activityTimeRange: $this->buildActivityTimeRange($entity),
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
+            borrowerRemarks: $entity->getBorrowerRemarks(),
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
@@ -213,9 +219,25 @@ class ReservationCreateService
             $columns
         );
 
-        foreach (['end_date_time', 'updated_timestamp'] as $expectedColumn) {
+        foreach (['end_date_time', 'updated_timestamp', 'borrower_remarks'] as $expectedColumn) {
             if (!in_array($expectedColumn, $columnNames, true)) {
                 $missingColumns[] = $expectedColumn;
+            }
+        }
+
+        if (in_array('borrower_remarks', $missingColumns, true)) {
+            try {
+                $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN borrower_remarks TEXT DEFAULT NULL');
+                $missingColumns = array_values(array_filter(
+                    $missingColumns,
+                    static fn (string $column): bool => $column !== 'borrower_remarks'
+                ));
+            } catch (\Throwable $exception) {
+                error_log(sprintf(
+                    'Reservation Creation - Unable to add borrower_remarks column at runtime [%s]: %s',
+                    $exception::class,
+                    $exception->getMessage()
+                ));
             }
         }
 
@@ -300,6 +322,7 @@ class ReservationCreateService
             'end_date_time' => $entity->getEndDateTime()?->format('Y-m-d H:i:s'),
             'purpose_description' => $entity->getPurposeDescription(),
             'activity_type' => $entity->getActivityType(),
+            'borrower_remarks' => $entity->getBorrowerRemarks(),
             'current_status' => $entity->getCurrentStatus(),
             'priority_level' => $entity->getPriorityLevel(),
             'rejection_reason' => $entity->getRejectionReason(),
@@ -388,6 +411,7 @@ class ReservationCreateService
                 event_date_time,
                 purpose_description,
                 activity_type,
+                borrower_remarks,
                 current_status,
                 priority_level,
                 rejection_reason,
@@ -403,6 +427,7 @@ class ReservationCreateService
                 :event_date_time,
                 :purpose_description,
                 :activity_type,
+                :borrower_remarks,
                 :current_status,
                 :priority_level,
                 :rejection_reason,
@@ -419,6 +444,7 @@ class ReservationCreateService
                 'event_date_time' => $entity->getEventDateTime()->format('Y-m-d H:i:s'),
                 'purpose_description' => $entity->getPurposeDescription(),
                 'activity_type' => $entity->getActivityType(),
+                'borrower_remarks' => $entity->getBorrowerRemarks(),
                 'current_status' => $entity->getCurrentStatus(),
                 'priority_level' => $entity->getPriorityLevel(),
                 'rejection_reason' => $entity->getRejectionReason(),
@@ -435,6 +461,7 @@ class ReservationCreateService
                 'event_date_time' => ParameterType::STRING,
                 'purpose_description' => ParameterType::STRING,
                 'activity_type' => ParameterType::STRING,
+                'borrower_remarks' => $entity->getBorrowerRemarks() === null ? ParameterType::NULL : ParameterType::STRING,
                 'current_status' => ParameterType::STRING,
                 'priority_level' => $entity->getPriorityLevel() === null ? ParameterType::NULL : ParameterType::STRING,
                 'rejection_reason' => $entity->getRejectionReason() === null ? ParameterType::NULL : ParameterType::STRING,
