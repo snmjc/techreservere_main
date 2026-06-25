@@ -92,7 +92,12 @@ class ReservationController extends AbstractController
                 $exception->getLine()
             ));
             error_log('Reservation Creation - Trace: ' . $exception->getTraceAsString());
-            return $this->createErrorResponse('ReservationCreateFailed', 'Unable to submit reservation at this time.', 500);
+            $appEnvironment = strtolower((string) ($_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? $_ENV['APP_RUNTIME_ENV'] ?? 'dev'));
+            $errorMessage = $appEnvironment === 'prod'
+                ? 'Unable to submit reservation at this time.'
+                : sprintf('Unable to submit reservation at this time. %s', $exception->getMessage());
+
+            return $this->createErrorResponse('ReservationCreateFailed', $errorMessage, 500);
         }
     }
 
