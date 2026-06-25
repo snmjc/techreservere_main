@@ -392,6 +392,61 @@ class ReservationCreateServiceTest extends TestCase
         $this->assertSame('TR-2026-001', $response->reservationCode);
     }
 
+    public function testCreateReservationStillSucceedsWhenSchemaInspectionFails(): void
+    {
+        $schemaReadyProperty = new \ReflectionProperty($this->service, 'reservationSchemaEnsured');
+        $schemaReadyProperty->setAccessible(true);
+        $schemaReadyProperty->setValue($this->service, false);
+
+        $this->connection
+            ->expects($this->exactly(4))
+            ->method('fetchAllAssociative')
+            ->willThrowException(new \RuntimeException('information_schema access denied'));
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('generateReservationCode')
+            ->willReturn('TR-2026-001');
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchOne')
+            ->willReturn(0);
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('persistReservation')
+            ->willThrowException(new \RuntimeException('Unknown column end_date_time'));
+
+        $this->connection
+            ->expects($this->once())
+            ->method('fetchAssociative')
+            ->willReturn([
+                'reservation_identifier' => 88,
+                'submission_timestamp' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
+
+        $this->accountRepository
+            ->expects($this->once())
+            ->method('findActiveApprovedAccountsByRoles')
+            ->willReturn([]);
+
+        $response = $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+
+        $this->assertSame(88, $response->reservationIdentifier);
+        $this->assertSame('TR-2026-001', $response->reservationCode);
+    }
+
     private function buildIsoDateTime(string $modifier): string
     {
         return (new \DateTimeImmutable($modifier))->format(\DateTimeInterface::ATOM);

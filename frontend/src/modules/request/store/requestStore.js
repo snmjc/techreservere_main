@@ -132,8 +132,11 @@ export const useRequestStore = defineStore('requestStore', () => {
         return reservation;
       }
     } catch (error) {
-      console.error('Failed to create reservation:', error);
-      throw error;
+      throw new Error(
+        error?.response?.data?.errorMessage
+          || error?.message
+          || 'Unable to submit reservation at this time.'
+      );
     }
   }
 
