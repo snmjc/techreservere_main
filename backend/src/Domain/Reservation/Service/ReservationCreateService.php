@@ -219,22 +219,33 @@ class ReservationCreateService
             $columns
         );
 
-        foreach (['end_date_time', 'updated_timestamp', 'borrower_remarks'] as $expectedColumn) {
+        $runtimeMigrationStatements = [
+            'end_date_time' => 'ALTER TABLE reservations ADD COLUMN end_date_time TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL',
+            'updated_timestamp' => 'ALTER TABLE reservations ADD COLUMN updated_timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'borrower_remarks' => 'ALTER TABLE reservations ADD COLUMN borrower_remarks TEXT DEFAULT NULL',
+        ];
+
+        foreach (array_keys($runtimeMigrationStatements) as $expectedColumn) {
             if (!in_array($expectedColumn, $columnNames, true)) {
                 $missingColumns[] = $expectedColumn;
             }
         }
 
-        if (in_array('borrower_remarks', $missingColumns, true)) {
+        foreach ($runtimeMigrationStatements as $columnName => $statement) {
+            if (!in_array($columnName, $missingColumns, true)) {
+                continue;
+            }
+
             try {
-                $this->connection->executeStatement('ALTER TABLE reservations ADD COLUMN borrower_remarks TEXT DEFAULT NULL');
+                $this->connection->executeStatement($statement);
                 $missingColumns = array_values(array_filter(
                     $missingColumns,
-                    static fn (string $column): bool => $column !== 'borrower_remarks'
+                    static fn (string $column): bool => $column !== $columnName
                 ));
             } catch (\Throwable $exception) {
                 error_log(sprintf(
-                    'Reservation Creation - Unable to add borrower_remarks column at runtime [%s]: %s',
+                    'Reservation Creation - Unable to add %s column at runtime [%s]: %s',
+                    $columnName,
                     $exception::class,
                     $exception->getMessage()
                 ));
@@ -587,14 +598,71 @@ class ReservationCreateService
             ));
         }
 
-        $overlappingReservations = $this->reservationRepository->findVenueReservationsOverlappingRange(
-            [$requestDTO->venueIdentifier],
-            $eventDateTime,
-            $endDateTime
-        );
-
-        if ($overlappingReservations !== []) {
+        if ($this->hasVenueReservationConflict($requestDTO->venueIdentifier, $eventDateTime, $endDateTime)) {
             throw new DomainValidationException('Selected room is no longer available for the requested time.');
+        }
+    }
+
+    private function hasVenueReservationConflict(
+        int $venueIdentifier,
+        \DateTimeInterface $eventDateTime,
+        \DateTimeInterface $endDateTime
+    ): bool {
+        $columnsByName = $this->fetchReservationColumnsByName();
+        if ($columnsByName === []) {
+            return $this->reservationRepository->findVenueReservationsOverlappingRange(
+                [$venueIdentifier],
+                $eventDateTime,
+                $endDateTime
+            ) !== [];
+        }
+
+        $hasEndDateTimeColumn = isset($columnsByName['end_date_time']);
+        $countSql = $hasEndDateTimeColumn
+            ? 'SELECT COUNT(*) FROM reservations
+                WHERE venue_identifier = :venueIdentifier
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (:excludedStatuses)
+                  AND event_date_time < :rangeEnd
+                  AND (
+                    (end_date_time IS NULL AND event_date_time >= :rangeStart)
+                    OR (end_date_time IS NOT NULL AND end_date_time > :rangeStart)
+                  )'
+            : 'SELECT COUNT(*) FROM reservations
+                WHERE venue_identifier = :venueIdentifier
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (:excludedStatuses)
+                  AND event_date_time >= :rangeStart
+                  AND event_date_time < :rangeEnd';
+
+        try {
+            $conflictCount = (int) $this->connection->fetchOne(
+                $countSql,
+                [
+                    'venueIdentifier' => $venueIdentifier,
+                    'excludedStatuses' => ['rejected', 'cancelled', 'request revision'],
+                    'rangeStart' => $eventDateTime->format('Y-m-d H:i:s'),
+                    'rangeEnd' => $endDateTime->format('Y-m-d H:i:s'),
+                ],
+                [
+                    'venueIdentifier' => ParameterType::INTEGER,
+                    'excludedStatuses' => \Doctrine\DBAL\ArrayParameterType::STRING,
+                    'rangeStart' => ParameterType::STRING,
+                    'rangeEnd' => ParameterType::STRING,
+                ]
+            );
+
+            return $conflictCount > 0;
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Venue conflict fallback query failed [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+
+            return $this->reservationRepository->findVenueReservationsOverlappingRange(
+                [$venueIdentifier],
+                $eventDateTime,
+                $endDateTime
+            ) !== [];
         }
     }
 
