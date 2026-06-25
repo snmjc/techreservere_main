@@ -380,7 +380,7 @@
                           type="button"
                           class="manage-facilities-venue-block"
                           :class="`manage-facilities-venue-block--${block.tone}`"
-                          @click="handleViewVenue(venueRow)"
+                          @click="handleVenueBlockClick(block, venueRow)"
                         >
                           <span>{{ block.timeLabel }}</span>
                           <strong>{{ block.title }}</strong>
@@ -1011,6 +1011,121 @@
       @saved="handleVenueModalSaved"
     />
 
+    <div
+      v-if="selectedVenueReservationEntry || venueReservationModalLoading || venueReservationModalError"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeVenueReservationModal"
+    >
+      <section class="manage-facilities-delete-modal manage-facilities-venue-reservation-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeVenueReservationModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading manage-facilities-venue-reservation-modal__heading">
+          <div class="manage-facilities-venue-reservation-modal__heading-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="3" />
+              <path d="M16 2v4" />
+              <path d="M8 2v4" />
+              <path d="M3 10h18" />
+            </svg>
+          </div>
+          <div>
+            <h2>{{ venueReservationModalHeading }}</h2>
+            <p>{{ venueReservationModalCountLabel }}</p>
+          </div>
+        </div>
+
+        <p v-if="venueReservationModalError" class="manage-facilities-modal-error">{{ venueReservationModalError }}</p>
+        <div v-else-if="venueReservationModalLoading" class="manage-facilities-venue-reservation-modal__loading">Loading reservation details...</div>
+        <div v-else-if="selectedVenueReservationEntry" class="manage-facilities-venue-reservation-modal__body">
+          <section class="manage-facilities-venue-reservation-modal__card">
+            <div class="manage-facilities-venue-reservation-modal__status-row">
+              <span
+                class="manage-facilities-venue-reservation-modal__status-badge"
+                :class="`manage-facilities-venue-reservation-modal__status-badge--${selectedVenueReservationEntry.statusTone}`"
+              >
+                {{ selectedVenueReservationEntry.statusLabel }}
+              </span>
+            </div>
+
+            <div class="manage-facilities-venue-reservation-modal__overview">
+              <div class="manage-facilities-venue-reservation-modal__overview-grid">
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Borrower</span>
+                  <strong>{{ selectedVenueReservationEntry.borrowerName }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Venue / Room</span>
+                  <strong>{{ selectedVenueReservationEntry.venueLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Purpose</span>
+                  <strong>{{ selectedVenueReservationEntry.purposeLabel }}</strong>
+                </article>
+              </div>
+
+              <article class="manage-facilities-venue-reservation-modal__remarks-card">
+                <span>Remarks</span>
+                <p>{{ selectedVenueReservationEntry.remarksLabel }}</p>
+              </article>
+            </div>
+
+            <section class="manage-facilities-venue-reservation-modal__schedule-card">
+              <div class="manage-facilities-venue-reservation-modal__section-label">Date &amp; Time</div>
+              <div class="manage-facilities-venue-reservation-modal__schedule-grid">
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Start Date</span>
+                  <strong>{{ selectedVenueReservationEntry.startDateLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>End Date</span>
+                  <strong>{{ selectedVenueReservationEntry.endDateLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Start Time</span>
+                  <strong>{{ selectedVenueReservationEntry.startTimeLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>End Time</span>
+                  <strong>{{ selectedVenueReservationEntry.endTimeLabel }}</strong>
+                </article>
+              </div>
+              <div class="manage-facilities-venue-reservation-modal__duration-pill">
+                Total Duration: {{ selectedVenueReservationEntry.durationLabel }}
+              </div>
+            </section>
+
+            <section class="manage-facilities-venue-reservation-modal__meta-grid">
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Status</span>
+                <strong>{{ selectedVenueReservationEntry.statusLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Reserved On</span>
+                <strong>{{ selectedVenueReservationEntry.reservedOnLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Approved By</span>
+                <strong>{{ selectedVenueReservationEntry.approvedByLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Approved On</span>
+                <strong>{{ selectedVenueReservationEntry.approvedOnLabel }}</strong>
+              </article>
+            </section>
+          </section>
+
+          <div class="manage-facilities-modal-actions">
+            <button class="manage-facilities-cancel-button" type="button" @click="closeVenueReservationModal">Close</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <VenueDetailsModalComponent
       :show="Boolean(viewVenueRecord || viewVenueLoading || viewVenueError)"
       :venue="viewVenueRecord"
@@ -1159,6 +1274,7 @@ import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetai
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
 import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
+import reservationApi from '@/modules/reservation/services/reservationApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import classScheduleApi from '@/modules/reservation/services/classScheduleApi.js';
@@ -1242,6 +1358,9 @@ const isDeletingClassSchedule = ref(false);
 const importScheduleFile = ref(null);
 const classScheduleForm = ref(createEmptyClassScheduleForm());
 const quickClassScheduleForm = ref(createEmptyQuickAddScheduleForm());
+const selectedVenueReservationEntry = ref(null);
+const venueReservationModalLoading = ref(false);
+const venueReservationModalError = ref('');
 let activeReservedVenueWeekRequestSequence = 0;
 
 const currentAdminEmail = computed(() =>
@@ -1335,6 +1454,11 @@ const selectedVenueWeekdayLabel = computed(() => new Intl.DateTimeFormat('en-US'
 const selectedVenueMonthShortLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(`${selectedVenueCalendarDate.value}T00:00:00`)).toUpperCase());
 const selectedVenueDayNumberLabel = computed(() => new Date(`${selectedVenueCalendarDate.value}T00:00:00`).getDate());
 const venueMonthCalendarCells = computed(() => buildSimpleCalendarDays(venueMonthCursor.value));
+const venueReservationModalHeading = computed(() => {
+  const eventDateTime = selectedVenueReservationEntry.value?.eventDateTime || selectedVenueReservationEntry.value?.dateValue || selectedVenueCalendarDate.value;
+  return `Reservations for ${formatDisplayDateHeadingWithWeekday(resolveDateValue(eventDateTime))}`;
+});
+const venueReservationModalCountLabel = computed(() => '1 reservation(s) found');
 const selectedVenueSummary = computed(() => {
   const reservedEntries = getVenueEntriesForDate(selectedVenueCalendarDate.value);
   const visibleCount = reservedEntries.length;
@@ -1630,6 +1754,7 @@ function handleFacilityTabChange(tabName) {
 
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     handleVenueModalClose();
+    closeVenueReservationModal();
     closeVenueDetails();
     closeDeleteVenueModal();
   }
@@ -1713,6 +1838,42 @@ async function handleViewVenue(venueRecord) {
   } finally {
     viewVenueLoading.value = false;
   }
+}
+
+async function handleVenueBlockClick(block, venueRow) {
+  if (block?.tone === 'reserved') {
+    await openVenueReservationModal(block, venueRow);
+    return;
+  }
+
+  await handleViewVenue(venueRow);
+}
+
+async function openVenueReservationModal(block, venueRow) {
+  const reservationIdentifier = Number(block?.reservationIdentifier || block?.rawRangeRecord?.reservationIdentifier || 0);
+  selectedVenueReservationEntry.value = normalizeVenueReservationEntry(null, block, venueRow);
+  venueReservationModalLoading.value = reservationIdentifier > 0;
+  venueReservationModalError.value = '';
+
+  if (reservationIdentifier <= 0) {
+    venueReservationModalLoading.value = false;
+    return;
+  }
+
+  try {
+    const response = await reservationApi.getReservationById(reservationIdentifier);
+    selectedVenueReservationEntry.value = normalizeVenueReservationEntry(response?.data || response, block, venueRow);
+  } catch (error) {
+    venueReservationModalError.value = error?.response?.data?.errorMessage || 'Failed to load reservation details.';
+  } finally {
+    venueReservationModalLoading.value = false;
+  }
+}
+
+function closeVenueReservationModal() {
+  selectedVenueReservationEntry.value = null;
+  venueReservationModalLoading.value = false;
+  venueReservationModalError.value = '';
 }
 
 function closeVenueDetails() {
@@ -2455,6 +2616,9 @@ function buildVenueReservedBlocks(venueRecord, dateValue) {
       timeLabel: reservedBlock.timeLabel,
       title: reservedBlock.title,
       meta: reservedBlock.meta,
+      reservationIdentifier: reservedBlock.reservationIdentifier,
+      rawRangeRecord: reservedBlock.rawRangeRecord,
+      dateValue,
     });
   });
 
@@ -2470,6 +2634,9 @@ function buildVenueReservedBlocks(venueRecord, dateValue) {
       timeLabel: 'Reserved',
       title: 'Reserved',
       meta: venueRecord.venueLocation || 'Reserved schedule',
+      reservationIdentifier: null,
+      rawRangeRecord: null,
+      dateValue,
     }];
 }
 
@@ -2581,6 +2748,8 @@ function normalizeVenueTimeRange(rangeRecord, rangeIndex) {
     meta: normalizedRangeRecord.meta || 'Reserved schedule',
     startMinutes,
     endMinutes: endMinutes > startMinutes ? endMinutes : startMinutes + 60,
+    reservationIdentifier: Number(rangeRecord?.reservationIdentifier || 0) || null,
+    rawRangeRecord: rangeRecord,
   };
 }
 
@@ -2803,6 +2972,154 @@ function formatDisplayDateHeading(dateValue) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(`${dateValue}T00:00:00`));
+}
+
+function formatDisplayDateHeadingWithWeekday(dateValue) {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${dateValue}T00:00:00`));
+}
+
+function resolveDateValue(dateTimeValue) {
+  const normalizedValue = String(dateTimeValue || '').trim();
+  if (normalizedValue === '') {
+    return selectedVenueCalendarDate.value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return selectedVenueCalendarDate.value;
+  }
+
+  return formatDateInputValue(parsedDate);
+}
+
+function formatDateTimeLong(dateTimeValue) {
+  const parsedDate = new Date(String(dateTimeValue || '').trim());
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Not yet recorded';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function formatTimeFromDateTime(dateTimeValue) {
+  const parsedDate = new Date(String(dateTimeValue || '').trim());
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function formatReservationDuration(startDateTimeValue, endDateTimeValue) {
+  const startDate = new Date(String(startDateTimeValue || '').trim());
+  const endDate = new Date(String(endDateTimeValue || '').trim());
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    return 'N/A';
+  }
+
+  const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  const durationHours = Math.floor(durationMinutes / 60);
+  const remainderMinutes = durationMinutes % 60;
+
+  if (remainderMinutes === 0) {
+    return `${durationHours} hour${durationHours === 1 ? '' : 's'}`;
+  }
+
+  if (durationHours === 0) {
+    return `${remainderMinutes} minute${remainderMinutes === 1 ? '' : 's'}`;
+  }
+
+  return `${durationHours} hour${durationHours === 1 ? '' : 's'} ${remainderMinutes} minute${remainderMinutes === 1 ? '' : 's'}`;
+}
+
+function normalizeReservationStatusTone(statusValue) {
+  const normalizedStatus = normalizeFilterQuery(statusValue);
+  if (normalizedStatus.includes('approved')) return 'approved';
+  if (normalizedStatus.includes('pending')) return 'pending';
+  if (normalizedStatus.includes('rejected') || normalizedStatus.includes('cancelled')) return 'inactive';
+  return 'neutral';
+}
+
+function normalizeVenueReservationEntry(reservationRecord, block, venueRow) {
+  const fallbackRecord = block?.rawRangeRecord || {};
+  const startDateTime = String(
+    reservationRecord?.eventDateTime
+      || fallbackRecord?.startDateTimeLabel
+      || ''
+  ).trim();
+  const endDateTime = String(
+    reservationRecord?.endDateTime
+      || fallbackRecord?.endDateTimeLabel
+      || ''
+  ).trim();
+  const statusLabel = String(
+    reservationRecord?.currentStatus
+      || fallbackRecord?.statusLabel
+      || 'Reserved'
+  ).trim();
+  const reservationCode = String(
+    reservationRecord?.reservationCode
+      || fallbackRecord?.reservationCode
+      || ''
+  ).trim();
+  const venueName = String(venueRow?.venueName || reservationRecord?.venueName || 'Venue').trim();
+
+  return {
+    reservationIdentifier: Number(
+      reservationRecord?.reservationIdentifier
+        || block?.reservationIdentifier
+        || fallbackRecord?.reservationIdentifier
+        || 0
+    ) || null,
+    reservationCode,
+    borrowerName: String(
+      reservationRecord?.borrowerFullName
+        || fallbackRecord?.reservedByName
+        || 'Borrower record unavailable'
+    ).trim() || 'Borrower record unavailable',
+    venueLabel: reservationCode ? `${venueName} ${reservationCode}` : venueName,
+    purposeLabel: String(
+      reservationRecord?.purposeDescription
+        || fallbackRecord?.purposeDescription
+        || reservationRecord?.activityType
+        || fallbackRecord?.activityType
+        || 'No purpose recorded.'
+    ).trim(),
+    remarksLabel: String(
+      reservationRecord?.borrowerRemarks
+        || 'No remarks added.'
+    ).trim(),
+    statusLabel: statusLabel || 'Reserved',
+    statusTone: normalizeReservationStatusTone(statusLabel),
+    eventDateTime: startDateTime,
+    dateValue: block?.dateValue || resolveDateValue(startDateTime),
+    startDateLabel: startDateTime ? formatDisplayDateHeading(resolveDateValue(startDateTime)) : 'N/A',
+    endDateLabel: endDateTime ? formatDisplayDateHeading(resolveDateValue(endDateTime)) : (startDateTime ? formatDisplayDateHeading(resolveDateValue(startDateTime)) : 'N/A'),
+    startTimeLabel: startDateTime ? formatTimeFromDateTime(startDateTime) : (block?.timeLabel?.split('-')?.[0]?.trim() || 'N/A'),
+    endTimeLabel: endDateTime ? formatTimeFromDateTime(endDateTime) : (block?.timeLabel?.split('-')?.[1]?.trim() || 'N/A'),
+    durationLabel: formatReservationDuration(startDateTime, endDateTime),
+    reservedOnLabel: reservationRecord?.submissionTimestamp ? formatDateTimeLong(reservationRecord.submissionTimestamp) : 'Not yet recorded',
+    approvedByLabel: 'Not yet recorded',
+    approvedOnLabel: 'Not yet recorded',
+  };
 }
 
 function syncSelectedClassSchedule() {

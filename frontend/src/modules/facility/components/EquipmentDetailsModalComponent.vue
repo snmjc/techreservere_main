@@ -10,7 +10,7 @@
 
       <div class="equipment-details-modal-heading">
         <h2>{{ title }}</h2>
-        <p>{{ subtitle }}</p>
+        <p>{{ resolvedSubtitle }}</p>
       </div>
 
       <p v-if="errorMessage" class="equipment-details-modal-error">{{ errorMessage }}</p>
@@ -28,7 +28,7 @@
         <dl class="equipment-details-modal-grid">
           <div><dt>Equipment Name</dt><dd>{{ formatEquipmentText(equipment?.equipmentName) }}</dd></div>
           <div><dt>Equipment Type/Category</dt><dd>{{ formatEquipmentText(equipment?.equipmentCategory || equipment?.categoryName) }}</dd></div>
-          <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(equipment?.equipmentBrand) }}</dd></div>
+          <div><dt>Equipment Brand</dt><dd>{{ formatEquipmentText(equipment?.brandGroupLabel || equipment?.equipmentBrand) }}</dd></div>
           <div><dt>Available Quantity</dt><dd>{{ formatEquipmentQuantity(equipment?.availableQuantity) }}</dd></div>
           <div><dt>Operational Status / Status</dt><dd>{{ formatEquipmentStatus(equipment) }}</dd></div>
           <div v-if="Array.isArray(equipment?.inventoryItems) && equipment.inventoryItems.length"><dt>Grouped Units</dt><dd>{{ equipment.inventoryItems.length }}</dd></div>
@@ -36,7 +36,18 @@
           <div v-if="showAdminFields"><dt>Asset ID</dt><dd>{{ formatEquipmentText(equipment?.assetId || equipment?.serialNumber) }}</dd></div>
           <div class="equipment-details-modal-grid__full">
             <dt>Remarks / Notes</dt>
-            <dd>{{ formatEquipmentText(equipment?.description || equipment?.scheduleDescription) }}</dd>
+            <dd>
+              <template v-if="groupRemarks.length">
+                <ul class="equipment-details-modal-item-list equipment-details-modal-item-list--notes">
+                  <li v-for="remark in groupRemarks" :key="remark">
+                    <strong>{{ remark }}</strong>
+                  </li>
+                </ul>
+              </template>
+              <template v-else>
+                {{ formatEquipmentText(equipment?.description || equipment?.scheduleDescription) }}
+              </template>
+            </dd>
           </div>
           <div
             v-if="!showAdminFields && Array.isArray(equipment?.inventoryItems) && equipment.inventoryItems.length"
@@ -75,6 +86,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import {
   formatEquipmentQuantity,
   formatEquipmentStatus,
@@ -83,7 +95,7 @@ import {
   resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
-defineProps({
+const props = defineProps({
   show: {
     type: Boolean,
     default: false,
@@ -119,6 +131,25 @@ defineProps({
 });
 
 const emit = defineEmits(['close', 'secondary-action']);
+
+const groupRemarks = computed(() => {
+  if (!Array.isArray(props.equipment?.remarksNotes)) {
+    return [];
+  }
+
+  return props.equipment.remarksNotes
+    .map((remark) => formatEquipmentText(remark))
+    .filter((remark) => remark && remark !== 'Not specified');
+});
+
+const resolvedSubtitle = computed(() => {
+  const groupedUnits = Array.isArray(props.equipment?.inventoryItems) ? props.equipment.inventoryItems.length : 0;
+  if (!props.showAdminFields && groupedUnits > 0) {
+    return `Grouped brand inventory view with ${groupedUnits} physical item${groupedUnits === 1 ? '' : 's'}.`;
+  }
+
+  return props.subtitle;
+});
 </script>
 
 <style scoped>
