@@ -57,7 +57,7 @@ class PublicSignupRequestService
             'firstName' => trim($requestBody['firstName'] ?? ''),
             'emailAddress' => strtolower(trim($requestBody['emailAddress'] ?? '')),
             'username' => AccountUsername::fromEmail((string)($requestBody['emailAddress'] ?? '')),
-            'idNumber' => trim($requestBody['idNumber'] ?? ''),
+            'idNumber' => $this->accountInputValidationService->normalizeIdNumber((string)($requestBody['idNumber'] ?? '')),
             'role' => trim($requestBody['role'] ?? 'Student'),
             'department' => trim($requestBody['department'] ?? ($requestBody['role'] ?? 'Student')),
             'passwordText' => $passwordText,
@@ -84,8 +84,12 @@ class PublicSignupRequestService
             return 'Data privacy confirmation is required.';
         }
 
-        if (!preg_match('/^[A-Za-z][A-Za-z .\'-]*$/', $payload['firstName']) || !preg_match('/^[A-Za-z][A-Za-z .\'-]*$/', $payload['lastName'])) {
-            return 'Names may only contain letters, spaces, periods, apostrophes, and hyphens.';
+        if (!$this->accountInputValidationService->isValidPersonName($payload['firstName']) || !$this->accountInputValidationService->isValidPersonName($payload['lastName'])) {
+            return 'Names may only contain letters and spaces.';
+        }
+
+        if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
+            return 'ID number must be exactly 9 digits.';
         }
 
         if (!$this->accountInputValidationService->isInstitutionalUserEmail($payload['emailAddress'])) {

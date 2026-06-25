@@ -118,6 +118,14 @@
                 />
                 <span>Remember me</span>
               </label>
+              <button
+                type="button"
+                class="techreserve-local-login-link-button"
+                :disabled="isSubmitting"
+                @click="showResetPasswordForm"
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button class="techreserve-local-login-button" type="submit" :disabled="isSubmitting">
@@ -245,6 +253,7 @@ const {
   resetPasswordError,
   resetPasswordMessage,
   handleLocalLogin,
+  showResetPasswordForm,
   hideResetPasswordForm,
   resolveResetPasswordButtonText,
   handleResetPasswordSubmit,
@@ -832,7 +841,7 @@ function waitForClerk(timeoutMs = 4000) {
 .techreserve-local-login-options {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 0.8rem;
   margin-top: -0.15rem;
 }
@@ -857,6 +866,27 @@ function waitForClerk(timeoutMs = 4000) {
   height: 14px;
   margin: 0;
   accent-color: #08784a;
+}
+
+.techreserve-local-login-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #08784a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.techreserve-local-login-link-button:hover:not(:disabled) {
+  color: #05613d;
+  text-decoration: underline;
+}
+
+.techreserve-local-login-link-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .techreserve-local-login-signup a:hover {

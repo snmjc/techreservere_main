@@ -10,7 +10,7 @@
       </div>
 
       <p class="borrower-request-modal__warning">
-        This request will be withdrawn while it is still pending review.
+        Are you sure you want to cancel this request? This action cannot be undone.
       </p>
 
       <label class="borrower-request-modal__field">
@@ -19,19 +19,21 @@
       </label>
 
       <label class="borrower-request-modal__field">
-        <span>Type <strong>{{ confirmationPhrase }}</strong> to confirm</span>
-        <input v-model.trim="confirmationText" type="text" :placeholder="confirmationPhrase" />
+        <span>Enter your email to confirm</span>
+        <input v-model.trim="confirmationEmailText" type="email" :placeholder="confirmationEmail || 'your@email.com'" />
+        <small v-if="confirmationEmail">Use {{ confirmationEmail }} to confirm this cancellation.</small>
+        <small v-if="confirmationError" class="borrower-request-modal__error">{{ confirmationError }}</small>
       </label>
 
       <div class="borrower-request-modal__actions">
-        <button type="button" class="borrower-request-modal__button borrower-request-modal__button--ghost" @click="handleClose">Keep Request</button>
+        <button type="button" class="borrower-request-modal__button borrower-request-modal__button--ghost" @click="handleClose">Cancel</button>
         <button
           type="button"
           class="borrower-request-modal__button borrower-request-modal__button--danger"
           :disabled="!isSubmitEnabled || isSubmitting"
-          @click="emit('confirm', { reason: reasonText, confirmationText })"
+          @click="handleConfirm"
         >
-          {{ isSubmitting ? 'Cancelling...' : 'Cancel Request' }}
+          {{ isSubmitting ? 'Cancelling...' : 'Confirm Cancellation' }}
         </button>
       </div>
     </div>
@@ -50,25 +52,54 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  confirmationEmail: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits(['close', 'confirm']);
-const confirmationPhrase = 'CANCEL';
 const reasonText = ref('');
-const confirmationText = ref('');
+const confirmationEmailText = ref('');
+const confirmationError = ref('');
 
 const isSubmitEnabled = computed(() => {
-  return reasonText.value.length > 0 && confirmationText.value === confirmationPhrase;
+  const expectedEmail = normalizeEmail(props.confirmationEmail);
+  return reasonText.value.length > 0
+    && expectedEmail !== ''
+    && normalizeEmail(confirmationEmailText.value) === expectedEmail;
 });
 
 watch(() => props.requestRecord, () => {
   reasonText.value = '';
-  confirmationText.value = '';
+  confirmationEmailText.value = '';
+  confirmationError.value = '';
 });
+
+watch(confirmationEmailText, () => {
+  confirmationError.value = '';
+});
+
+function handleConfirm() {
+  if (!isSubmitEnabled.value) {
+    confirmationError.value = 'Enter your account email before confirming cancellation.';
+    return;
+  }
+
+  emit('confirm', {
+    reason: reasonText.value,
+    confirmationEmail: confirmationEmailText.value,
+  });
+}
 
 function handleClose() {
   reasonText.value = '';
-  confirmationText.value = '';
+  confirmationEmailText.value = '';
+  confirmationError.value = '';
   emit('close');
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
 }
 </script>

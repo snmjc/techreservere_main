@@ -309,6 +309,17 @@
   margin-bottom: 1rem;
 }
 
+.borrower-request-modal__field small {
+  color: #5b6c61;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.borrower-request-modal__error {
+  color: #a33127 !important;
+  font-weight: 800 !important;
+}
+
 .borrower-request-modal__actions {
   display: flex;
   justify-content: flex-end;

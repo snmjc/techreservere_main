@@ -15,7 +15,7 @@ export function validateAdminAccountForm(form) {
   const emailAddress = form.emailAddress.trim().toLowerCase();
 
   if (!validateRequiredIdNumber(idNumber)) {
-    return 'ID number must be exactly 10 digits.';
+    return 'ID number must be exactly 9 digits.';
   }
 
   if (!validatePersonName(lastName)) {
@@ -87,7 +87,7 @@ export function validateUserAccountForm(form) {
   }
 
   if (!validateRequiredIdNumber(idNumber)) {
-    return 'ID number must be exactly 10 digits.';
+    return 'ID number must be exactly 9 digits.';
   }
 
   if (!filterEmailAddress(emailAddress)) {
@@ -133,7 +133,7 @@ export function validateEmployeeAccountForm(form) {
   }
 
   if (!validateRequiredIdNumber(idNumber)) {
-    return 'Work ID number must be exactly 10 digits.';
+    return 'Work ID number must be exactly 9 digits.';
   }
 
   if (!/^(09\d{9}|9\d{9})$/.test(rawPhone) || !/^9\d{9}$/.test(phone)) {

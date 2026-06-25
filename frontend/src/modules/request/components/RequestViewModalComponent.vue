@@ -86,6 +86,15 @@
         <div class="request-view-modal-divider"></div>
 
         <div class="request-view-modal-section">
+          <p class="request-view-modal-section-label">Status Notes</p>
+          <div class="request-view-modal-notes-box">
+            {{ statusNotes || 'No remarks added yet.' }}
+          </div>
+        </div>
+
+        <div class="request-view-modal-divider"></div>
+
+        <div class="request-view-modal-section">
           <p class="request-view-modal-section-label">Supporting Documents</p>
 
           <div v-if="requestRecord.uploadedDocuments?.length" class="request-view-modal-doc-preview-grid">
@@ -148,6 +157,7 @@
 
 <script setup>
 import { formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
+import { computed } from 'vue';
 
 const props = defineProps({
   requestRecord: {
@@ -178,6 +188,10 @@ const emit = defineEmits([
   'requestRevisionsRecord',
   'rejectRequestRecord',
 ]);
+
+const statusNotes = computed(() => {
+  return String(props.requestRecord?.remarks || props.requestRecord?.cancellationReason || '').trim();
+});
 
 function handleCloseModal() {
   emit('closeRequestModal');

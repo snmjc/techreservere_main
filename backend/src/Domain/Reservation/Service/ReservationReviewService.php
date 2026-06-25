@@ -96,22 +96,19 @@ class ReservationReviewService
             throw new DomainValidationException('Invalid status: ' . $newStatus);
         }
 
-        // Rejection reason is optional - use default if not provided
-        if ($newStatus === 'Rejected' && empty($rejectionReason)) {
-            $rejectionReason = 'Rejected by administrator';
-        }
+        $normalizedReason = $rejectionReason === null ? null : trim($rejectionReason);
 
         if ($newStatus === 'Approved') {
             $this->validateVenueApprovalConflict($entity);
         }
 
         $entity->setCurrentStatus($newStatus);
-        if ($rejectionReason !== null) {
-            $entity->setRejectionReason($rejectionReason);
+        if ($normalizedReason !== null && $normalizedReason !== '') {
+            $entity->setRejectionReason($normalizedReason);
         }
 
         $this->reservationRepository->persistReservation($entity);
-        $this->notifyBorrowerOfStatusChange($entity, $newStatus, $rejectionReason);
+        $this->notifyBorrowerOfStatusChange($entity, $newStatus, $normalizedReason);
 
         return $this->transformEntityToDTO($entity);
     }

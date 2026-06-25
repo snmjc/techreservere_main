@@ -26,7 +26,15 @@
 
               <div class="borrower-reservation-field">
                 <label for="participantCount">No. of Participants <em>*</em></label>
-                <input id="participantCount" v-model="formState.participantCount" type="number" min="1" max="500" placeholder="Enter estimated participants" />
+                <input
+                  id="participantCount"
+                  v-model="formState.participantCount"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="3"
+                  placeholder="Enter estimated participants"
+                  @input="sanitizeParticipantCountField"
+                />
                 <small class="borrower-reservation-help">Enter the estimated number of participants. Maximum: 500.</small>
                 <small v-if="validationErrors.participantCount" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.participantCount }}</small>
               </div>
@@ -207,7 +215,7 @@
 
               <div class="borrower-reservation-field">
                 <label for="activityNameTitle">Activity Name / Title <em>*</em></label>
-                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" placeholder="IT0003 Presentation" />
+                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" maxlength="120" placeholder="IT0003 Presentation" />
                 <small class="borrower-reservation-help">Enter a short title for your activity or event.</small>
                 <small v-if="validationErrors.activityNameTitle" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityNameTitle }}</small>
               </div>
@@ -285,6 +293,8 @@ const purposeOptions = [
 const timePickerHours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const timePickerMinutes = ['00', '30'];
 const timePickerPeriods = ['AM', 'PM'];
+const BUSINESS_START_MINUTES = 7 * 60;
+const BUSINESS_END_MINUTES = 21 * 60;
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
@@ -507,6 +517,10 @@ function handleActivityEndDateChange() {
   }
 }
 
+function sanitizeParticipantCountField() {
+  formState.value.participantCount = String(formState.value.participantCount || '').replace(/\D/g, '').slice(0, 3);
+}
+
 function handleNextPage() {
   if (!validateReservationDetails()) {
     return;
@@ -561,11 +575,15 @@ function validateReservationDetails() {
     const endDateTime = new Date(`${formState.value.activityEndDate}T${formState.value.activityTimeTo}`);
     if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
       validationErrors.activityTime = 'End time must be later than the start time.';
+    } else if (!isAllowedTimeSlot(formState.value.activityTimeFrom) || !isAllowedTimeSlot(formState.value.activityTimeTo)) {
+      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
     }
   }
 
   if (!formState.value.activityNameTitle.trim()) {
     validationErrors.activityNameTitle = 'Activity name or title is required.';
+  } else if (formState.value.activityNameTitle.trim().length > 120) {
+    validationErrors.activityNameTitle = 'Activity name or title must be 120 characters or fewer.';
   }
 
   if (!formState.value.purposeText) {
@@ -593,6 +611,20 @@ function maxIsoDate(leftValue, rightValue) {
 function parseTimeToMinutes(timeValue) {
   const [hours, minutes] = String(timeValue).split(':').map(Number);
   return (hours * 60) + minutes;
+}
+
+function isAllowedTimeSlot(timeValue) {
+  const [hours, minutes] = String(timeValue || '').split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return false;
+  }
+
+  if (![0, 30].includes(minutes)) {
+    return false;
+  }
+
+  const totalMinutes = (hours * 60) + minutes;
+  return totalMinutes >= BUSINESS_START_MINUTES && totalMinutes <= BUSINESS_END_MINUTES;
 }
 
 function formatMinutesAsValue(totalMinutes) {

@@ -51,7 +51,7 @@ class AccountCreationValidationServiceTest extends TestCase
         $this->assertSame('Admin account must use a valid @feutech.edu.ph email address.', $result['message']);
     }
 
-    public function testUserCreationRejectsNonTenDigitIdNumber(): void
+    public function testUserCreationRejectsNonNineDigitIdNumber(): void
     {
         $service = new WishlistUserAccountService(
             $this->connection,
@@ -63,17 +63,17 @@ class AccountCreationValidationServiceTest extends TestCase
             'lastName' => 'Dela Cruz',
             'firstName' => 'Juan',
             'emailAddress' => 'juan@fit.edu.ph',
-            'idNumber' => '123456789',
+            'idNumber' => '12345678',
             'role' => 'Student',
             'passwordText' => 'Password1',
         ]);
 
         $this->assertFalse($result['success']);
         $this->assertSame('ValidationError', $result['errorCode']);
-        $this->assertSame('ID number must be exactly 10 digits.', $result['message']);
+        $this->assertSame('ID number must be exactly 9 digits.', $result['message']);
     }
 
-    public function testEmployeeCreationRejectsNonTenDigitWorkId(): void
+    public function testEmployeeCreationRejectsNonNineDigitWorkId(): void
     {
         $service = new WishlistEmployeeAccountService(
             $this->connection,
@@ -85,11 +85,11 @@ class AccountCreationValidationServiceTest extends TestCase
             'lastName' => 'Dela Cruz',
             'firstName' => 'Juan',
             'phone' => '9123456789',
-            'idNumber' => '123456789',
+            'idNumber' => '12345678',
         ]);
 
         $this->assertFalse($result['success']);
         $this->assertSame('ValidationError', $result['errorCode']);
-        $this->assertSame('Work ID number must be exactly 10 digits.', $result['message']);
+        $this->assertSame('Work ID number must be exactly 9 digits.', $result['message']);
     }
 }

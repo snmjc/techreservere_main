@@ -77,7 +77,7 @@ class WishlistUserAccountService
         }
 
         if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
-            return 'ID number must be exactly 10 digits.';
+            return 'ID number must be exactly 9 digits.';
         }
 
         if ($payload['roleDesignation'] !== 'ROLE_BORROWER') {

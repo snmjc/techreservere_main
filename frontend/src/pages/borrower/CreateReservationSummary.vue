@@ -173,6 +173,11 @@ async function handleSubmitReservationRequest() {
       return;
     }
 
+    const confirmed = window.confirm('Submit this reservation request for admin review? Please confirm that all details are correct.');
+    if (!confirmed) {
+      return;
+    }
+
     const eventDateTime = new Date(`${reservationFormStore.activityDate}T${reservationFormStore.activityTimeFrom || '00:00'}`);
     const endDateTime = new Date(`${reservationFormStore.activityEndDate || reservationFormStore.activityDate}T${reservationFormStore.activityTimeTo || '00:00'}`);
 
@@ -240,12 +245,20 @@ function validateReservationSubmission() {
     return 'End date and time must be later than the start date and time.';
   }
 
+  if (!isAllowedTimeSlot(reservationFormStore.activityTimeFrom) || !isAllowedTimeSlot(reservationFormStore.activityTimeTo)) {
+    return 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
+  }
+
   if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
     return 'Participant count must be a whole number from 1 to 500.';
   }
 
   if (!reservationFormStore.activityNameTitle.trim()) {
     return 'Activity name or title is required.';
+  }
+
+  if (reservationFormStore.activityNameTitle.trim().length > 120) {
+    return 'Activity name or title must be 120 characters or fewer.';
   }
 
   if (!reservationFormStore.purposeText) {
@@ -285,5 +298,19 @@ function getTodayIsoDate() {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
+}
+
+function isAllowedTimeSlot(timeValue) {
+  const [hours, minutes] = String(timeValue || '').split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return false;
+  }
+
+  if (![0, 30].includes(minutes)) {
+    return false;
+  }
+
+  const totalMinutes = (hours * 60) + minutes;
+  return totalMinutes >= 7 * 60 && totalMinutes <= 21 * 60;
 }
 </script>

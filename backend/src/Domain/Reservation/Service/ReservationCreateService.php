@@ -3,18 +3,25 @@
 namespace App\Domain\Reservation\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Equipment\Repository\EquipmentRepository;
 use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
+use App\Domain\Venue\Entity\VenueEntity;
+use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainValidationException;
+use App\Shared\Utils\AppClock;
 use App\Shared\Utils\RoleConstants;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 class ReservationCreateService
 {
+    private const BUSINESS_START_MINUTES = 420;
+    private const BUSINESS_END_MINUTES = 1260;
+
     private ReservationRepository $reservationRepository;
     private bool $reservationSchemaEnsured = false;
 
@@ -23,7 +30,9 @@ class ReservationCreateService
         private readonly Connection $connection,
         private readonly ReservationBookingPolicyService $reservationBookingPolicyService,
         private readonly NotificationDispatchService $notificationDispatchService,
-        private readonly AccountRepository $accountRepository
+        private readonly AccountRepository $accountRepository,
+        private readonly VenueRepository $venueRepository,
+        private readonly EquipmentRepository $equipmentRepository
     ) {
         $this->reservationRepository = $reservationRepository;
     }
@@ -42,9 +51,18 @@ class ReservationCreateService
     {
         $this->ensureReservationSchemaReady();
         $today = new \DateTimeImmutable('today');
+        $activityTitle = trim($requestDTO->organizationName);
+        $activityType = trim($requestDTO->activityType);
+        $purposeDescription = trim($requestDTO->purposeDescription);
 
-        if (empty($requestDTO->organizationName)) {
+        if ($activityTitle === '') {
             throw new DomainValidationException('Organization name is required.');
+        }
+        if (mb_strlen($activityTitle) > 120 || mb_strlen($activityType) > 120) {
+            throw new DomainValidationException('Activity name or title must be 120 characters or fewer.');
+        }
+        if ($purposeDescription === '') {
+            throw new DomainValidationException('Purpose is required.');
         }
         if ($requestDTO->requestedQuantity < 1 || $requestDTO->requestedQuantity > 500) {
             throw new DomainValidationException('Participant count must be between 1 and 500.');
@@ -67,32 +85,31 @@ class ReservationCreateService
             throw new DomainValidationException('Reservation end time must be after the start time.');
         }
 
+        if (!$this->isAllowedReservationTimeSlot($eventDateTime) || !$this->isAllowedReservationTimeSlot($endDateTime)) {
+            throw new DomainValidationException('Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.');
+        }
+
         if ($eventDateTime < $today || $endDateTime < $today) {
             throw new DomainValidationException('Reservation dates must not be earlier than today.');
         }
 
         $this->reservationBookingPolicyService->validateReservationWindow($requestDTO, $eventDateTime, $endDateTime);
-
-        foreach ($requestDTO->requestedEquipmentList as $equipmentItem) {
-            $requestedQuantity = (int)($equipmentItem['quantity'] ?? 0);
-            if ($requestedQuantity <= 0) {
-                throw new DomainValidationException('Each requested equipment quantity must be at least 1.');
-            }
-        }
+        $this->validateSelectedVenue($requestDTO, $eventDateTime, $endDateTime);
+        $this->validateRequestedEquipment($requestDTO->requestedEquipmentList);
 
         $reservationCode = $this->generateReservationCode();
 
         $entity = new ReservationEntity();
         $entity->setReservationCode($reservationCode);
         $entity->setBorrowerAccountId($borrowerAccountId);
-        $entity->setOrganizationName($requestDTO->organizationName);
+        $entity->setOrganizationName($activityTitle);
         $entity->setVenueIdentifier($requestDTO->venueIdentifier);
         $entity->setRequestedEquipmentList($requestDTO->requestedEquipmentList);
         $entity->setRequestedQuantity($requestDTO->requestedQuantity);
         $entity->setEventDateTime($eventDateTime);
         $entity->setEndDateTime($endDateTime);
-        $entity->setPurposeDescription($requestDTO->purposeDescription);
-        $entity->setActivityType($requestDTO->activityType);
+        $entity->setPurposeDescription($purposeDescription);
+        $entity->setActivityType($activityType === '' ? $activityTitle : $activityType);
         $entity->setCurrentStatus('Pending Review');
         $entity->setSupportingDocuments($requestDTO->supportingDocuments);
 
@@ -514,6 +531,123 @@ class ReservationCreateService
                 $exception->getMessage()
             ));
         }
+    }
+
+    private function validateSelectedVenue(
+        ReservationCreateRequestDTO $requestDTO,
+        \DateTimeInterface $eventDateTime,
+        \DateTimeInterface $endDateTime
+    ): void
+    {
+        if ($requestDTO->venueIdentifier === null) {
+            return;
+        }
+
+        $venue = $this->venueRepository->find($requestDTO->venueIdentifier);
+        if ($venue === null) {
+            throw new DomainValidationException('Selected room is no longer available.');
+        }
+
+        if (!$this->isVenueBookable($venue)) {
+            throw new DomainValidationException('Selected room is no longer available.');
+        }
+
+        $capacityLimit = (int)($venue->getCapacityLimit() ?? 0);
+        if ($capacityLimit <= 0 || $requestDTO->requestedQuantity > $capacityLimit) {
+            throw new DomainValidationException(sprintf(
+                'Participant count exceeds the selected room capacity of %d.',
+                max($capacityLimit, 0)
+            ));
+        }
+
+        $overlappingReservations = $this->reservationRepository->findVenueReservationsOverlappingRange(
+            [$requestDTO->venueIdentifier],
+            $eventDateTime,
+            $endDateTime
+        );
+
+        if ($overlappingReservations !== []) {
+            throw new DomainValidationException('Selected room is no longer available for the requested time.');
+        }
+    }
+
+    private function isVenueBookable(VenueEntity $venue): bool
+    {
+        if ($venue->getOperationalStatus() !== 'Active') {
+            return false;
+        }
+
+        if ($venue->getAvailabilityStatus() !== 'Available') {
+            return false;
+        }
+
+        $availabilityDate = $venue->getAvailabilityDate();
+        if ($availabilityDate === null) {
+            return true;
+        }
+
+        $availableOn = \DateTimeImmutable::createFromInterface($availabilityDate)
+            ->setTimezone(AppClock::timezone())
+            ->setTime(0, 0);
+        $today = AppClock::now()->setTime(0, 0);
+
+        return $availableOn <= $today;
+    }
+
+    private function validateRequestedEquipment(array $requestedEquipmentList): void
+    {
+        $seenEquipmentIdentifiers = [];
+
+        foreach ($requestedEquipmentList as $equipmentItem) {
+            $equipmentIdentifier = (int)($equipmentItem['equipmentIdentifier'] ?? 0);
+            $requestedQuantity = (int)($equipmentItem['quantity'] ?? $equipmentItem['selectedQuantity'] ?? 0);
+
+            if ($equipmentIdentifier <= 0) {
+                throw new DomainValidationException('Each requested equipment item must include a valid equipment identifier.');
+            }
+
+            if ($requestedQuantity <= 0) {
+                throw new DomainValidationException('Each requested equipment quantity must be at least 1.');
+            }
+
+            if (isset($seenEquipmentIdentifiers[$equipmentIdentifier])) {
+                throw new DomainValidationException('Duplicate equipment selections are not allowed.');
+            }
+            $seenEquipmentIdentifiers[$equipmentIdentifier] = true;
+
+            $equipment = $this->equipmentRepository->find($equipmentIdentifier);
+            if ($equipment === null) {
+                throw new DomainValidationException('Selected equipment was not found.');
+            }
+
+            $availableQuantity = $equipment->getAvailableQuantity();
+            $equipmentState = strtolower(trim($equipment->getEquipmentState()));
+            $operationalStatus = strtolower(trim($equipment->getOperationalStatus()));
+            $isAvailable = $availableQuantity > 0
+                && ($equipmentState === 'available' || $operationalStatus === 'active' || $operationalStatus === 'available');
+
+            if (!$isAvailable) {
+                throw new DomainValidationException(sprintf('Selected equipment "%s" is not available.', $equipment->getEquipmentName()));
+            }
+
+            if ($requestedQuantity > $availableQuantity) {
+                throw new DomainValidationException(sprintf(
+                    'Requested quantity for "%s" exceeds the available quantity of %d.',
+                    $equipment->getEquipmentName(),
+                    $availableQuantity
+                ));
+            }
+        }
+    }
+
+    private function isAllowedReservationTimeSlot(\DateTimeInterface $dateTime): bool
+    {
+        $minutes = ((int)$dateTime->format('G') * 60) + (int)$dateTime->format('i');
+        $minutePart = (int)$dateTime->format('i');
+
+        return in_array($minutePart, [0, 30], true)
+            && $minutes >= self::BUSINESS_START_MINUTES
+            && $minutes <= self::BUSINESS_END_MINUTES;
     }
 
     private function describeReservationResources(ReservationEntity $reservation): string

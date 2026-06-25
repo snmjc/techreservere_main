@@ -3,11 +3,16 @@
 namespace App\Tests\Unit\Domain\Reservation\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Equipment\Entity\EquipmentEntity;
+use App\Domain\Equipment\Repository\EquipmentRepository;
 use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
+use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Service\ReservationBookingPolicyService;
 use App\Domain\Reservation\Service\ReservationCreateService;
+use App\Domain\Venue\Entity\VenueEntity;
+use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainValidationException;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -22,21 +27,44 @@ class ReservationCreateServiceTest extends TestCase
     private ReservationBookingPolicyService|MockObject $reservationBookingPolicyService;
     private NotificationDispatchService|MockObject $notificationDispatchService;
     private AccountRepository|MockObject $accountRepository;
+    private VenueRepository|MockObject $venueRepository;
+    private EquipmentRepository|MockObject $equipmentRepository;
+    private int $equipmentAvailableQuantity = 10;
+    private string $equipmentState = 'Available';
+    private string $equipmentOperationalStatus = 'Available';
+    private int $venueCapacityLimit = 500;
+    private string $venueAvailabilityStatus = 'Available';
+    private string $venueOperationalStatus = 'Active';
+    private ?\DateTimeInterface $venueAvailabilityDate = null;
+    private array $overlappingVenueReservations = [];
     private ReservationCreateService $service;
 
     protected function setUp(): void
     {
         $this->reservationRepository = $this->createMock(ReservationRepository::class);
+        $this->reservationRepository
+            ->method('findVenueReservationsOverlappingRange')
+            ->willReturnCallback(fn (): array => $this->overlappingVenueReservations);
         $this->connection = $this->createMock(Connection::class);
         $this->reservationBookingPolicyService = $this->createMock(ReservationBookingPolicyService::class);
         $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
         $this->accountRepository = $this->createMock(AccountRepository::class);
+        $this->venueRepository = $this->createMock(VenueRepository::class);
+        $this->venueRepository
+            ->method('find')
+            ->willReturnCallback(fn (): VenueEntity|MockObject => $this->createVenueEntity());
+        $this->equipmentRepository = $this->createMock(EquipmentRepository::class);
+        $this->equipmentRepository
+            ->method('find')
+            ->willReturnCallback(fn (): EquipmentEntity|MockObject => $this->createEquipmentEntity());
         $this->service = new ReservationCreateService(
             $this->reservationRepository,
             $this->connection,
             $this->reservationBookingPolicyService,
             $this->notificationDispatchService,
-            $this->accountRepository
+            $this->accountRepository,
+            $this->venueRepository,
+            $this->equipmentRepository
         );
 
         $schemaReadyProperty = new \ReflectionProperty($this->service, 'reservationSchemaEnsured');
@@ -97,6 +125,112 @@ class ReservationCreateServiceTest extends TestCase
                 ['equipmentIdentifier' => 9, 'name' => 'Projector', 'quantity' => 0],
             ],
             requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsEquipmentQuantityAboveAvailability(): void
+    {
+        $this->equipmentAvailableQuantity = 2;
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Requested quantity for "Projector" exceeds the available quantity of 2.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [
+                ['equipmentIdentifier' => 9, 'name' => 'Projector', 'quantity' => 3],
+            ],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsUnavailableEquipment(): void
+    {
+        $this->equipmentAvailableQuantity = 0;
+        $this->equipmentState = 'Unavailable';
+        $this->equipmentOperationalStatus = 'Unavailable';
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Selected equipment "Projector" is not available.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [
+                ['equipmentIdentifier' => 9, 'name' => 'Projector', 'quantity' => 1],
+            ],
+            requestedQuantity: 100,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsParticipantCountAboveSelectedVenueCapacity(): void
+    {
+        $this->venueCapacityLimit = 30;
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Participant count exceeds the selected room capacity of 30.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 31,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsSelectedVenueWithOverlappingReservation(): void
+    {
+        $this->overlappingVenueReservations = [$this->createMock(ReservationEntity::class)];
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Selected room is no longer available for the requested time.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 30,
+            eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
+            endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
+            purposeDescription: 'Academic',
+            activityType: 'Defense',
+            supportingDocuments: null
+        ));
+    }
+
+    public function testCreateReservationRejectsUnavailableSelectedVenue(): void
+    {
+        $this->venueAvailabilityStatus = 'Unavailable';
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Selected room is no longer available.');
+
+        $this->service->createReservation(10, new ReservationCreateRequestDTO(
+            organizationName: 'Capstone Defense',
+            venueIdentifier: 1,
+            requestedEquipmentList: [],
+            requestedQuantity: 30,
             eventDateTime: $this->buildIsoDateTime('+1 day 09:00'),
             endDateTime: $this->buildIsoDateTime('+1 day 10:00'),
             purposeDescription: 'Academic',
@@ -284,5 +418,27 @@ class ReservationCreateServiceTest extends TestCase
             ['column_name' => 'submission_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
             ['column_name' => 'updated_timestamp', 'data_type' => 'timestamp without time zone', 'udt_name' => 'timestamp'],
         ];
+    }
+
+    private function createVenueEntity(): VenueEntity|MockObject
+    {
+        $venue = $this->createMock(VenueEntity::class);
+        $venue->method('getCapacityLimit')->willReturnCallback(fn (): int => $this->venueCapacityLimit);
+        $venue->method('getAvailabilityStatus')->willReturnCallback(fn (): string => $this->venueAvailabilityStatus);
+        $venue->method('getOperationalStatus')->willReturnCallback(fn (): string => $this->venueOperationalStatus);
+        $venue->method('getAvailabilityDate')->willReturnCallback(fn (): ?\DateTimeInterface => $this->venueAvailabilityDate);
+
+        return $venue;
+    }
+
+    private function createEquipmentEntity(): EquipmentEntity|MockObject
+    {
+        $equipment = $this->createMock(EquipmentEntity::class);
+        $equipment->method('getEquipmentName')->willReturn('Projector');
+        $equipment->method('getAvailableQuantity')->willReturnCallback(fn (): int => $this->equipmentAvailableQuantity);
+        $equipment->method('getEquipmentState')->willReturnCallback(fn (): string => $this->equipmentState);
+        $equipment->method('getOperationalStatus')->willReturnCallback(fn (): string => $this->equipmentOperationalStatus);
+
+        return $equipment;
     }
 }

@@ -18,10 +18,40 @@
           </div>
 
           <div class="borrower-reservation-panel" v-if="isVenueTab">
-            <h2>Select Venue</h2>
-            <p>Choose the venue you want to reserve.</p>
+            <h2>Recommended Rooms</h2>
+            <p>{{ venueRecommendationSummary }}</p>
 
             <p v-if="selectionWarning" class="reservation-selection-warning">{{ selectionWarning }}</p>
+
+            <div v-if="recommendedVenues.length" class="reservation-recommendation-grid">
+              <article
+                v-for="(venue, index) in recommendedVenues"
+                :key="`recommended-${venue.venueIdentifier}`"
+                class="reservation-recommendation-card"
+                :class="{ 'is-selected': selectedVenueRecord?.venueIdentifier === venue.venueIdentifier }"
+              >
+                <div class="reservation-recommendation-card__header">
+                  <span>{{ index === 0 ? 'Best match' : `Match ${index + 1}` }}</span>
+                  <strong>{{ venue.venueName }}</strong>
+                </div>
+                <div class="reservation-recommendation-card__meta">
+                  <span>{{ venue.floorLabel }}</span>
+                  <span>{{ formatVenueCapacityMatch(venue) }}</span>
+                </div>
+                <button
+                  class="reservation-selection-action"
+                  :class="{ 'is-selected': selectedVenueRecord?.venueIdentifier === venue.venueIdentifier }"
+                  type="button"
+                  @click="handleVenueSelection(venue)"
+                >
+                  {{ selectedVenueRecord?.venueIdentifier === venue.venueIdentifier ? 'Selected' : 'Select' }}
+                </button>
+              </article>
+            </div>
+
+            <p v-else class="reservation-selection-warning">
+              No available rooms can fit {{ participantCount }} participant{{ participantCount === 1 ? '' : 's' }} for the selected schedule.
+            </p>
 
             <div class="reservation-selection-filters">
               <label class="borrower-reservation-field">
@@ -38,14 +68,17 @@
               <label class="borrower-reservation-field">
                 <span>Status</span>
                 <select v-model="venueStatusFilter">
-                  <option value="all">All</option>
-                  <option value="available">Available</option>
+                  <option value="recommended">Recommended</option>
+                  <option value="available">Available Rooms</option>
+                  <option value="all">All Rooms</option>
                   <option value="unavailable">Unavailable</option>
+                  <option value="too-small">Below Capacity</option>
                 </select>
               </label>
               <label class="borrower-reservation-field">
                 <span>Sort By</span>
                 <select v-model="venueSortValue">
+                  <option value="recommended">Best Match</option>
                   <option value="name-asc">Venue Name (A - Z)</option>
                   <option value="name-desc">Venue Name (Z - A)</option>
                   <option value="capacity-desc">Capacity (High - Low)</option>
@@ -64,6 +97,7 @@
                       <th>Venue Name</th>
                       <th>Status</th>
                       <th>Capacity</th>
+                      <th>Match</th>
                       <th>Type</th>
                       <th>Action</th>
                     </tr>
@@ -77,18 +111,19 @@
                       <td>{{ venue.floorLabel }}</td>
                       <td>{{ venue.venueName }}</td>
                       <td>
-                        <span class="reservation-status-pill" :class="venue.venueAvailable ? 'is-available' : 'is-unavailable'">
-                          {{ venue.venueAvailable ? 'Available' : 'Unavailable' }}
+                        <span class="reservation-status-pill" :class="venue.isSelectableRoom ? 'is-available' : 'is-unavailable'">
+                          {{ venue.availabilityLabel }}
                         </span>
                       </td>
-                      <td>{{ venue.capacityLimit }}</td>
+                      <td>{{ venue.capacityLimit || 'Not set' }}</td>
+                      <td>{{ formatVenueCapacityMatch(venue) }}</td>
                       <td>{{ venue.venueType }}</td>
                       <td>
                         <button
                           class="reservation-selection-action"
                           :class="{ 'is-selected': selectedVenueRecord?.venueIdentifier === venue.venueIdentifier }"
                           type="button"
-                          :disabled="!venue.venueAvailable"
+                          :disabled="!venue.isSelectableRoom"
                           @click="handleVenueSelection(venue)"
                         >
                           {{ selectedVenueRecord?.venueIdentifier === venue.venueIdentifier ? 'Selected' : 'Select' }}
@@ -96,7 +131,7 @@
                       </td>
                     </tr>
                     <tr v-if="filteredVenues.length === 0">
-                      <td colspan="6" class="reservation-selection-empty-cell">No venues match the selected filters.</td>
+                      <td colspan="7" class="reservation-selection-empty-cell">No venues match the selected filters.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -252,8 +287,8 @@ const { equipmentList, venueList, loadAllData } = useReservationData();
 const activeTab = ref(reservationFormStore.reservationType === 'Equipment' ? 'equipment' : 'venue');
 const venueSearchQuery = ref('');
 const venueFloorFilter = ref('all');
-const venueStatusFilter = ref('all');
-const venueSortValue = ref('name-asc');
+const venueStatusFilter = ref('recommended');
+const venueSortValue = ref('recommended');
 const equipmentSearchQuery = ref('');
 const equipmentCategoryFilter = ref('all');
 const equipmentStatusFilter = ref('all');
@@ -293,15 +328,33 @@ const showVenueSection = computed(() => ['Venue', 'Both'].includes(reservationFo
 const showEquipmentSection = computed(() => ['Equipment', 'Both'].includes(reservationFormStore.reservationType));
 const isVenueTab = computed(() => showVenueSection.value && (!showEquipmentSection.value || activeTab.value === 'venue'));
 const isEquipmentTab = computed(() => showEquipmentSection.value && (!showVenueSection.value || activeTab.value === 'equipment'));
+const participantCount = computed(() => Math.max(Number.parseInt(reservationFormStore.participantCount || '0', 10) || 0, 0));
+const venueRecommendationSummary = computed(() => (
+  participantCount.value > 0
+    ? `Rooms are filtered by availability and ranked for ${participantCount.value} participant${participantCount.value === 1 ? '' : 's'}.`
+    : 'Rooms are filtered by availability and ranked by fit.'
+));
 
 const normalizedVenueRecords = computed(() => venueList.value
   .filter((venue) => !isVenueFloorPlaceholderRecord(venue))
-  .map((venue) => ({
-    ...venue,
-    floorLabel: String(venue.floorLevel || 'No Floor'),
-    venueType: inferVenueType(venue),
-    venueAvailable: venue.availabilityStatus === 'Available',
-  })));
+  .map((venue) => {
+    const capacityLimit = Number.parseInt(venue.capacityLimit ?? 0, 10) || 0;
+    const venueAvailable = venue.availabilityStatus === 'Available';
+    const capacityFits = participantCount.value > 0 && capacityLimit >= participantCount.value;
+    const capacityGap = capacityFits ? capacityLimit - participantCount.value : Number.MAX_SAFE_INTEGER;
+
+    return {
+      ...venue,
+      capacityLimit,
+      capacityGap,
+      capacityFits,
+      floorLabel: String(venue.floorLevel || 'No Floor'),
+      venueType: inferVenueType(venue),
+      venueAvailable,
+      isSelectableRoom: venueAvailable && capacityFits,
+      availabilityLabel: resolveVenueAvailabilityLabel(venueAvailable, capacityFits),
+    };
+  }));
 
 const venueFloorOptions = computed(() => [...new Set(normalizedVenueRecords.value.map((venue) => venue.floorLabel))]);
 
@@ -310,17 +363,25 @@ const filteredVenues = computed(() => {
   return [...normalizedVenueRecords.value]
     .filter((venue) => {
       if (venueFloorFilter.value !== 'all' && venue.floorLabel !== venueFloorFilter.value) return false;
+      if (venueStatusFilter.value === 'recommended' && !venue.isSelectableRoom) return false;
       if (venueStatusFilter.value === 'available' && !venue.venueAvailable) return false;
       if (venueStatusFilter.value === 'unavailable' && venue.venueAvailable) return false;
+      if (venueStatusFilter.value === 'too-small' && (venue.capacityFits || !venue.venueAvailable)) return false;
       return [venue.venueName, venue.floorLabel, venue.venueType].join(' ').toLowerCase().includes(query);
     })
     .sort((left, right) => {
+      if (venueSortValue.value === 'recommended') return compareRecommendedVenues(left, right);
       if (venueSortValue.value === 'name-desc') return right.venueName.localeCompare(left.venueName);
       if (venueSortValue.value === 'capacity-desc') return right.capacityLimit - left.capacityLimit;
       if (venueSortValue.value === 'capacity-asc') return left.capacityLimit - right.capacityLimit;
       return left.venueName.localeCompare(right.venueName);
     });
 });
+
+const recommendedVenues = computed(() => [...normalizedVenueRecords.value]
+  .filter((venue) => venue.isSelectableRoom)
+  .sort(compareRecommendedVenues)
+  .slice(0, 3));
 
 const venueTotalPages = computed(() => Math.max(1, Math.ceil(filteredVenues.value.length / venuePageSize)));
 const paginatedVenues = computed(() => {
@@ -404,7 +465,7 @@ function buildInitialEquipmentSelection() {
 }
 
 function handleVenueSelection(venue) {
-  if (!venue.venueAvailable) return;
+  if (!venue.isSelectableRoom) return;
   selectedVenueRecord.value = selectedVenueRecord.value?.venueIdentifier === venue.venueIdentifier ? null : venue;
 }
 
@@ -496,8 +557,8 @@ function clearEquipmentQuantityError(equipmentIdentifier) {
 function resetVenueFilters() {
   venueSearchQuery.value = '';
   venueFloorFilter.value = 'all';
-  venueStatusFilter.value = 'all';
-  venueSortValue.value = 'name-asc';
+  venueStatusFilter.value = 'recommended';
+  venueSortValue.value = 'recommended';
 }
 
 function resetEquipmentFilters() {
@@ -557,6 +618,39 @@ function inferVenueType(venue) {
   if (normalizedName.includes('audio visual')) return 'Audio Visual Room';
   if (normalizedName.includes('room')) return 'Venue';
   return 'Venue';
+}
+
+function compareRecommendedVenues(left, right) {
+  if (left.isSelectableRoom !== right.isSelectableRoom) return left.isSelectableRoom ? -1 : 1;
+  if (left.venueAvailable !== right.venueAvailable) return left.venueAvailable ? -1 : 1;
+  if (left.capacityFits !== right.capacityFits) return left.capacityFits ? -1 : 1;
+  if (left.capacityGap !== right.capacityGap) return left.capacityGap - right.capacityGap;
+  if (left.capacityLimit !== right.capacityLimit) return left.capacityLimit - right.capacityLimit;
+  return left.venueName.localeCompare(right.venueName);
+}
+
+function resolveVenueAvailabilityLabel(venueAvailable, capacityFits) {
+  if (!venueAvailable) return 'Unavailable';
+  if (!capacityFits) return 'Below Capacity';
+  return 'Recommended';
+}
+
+function formatVenueCapacityMatch(venue) {
+  const capacityLimit = Number(venue?.capacityLimit || 0);
+  if (capacityLimit <= 0) {
+    return 'Capacity not set';
+  }
+
+  if (participantCount.value <= 0) {
+    return `${capacityLimit} seats`;
+  }
+
+  const remainingSeats = capacityLimit - participantCount.value;
+  if (remainingSeats < 0) {
+    return `${Math.abs(remainingSeats)} short`;
+  }
+
+  return remainingSeats === 0 ? 'Exact fit' : `${remainingSeats} open seats`;
 }
 
 function dedupeEquipmentSelections(items) {
