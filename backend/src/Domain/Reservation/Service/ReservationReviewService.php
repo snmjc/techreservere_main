@@ -7,6 +7,7 @@ use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
+use App\Domain\Task\Service\AutomaticTaskAssignmentService;
 use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
@@ -18,18 +19,21 @@ class ReservationReviewService
     private AccountRepository $accountRepository;
     private NotificationDispatchService $notificationDispatchService;
     private VenueRepository $venueRepository;
+    private AutomaticTaskAssignmentService $automaticTaskAssignmentService;
 
     public function __construct(
         ReservationRepository $reservationRepository,
         AccountRepository $accountRepository,
         NotificationDispatchService $notificationDispatchService,
-        VenueRepository $venueRepository
+        VenueRepository $venueRepository,
+        AutomaticTaskAssignmentService $automaticTaskAssignmentService
     )
     {
         $this->reservationRepository = $reservationRepository;
         $this->accountRepository = $accountRepository;
         $this->notificationDispatchService = $notificationDispatchService;
         $this->venueRepository = $venueRepository;
+        $this->automaticTaskAssignmentService = $automaticTaskAssignmentService;
     }
 
     // ===== AI GENERATED: getAllReservations =====
@@ -98,8 +102,13 @@ class ReservationReviewService
 
         $normalizedReason = $rejectionReason === null ? null : trim($rejectionReason);
 
-        if ($newStatus === 'Approved') {
+        $previousStatus = $entity->getCurrentStatus();
+        $isNewApproval = $newStatus === 'Approved' && $previousStatus !== 'Approved';
+        $assignedToAccountId = null;
+
+        if ($isNewApproval) {
             $this->validateVenueApprovalConflict($entity);
+            $assignedToAccountId = $this->automaticTaskAssignmentService->prepareStaffAssignment($entity);
         }
 
         $entity->setCurrentStatus($newStatus);
@@ -108,6 +117,9 @@ class ReservationReviewService
         }
 
         $this->reservationRepository->persistReservation($entity);
+        if ($isNewApproval) {
+            $this->automaticTaskAssignmentService->createTaskForApproval($entity, $assignedToAccountId);
+        }
         $this->notifyBorrowerOfStatusChange($entity, $newStatus, $normalizedReason);
 
         return $this->transformEntityToDTO($entity);

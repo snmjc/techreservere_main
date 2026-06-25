@@ -79,11 +79,13 @@ services:
 
   analytics-service:
     build:
-      context: ./analytics-service
+      context: .
+      dockerfile: analytics-service/Dockerfile
     container_name: techreserve_analytics_service
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
     volumes:
       - ./analytics-service/app:/app/app
+      - ./docs/demo-seeds:/app/demo-seeds:ro
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD:-techreserve_pass}@database:5432/${POSTGRES_DB:-techreserve}"
       ANALYTICS_DAILY_CRON_HOUR: "${ANALYTICS_DAILY_CRON_HOUR:-2}"

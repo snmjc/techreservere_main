@@ -8,6 +8,7 @@ use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Service\ReservationReviewService;
+use App\Domain\Task\Service\AutomaticTaskAssignmentService;
 use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\RoleConstants;
@@ -22,6 +23,7 @@ class ReservationReviewServiceTest extends TestCase
     private AccountRepository|MockObject $accountRepository;
     private NotificationDispatchService|MockObject $notificationDispatchService;
     private VenueRepository|MockObject $venueRepository;
+    private AutomaticTaskAssignmentService|MockObject $automaticTaskAssignmentService;
     private ReservationReviewService $service;
 
     protected function setUp(): void
@@ -30,11 +32,13 @@ class ReservationReviewServiceTest extends TestCase
         $this->accountRepository = $this->createMock(AccountRepository::class);
         $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
         $this->venueRepository = $this->createMock(VenueRepository::class);
+        $this->automaticTaskAssignmentService = $this->createMock(AutomaticTaskAssignmentService::class);
         $this->service = new ReservationReviewService(
             $this->reservationRepository,
             $this->accountRepository,
             $this->notificationDispatchService,
-            $this->venueRepository
+            $this->venueRepository,
+            $this->automaticTaskAssignmentService
         );
     }
 
@@ -126,7 +130,50 @@ class ReservationReviewServiceTest extends TestCase
         $this->assertSame('Borrower Organization', $reservation->borrowerFullName);
     }
 
-    private function createReservationEntity(int $borrowerAccountId): ReservationEntity|MockObject
+    public function testApprovingReservationCreatesAutomaticTaskForSelectedStaff(): void
+    {
+        $reservation = $this->createReservationEntity(25, 'Pending Review');
+        $reservation
+            ->expects($this->once())
+            ->method('setCurrentStatus')
+            ->with('Approved')
+            ->willReturnSelf();
+
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('find')
+            ->with(10)
+            ->willReturn($reservation);
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('findAcceptedVenueReservationsOverlappingRange')
+            ->willReturn([]);
+        $this->reservationRepository
+            ->expects($this->once())
+            ->method('persistReservation')
+            ->with($reservation);
+        $this->accountRepository
+            ->method('find')
+            ->with(25)
+            ->willReturn($this->createAccountEntity('Juan', 'Dela Cruz'));
+        $this->automaticTaskAssignmentService
+            ->expects($this->once())
+            ->method('prepareStaffAssignment')
+            ->with($reservation)
+            ->willReturn(7);
+        $this->automaticTaskAssignmentService
+            ->expects($this->once())
+            ->method('createTaskForApproval')
+            ->with($reservation, 7)
+            ->willReturn(null);
+
+        $this->service->updateReservationStatus(10, 'Approved');
+    }
+
+    private function createReservationEntity(
+        int $borrowerAccountId,
+        string $currentStatus = 'Approved'
+    ): ReservationEntity|MockObject
     {
         $reservation = $this->createMock(ReservationEntity::class);
         $reservation->method('getReservationIdentifier')->willReturn(10);
@@ -140,7 +187,7 @@ class ReservationReviewServiceTest extends TestCase
         $reservation->method('getEndDateTime')->willReturn(new \DateTimeImmutable('2026-06-16T11:00:00+00:00'));
         $reservation->method('getPurposeDescription')->willReturn('Class activity');
         $reservation->method('getActivityType')->willReturn('Academic');
-        $reservation->method('getCurrentStatus')->willReturn('Approved');
+        $reservation->method('getCurrentStatus')->willReturn($currentStatus);
         $reservation->method('getPriorityLevel')->willReturn('Normal');
         $reservation->method('getRejectionReason')->willReturn(null);
         $reservation->method('getSupportingDocuments')->willReturn(null);

@@ -141,14 +141,12 @@ class AnalyticsController
         try {
             $requestBody = $this->jsonBody($request);
             $scenario = strtolower(trim((string) ($requestBody['scenario'] ?? '')));
+            $historyDays = max(1, (int) ($requestBody['historyDays'] ?? 30));
+            $startDate = trim((string) ($requestBody['startDate'] ?? ''));
+            $endDate = trim((string) ($requestBody['endDate'] ?? ''));
             error_log(sprintf('Analytics trigger requested with scenario: %s', $scenario !== '' ? $scenario : '(empty)'));
             $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
-            $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/run-daily-check', [
-                'json' => [
-                    'scenario' => $scenario,
-                ],
-            ]);
-            $payload = $response->toArray(false);
+            $payload = $this->triggerAnalyticsService($analyticsServiceUrl, $scenario, $historyDays, $startDate, $endDate);
             $seededCount = is_array($payload['results']['forecast']['actualSeries'] ?? null)
                 ? count($payload['results']['forecast']['actualSeries'])
                 : null;
@@ -175,6 +173,83 @@ class AnalyticsController
         );
 
         return $configuration ? $this->normalizeRow($configuration) : $this->defaultConfiguration();
+    }
+
+    #[Route('/range-results', name: 'analytics_range_results', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getRangeResults(Request $request): JsonResponse
+    {
+        try {
+            $historyDays = max(1, (int) $request->query->get('historyDays', 30));
+            $startDate = trim((string) $request->query->get('startDate', ''));
+            $endDate = trim((string) $request->query->get('endDate', ''));
+
+            if ($startDate === '' || $endDate === '') {
+                return $this->createErrorResponse('ValidationError', 'startDate and endDate are required.', 422);
+            }
+
+            $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
+            $payload = $this->requestRangeAnalysis($analyticsServiceUrl, $historyDays, $startDate, $endDate);
+
+            return $this->createSuccessResponse([
+                'analyticsServiceResponse' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsRangeFetchFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    private function triggerAnalyticsService(
+        string $analyticsServiceUrl,
+        string $scenario,
+        int $historyDays,
+        string $startDate,
+        string $endDate
+    ): array
+    {
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/run-daily-check', [
+                    'json' => [
+                        'scenario' => $scenario,
+                        'historyDays' => $historyDays,
+                        'startDate' => $startDate,
+                        'endDate' => $endDate,
+                    ],
+                    'timeout' => 60,
+                ]);
+
+                return $response->toArray(false);
+            } catch (\Throwable $exception) {
+                $lastException = $exception;
+
+                if ($attempt < 3) {
+                    usleep(500000);
+                }
+            }
+        }
+
+        throw $lastException ?? new \RuntimeException('Analytics service request failed.');
+    }
+
+    private function requestRangeAnalysis(
+        string $analyticsServiceUrl,
+        int $historyDays,
+        string $startDate,
+        string $endDate
+    ): array {
+        $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/analyze-range', [
+            'json' => [
+                'historyDays' => $historyDays,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+            ],
+            'timeout' => 60,
+        ]);
+
+        return $response->toArray(false);
     }
 
     private function defaultConfiguration(): array

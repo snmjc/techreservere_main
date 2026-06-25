@@ -123,9 +123,10 @@ export function buildForecastNarrative(forecast = {}, actualSeries = [], forecas
   return { tldr, summary, interpretation };
 }
 
-export function buildForecastDisplaySeries(actualSeries = [], forecastSeries = []) {
+export function buildForecastDisplaySeries(actualSeries = [], forecastSeries = [], historySeries = []) {
   const actualMap = new Map();
   const forecastMap = new Map();
+  const historyMap = new Map();
 
   actualSeries.forEach((item) => {
     const key = item?.date || item?.label || '';
@@ -137,16 +138,17 @@ export function buildForecastDisplaySeries(actualSeries = [], forecastSeries = [
     if (key) forecastMap.set(key, Number(item?.value || 0));
   });
 
+  historySeries.forEach((item) => {
+    const key = item?.date || item?.label || '';
+    if (key) historyMap.set(key, Number(item?.value || 0));
+  });
+
   const dateComparator = (left, right) => parseDateOnly(left).getTime() - parseDateOnly(right).getTime();
   const actualKeys = [...actualMap.keys()].sort(dateComparator);
   const forecastKeys = [...forecastMap.keys()].sort(dateComparator);
   const lastActualKey = actualKeys[actualKeys.length - 1];
   const lastActualDate = lastActualKey ? parseDateOnly(lastActualKey) : null;
-  const normalizedForecastKeys = forecastKeys.filter((key) => {
-    if (!lastActualDate) return true;
-    const date = parseDateOnly(key);
-    return Number.isNaN(date.getTime()) || date > lastActualDate;
-  });
+  const normalizedForecastKeys = [...forecastKeys];
 
   if (normalizedForecastKeys.length === 0 && lastActualDate && actualKeys.length > 0) {
     const tailValues = actualKeys.slice(-3).map((key) => actualMap.get(key) || 0);
@@ -160,14 +162,20 @@ export function buildForecastDisplaySeries(actualSeries = [], forecastSeries = [
     }
   }
 
-  const labels = [...new Set([...actualKeys, ...normalizedForecastKeys])].sort(dateComparator);
+  const historyKeys = [...historyMap.keys()].sort(dateComparator);
+  const labels = [...new Set([...actualKeys, ...normalizedForecastKeys, ...historyKeys])].sort(dateComparator);
   const actualValues = labels.map((label) => {
     const isFutureForecastLabel = lastActualDate && parseDateOnly(label).getTime() > lastActualDate.getTime();
     return isFutureForecastLabel ? null : Number(actualMap.get(label) ?? 0);
   });
-  const forecastValues = labels.map((label) => Number(forecastMap.get(label) ?? 0));
+  const forecastValues = labels.map((label) => (
+    forecastMap.has(label) ? Number(forecastMap.get(label) || 0) : null
+  ));
+  const historyValues = labels.map((label) => (
+    historyMap.has(label) ? Number(historyMap.get(label) || 0) : null
+  ));
 
-  return { labels, actualValues, forecastValues };
+  return { labels, actualValues, forecastValues, historyValues };
 }
 
 export function roundForecastValue(value) {

@@ -13,19 +13,29 @@
               <p class="reports-analytics-source">{{ reportsSourceLabel }}</p>
             </div>
 
-            <label class="reports-analytics-date-range">
-              <span>Date Range:</span>
-              <select v-model="selectedRangeKey">
-                <option
-                  v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
-                  :key="preset.key"
-                  :value="preset.key"
-                >
-                  {{ preset.label }}
-                </option>
-              </select>
-              <small>{{ activeRangeLabel }}</small>
-            </label>
+            <div class="reports-analytics-controls">
+              <label class="reports-analytics-date-range">
+                <span>Date Range:</span>
+                <select v-model="selectedRangeKey">
+                  <option
+                    v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
+                    :key="preset.key"
+                    :value="preset.key"
+                  >
+                    {{ preset.label }}
+                  </option>
+                </select>
+                <small>{{ activeRangeLabel }}</small>
+              </label>
+              <button
+                class="reports-refresh-button"
+                type="button"
+                :disabled="isReportsLoading"
+                @click="handleRefreshReports"
+              >
+                {{ isReportsLoading ? 'Refreshing...' : 'Refresh' }}
+              </button>
+            </div>
           </header>
 
           <p v-if="reportsError" class="reports-inline-message is-error">{{ reportsError }}</p>
@@ -176,7 +186,8 @@
           <div class="reports-bottom-grid">
             <section class="reports-panel">
               <h2>Equipment Utilization Overview</h2>
-              <div v-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+              <div v-if="isUtilizationRefreshing" class="reports-inline-message">Refreshing live utilization data from the backend...</div>
+              <div v-else-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
               <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
                 <canvas ref="utilizationChartRef" class="reports-chart-canvas" aria-label="Equipment utilization comparison chart"></canvas>
               </div>
@@ -361,6 +372,7 @@ const analyticsRunStatus = ref('');
 const analyticsRunStatusType = ref('info');
 const pdfError = ref('');
 const isPreparingPdf = ref(false);
+const isUtilizationRefreshing = ref(false);
 const reportSurfaceRef = ref(null);
 const forecastChartRef = ref(null);
 const riskChartRef = ref(null);
@@ -379,6 +391,7 @@ const analyticsScenarios = [
   { key: 'high_last_high_this', title: 'High demand last year, high this sem', description: 'Strong demand in both periods for stress testing.' },
   { key: 'low_last_low_this', title: 'Low demand last year, low this sem', description: 'Quiet baseline across both periods.' },
   { key: 'low_last_high_this', title: 'Low demand last year, high this sem', description: 'Recovery pattern with a current-term spike.' },
+  { key: 'mixed', title: 'Mixed', description: 'Volatile pattern with realistic peaks, dips, and steady months.' },
 ];
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
@@ -483,6 +496,12 @@ watch(selectedRangeKey, () => {
   loadReportsAnalytics();
 });
 
+watch(isUtilizationRefreshing, (isRefreshing) => {
+  if (!isRefreshing) {
+    renderUtilizationChartAfterUpdate();
+  }
+});
+
 watch(
   () => forecastReport.value,
   () => {
@@ -510,6 +529,7 @@ watch(
 async function loadReportsAnalytics(options = {}) {
   const preferLiveOnly = options.preferLiveOnly === true;
   isReportsLoading.value = true;
+  isUtilizationRefreshing.value = true;
   reportsError.value = '';
   pdfError.value = '';
 
@@ -543,6 +563,7 @@ async function loadReportsAnalytics(options = {}) {
     }
   } finally {
     isReportsLoading.value = false;
+    isUtilizationRefreshing.value = false;
   }
 }
 
@@ -674,6 +695,10 @@ function closeScenarioModal() {
 
   analyticsRunStatus.value = '';
   isScenarioModalOpen.value = false;
+}
+
+function handleRefreshReports() {
+  loadReportsAnalytics();
 }
 
 async function handleGeneratePdf() {
