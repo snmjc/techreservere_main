@@ -143,12 +143,7 @@ class AnalyticsController
             $scenario = strtolower(trim((string) ($requestBody['scenario'] ?? '')));
             error_log(sprintf('Analytics trigger requested with scenario: %s', $scenario !== '' ? $scenario : '(empty)'));
             $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
-            $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/run-daily-check', [
-                'json' => [
-                    'scenario' => $scenario,
-                ],
-            ]);
-            $payload = $response->toArray(false);
+            $payload = $this->triggerAnalyticsService($analyticsServiceUrl, $scenario);
             $seededCount = is_array($payload['results']['forecast']['actualSeries'] ?? null)
                 ? count($payload['results']['forecast']['actualSeries'])
                 : null;
@@ -175,6 +170,32 @@ class AnalyticsController
         );
 
         return $configuration ? $this->normalizeRow($configuration) : $this->defaultConfiguration();
+    }
+
+    private function triggerAnalyticsService(string $analyticsServiceUrl, string $scenario): array
+    {
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/run-daily-check', [
+                    'json' => [
+                        'scenario' => $scenario,
+                    ],
+                    'timeout' => 60,
+                ]);
+
+                return $response->toArray(false);
+            } catch (\Throwable $exception) {
+                $lastException = $exception;
+
+                if ($attempt < 3) {
+                    usleep(500000);
+                }
+            }
+        }
+
+        throw $lastException ?? new \RuntimeException('Analytics service request failed.');
     }
 
     private function defaultConfiguration(): array

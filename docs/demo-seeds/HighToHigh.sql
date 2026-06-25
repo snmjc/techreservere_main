@@ -13,7 +13,7 @@
 -- fixture instead of accumulating a second 300-row dataset.
 --
 -- Run from the repo root while Docker is running:
---   Get-Content -Raw docs/demo-seeds/two-year-may25-jun23-high-high-stress.sql | docker compose -f compose.dev.yml exec -T database psql -U techreserve_user -d techreserve
+--   Get-Content -Raw docs/demo-seeds/HighToHigh.sql | docker compose -f compose.dev.yml exec -T database psql -U techreserve_user -d techreserve
 --
 -- Rerunning this script updates its DEMO-2526-* reservations instead of adding duplicates.
 
@@ -381,14 +381,7 @@ final_reservations AS (
         'DEMO-2526-' || LPAD(seed_sequence::text, 3, '0') AS reservation_code,
         borrower_slot,
         organization_name,
-        CASE MOD(seed_sequence, 6)
-            WHEN 0 THEN 'Auditorium A'
-            WHEN 1 THEN 'Multi-purpose Hall'
-            WHEN 2 THEN 'Conference Room 2'
-            WHEN 3 THEN 'Lecture Hall B'
-            WHEN 4 THEN 'Media Production Room'
-            ELSE 'Research Commons'
-        END AS venue_identifier,
+        NULL::int AS venue_identifier,
         requested_equipment_list,
         requested_quantity,
         event_date_time,
