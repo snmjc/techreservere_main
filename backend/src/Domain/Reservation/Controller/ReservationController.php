@@ -7,6 +7,7 @@ use App\Domain\Account\Service\AdminSecurityConfirmationService;
 use App\Domain\Reservation\Service\ReservationCreateService;
 use App\Domain\Reservation\Service\ReservationReviewService;
 use App\Shared\Exceptions\DomainNotFoundException;
+use App\Shared\Exceptions\DomainOperationException;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Traits\JsonResponseTrait;
 use App\Shared\Utils\RequiresRoles;
@@ -45,6 +46,9 @@ class ReservationController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function createReservation(Request $request): JsonResponse
     {
+        $identity = [];
+        $requestBody = [];
+
         try {
             $identity = $request->attributes->get('authenticatedIdentity', []);
             $requestBody = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
@@ -82,8 +86,20 @@ class ReservationController extends AbstractController
         } catch (\JsonException) {
             return $this->createErrorResponse('ReservationInvalidPayload', 'Reservation request body must be valid JSON.', 400);
         } catch (DomainValidationException $exception) {
-            return $this->createErrorResponse('ReservationValidationFailed', $exception->getMessage(), 422);
+            $context = $this->buildReservationCreateContext($identity, $requestBody);
+            $this->logReservationCreateFailure($exception, 'validation', $context);
+            return $this->createErrorResponse($exception->getErrorType(), $exception->getMessage(), 422, [
+                'failureBucket' => 'validation',
+            ]);
+        } catch (DomainOperationException $exception) {
+            $context = $this->buildReservationCreateContext($identity, $requestBody);
+            $this->logReservationCreateFailure($exception, 'persistence', $context);
+            return $this->createErrorResponse($exception->getErrorType(), 'Unable to submit reservation at this time.', 500, [
+                'failureBucket' => 'persistence',
+            ]);
         } catch (\Throwable $exception) {
+            $context = $this->buildReservationCreateContext($identity, $requestBody);
+            $this->logReservationCreateFailure($exception, $this->classifyReservationCreateFailureBucket($exception), $context);
             error_log(sprintf(
                 'Reservation Creation - Error [%s]: %s in %s:%d',
                 $exception::class,
@@ -99,6 +115,57 @@ class ReservationController extends AbstractController
 
             return $this->createErrorResponse('ReservationCreateFailed', $errorMessage, 500);
         }
+    }
+
+    private function buildReservationCreateContext(array $identity, array $requestBody): array
+    {
+        $equipmentIdentifiers = [];
+        foreach (($requestBody['requestedEquipmentList'] ?? []) as $equipmentItem) {
+            $equipmentIdentifier = (int)($equipmentItem['equipmentIdentifier'] ?? 0);
+            if ($equipmentIdentifier > 0) {
+                $equipmentIdentifiers[] = $equipmentIdentifier;
+            }
+        }
+
+        $hasVenue = (int)($requestBody['venueIdentifier'] ?? 0) > 0;
+        $hasEquipment = $equipmentIdentifiers !== [];
+        $reservationType = $hasVenue && $hasEquipment
+            ? 'both'
+            : ($hasVenue ? 'venue' : ($hasEquipment ? 'equipment' : 'unknown'));
+
+        return [
+            'accountId' => (int)($identity['accountIdentifier'] ?? 0),
+            'reservationType' => $reservationType,
+            'venueIdentifier' => $hasVenue ? (int)$requestBody['venueIdentifier'] : null,
+            'equipmentIdentifiers' => $equipmentIdentifiers,
+            'requestedQuantity' => (int)($requestBody['requestedQuantity'] ?? 0),
+            'eventDateTime' => (string)($requestBody['eventDateTime'] ?? ''),
+            'endDateTime' => (string)($requestBody['endDateTime'] ?? ''),
+        ];
+    }
+
+    private function classifyReservationCreateFailureBucket(\Throwable $exception): string
+    {
+        if ($exception instanceof DomainValidationException) {
+            return 'validation';
+        }
+
+        if ($exception instanceof DomainOperationException) {
+            return 'persistence';
+        }
+
+        return 'unexpected';
+    }
+
+    private function logReservationCreateFailure(\Throwable $exception, string $failureBucket, array $context): void
+    {
+        error_log(sprintf(
+            'Reservation Creation - Failure Bucket: %s | Context: %s | Error [%s]: %s',
+            $failureBucket,
+            json_encode($context),
+            $exception::class,
+            $exception->getMessage()
+        ));
     }
 
     // ===== AI GENERATED: listReservations =====
