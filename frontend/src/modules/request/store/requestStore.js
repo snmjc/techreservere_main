@@ -87,7 +87,9 @@ export const useRequestStore = defineStore('requestStore', () => {
     }
   }
 
-  async function fetchReservations() {
+  async function fetchReservations(options = {}) {
+    const shouldClearOnError = options.clearOnError !== false;
+
     try {
       isLoadingReservations.value = true;
       const [reservationResponse, taskResponse] = await Promise.all([
@@ -110,7 +112,9 @@ export const useRequestStore = defineStore('requestStore', () => {
       syncReservationsFromAPI(apiReservations, apiTasks);
     } catch (error) {
       console.error('Failed to fetch reservations:', error);
-      clearReservationLists();
+      if (shouldClearOnError) {
+        clearReservationLists();
+      }
     } finally {
       isLoadingReservations.value = false;
     }
@@ -136,7 +140,10 @@ export const useRequestStore = defineStore('requestStore', () => {
   async function updateReservationStatusAndRefresh(requestRecord, status, reason, errorMessage, securityConfirmation = null) {
     try {
       await reservationApi.updateReservationStatus(requestRecord.requestIdentifier, status, reason, securityConfirmation);
-      await fetchReservations();
+      updateLocalReservationStatus(requestRecord, status, reason);
+      fetchReservations({ clearOnError: false }).catch((error) => {
+        console.warn('Background reservation refresh failed after status update:', error);
+      });
       await refreshNotifications();
     } catch (error) {
       console.error(errorMessage, error);
@@ -146,6 +153,96 @@ export const useRequestStore = defineStore('requestStore', () => {
           || errorMessage.replace(/:$/, '.')
       );
     }
+  }
+
+  function updateLocalReservationStatus(requestRecord, status, reason = null) {
+    const requestIdentifier = resolveRequestIdentifier(requestRecord);
+    if (requestIdentifier <= 0) {
+      return;
+    }
+
+    const existingRecord = removeRecordFromAllBuckets(requestIdentifier) || requestRecord;
+    const updatedRecord = {
+      ...existingRecord,
+      requestStatus: status,
+      recordStatus: status,
+      remarks: resolveStatusRemarks(reason, existingRecord, status),
+      cancellationReason: resolveStatusRemarks(reason, existingRecord, status),
+    };
+
+    addRecordToStatusBucket(updatedRecord, status);
+  }
+
+  function resolveRequestIdentifier(requestRecord) {
+    return Number(requestRecord?.requestIdentifier || requestRecord?.reservationIdentifier || 0);
+  }
+
+  function removeRecordFromAllBuckets(requestIdentifier) {
+    let removedRecord = null;
+    const removeFromBucket = (records) => {
+      const index = records.findIndex((record) => resolveRequestIdentifier(record) === requestIdentifier);
+      if (index === -1) {
+        return records;
+      }
+
+      const nextRecords = [...records];
+      const [record] = nextRecords.splice(index, 1);
+      removedRecord = removedRecord || record;
+      return nextRecords;
+    };
+
+    pendingRequestsList.value = removeFromBucket(pendingRequestsList.value);
+    approvedRequestsList.value = removeFromBucket(approvedRequestsList.value);
+    activeReservationsList.value = removeFromBucket(activeReservationsList.value);
+    pastRecordsList.value = removeFromBucket(pastRecordsList.value);
+
+    return removedRecord;
+  }
+
+  function addRecordToStatusBucket(record, status) {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+
+    if (['pending review', 'pending', 'submitted'].includes(normalizedStatus)) {
+      pendingRequestsList.value = upsertRecordByIdentifier(pendingRequestsList.value, record);
+      return;
+    }
+
+    if (['approved', 'prepared'].includes(normalizedStatus)) {
+      approvedRequestsList.value = upsertRecordByIdentifier(approvedRequestsList.value, record);
+      return;
+    }
+
+    if (['deployed', 'active'].includes(normalizedStatus)) {
+      activeReservationsList.value = upsertRecordByIdentifier(activeReservationsList.value, record);
+      return;
+    }
+
+    pastRecordsList.value = upsertRecordByIdentifier(pastRecordsList.value, {
+      ...record,
+      recordStatus: status,
+    });
+  }
+
+  function upsertRecordByIdentifier(records, record) {
+    const requestIdentifier = resolveRequestIdentifier(record);
+    const nextRecords = records.filter((existingRecord) => resolveRequestIdentifier(existingRecord) !== requestIdentifier);
+    return [record, ...nextRecords];
+  }
+
+  function resolveStatusRemarks(reason, existingRecord, status) {
+    const normalizedReason = String(reason || '').trim();
+    if (normalizedReason !== '') {
+      return normalizedReason;
+    }
+
+    const existingRemarks = String(existingRecord?.remarks || existingRecord?.cancellationReason || '').trim();
+    if (existingRemarks !== '') {
+      return existingRemarks;
+    }
+
+    return status === 'Cancelled'
+      ? 'Cancelled by requester'
+      : `Reservation is currently marked as ${status}.`;
   }
 
   function syncReservationsFromAPI(apiReservations, taskRecords = []) {

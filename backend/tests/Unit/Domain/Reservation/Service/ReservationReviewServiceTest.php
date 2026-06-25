@@ -4,9 +4,11 @@ namespace App\Tests\Unit\Domain\Reservation\Service;
 
 use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
+use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Reservation\Service\ReservationReviewService;
+use App\Domain\Venue\Repository\VenueRepository;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\RoleConstants;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -18,13 +20,22 @@ class ReservationReviewServiceTest extends TestCase
 {
     private ReservationRepository|MockObject $reservationRepository;
     private AccountRepository|MockObject $accountRepository;
+    private NotificationDispatchService|MockObject $notificationDispatchService;
+    private VenueRepository|MockObject $venueRepository;
     private ReservationReviewService $service;
 
     protected function setUp(): void
     {
         $this->reservationRepository = $this->createMock(ReservationRepository::class);
         $this->accountRepository = $this->createMock(AccountRepository::class);
-        $this->service = new ReservationReviewService($this->reservationRepository, $this->accountRepository);
+        $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
+        $this->venueRepository = $this->createMock(VenueRepository::class);
+        $this->service = new ReservationReviewService(
+            $this->reservationRepository,
+            $this->accountRepository,
+            $this->notificationDispatchService,
+            $this->venueRepository
+        );
     }
 
     public function testAdminCanReadAnyReservationDetail(): void

@@ -241,7 +241,7 @@
           </section>
 
           <label class="pending-request-action-field pending-request-action-field--full">
-            <span>Remarks (Required)</span>
+            <span>Remarks (Optional)</span>
             <textarea
               v-model.trim="deleteForm.remarks"
               maxlength="500"
@@ -272,9 +272,9 @@
         </div>
 
         <footer class="pending-request-action-footer">
-          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" @click="closeDeleteModal">Cancel</button>
-          <button class="pending-request-action-button pending-request-action-button--delete" type="button" @click="confirmDeleteRequest">
-            Deny Request
+          <button class="pending-request-action-button pending-request-action-button--ghost" type="button" :disabled="isDenyingRequest" @click="closeDeleteModal">Cancel</button>
+          <button class="pending-request-action-button pending-request-action-button--delete" type="button" :disabled="isDenyingRequest" @click="confirmDeleteRequest">
+            {{ isDenyingRequest ? 'Denying...' : 'Deny Request' }}
           </button>
         </footer>
       </section>
@@ -402,6 +402,7 @@ const approveForm = reactive({
 });
 const approveModalError = ref('');
 const isApprovingRequest = ref(false);
+const isDenyingRequest = ref(false);
 const deleteForm = reactive({
   remarks: '',
   adminEmail: '',
@@ -502,7 +503,7 @@ async function confirmApproveRequest() {
 }
 
 async function confirmDeleteRequest() {
-  if (!deleteRequestRecord.value || !deleteForm.remarks.trim()) {
+  if (!deleteRequestRecord.value || isDenyingRequest.value) {
     return;
   }
 
@@ -518,6 +519,7 @@ async function confirmDeleteRequest() {
   }
 
   try {
+    isDenyingRequest.value = true;
     await requestStore.rejectPendingRequest(deleteRequestRecord.value, deleteForm.remarks.trim(), {
       confirmedAdminEmail: normalizeEmailForConfirmation(deleteForm.adminEmail),
       confirmedAdminPassword: deleteForm.password,
@@ -526,6 +528,8 @@ async function confirmDeleteRequest() {
     selectedRequestRecord.value = null;
   } catch (error) {
     window.alert(error?.message || 'Unable to deny this request.');
+  } finally {
+    isDenyingRequest.value = false;
   }
 }
 
@@ -542,6 +546,7 @@ function closeDeleteModal() {
   deleteForm.remarks = '';
   deleteForm.adminEmail = '';
   deleteForm.password = '';
+  isDenyingRequest.value = false;
 }
 
 function formatRequestDate(value) {

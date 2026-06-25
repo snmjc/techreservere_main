@@ -51,7 +51,7 @@ class AccountInputValidationService
 
     public function isValidIdNumber(string $idNumber): bool
     {
-        return preg_match('/^\d{10}$/', $this->normalizeIdNumber($idNumber)) === 1;
+        return preg_match('/^\d{9}$/', $this->normalizeIdNumber($idNumber)) === 1;
     }
 
     public function isValidInstitutionalSignInEmail(string $emailAddress): bool

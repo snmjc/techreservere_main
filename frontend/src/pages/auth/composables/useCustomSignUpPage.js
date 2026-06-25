@@ -44,6 +44,7 @@ export function useCustomSignUpPage() {
   const signupRequestCreated = ref(false);
   const showPassword = ref(false);
   const showConfirmPassword = ref(false);
+  const showDataPrivacyModal = ref(false);
   const studentSupportingFileInput = ref(null);
   const departmentOptions = DEPARTMENT_OPTIONS;
   const firstErrorMessage = computed(() => Object.values(errors.value)[0] || '');
@@ -245,6 +246,22 @@ export function useCustomSignUpPage() {
     formData.value.idNumber = String(formData.value.idNumber || '').replace(/\D/g, '').slice(0, 9);
   }
 
+  function sanitizeNameField(fieldName) {
+    formData.value[fieldName] = String(formData.value[fieldName] || '')
+      .replace(/[^A-Za-z ]+/g, '')
+      .replace(/\s{2,}/g, ' ');
+  }
+
+  function handlePrivacyConsentChange() {
+    if (formData.value.acceptTerms) {
+      showDataPrivacyModal.value = true;
+    }
+  }
+
+  function closeDataPrivacyModal() {
+    showDataPrivacyModal.value = false;
+  }
+
   function validateEmail() {
     if (isInvitationMode.value) {
       return;
@@ -291,13 +308,17 @@ export function useCustomSignUpPage() {
     verificationCode,
     showPassword,
     showConfirmPassword,
+    showDataPrivacyModal,
     studentSupportingFileInput,
     firstErrorMessage,
     isStudentRole,
     isInvitationMode,
     invitationCopy,
     supportingFileAccept,
+    sanitizeNameField,
     sanitizeIdNumberField,
+    handlePrivacyConsentChange,
+    closeDataPrivacyModal,
     openStudentSupportingFile,
     handleStudentSupportingFileChange,
     removeStudentSupportingFile,
@@ -307,7 +328,7 @@ export function useCustomSignUpPage() {
 }
 
 function isValidName(value) {
-  return /^[A-Za-z][A-Za-z .'-]*$/.test(value.trim());
+  return /^[A-Za-z][A-Za-z ]*$/.test(value.trim());
 }
 
 function isInstitutionalUserEmail(value) {

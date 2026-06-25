@@ -57,6 +57,7 @@
                   type="text"
                   :required="!isInvitationMode"
                   autocomplete="given-name"
+                  @input="sanitizeNameField('firstName')"
                 />
               </div>
 
@@ -68,6 +69,7 @@
                   type="text"
                   :required="!isInvitationMode"
                   autocomplete="family-name"
+                  @input="sanitizeNameField('lastName')"
                 />
               </div>
 
@@ -220,7 +222,7 @@
                     </button>
                   </div>
                   <p class="custom-signup-role-boundary-note">
-                    Required for student requests: upload a PDF, DOC, DOCX, JPG, or PNG file. You may submit a Certificate of Officership, Student ID, or proof that you are from the organization. Maximum file size: 5 MB.
+                    Required for student requests: upload a PDF, DOC, DOCX, JPG, or PNG file. Accepted documents include a Certificate of Officership, Student ID, or proof that you are from the organization. Maximum file size: 5 MB.
                   </p>
                 </div>
 
@@ -236,6 +238,7 @@
                 v-model="formData.acceptTerms"
                 type="checkbox"
                 required
+                @change="handlePrivacyConsentChange"
               />
               <span>
                 I confirm that the information provided is accurate and consent to its use for TechReserve account verification.
@@ -307,14 +310,41 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </footer>
     </section>
+
+    <div
+      v-if="showDataPrivacyModal"
+      class="custom-signup-privacy-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="customSignupPrivacyTitle"
+    >
+      <section class="custom-signup-privacy-modal">
+        <header class="custom-signup-privacy-header">
+          <h2 id="customSignupPrivacyTitle">Data Privacy Policy Statement</h2>
+        </header>
+        <div class="custom-signup-privacy-body">
+          <img
+            :src="dataPrivacyPolicyImage"
+            alt="FEU Group of Schools Data Privacy Policy Statement"
+            class="custom-signup-privacy-image"
+          />
+        </div>
+        <footer class="custom-signup-privacy-footer">
+          <button type="button" class="custom-signup-privacy-button" @click="closeDataPrivacyModal">
+            OK
+          </button>
+        </footer>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
+import dataPrivacyPolicyImage from '@/assets/data privacy(1).png';
 
-  const {
-    formData,
+const {
+  formData,
   departmentOptions,
   isLoading,
   successMessage,
@@ -322,14 +352,18 @@ import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
   verificationCode,
   showPassword,
   showConfirmPassword,
-    studentSupportingFileInput,
-    firstErrorMessage,
-    isStudentRole,
-    isInvitationMode,
-    invitationCopy,
-    supportingFileAccept,
-    sanitizeIdNumberField,
-    openStudentSupportingFile,
+  showDataPrivacyModal,
+  studentSupportingFileInput,
+  firstErrorMessage,
+  isStudentRole,
+  isInvitationMode,
+  invitationCopy,
+  supportingFileAccept,
+  sanitizeNameField,
+  sanitizeIdNumberField,
+  handlePrivacyConsentChange,
+  closeDataPrivacyModal,
+  openStudentSupportingFile,
   handleStudentSupportingFileChange,
   removeStudentSupportingFile,
   handleSignUp,
@@ -778,6 +812,73 @@ import { useCustomSignUpPage } from './composables/useCustomSignUpPage.js';
   margin-top: 0.1rem;
   accent-color: #08784a;
   cursor: pointer;
+}
+
+.custom-signup-privacy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(17, 24, 39, 0.62);
+}
+
+.custom-signup-privacy-modal {
+  width: min(100%, 820px);
+  max-height: min(92vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(17, 24, 39, 0.28);
+}
+
+.custom-signup-privacy-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.custom-signup-privacy-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.custom-signup-privacy-body {
+  overflow: auto;
+  background: #f9fafb;
+}
+
+.custom-signup-privacy-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.custom-signup-privacy-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.custom-signup-privacy-button {
+  min-width: 92px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: #08784a;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.custom-signup-privacy-button:hover {
+  background: #05613d;
 }
 
 .custom-signup-submit {

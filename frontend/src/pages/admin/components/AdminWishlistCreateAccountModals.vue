@@ -24,7 +24,7 @@
       <form class="admin-wishlist-add-form" @submit.prevent="createAdminAccount">
         <label>
           <span>ID Number</span>
-          <input v-model.trim="addAdminForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required :disabled="isProcessing" @input="sanitizeAdminIdNumber" />
+          <input v-model.trim="addAdminForm.idNumber" type="text" inputmode="numeric" maxlength="9" placeholder="202312345" required :disabled="isProcessing" @input="sanitizeAdminIdNumber" />
         </label>
         <label>
           <span>Last Name</span>
@@ -101,11 +101,11 @@
       <form class="admin-wishlist-add-form" @submit.prevent="createUserAccount">
         <label>
           <span>Last Name</span>
-          <input v-model.trim="addUserForm.lastName" type="text" placeholder="Vito" required />
+          <input v-model.trim="addUserForm.lastName" type="text" placeholder="Vito" required @input="sanitizeUserNameField('lastName')" />
         </label>
         <label>
           <span>First Name</span>
-          <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required />
+          <input v-model.trim="addUserForm.firstName" type="text" placeholder="Justin Timothy" required @input="sanitizeUserNameField('firstName')" />
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Institutional Email Address</span>
@@ -113,7 +113,7 @@
         </label>
         <label>
           <span>ID Number</span>
-          <input v-model.trim="addUserForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required @input="sanitizeUserIdNumber" />
+          <input v-model.trim="addUserForm.idNumber" type="text" inputmode="numeric" maxlength="9" placeholder="202312345" required @input="sanitizeUserIdNumber" />
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Account Role</span>
@@ -234,7 +234,7 @@
         </label>
         <label>
           <span>Work ID Number</span>
-          <input v-model.trim="addEmployeeForm.idNumber" type="text" inputmode="numeric" maxlength="10" placeholder="2023123456" required @input="sanitizeEmployeeIdNumber" />
+          <input v-model.trim="addEmployeeForm.idNumber" type="text" inputmode="numeric" maxlength="9" placeholder="202312345" required @input="sanitizeEmployeeIdNumber" />
         </label>
         <label class="admin-wishlist-field-wide">
           <span>Role</span>
@@ -515,6 +515,10 @@ function sanitizeAdminNameField(fieldName) {
 
 function sanitizeEmployeeNameField(fieldName) {
   addEmployeeForm[fieldName] = sanitizeNameInput(addEmployeeForm[fieldName]);
+}
+
+function sanitizeUserNameField(fieldName) {
+  addUserForm[fieldName] = sanitizeNameInput(addUserForm[fieldName]);
 }
 
 function sanitizeEmployeePhone() {

@@ -53,9 +53,9 @@
         </ul>
       </section>
 
-      <section v-if="requestRecord.cancellationReason" class="borrower-request-modal__footer-block">
+      <section v-if="statusNotes" class="borrower-request-modal__footer-block">
         <h3>Status Notes</h3>
-        <p>{{ requestRecord.cancellationReason }}</p>
+        <p>{{ statusNotes }}</p>
       </section>
     </div>
   </div>
@@ -80,6 +80,10 @@ const statusClass = computed(() => {
   if (status.includes('reject')) return 'is-rejected';
   if (status.includes('complete')) return 'is-completed';
   return 'is-pending';
+});
+
+const statusNotes = computed(() => {
+  return String(props.requestRecord?.remarks || props.requestRecord?.cancellationReason || '').trim();
 });
 
 function formatDateTime(value) {

@@ -55,6 +55,49 @@
   font-weight: 700;
 }
 
+.reservation-recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.reservation-recommendation-card {
+  display: grid;
+  gap: 0.75rem;
+  align-content: space-between;
+  min-height: 156px;
+  padding: 0.9rem;
+  background: #ffffff;
+  border: 1px solid #dfe9e3;
+  border-radius: 8px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05);
+}
+
+.reservation-recommendation-card.is-selected {
+  border-color: #109451;
+  box-shadow: 0 0 0 3px rgba(16, 148, 81, 0.12);
+}
+
+.reservation-recommendation-card__header,
+.reservation-recommendation-card__meta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.reservation-recommendation-card__header span,
+.reservation-recommendation-card__meta span {
+  color: #70857a;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.reservation-recommendation-card__header strong {
+  color: #173122;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
 .reservation-selection-reset {
   align-self: end;
   min-height: 42px;
@@ -305,6 +348,7 @@
 }
 
 @media (max-width: 980px) {
+  .reservation-recommendation-grid,
   .reservation-selection-filters,
   .reservation-selection-filters--equipment,
   .reservation-equipment-layout {

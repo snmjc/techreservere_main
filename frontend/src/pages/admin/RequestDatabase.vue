@@ -97,7 +97,7 @@
                     :disabled="!canReviewRequest(requestRecord) || isSubmittingAction"
                     @click="openRejectModal(requestRecord)"
                   >
-                    Reject
+                    Deny
                   </button>
                 </div>
               </td>
@@ -205,7 +205,7 @@
       <section class="admin-request-database-page__modal">
         <header class="admin-request-database-page__modal-header">
           <div>
-            <h2>Reject Request</h2>
+            <h2>Deny Request</h2>
             <p>Provide the rejection remarks and confirm with your admin email.</p>
           </div>
           <button type="button" class="admin-request-database-page__modal-close" @click="closeRejectModal">&times;</button>
@@ -219,13 +219,23 @@
           </div>
 
           <label class="admin-request-database-page__field admin-request-database-page__field--full">
-            <span>Remarks</span>
-            <textarea v-model.trim="rejectForm.remarks" rows="4" maxlength="500" placeholder="Enter rejection reason" />
+            <span>Remarks (Optional)</span>
+            <textarea
+              v-model.trim="rejectForm.remarks"
+              rows="4"
+              maxlength="500"
+              placeholder="Enter rejection reason"
+            />
           </label>
 
           <label class="admin-request-database-page__field admin-request-database-page__field--full">
             <span>Admin Email</span>
             <input v-model.trim="rejectForm.adminEmail" type="email" :placeholder="currentAdminEmail || 'Enter your admin email'" />
+          </label>
+
+          <label class="admin-request-database-page__field admin-request-database-page__field--full">
+            <span>Admin Password</span>
+            <input v-model="rejectForm.password" type="password" placeholder="Enter your admin password" />
           </label>
         </div>
 
@@ -239,7 +249,7 @@
             :disabled="isSubmittingAction"
             @click="submitRejectRequest"
           >
-            Reject
+            Deny Request
           </button>
         </footer>
       </section>
@@ -280,6 +290,7 @@ const approveForm = reactive({
 const rejectForm = reactive({
   remarks: '',
   adminEmail: '',
+  password: '',
 });
 
 const currentAdminEmail = computed(() => {
@@ -371,10 +382,11 @@ function openRejectModal(requestRecord) {
   rejectRequestRecord.value = requestRecord;
   rejectForm.remarks = '';
   rejectForm.adminEmail = currentAdminEmail.value;
+  rejectForm.password = '';
 }
 
 async function submitApproveRequest() {
-  if (!approveRequestRecord.value) {
+  if (!approveRequestRecord.value || isSubmittingAction.value) {
     return;
   }
 
@@ -399,18 +411,18 @@ async function submitApproveRequest() {
 }
 
 async function submitRejectRequest() {
-  if (!rejectRequestRecord.value) {
+  if (!rejectRequestRecord.value || isSubmittingAction.value) {
     return;
   }
 
-  if (rejectForm.remarks.trim() === '') {
-    window.alert('Please enter remarks before rejecting this request.');
-    return;
-  }
-
-  const emailError = validateAdminEmailConfirmation(rejectForm.adminEmail, 'reject');
+  const emailError = validateAdminEmailConfirmation(rejectForm.adminEmail, 'deny');
   if (emailError) {
     window.alert(emailError);
+    return;
+  }
+
+  if (rejectForm.password.trim() === '') {
+    window.alert('Please type your admin password before denying this request.');
     return;
   }
 
@@ -418,6 +430,7 @@ async function submitRejectRequest() {
     isSubmittingAction.value = true;
     await requestStore.rejectPendingRequest(rejectRequestRecord.value, rejectForm.remarks.trim(), {
       confirmedAdminEmail: normalizeEmailForConfirmation(rejectForm.adminEmail),
+      confirmedAdminPassword: rejectForm.password,
     });
     closeRejectModal();
     selectedRequest.value = null;
@@ -437,12 +450,14 @@ function closeRejectModal() {
   rejectRequestRecord.value = null;
   rejectForm.remarks = '';
   rejectForm.adminEmail = '';
+  rejectForm.password = '';
 }
 
 function validateAdminEmailConfirmation(emailValue, actionName) {
+  const actionVerb = actionName === 'approve' ? 'approving' : 'denying';
   const normalizedEmail = normalizeEmailForConfirmation(emailValue);
   if (normalizedEmail === '') {
-    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'rejecting'} this request.`;
+    return `Please type your exact admin email before ${actionVerb} this request.`;
   }
 
   if (currentAdminEmail.value === '') {
@@ -450,7 +465,7 @@ function validateAdminEmailConfirmation(emailValue, actionName) {
   }
 
   if (normalizedEmail !== currentAdminEmail.value) {
-    return `Please type your exact admin email before ${actionName === 'approve' ? 'approving' : 'rejecting'} this request.`;
+    return `Please type your exact admin email before ${actionVerb} this request.`;
   }
 
   return '';

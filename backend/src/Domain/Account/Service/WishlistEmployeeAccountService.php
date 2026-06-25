@@ -72,7 +72,7 @@ class WishlistEmployeeAccountService
         }
 
         if (!$this->accountInputValidationService->isValidIdNumber($payload['idNumber'])) {
-            return 'Work ID number must be exactly 10 digits.';
+            return 'Work ID number must be exactly 9 digits.';
         }
 
         return null;

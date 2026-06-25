@@ -114,6 +114,7 @@
     <BorrowerRequestCancelModal
       :request-record="requestToCancel"
       :is-submitting="isCancelling"
+      :confirmation-email="currentBorrowerEmail"
       @close="closeCancelModal"
       @confirm="handleCancelRequest"
     />
@@ -126,11 +127,14 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
+import './css/ViewReservationList.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { filterLogsBySearch, mapRequestRecordToLog, sortLogs } from './borrowerReservationLogUtils.js';
 
 const requestStore = useRequestStore();
+const authStore = useAuthenticationStore();
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const sortBy = ref('date');
@@ -138,6 +142,10 @@ const sortOrder = ref('desc');
 const isLoading = ref(false);
 const requestToCancel = ref(null);
 const isCancelling = ref(false);
+const currentBorrowerEmail = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  return String(account.emailAddress || account.email || '').trim().toLowerCase();
+});
 
 onMounted(async () => {
   isLoading.value = true;

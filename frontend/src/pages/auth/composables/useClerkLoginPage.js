@@ -47,6 +47,10 @@ export function useClerkLoginPage() {
   });
 
   async function handleLocalLogin() {
+    if (isSubmitting.value) {
+      return;
+    }
+
     loginError.value = '';
     isSubmitting.value = true;
 
@@ -54,6 +58,11 @@ export function useClerkLoginPage() {
       const emailValidationError = validateInstitutionalLoginEmail(emailAddress.value);
       if (emailValidationError) {
         loginError.value = emailValidationError;
+        return;
+      }
+
+      if (passwordText.value === '') {
+        loginError.value = 'Please enter both email and password.';
         return;
       }
 
@@ -102,7 +111,7 @@ export function useClerkLoginPage() {
         return;
       }
 
-      loginError.value = error?.message || 'Invalid email address or password.';
+      loginError.value = 'Invalid email address or password.';
     } finally {
     }
   }
@@ -231,6 +240,10 @@ export function useClerkLoginPage() {
   }
 
   async function handleResetPasswordSubmit() {
+    if (isResetSubmitting.value) {
+      return;
+    }
+
     resetPasswordError.value = '';
     resetPasswordMessage.value = '';
     isResetSubmitting.value = true;
@@ -368,6 +381,14 @@ async function syncPostgresPasswordFromClerk(newPassword) {
   }
 
   function validateResetPassword() {
+    if (!/^\d{6}$/.test(resetCodeText.value.trim())) {
+      return 'Email code must be exactly 6 digits.';
+    }
+
+    if (!resetPasswordText.value || !resetPasswordConfirmText.value) {
+      return 'New password and confirmation are required.';
+    }
+
     if (resetPasswordText.value !== resetPasswordConfirmText.value) {
       return 'New passwords do not match.';
     }
