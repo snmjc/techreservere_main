@@ -77,6 +77,7 @@
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .borrower-facilities__segment-control {
@@ -118,6 +119,12 @@
   flex-wrap: wrap;
 }
 
+.borrower-facilities__section-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
 .borrower-facilities__equipment-controls {
   display: flex;
   align-items: flex-start;
@@ -129,6 +136,7 @@
 .borrower-facilities__equipment-filter-stack {
   display: grid;
   gap: 0.65rem;
+  align-content: start;
 }
 
 .borrower-facilities__equipment-filter-row {
@@ -755,6 +763,19 @@
   overflow-wrap: anywhere;
 }
 
+.borrower-facilities__equipment-brand-copy,
+.borrower-facilities__equipment-list-copy p:first-of-type {
+  color: #16361f;
+  font-weight: 700;
+}
+
+.borrower-facilities__equipment-preview,
+.borrower-facilities__equipment-list-copy small {
+  color: #6a7f73;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 .borrower-facilities__equipment-list-status {
   font-weight: 800;
 }
@@ -772,6 +793,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.24rem;
+  align-self: start;
   background: rgba(244, 248, 245, 0.92);
   border: 1px solid #d7e0da;
   border-radius: 14px;

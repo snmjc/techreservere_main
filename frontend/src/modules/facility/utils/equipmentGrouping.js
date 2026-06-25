@@ -52,23 +52,27 @@ function normalizeEquipmentRecord(record) {
     return null;
   }
 
+  const normalizedName = normalizeDisplayText(record?.equipmentName);
+  const normalizedCategory = normalizeDisplayText(record?.equipmentCategory || record?.categoryName || 'Miscellaneous');
+  const normalizedBrand = normalizeBrandLabel(record?.equipmentBrand);
+
   return {
     equipmentIdentifier,
-    equipmentName: String(record?.equipmentName || '').trim(),
-    equipmentCategory: String(record?.equipmentCategory || record?.categoryName || 'Miscellaneous').trim(),
-    equipmentBrand: String(record?.equipmentBrand || '').trim(),
+    equipmentName: normalizedName,
+    equipmentCategory: normalizedCategory,
+    equipmentBrand: normalizedBrand,
     totalQuantity: Math.max(Number(record?.totalQuantity ?? record?.availableQuantity ?? 0) || 0, 0),
     availableQuantity: Math.max(Number(record?.availableQuantity ?? record?.totalQuantity ?? 0) || 0, 0),
-    operationalStatus: String(record?.operationalStatus || record?.equipmentState || '').trim(),
-    equipmentState: String(record?.equipmentState || record?.operationalStatus || '').trim(),
-    description: String(record?.description || record?.scheduleDescription || '').trim(),
-    scheduleDescription: String(record?.description || record?.scheduleDescription || '').trim(),
+    operationalStatus: normalizeDisplayText(record?.operationalStatus || record?.equipmentState || ''),
+    equipmentState: normalizeDisplayText(record?.equipmentState || record?.operationalStatus || ''),
+    description: normalizeDisplayText(record?.description || record?.scheduleDescription || ''),
+    scheduleDescription: normalizeDisplayText(record?.description || record?.scheduleDescription || ''),
     imageUrl: record?.imageUrl || null,
-    barcode: String(record?.barcode || '').trim(),
-    assetId: String(record?.assetId || record?.serialNumber || '').trim(),
-    serialNumber: String(record?.assetId || record?.serialNumber || '').trim(),
+    barcode: normalizeDisplayText(record?.barcode),
+    assetId: normalizeDisplayText(record?.assetId || record?.serialNumber || ''),
+    serialNumber: normalizeDisplayText(record?.assetId || record?.serialNumber || ''),
     photoData: record?.photoData || null,
-    photoDisplayMode: String(record?.photoDisplayMode || 'contain').trim(),
+    photoDisplayMode: normalizeDisplayText(record?.photoDisplayMode || 'contain'),
     photoPositionX: Number(record?.photoPositionX ?? 50),
     photoPositionY: Number(record?.photoPositionY ?? 50),
   };
@@ -102,11 +106,20 @@ function buildInventoryItem(record) {
 function finalizeGroupedRecord(record) {
   const uniqueDescriptions = Array.from(new Set(
     (record.inventoryItems || [])
-      .map((item) => String(item.description || '').trim())
+      .map((item) => normalizeDisplayText(item.description))
       .filter(Boolean)
   ));
 
   const derivedStatus = resolveGroupedStatus(record.groupedStatuses || []);
+  const visibleInventoryItems = [...(record.inventoryItems || [])].sort((left, right) => (
+    normalizeKeyPart(left.assetId).localeCompare(normalizeKeyPart(right.assetId))
+    || normalizeKeyPart(left.barcode).localeCompare(normalizeKeyPart(right.barcode))
+    || Number(left.equipmentIdentifier) - Number(right.equipmentIdentifier)
+  ));
+  const inventoryPreview = visibleInventoryItems
+    .slice(0, 2)
+    .map((item) => normalizeDisplayText(item.assetId || item.serialNumber || item.barcode))
+    .filter(Boolean);
 
   return {
     ...record,
@@ -115,11 +128,11 @@ function finalizeGroupedRecord(record) {
     description: record.description || uniqueDescriptions[0] || '',
     scheduleDescription: record.description || uniqueDescriptions[0] || '',
     remarksNotes: uniqueDescriptions,
-    inventoryItems: [...(record.inventoryItems || [])].sort((left, right) => (
-      normalizeKeyPart(left.assetId).localeCompare(normalizeKeyPart(right.assetId))
-      || normalizeKeyPart(left.barcode).localeCompare(normalizeKeyPart(right.barcode))
-      || Number(left.equipmentIdentifier) - Number(right.equipmentIdentifier)
-    )),
+    inventoryItems: visibleInventoryItems,
+    brandGroupLabel: record.equipmentBrand || 'Unbranded',
+    groupedQuantityLabel: `${record.groupedItemCount} item${record.groupedItemCount === 1 ? '' : 's'} grouped`,
+    availableQuantityLabel: `${record.availableQuantity} available`,
+    inventoryPreview,
   };
 }
 
@@ -142,5 +155,14 @@ function resolveGroupedStatus(statuses) {
 }
 
 function normalizeKeyPart(value) {
-  return String(value || '').trim().toLowerCase();
+  return normalizeDisplayText(value).toLowerCase();
+}
+
+function normalizeDisplayText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeBrandLabel(value) {
+  const normalizedValue = normalizeDisplayText(value);
+  return normalizedValue === '' ? 'Unbranded' : normalizedValue;
 }
