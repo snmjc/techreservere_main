@@ -17,6 +17,7 @@ export function createEmptyForecastReport() {
   return {
     actualSeries: [],
     forecastSeries: [],
+    historySeries: [],
     peakDate: null,
     peakValue: 0,
     growthPercent: 0,
@@ -56,18 +57,20 @@ export function hasRiskDistribution(riskDistribution) {
 }
 
 export function normalizeStoredAnalyticsResponse(response) {
-  const resultList = Array.isArray(response?.results) ? response.results : [];
-  if (resultList.length === 0) {
-    return null;
+  const analyticsRun = response?.analyticsServiceResponse || response || {};
+  const payloadByType = buildAnalyticsPayloadMap(analyticsRun.results);
+  const requiredPayloads = ['forecast', 'readiness', 'allocation'];
+  const missingPayloads = requiredPayloads.filter((key) => !payloadByType[key]);
+  if (missingPayloads.length > 0) {
+    throw new Error(`FastAPI analytics response is missing: ${missingPayloads.join(', ')}.`);
   }
 
-  const payloadByType = buildAnalyticsPayloadMap(resultList);
   const normalized = createEmptyReport();
 
   normalized.forecast = normalizeForecastPayload(resolveForecastPayload(payloadByType));
   normalized.riskDistribution = normalizeReadinessPayload(resolveReadinessPayload(payloadByType));
 
-  const allocationAnalytics = normalizeAllocationPayload(resolveAllocationPayload(payloadByType), response);
+  const allocationAnalytics = normalizeAllocationPayload(resolveAllocationPayload(payloadByType), analyticsRun);
   normalized.optimizationMetrics = allocationAnalytics.optimizationMetrics;
   normalized.utilizationByCategory = allocationAnalytics.utilizationByCategory;
   normalized.utilizationComparisonByCategory = allocationAnalytics.utilizationComparisonByCategory;
@@ -79,6 +82,19 @@ export function normalizeStoredAnalyticsResponse(response) {
 }
 
 function buildAnalyticsPayloadMap(resultList) {
+  if (resultList && !Array.isArray(resultList) && typeof resultList === 'object') {
+    return Object.fromEntries(
+      Object.entries(resultList).map(([resultType, payload]) => [
+        String(resultType).toLowerCase(),
+        payload || {},
+      ]),
+    );
+  }
+
+  if (!Array.isArray(resultList)) {
+    return {};
+  }
+
   return Object.fromEntries(
     resultList.map((result) => [
       String(result?.result_type || result?.resultType || '').toLowerCase(),
@@ -100,12 +116,22 @@ function resolveAllocationPayload(payloadByType) {
 }
 
 function normalizeForecastPayload(forecastPayload) {
+  const forecastPeak = forecastPayload.forecastPeak || forecastPayload.forecast_peak || {};
+  const summary = forecastPayload.summary || {};
+
   return {
     actualSeries: (forecastPayload.actualSeries || forecastPayload.actual_series || []).map(normalizeSeriesPoint),
     forecastSeries: (forecastPayload.forecastSeries || forecastPayload.forecast_series || []).map(normalizeSeriesPoint),
-    peakDate: forecastPayload.peakDate || forecastPayload.peak_date || null,
-    peakValue: Number(forecastPayload.peakValue || forecastPayload.peak_value || 0),
-    growthPercent: Number(forecastPayload.growthPercent || forecastPayload.growth_percent || 0),
+    historySeries: (forecastPayload.historySeries || forecastPayload.history_series || []).map(normalizeSeriesPoint),
+    peakDate: forecastPayload.peakDate || forecastPayload.peak_date || forecastPeak.date || '',
+    peakValue: Number(forecastPayload.peakValue || forecastPayload.peak_value || forecastPeak.value || 0),
+    growthPercent: Number(
+      forecastPayload.growthPercent
+      || forecastPayload.growth_percent
+      || summary.expectedChangePercent
+      || summary.expected_change_percent
+      || 0
+    ),
   };
 }
 
@@ -139,7 +165,7 @@ function normalizeAllocationSummary(allocationPayload, response) {
     activeReservations: Number(allocationPayload.summary?.activeReservations || allocationPayload.summary?.active_reservations || 0),
     pendingRequests: Number(allocationPayload.summary?.pendingRequests || allocationPayload.summary?.pending_requests || 0),
     completedThisPeriod: Number(allocationPayload.summary?.completedThisPeriod || allocationPayload.summary?.completed_this_period || 0),
-    generatedAt: response?.run?.started_at || response?.run?.startedAt || 'N/A',
+    generatedAt: response?.completedAt || response?.startedAt || response?.run?.started_at || response?.run?.startedAt || 'N/A',
   };
 }
 

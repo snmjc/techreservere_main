@@ -205,8 +205,7 @@ class DashboardAggregationService
                 $equipment,
                 $equipmentUsageMap,
                 $previousEquipmentUsageMap,
-                $previousYearEquipmentUsageMap,
-                $topEquipment
+                $previousYearEquipmentUsageMap
             ),
             'summary' => [
                 'totalEquipment' => count($equipment),
@@ -789,34 +788,26 @@ class DashboardAggregationService
      * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $equipmentUsageMap
      * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousEquipmentUsageMap
      * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousYearEquipmentUsageMap
-     * @param array<int, array{name:string,count:int,rate:float}> $topEquipment
      * @return array<int, array{name:string,count:int,reason:string}>
      */
     private function buildPossibleBorrowedEquipment(
         array $equipment,
         array $equipmentUsageMap,
         array $previousEquipmentUsageMap,
-        array $previousYearEquipmentUsageMap,
-        array $topEquipment
+        array $previousYearEquipmentUsageMap
     ): array {
-        $topEquipmentNames = [];
-        foreach (array_slice($topEquipment, 0, 5) as $item) {
-            $topEquipmentNames[self::normalizeText($item['name'] ?? '')] = true;
-        }
-
         $candidates = [];
         foreach ($equipment as $equipmentRecord) {
             $name = $equipmentRecord->getEquipmentName();
             $nameKey = self::normalizeText($name);
-            if ($nameKey === '' || isset($topEquipmentNames[$nameKey])) {
+            if ($nameKey === '') {
                 continue;
             }
 
             $currentUsage = (int) ($equipmentUsageMap[$nameKey]['usageCount'] ?? 0);
             $previousUsage = (int) ($previousEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
             $previousYearUsage = (int) ($previousYearEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
-            $candidateUsage = max($currentUsage, $previousUsage, $previousYearUsage);
-            if ($candidateUsage <= 0) {
+            if ($currentUsage <= 0) {
                 continue;
             }
 
@@ -833,7 +824,7 @@ class DashboardAggregationService
             $signal = $this->resolveBorrowingCandidateSignal($currentUsage, $previousUsage, $previousYearUsage, $availabilityRate);
             $candidates[] = [
                 'name' => $name,
-                'count' => $candidateUsage,
+                'count' => $currentUsage,
                 'reason' => $this->resolveBorrowingCandidateReason($signal, $currentUsage, $previousUsage, $previousYearUsage, $availabilityRate),
                 'score' => $score,
             ];
@@ -884,7 +875,7 @@ class DashboardAggregationService
         return match ($signal) {
             'Seasonal' => sprintf('Used %d times in the same days last year, so this item may return next cycle.', $previousYearUsage),
             'Recent' => sprintf('Used %d times in the previous period, which suggests it may rebound soon.', $previousUsage),
-            'Emerging' => sprintf('Used %d times in the current period outside the highest-used items.', $currentUsage),
+            'Emerging' => sprintf('Used %d times in the selected period, indicating continued borrowing demand.', $currentUsage),
             'Stock' => sprintf('Available stock is low at %d%%, so even light demand can create pressure.', (int) round($availabilityRate * 100)),
             default => 'Historical and inventory signals make this a secondary borrowing candidate.',
         };

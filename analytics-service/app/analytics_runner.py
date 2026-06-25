@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -43,8 +44,37 @@ class AnalyticsRunner:
     def prepare_scenario(self, connection: Connection, scenario: str | None) -> None:
         self.scenario_preparer.prepare_scenario(connection, scenario)
 
-    def run_daily_check(self, connection: Connection, triggered_by: str = "scheduler") -> dict[str, Any]:
-        config = self._load_or_create_config(connection)
+    def analyze_range(
+        self,
+        connection: Connection,
+        history_days: int,
+        start_date: str,
+        end_date: str,
+    ) -> dict[str, Any]:
+        config = self._build_run_config(
+            connection,
+            history_days=history_days,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        generated_at = datetime.now(UTC)
+
+        return {
+            "status": "completed",
+            "startedAt": generated_at.isoformat(),
+            "completedAt": generated_at.isoformat(),
+            "results": self._build_results(connection, config),
+        }
+
+    def run_daily_check(
+        self,
+        connection: Connection,
+        triggered_by: str = "scheduler",
+        history_days: int | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict[str, Any]:
+        config = self._build_run_config(connection, history_days, start_date, end_date)
         run_id = str(uuid4())
         started_at = datetime.now(UTC)
 
@@ -64,11 +94,7 @@ class AnalyticsRunner:
         )
 
         try:
-            results = {
-                "forecast": self.forecast_builder.build(connection, config),
-                "readiness": self.readiness_builder.build(connection),
-                "allocation": self.allocation_builder.build(connection, config),
-            }
+            results = self._build_results(connection, config)
 
             for result_type, payload in results.items():
                 connection.execute(
@@ -115,7 +141,13 @@ class AnalyticsRunner:
             )
             connection.commit()
 
-            return {"runIdentifier": run_id, "status": "completed", "results": results}
+            return {
+                "runIdentifier": run_id,
+                "status": "completed",
+                "startedAt": started_at.isoformat(),
+                "completedAt": completed_at.isoformat(),
+                "results": results,
+            }
         except Exception as error:
             connection.execute(
                 """
@@ -129,6 +161,34 @@ class AnalyticsRunner:
             )
             connection.commit()
             raise
+
+    def _build_run_config(
+        self,
+        connection: Connection,
+        history_days: int | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict[str, Any]:
+        config = deepcopy(self._load_or_create_config(connection))
+        if history_days is not None:
+            normalized_history_days = max(1, int(history_days))
+            config.setdefault("forecast", {})["historyDays"] = normalized_history_days
+            config.setdefault("forecast", {})["forecastDays"] = 3
+            config.setdefault("allocation", {})["historyDays"] = normalized_history_days
+        if start_date and end_date:
+            config["dateRange"] = {
+                "startDate": start_date,
+                "endDate": end_date,
+            }
+
+        return config
+
+    def _build_results(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "forecast": self.forecast_builder.build(connection, config),
+            "readiness": self.readiness_builder.build(connection),
+            "allocation": self.allocation_builder.build(connection, config),
+        }
 
     def _load_or_create_config(self, connection: Connection) -> dict[str, Any]:
         row = connection.execute(

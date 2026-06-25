@@ -8,8 +8,11 @@ from psycopg import Connection
 class AllocationSnapshotBuilder:
     def build(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
         range_days = int(config.get("allocation", {}).get("historyDays", 30))
-        end_date = date.today()
-        start_date = end_date - timedelta(days=max(0, range_days - 1))
+        configured_range = config.get("dateRange", {})
+        end_date = date.fromisoformat(configured_range["endDate"]) if configured_range.get("endDate") else date.today()
+        start_date = date.fromisoformat(configured_range["startDate"]) if configured_range.get("startDate") else (
+            end_date - timedelta(days=max(0, range_days - 1))
+        )
         previous_year_start = start_date.replace(year=start_date.year - 1)
         previous_year_end = end_date.replace(year=end_date.year - 1)
 
@@ -26,7 +29,6 @@ class AllocationSnapshotBuilder:
             equipment_rows,
             current_usage_map,
             previous_year_usage_map,
-            top_equipment,
         )
 
         return {
@@ -202,28 +204,25 @@ class AllocationSnapshotBuilder:
         equipment_rows: list[Any],
         current_usage_map: dict[str, int],
         previous_year_usage_map: dict[str, int],
-        top_equipment: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        top_displayed_names = {str(item["name"]).lower() for item in top_equipment[:5]}
         candidates = []
 
         for row in equipment_rows:
             equipment_name = str(row["equipment_name"] or "")
             equipment_key = equipment_name.lower()
-            if not equipment_key or equipment_key in top_displayed_names:
+            if not equipment_key:
                 continue
 
             current_usage = current_usage_map.get(equipment_key, 0)
             previous_year_usage = previous_year_usage_map.get(equipment_key, 0)
-            candidate_usage = max(current_usage, previous_year_usage)
-            if candidate_usage <= 0:
+            if current_usage <= 0:
                 continue
 
             score = (previous_year_usage * 1.4) + (current_usage * 0.8)
             candidates.append(
                 {
                     "name": equipment_name,
-                    "count": candidate_usage,
+                    "count": current_usage,
                     "score": score,
                     "reason": self._build_candidate_reason(current_usage, previous_year_usage),
                 }

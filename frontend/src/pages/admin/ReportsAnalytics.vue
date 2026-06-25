@@ -325,11 +325,9 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import {
   createEmptyForecastReport,
-  createEmptyReport,
   createEmptyRiskReport,
   createEmptySummaryReport,
   createEmptyUtilizationReport,
-  hasRiskDistribution,
   normalizeStoredAnalyticsResponse,
 } from './services/reportsAnalyticsDataAdapter.js';
 import { createReportsAnalyticsChartRenderer } from './services/reportsAnalyticsChartRenderer.js';
@@ -424,26 +422,27 @@ const forecastProjectionSeries = computed(() => (forecastData.value.forecastSeri
   ...item,
   label: formatShortDate(item.date || item.label),
 })));
-const forecastDisplaySeries = computed(() => buildForecastDisplaySeries(forecastSeries.value, forecastProjectionSeries.value));
+const forecastHistorySeries = computed(() => (forecastData.value.historySeries || []).map((item) => ({
+  ...item,
+  label: formatShortDate(item.date || item.label),
+})));
+const forecastDisplaySeries = computed(() => buildForecastDisplaySeries(
+  forecastSeries.value,
+  forecastProjectionSeries.value,
+  forecastHistorySeries.value,
+));
 const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels.map((_, index) => {
   const actualValue = forecastDisplaySeries.value.actualValues[index];
   const forecastValue = forecastDisplaySeries.value.forecastValues[index];
   const hasActual = actualValue !== null && actualValue !== undefined;
   const hasForecast = forecastValue !== null && forecastValue !== undefined;
 
-  if (!hasActual && !hasForecast) {
+  if (!hasActual || !hasForecast) {
     return null;
   }
 
   const actualNumber = Number(actualValue || 0);
   const forecastNumber = Number(forecastValue || 0);
-  if (!hasActual) {
-    return forecastNumber;
-  }
-  if (!hasForecast) {
-    return actualNumber;
-  }
-
   return roundForecastValue((actualNumber + forecastNumber) / 2);
 }));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
@@ -483,7 +482,7 @@ onBeforeUnmount(() => {
 });
 
 watch(selectedRangeKey, () => {
-  loadReportsAnalytics({ preferLiveOnly: true });
+  loadReportsAnalytics();
 });
 
 watch(isUtilizationRefreshing, (isRefreshing) => {
@@ -516,34 +515,29 @@ watch(
   { deep: true }
 );
 
-async function loadReportsAnalytics(options = {}) {
-  const preferLiveOnly = options.preferLiveOnly === true;
+async function loadReportsAnalytics() {
   const loadSequence = ++reportsLoadSequence;
   isReportsLoading.value = true;
   isUtilizationRefreshing.value = true;
   reportsError.value = '';
   pdfError.value = '';
-  reportsSourceLabel.value = preferLiveOnly
-    ? `Refreshing live analytics for ${activeRangeLabel.value}...`
-    : 'Loading live analytics...';
+  reportsSourceLabel.value = `Loading FastAPI analytics for ${activeRangeLabel.value}...`;
 
   try {
-    applyEmptyAnalyticsSections();
-    const liveAnalytics = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
+    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeResults(activeRange.value);
     if (loadSequence !== reportsLoadSequence) {
       return;
     }
 
-    applyLiveAnalyticsSections(liveAnalytics);
-    reportsSourceLabel.value = `Using live aggregation for ${activeRangeLabel.value}.`;
+    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
   } catch (error) {
     if (loadSequence !== reportsLoadSequence) {
       return;
     }
 
-    applyEmptyAnalyticsSections();
     reportsError.value = resolveReportsError(error);
-    reportsSourceLabel.value = 'Analytics data is unavailable right now.';
+    reportsSourceLabel.value = 'Unable to refresh FastAPI analytics; keeping the last completed result.';
   } finally {
     if (loadSequence !== reportsLoadSequence) {
       return;
@@ -567,9 +561,12 @@ async function handleTriggerAnalyticsRun() {
 
   try {
     analyticsRunStatus.value = 'Running analytics service...';
-    await adminAnalyticsApi.triggerAnalyticsRun(selectedAnalyticsScenario.value);
-    analyticsRunStatus.value = 'Refreshing dashboard data...';
-    await refreshReportsAfterRun();
+    const analyticsResponse = await adminAnalyticsApi.triggerAnalyticsRun(
+      selectedAnalyticsScenario.value,
+      activeRange.value,
+    );
+    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
     analyticsToastMessage.value = 'Analytics run completed successfully.';
     analyticsRunStatus.value = 'Analytics run completed successfully.';
     analyticsRunStatusType.value = 'success';
@@ -590,95 +587,20 @@ async function handleTriggerAnalyticsRun() {
 }
 
 function handleRefreshReports() {
-  loadReportsAnalytics({ preferLiveOnly: true });
+  loadReportsAnalytics();
 }
 
-async function refreshReportsAfterRun() {
-  const maxAttempts = 4;
-  let attempt = 0;
-  const loadSequence = reportsLoadSequence;
-
-  while (attempt < maxAttempts) {
-    const liveAnalytics = await adminAnalyticsApi.getReportsAnalytics(activeRange.value);
-    if (loadSequence !== reportsLoadSequence) {
-      return;
-    }
-
-    const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
-    if (loadSequence !== reportsLoadSequence) {
-      return;
-    }
-
-    const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
-
-    if (storedAnalytics !== null) {
-      applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics);
-      reportsSourceLabel.value = `${buildStoredAnalyticsLabel(latestResultsResponse?.run)} Forecast uses live aggregation for ${activeRangeLabel.value}.`;
-      return;
-    }
-
-    attempt += 1;
-    await wait(600);
-  }
-
-  applyEmptyAnalyticsSections();
-  reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-}
-
-function applyEmptyAnalyticsSections() {
-  forecastReport.value = createEmptyForecastReport();
-  riskReport.value = createEmptyRiskReport();
-  optimizationReport.value = [];
-  utilizationReport.value = createEmptyUtilizationReport();
-  summaryReport.value = createEmptySummaryReport();
-}
-
-function applyLiveAnalyticsSections(liveAnalytics) {
-  const utilizationByCategory = Array.isArray(liveAnalytics?.utilizationByCategory)
-    ? liveAnalytics.utilizationByCategory
-    : [];
-
-  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = liveAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
+function applyStoredAnalyticsSections(storedAnalytics) {
+  forecastReport.value = storedAnalytics.forecast;
+  riskReport.value = storedAnalytics.riskDistribution;
+  optimizationReport.value = storedAnalytics.optimizationMetrics;
   utilizationReport.value = {
-    items: utilizationByCategory,
-    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
-      ? liveAnalytics.utilizationComparisonByCategory
-      : [],
-    topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
-    possibleBorrowedEquipment: Array.isArray(liveAnalytics?.possibleBorrowedEquipment)
-      ? liveAnalytics.possibleBorrowedEquipment
-      : [],
+    items: storedAnalytics.utilizationByCategory,
+    comparisonItems: storedAnalytics.utilizationComparisonByCategory,
+    topEquipment: storedAnalytics.topEquipment,
+    possibleBorrowedEquipment: storedAnalytics.possibleBorrowedEquipment,
   };
-  summaryReport.value = liveAnalytics?.summary || createEmptySummaryReport();
-}
-
-function applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics) {
-  const utilizationByCategory = Array.isArray(liveAnalytics?.utilizationByCategory)
-    ? liveAnalytics.utilizationByCategory
-    : [];
-
-  forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = hasRiskDistribution(storedAnalytics?.riskDistribution)
-    ? storedAnalytics.riskDistribution
-    : liveAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
-  utilizationReport.value = {
-    items: utilizationByCategory,
-    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
-      ? liveAnalytics.utilizationComparisonByCategory
-      : [],
-    topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
-    possibleBorrowedEquipment: Array.isArray(liveAnalytics?.possibleBorrowedEquipment)
-      ? liveAnalytics.possibleBorrowedEquipment
-      : [],
-  };
-  summaryReport.value = {
-    ...(liveAnalytics?.summary || createEmptySummaryReport()),
-    ...(storedAnalytics?.summary || {}),
-    generatedAt: storedAnalytics?.summary?.generatedAt || liveAnalytics?.summary?.generatedAt || 'N/A',
-  };
+  summaryReport.value = storedAnalytics.summary;
 }
 
 function normalizeEquipmentTrendItems(items) {
@@ -693,12 +615,6 @@ function normalizeEquipmentTrendItems(items) {
       reason: item?.reason || item?.note || item?.why || '',
     }))
     .filter((item) => item.name);
-}
-
-function wait(milliseconds) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
 }
 
 function closeScenarioModal() {
@@ -809,17 +725,6 @@ function resolveReportsError(error) {
   return error?.response?.data?.errorMessage
     || error?.message
     || 'Unable to load analytics data right now.';
-}
-
-function buildStoredAnalyticsLabel(run) {
-  if (!run) {
-    return 'Using stored analytics results.';
-  }
-
-  const startedAt = run.started_at || run.startedAt || 'unknown time';
-  const runType = run.run_type || run.runType || 'analytics';
-  const status = run.status || 'unknown';
-  return `Using latest stored ${runType} run (${status}) from ${startedAt}.`;
 }
 
 function formatShortDate(value) {

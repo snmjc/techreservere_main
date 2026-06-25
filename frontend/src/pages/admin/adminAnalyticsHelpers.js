@@ -12,6 +12,7 @@ export function resolveAdminAnalyticsDateRange(presetKey, now = new Date()) {
   startDate.setDate(startDate.getDate() - Math.max(0, (preset.days || 30) - 1));
 
   return {
+    days: preset.days,
     startDate,
     endDate,
     startDateIso: formatDateIso(startDate),
