@@ -43,7 +43,8 @@ class ReservationBookingPolicyService
                     'Reservations can only be made within the active booking window from %s to %s.',
                     $activeWindowStart->format('F j, Y'),
                     $activeWindowEnd->format('F j, Y')
-                )
+                ),
+                'ReservationBookingWindowNotOpen'
             );
         }
 
@@ -60,13 +61,15 @@ class ReservationBookingPolicyService
                     'Reservations are currently limited to the active booking window from %s to %s.',
                     $activeWindowStart->format('F j, Y'),
                     $activeWindowEnd->format('F j, Y')
-                )
+                ),
+                'ReservationBookingWindowExceeded'
             );
         }
 
         if ($this->usesRestrictedVenue($requestDTO, $bookingWindow)) {
             throw new DomainValidationException(
-                'Extended-term reservations are not allowed for classrooms, AVR rooms, or case rooms.'
+                'Extended-term reservations are not allowed for classrooms, AVR rooms, or case rooms.',
+                'ReservationRestrictedVenueForExtendedWindow'
             );
         }
 
@@ -75,7 +78,8 @@ class ReservationBookingPolicyService
                 sprintf(
                     'Approved exempt events can only be scheduled through %s.',
                     $extendedWindowEnd->format('F j, Y')
-                )
+                ),
+                'ReservationExtendedWindowExceeded'
             );
         }
     }
