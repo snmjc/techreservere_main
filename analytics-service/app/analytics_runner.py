@@ -1,9 +1,14 @@
 from datetime import UTC, date, datetime, timedelta
 import json
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from psycopg import Connection
+
+
+DEMO_SEED_DIR = Path("/app/demo-seeds")
+HIGH_LAST_LOW_THIS_SEED = DEMO_SEED_DIR / "HighToLow.sql"
 
 
 DEFAULT_CONFIG = {
@@ -46,8 +51,7 @@ class AnalyticsRunner:
         self._clear_demo_analytics(connection)
         self._clear_all_reservations(connection)
         if normalized_scenario == 'high_last_low_this':
-            self._seed_scenario_reservations(connection, high_last_year=True, high_this_sem=False)
-            self._apply_scenario_readiness(connection, 'moderate_pressure')
+            self._execute_seed_sql_file(connection, HIGH_LAST_LOW_THIS_SEED, normalized_scenario)
         elif normalized_scenario == 'high_last_high_this':
             self._seed_scenario_reservations(connection, high_last_year=True, high_this_sem=True)
             self._apply_scenario_readiness(connection, 'high_pressure')
@@ -546,6 +550,25 @@ class AnalyticsRunner:
         connection.execute('DELETE FROM analytics_runs')
         connection.execute("DELETE FROM analytics_configurations WHERE config_key = 'daily_analytics'")
         self._ensure_action_log_table(connection)
+
+    def _execute_seed_sql_file(self, connection: Connection, seed_path: Path, scenario_key: str) -> None:
+        if not seed_path.is_file():
+            raise FileNotFoundError(f"Analytics scenario seed file was not found: {seed_path}")
+
+        sql = seed_path.read_text(encoding="utf-8")
+        sql = "\n".join(
+            line
+            for line in sql.splitlines()
+            if line.strip().upper() not in {"BEGIN;", "COMMIT;"}
+        )
+
+        connection.execute(sql)
+        self._log_action(
+            connection,
+            'scenario_seed_file_executed',
+            scenario_key,
+            {'seedFile': str(seed_path), 'seedFileName': seed_path.name},
+        )
 
     def _seed_scenario_reservations(self, connection: Connection, high_last_year: bool, high_this_sem: bool) -> None:
         templates = self._build_scenario_templates(high_last_year, high_this_sem)

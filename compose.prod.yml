@@ -67,7 +67,8 @@ services:
 
   analytics-service:
     build:
-      context: ./analytics-service
+      context: .
+      dockerfile: analytics-service/Dockerfile
     container_name: techreserve_analytics_service
     restart: unless-stopped
     environment:
