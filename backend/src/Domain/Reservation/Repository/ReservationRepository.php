@@ -4,6 +4,7 @@ namespace App\Domain\Reservation\Repository;
 
 use App\Domain\Reservation\Entity\ReservationEntity;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -48,7 +49,7 @@ class ReservationRepository extends ServiceEntityRepository
             return [];
         }
 
-        return $this->createQueryBuilder('rsrv')
+        $reservations = $this->createQueryBuilder('rsrv')
             ->where('rsrv.venueIdentifier IN (:venueIdentifiers)')
             ->andWhere('rsrv.currentStatus NOT IN (:excludedStatuses)')
             ->andWhere('rsrv.eventDateTime < :rangeEnd')
@@ -60,6 +61,12 @@ class ReservationRepository extends ServiceEntityRepository
             ->orderBy('rsrv.eventDateTime', 'ASC')
             ->getQuery()
             ->getResult();
+
+        if ($reservations !== []) {
+            return $reservations;
+        }
+
+        return $this->findVenueReservationsByCalendarDateFallback($venueIdentifiers, $rangeStart, $rangeEnd);
     }
 
     /** @return ReservationEntity[] */
@@ -102,6 +109,53 @@ class ReservationRepository extends ServiceEntityRepository
         $entityManager = $this->getEntityManager();
         $entityManager->persist($entity);
         $entityManager->flush();
+    }
+
+    /** @return ReservationEntity[] */
+    private function findVenueReservationsByCalendarDateFallback(array $venueIdentifiers, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd): array
+    {
+        $selectedDate = $rangeStart->format('Y-m-d');
+        $reservationIdentifiers = $this->getEntityManager()->getConnection()->fetchFirstColumn(
+            'SELECT reservation_identifier
+             FROM reservations
+             WHERE venue_identifier IN (:venueIdentifiers)
+               AND LOWER(COALESCE(current_status, \'\')) NOT IN (:excludedStatuses)
+               AND DATE(event_date_time) <= :selectedDate
+               AND DATE(COALESCE(end_date_time, event_date_time)) >= :selectedDate
+               AND event_date_time < :rangeEnd
+             ORDER BY event_date_time ASC',
+            [
+                'venueIdentifiers' => $venueIdentifiers,
+                'excludedStatuses' => ['rejected', 'cancelled', 'request revision'],
+                'selectedDate' => $selectedDate,
+                'rangeEnd' => $rangeEnd->format('Y-m-d H:i:s'),
+            ],
+            [
+                'venueIdentifiers' => ArrayParameterType::INTEGER,
+                'excludedStatuses' => ArrayParameterType::STRING,
+                'selectedDate' => ParameterType::STRING,
+                'rangeEnd' => ParameterType::STRING,
+            ]
+        );
+
+        if ($reservationIdentifiers === []) {
+            return [];
+        }
+
+        $reservations = $this->createQueryBuilder('rsrv')
+            ->where('rsrv.reservationIdentifier IN (:reservationIdentifiers)')
+            ->setParameter('reservationIdentifiers', array_map('intval', $reservationIdentifiers))
+            ->orderBy('rsrv.eventDateTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        error_log(sprintf(
+            'Venue calendar fallback matched %d reservation(s) for %s.',
+            count($reservations),
+            $selectedDate
+        ));
+
+        return $reservations;
     }
 
     // ===== AI GENERATED: generateReservationCode =====

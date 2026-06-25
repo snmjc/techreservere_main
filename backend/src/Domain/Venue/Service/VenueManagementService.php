@@ -370,6 +370,14 @@ class VenueManagementService
             $availabilityWindow['rangeEnd']
         );
 
+        error_log(sprintf(
+            'Venue calendar trace [%s]: %d venue(s), %d reservation(s), %d schedule block(s).',
+            $availabilityWindow['selectedDate']->format('Y-m-d'),
+            count($venueIdentifiers),
+            count($reservations),
+            count($scheduleBlocks)
+        ));
+
         $reservationMap = [];
         foreach ($reservations as $reservation) {
             $venueIdentifier = $reservation->getVenueIdentifier();
