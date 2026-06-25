@@ -201,12 +201,22 @@ class ReservationCreateService
             return;
         }
 
-        $columns = $this->connection->fetchAllAssociative(
-            "SELECT column_name, data_type
-             FROM information_schema.columns
-             WHERE table_schema = CURRENT_SCHEMA()
-               AND table_name = 'reservations'"
-        );
+        try {
+            $columns = $this->connection->fetchAllAssociative(
+                "SELECT column_name, data_type
+                 FROM information_schema.columns
+                 WHERE table_schema = CURRENT_SCHEMA()
+                   AND table_name = 'reservations'"
+            );
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Unable to inspect reservation schema [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+            $this->reservationSchemaEnsured = true;
+            return;
+        }
 
         if ($columns === []) {
             $this->reservationSchemaEnsured = true;
@@ -384,17 +394,27 @@ class ReservationCreateService
 
     private function fetchReservationColumnsByName(): array
     {
-        $columns = $this->connection->fetchAllAssociative(
-            "SELECT column_name, data_type, udt_name, table_schema
-             FROM information_schema.columns
-             WHERE table_name = 'reservations'
-             ORDER BY CASE
-                 WHEN table_schema = CURRENT_SCHEMA() THEN 0
-                 WHEN table_schema = 'public' THEN 1
-                 ELSE 2
-             END,
-             ordinal_position ASC"
-        );
+        try {
+            $columns = $this->connection->fetchAllAssociative(
+                "SELECT column_name, data_type, udt_name, table_schema
+                 FROM information_schema.columns
+                 WHERE table_name = 'reservations'
+                 ORDER BY CASE
+                     WHEN table_schema = CURRENT_SCHEMA() THEN 0
+                     WHEN table_schema = 'public' THEN 1
+                     ELSE 2
+                 END,
+                 ordinal_position ASC"
+            );
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Unable to read reservation columns [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+
+            return [];
+        }
 
         $columnsByName = [];
         foreach ($columns as $column) {
@@ -684,11 +704,11 @@ class ReservationCreateService
     ): bool {
         $columnsByName = $this->fetchReservationColumnsByName();
         if ($columnsByName === []) {
-            return $this->reservationRepository->findVenueReservationsOverlappingRange(
-                [$venueIdentifier],
+            return $this->hasVenueReservationConflictWithoutSchemaMetadata(
+                $venueIdentifier,
                 $eventDateTime,
                 $endDateTime
-            ) !== [];
+            );
         }
 
         $hasEndDateTimeColumn = isset($columnsByName['end_date_time']);
@@ -770,6 +790,68 @@ class ReservationCreateService
                 return false;
             }
         }
+    }
+
+    private function hasVenueReservationConflictWithoutSchemaMetadata(
+        int $venueIdentifier,
+        \DateTimeInterface $eventDateTime,
+        \DateTimeInterface $endDateTime
+    ): bool {
+        $rangeStart = $eventDateTime->format('Y-m-d H:i:s');
+        $rangeEnd = $endDateTime->format('Y-m-d H:i:s');
+        $selectedDate = $eventDateTime->format('Y-m-d');
+
+        $sqlCandidates = [
+            'SELECT COUNT(*) FROM reservations
+                WHERE venue_identifier = :venueIdentifier
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
+                  AND event_date_time < :rangeEnd
+                  AND (
+                    (end_date_time IS NULL AND event_date_time >= :rangeStart)
+                    OR (end_date_time IS NOT NULL AND end_date_time > :rangeStart)
+                  )',
+            'SELECT COUNT(*) FROM reservations
+                WHERE venue_identifier = :venueIdentifier
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
+                  AND DATE(event_date_time) <= :selectedDate
+                  AND DATE(COALESCE(end_date_time, event_date_time)) >= :selectedDate
+                  AND event_date_time < :rangeEnd',
+            'SELECT COUNT(*) FROM reservations
+                WHERE venue_identifier = :venueIdentifier
+                  AND LOWER(COALESCE(current_status, \'\')) NOT IN (\'rejected\', \'cancelled\', \'request revision\')
+                  AND event_date_time >= :rangeStart
+                  AND event_date_time < :rangeEnd',
+        ];
+
+        foreach ($sqlCandidates as $sql) {
+            try {
+                $conflictCount = (int) $this->connection->fetchOne(
+                    $sql,
+                    [
+                        'venueIdentifier' => $venueIdentifier,
+                        'rangeStart' => $rangeStart,
+                        'rangeEnd' => $rangeEnd,
+                        'selectedDate' => $selectedDate,
+                    ],
+                    [
+                        'venueIdentifier' => ParameterType::INTEGER,
+                        'rangeStart' => ParameterType::STRING,
+                        'rangeEnd' => ParameterType::STRING,
+                        'selectedDate' => ParameterType::STRING,
+                    ]
+                );
+
+                return $conflictCount > 0;
+            } catch (\Throwable $exception) {
+                error_log(sprintf(
+                    'Reservation Creation - Venue conflict schema-less query failed [%s]: %s',
+                    $exception::class,
+                    $exception->getMessage()
+                ));
+            }
+        }
+
+        return false;
     }
 
     private function isVenueBookable(VenueEntity $venue): bool
