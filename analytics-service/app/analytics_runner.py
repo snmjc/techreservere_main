@@ -10,6 +10,7 @@ from psycopg import Connection
 DEMO_SEED_DIR = Path("/app/demo-seeds")
 HIGH_LAST_LOW_THIS_SEED = DEMO_SEED_DIR / "HighToLow.sql"
 HIGH_LAST_HIGH_THIS_SEED = DEMO_SEED_DIR / "HighToHigh.sql"
+LOW_LAST_LOW_THIS_SEED = DEMO_SEED_DIR / "LowToLow.sql"
 
 
 DEFAULT_CONFIG = {
@@ -56,8 +57,7 @@ class AnalyticsRunner:
         elif normalized_scenario == 'high_last_high_this':
             self._execute_seed_sql_file(connection, HIGH_LAST_HIGH_THIS_SEED, normalized_scenario)
         elif normalized_scenario == 'low_last_low_this':
-            self._seed_scenario_reservations(connection, high_last_year=False, high_this_sem=False)
-            self._apply_scenario_readiness(connection, 'low_pressure')
+            self._execute_seed_sql_file(connection, LOW_LAST_LOW_THIS_SEED, normalized_scenario)
         elif normalized_scenario == 'low_last_high_this':
             self._seed_scenario_reservations(connection, high_last_year=False, high_this_sem=True)
             self._apply_scenario_readiness(connection, 'surprise_pressure')
