@@ -403,6 +403,32 @@
   font-size: 0.82rem;
 }
 
+.admin-past-records-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0 18px 18px;
+}
+
+.admin-past-records-pagination button {
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 1px solid #d8e3dd;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--admin-records-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-past-records-pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .admin-past-records-detail-card {
   align-self: start;
   border-radius: 28px;

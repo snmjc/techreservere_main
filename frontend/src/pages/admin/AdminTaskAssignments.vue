@@ -1730,6 +1730,9 @@ button:disabled {
 
 .admin-task-assignments-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 1rem;
+  row-gap: 0.95rem;
 }
 
 .admin-task-assignments-form textarea,
@@ -1739,12 +1742,35 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.admin-task-assignments-form > label,
+.admin-task-assignments-security-grid > label {
+  min-width: 0;
+  align-content: start;
+}
+
+.admin-task-assignments-form > label > span,
+.admin-task-assignments-security-grid > label > span {
+  display: flex;
+  align-items: flex-end;
+  min-height: 1.4rem;
+  line-height: 1.35;
+}
+
 .admin-task-assignments-form textarea {
+  width: 100%;
   min-height: 88px;
   max-height: 120px;
   padding: 0.72rem 0.78rem;
+  box-sizing: border-box;
   line-height: 1.45;
   resize: vertical;
+}
+
+.admin-task-assignments-form input,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .admin-task-sms-test-form {
@@ -1830,6 +1856,8 @@ button:disabled {
 }
 
 .admin-task-assignments-override {
+  display: grid;
+  gap: 0.85rem;
   padding: 0.85rem;
   background: #f7faf8;
   border: 1px solid #dbe4df;

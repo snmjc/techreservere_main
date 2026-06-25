@@ -264,6 +264,37 @@
   padding-bottom: 0.25rem;
 }
 
+.logs-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.logs-pagination span {
+  color: #566d61;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.logs-pagination button {
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 1px solid #d3e2d8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #173322;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logs-pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1180px) {
   .logs-toolbar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

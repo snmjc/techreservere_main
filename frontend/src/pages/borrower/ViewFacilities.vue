@@ -435,7 +435,6 @@
                 <p>{{ getEquipmentSummaryNote(equipment) }}</p>
                 <div class="borrower-facilities__equipment-meta">
                   <span>{{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</span>
-                  <span>{{ equipment.groupedQuantityLabel || formatGroupedQuantity(equipment) }}</span>
                   <span>{{ equipment.availableQuantityLabel || formatAvailableQuantity(equipment) }}</span>
                 </div>
                 <small v-if="getEquipmentInventoryPreview(equipment)" class="borrower-facilities__equipment-preview">
@@ -476,7 +475,7 @@
                 {{ formatEquipmentStatus(equipment) }}
               </span>
               <span>{{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</span>
-              <span>{{ equipment.groupedQuantityLabel || formatGroupedQuantity(equipment) }} · {{ equipment.availableQuantityLabel || formatAvailableQuantity(equipment) }}</span>
+              <span>{{ equipment.availableQuantityLabel || formatAvailableQuantity(equipment) }}</span>
               <button
                 type="button"
                 class="borrower-facilities__card-action-button"
@@ -1064,7 +1063,6 @@ function formatGroupedQuantity(equipment) {
   const groupedItemCount = Math.max(Number(equipment?.groupedItemCount || 0), 0);
   return `${groupedItemCount} item${groupedItemCount === 1 ? '' : 's'} grouped`;
 }
-
 function formatAvailableQuantity(equipment) {
   const availableQuantity = Math.max(Number(equipment?.availableQuantity || 0), 0);
   return `${availableQuantity} available`;

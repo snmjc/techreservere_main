@@ -62,7 +62,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="log in filteredLogs" :key="log.id" class="logs-tr">
+          <tr v-for="log in paginatedLogs" :key="log.id" class="logs-tr">
             <td class="logs-td">{{ log.reservationId }}</td>
             <td class="logs-td">{{ log.name }}</td>
             <td class="logs-td">{{ log.role }}</td>
@@ -88,11 +88,17 @@
           <tr v-if="loading">
             <td colspan="9" class="logs-td logs-empty-row">Loading active reservations...</td>
           </tr>
-          <tr v-else-if="filteredLogs.length === 0">
+          <tr v-else-if="paginatedLogs.length === 0">
             <td colspan="9" class="logs-td logs-empty-row">No active reservations found.</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="totalPages > 1" class="logs-pagination">
+      <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
     </div>
 
     <div class="logs-page-footer">
@@ -102,7 +108,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -119,6 +125,8 @@ const loading = ref(false);
 const searchQuery = ref('');
 const sortBy = ref('date');
 const sortOrder = ref('asc');
+const currentPage = ref(1);
+const pageSize = 8;
 
 onMounted(async () => {
   try {
@@ -185,6 +193,21 @@ const filteredLogs = computed(() => {
   });
 
   return logs;
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)));
+const paginatedLogs = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredLogs.value.slice(startIndex, startIndex + pageSize);
+});
+
+watch([searchQuery, sortBy, sortOrder], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 function toggleSortOrder() {

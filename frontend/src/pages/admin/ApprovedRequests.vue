@@ -49,13 +49,19 @@
 
       <div class="admin-ops-table-card">
         <RequestApprovedTableComponent
-          :request-list="approvedRequestsList"
+          :request-list="paginatedApprovedRequests"
           :search-query-text="searchQueryText"
           @view-workflow-details="handleViewWorkflowDetails"
           @edit-workflow-record="handleEditWorkflow"
           @deploy-release-record="handleDeployRelease"
           @cancel-request-record="handleCancelRequest"
         />
+      </div>
+
+      <div v-if="approvedRequestsTotalPages > 1" class="approved-requests-pagination">
+        <button type="button" :disabled="approvedRequestsCurrentPage === 1" @click="approvedRequestsCurrentPage -= 1">Previous</button>
+        <span>Page {{ approvedRequestsCurrentPage }} of {{ approvedRequestsTotalPages }}</span>
+        <button type="button" :disabled="approvedRequestsCurrentPage === approvedRequestsTotalPages" @click="approvedRequestsCurrentPage += 1">Next</button>
       </div>
 
       <div class="admin-ops-page-footer approved-requests-page-footer">
@@ -455,7 +461,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -473,6 +479,8 @@ const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const approvedRequestsCurrentPage = ref(1);
+const approvedRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);
 const editRequestRecord = ref(null);
 const deployRequestRecord = ref(null);
@@ -496,6 +504,26 @@ const workflowInitialSnapshot = ref('[]');
 let workflowTaskCounter = 0;
 
 const approvedRequestsList = computed(() => requestStore.approvedRequestsList || []);
+const filteredApprovedRequests = computed(() => {
+  const queryLower = searchQueryText.value.toLowerCase().trim();
+
+  return approvedRequestsList.value.filter((requestRecord) => {
+    const requestType = String(requestRecord?.requestType || '').toLowerCase();
+    const matchesShowing = showingFilterValue.value === 'all'
+      || requestType === showingFilterValue.value;
+    const matchesQuery = queryLower === ''
+      || String(requestRecord?.requesterFullName || '').toLowerCase().includes(queryLower)
+      || String(requestRecord?.requestIdentifier || '').toLowerCase().includes(queryLower)
+      || String(requestRecord?.requestDisplayIdentifier || '').toLowerCase().includes(queryLower);
+
+    return matchesShowing && matchesQuery;
+  });
+});
+const approvedRequestsTotalPages = computed(() => Math.max(1, Math.ceil(filteredApprovedRequests.value.length / approvedRequestsPageSize)));
+const paginatedApprovedRequests = computed(() => {
+  const startIndex = (approvedRequestsCurrentPage.value - 1) * approvedRequestsPageSize;
+  return filteredApprovedRequests.value.slice(startIndex, startIndex + approvedRequestsPageSize);
+});
 const hasWorkflowChanges = computed(() => serializeWorkflowTasks(workflowTasks.value) !== workflowInitialSnapshot.value);
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
@@ -509,6 +537,16 @@ onMounted(async () => {
     console.log('Admin Approved Requests - Count:', list.length);
   } catch (error) {
     console.error('Error fetching approved requests:', error);
+  }
+});
+
+watch([searchQueryText, showingFilterValue], () => {
+  approvedRequestsCurrentPage.value = 1;
+});
+
+watch(approvedRequestsTotalPages, (pageCount) => {
+  if (approvedRequestsCurrentPage.value > pageCount) {
+    approvedRequestsCurrentPage.value = pageCount;
   }
 });
 

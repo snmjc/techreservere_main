@@ -54,7 +54,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="record in filteredRecordList"
+            v-for="record in paginatedRecordList"
             :key="record.requestIdentifier + record.requesterFullName"
             class="borrower-sublist-table-body-row"
           >
@@ -87,11 +87,17 @@
               </div>
             </td>
           </tr>
-          <tr v-if="filteredRecordList.length === 0">
+          <tr v-if="paginatedRecordList.length === 0">
             <td colspan="10" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No pending requests.</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="totalPages > 1" class="borrower-sublist-pagination">
+      <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
     </div>
 
     <!-- Footer -->
@@ -109,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerRequestCancelModal from '@/modules/request/components/BorrowerRequestCancelModal.vue';
@@ -128,6 +134,8 @@ const authStore = useAuthenticationStore();
 const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const currentPage = ref(1);
+const pageSize = 8;
 const selectedRequest = ref(null);
 const requestToCancel = ref(null);
 const isCancelling = ref(false);
@@ -157,10 +165,25 @@ const filteredRecordList = computed(() => {
     record.requestIdentifier?.toString().includes(queryLower)
   );
 });
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / pageSize)));
+const paginatedRecordList = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredRecordList.value.slice(startIndex, startIndex + pageSize);
+});
 
 const hasNoRecords = computed(() => {
   const list = filteredRecordList.value || [];
   return list.length === 0;
+});
+
+watch([searchQueryText, showingFilterValue], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 function openCancelModal(requestRecord) {

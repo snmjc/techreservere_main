@@ -53,7 +53,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="record in filteredRecordList"
+            v-for="record in paginatedRecordList"
             :key="record.requestIdentifier + record.requesterFullName"
             class="borrower-sublist-table-body-row"
           >
@@ -71,11 +71,17 @@
               <span class="borrower-sublist-status-badge borrower-sublist-status-badge--approved">Approved</span>
             </td>
           </tr>
-          <tr v-if="filteredRecordList.length === 0">
+          <tr v-if="paginatedRecordList.length === 0">
             <td colspan="9" class="borrower-sublist-table-cell borrower-sublist-table-empty-row">No approved requests.</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="totalPages > 1" class="borrower-sublist-pagination">
+      <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
     </div>
 
     <!-- Footer -->
@@ -84,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -100,6 +106,8 @@ const authStore = useAuthenticationStore();
 const loading = ref(false);
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const currentPage = ref(1);
+const pageSize = 8;
 
 const approvedRecordsList = computed(() => requestStore.approvedRequestsList || []);
 
@@ -122,10 +130,25 @@ const filteredRecordList = computed(() => {
     record.requestIdentifier?.toString().includes(queryLower)
   );
 });
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / pageSize)));
+const paginatedRecordList = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredRecordList.value.slice(startIndex, startIndex + pageSize);
+});
 
 const hasNoRecords = computed(() => {
   const list = filteredRecordList.value || [];
   return list.length === 0;
+});
+
+watch([searchQueryText, showingFilterValue], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 function getTypeBadgeClass(requestType) {
