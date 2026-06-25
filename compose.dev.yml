@@ -31,10 +31,14 @@ services:
       APP_ENV: dev
       APP_DEBUG: "1"
       POSTGRES_HOST: database
+      ANALYTICS_SERVICE_URL: "http://analytics-service:9000"
+      MAILER_DSN: "${MAILER_DSN:-null://null}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
       RUN_MIGRATIONS_ON_BOOT: "${RUN_MIGRATIONS_ON_BOOT:-1}"
     depends_on:
       database:
+        condition: service_healthy
+      analytics-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "php -r '$$socket = @fsockopen(\"127.0.0.1\", 8000); if (!$$socket) exit(1); fclose($$socket);'"]
@@ -72,6 +76,30 @@ services:
     depends_on:
       database:
         condition: service_healthy
+
+  analytics-service:
+    build:
+      context: ./analytics-service
+    container_name: techreserve_analytics_service
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
+    volumes:
+      - ./analytics-service/app:/app/app
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD:-techreserve_pass}@database:5432/${POSTGRES_DB:-techreserve}"
+      ANALYTICS_DAILY_CRON_HOUR: "${ANALYTICS_DAILY_CRON_HOUR:-2}"
+      ANALYTICS_DAILY_CRON_MINUTE: "${ANALYTICS_DAILY_CRON_MINUTE:-0}"
+      ANALYTICS_SCHEDULER_ENABLED: "${ANALYTICS_SCHEDULER_ENABLED:-true}"
+    expose:
+      - "9000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=2).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   frontend:
     build:
