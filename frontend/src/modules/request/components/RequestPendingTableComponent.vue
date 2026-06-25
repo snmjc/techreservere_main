@@ -16,7 +16,7 @@
       </thead>
       <tbody>
         <tr
-          v-for="requestRecord in filteredRequestList"
+          v-for="requestRecord in requestList"
           :key="requestRecord.requestIdentifier"
           class="request-pending-table-body-row"
         >
@@ -80,7 +80,7 @@
             </div>
           </td>
         </tr>
-        <tr v-if="filteredRequestList.length === 0">
+        <tr v-if="requestList.length === 0">
           <td colspan="8" class="request-pending-table-cell request-pending-table-empty-row">
             No pending requests found.
           </td>
@@ -91,14 +91,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-
 /**
  * @typedef {Object} RequestPendingTableProps
  * @property {Array<Object>} requestList - Array of pending request records
  * @property {string} searchQueryText - Current search query for filtering
  */
-const props = defineProps({
+defineProps({
   requestList: {
     type: Array,
     required: true,
@@ -115,25 +113,6 @@ const emit = defineEmits([
   'approveRequestRecord',
   'rejectRequestRecord',
 ]);
-
-/**
- * @function filteredRequestList
- * @description Filters request list based on search query matching name or ID.
- * @returns {Array<Object>}
- */
-const filteredRequestList = computed(() => {
-  const queryLower = props.searchQueryText?.toLowerCase().trim() || '';
-  const list = props.requestList || [];
-  if (!queryLower) {
-    return list;
-  }
-  return list.filter((requestRecord) => {
-    return (
-      requestRecord.requesterFullName?.toLowerCase().includes(queryLower) ||
-      requestRecord.requestIdentifier?.toString().includes(queryLower)
-    );
-  });
-});
 
 /**
  * @function getTypeBadgeClass
