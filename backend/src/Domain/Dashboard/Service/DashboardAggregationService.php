@@ -158,6 +158,7 @@ class DashboardAggregationService
         $comparisonUtilizationByCategory = $this->hasVisibleUtilization($previousYearUtilizationByCategory)
             ? $previousYearUtilizationByCategory
             : $this->buildUtilizationByCategory($equipment, $previousEquipmentUsageMap);
+        $topEquipment = $this->buildTopEquipment($equipment, $equipmentUsageMap);
 
         return [
             'dateRange' => [
@@ -199,7 +200,14 @@ class DashboardAggregationService
             ],
             'utilizationByCategory' => $this->buildUtilizationByCategory($equipment, $equipmentUsageMap),
             'utilizationComparisonByCategory' => $comparisonUtilizationByCategory,
-            'topEquipment' => $this->buildTopEquipment($equipment, $equipmentUsageMap),
+            'topEquipment' => $topEquipment,
+            'possibleBorrowedEquipment' => $this->buildPossibleBorrowedEquipment(
+                $equipment,
+                $equipmentUsageMap,
+                $previousEquipmentUsageMap,
+                $previousYearEquipmentUsageMap,
+                $topEquipment
+            ),
             'summary' => [
                 'totalEquipment' => count($equipment),
                 'activeReservations' => $this->countReservationsByStatuses($relevantReservations, ['Approved', 'Prepared', 'Deployed']),
@@ -773,7 +781,113 @@ class DashboardAggregationService
 
         usort($items, static fn (array $left, array $right): int => $right['count'] <=> $left['count']);
 
-        return array_slice($items, 0, 5);
+        return array_slice($items, 0, 10);
+    }
+
+    /**
+     * @param EquipmentEntity[] $equipment
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $equipmentUsageMap
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousEquipmentUsageMap
+     * @param array<string, array{name:string,usageCount:int,totalQuantity:int,category:string,overdue:bool}> $previousYearEquipmentUsageMap
+     * @param array<int, array{name:string,count:int,rate:float}> $topEquipment
+     * @return array<int, array{name:string,count:int,reason:string}>
+     */
+    private function buildPossibleBorrowedEquipment(
+        array $equipment,
+        array $equipmentUsageMap,
+        array $previousEquipmentUsageMap,
+        array $previousYearEquipmentUsageMap,
+        array $topEquipment
+    ): array {
+        $topEquipmentNames = [];
+        foreach (array_slice($topEquipment, 0, 5) as $item) {
+            $topEquipmentNames[self::normalizeText($item['name'] ?? '')] = true;
+        }
+
+        $candidates = [];
+        foreach ($equipment as $equipmentRecord) {
+            $name = $equipmentRecord->getEquipmentName();
+            $nameKey = self::normalizeText($name);
+            if ($nameKey === '' || isset($topEquipmentNames[$nameKey])) {
+                continue;
+            }
+
+            $currentUsage = (int) ($equipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            $previousUsage = (int) ($previousEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            $previousYearUsage = (int) ($previousYearEquipmentUsageMap[$nameKey]['usageCount'] ?? 0);
+            $candidateUsage = max($currentUsage, $previousUsage, $previousYearUsage);
+            if ($candidateUsage <= 0) {
+                continue;
+            }
+
+            $totalQuantity = max(1, $equipmentRecord->getTotalQuantity());
+            $availableQuantity = max(0, $equipmentRecord->getAvailableQuantity());
+            $stockPressure = max(0, $totalQuantity - $availableQuantity);
+            $availabilityRate = $availableQuantity / $totalQuantity;
+            $score = ($previousYearUsage * 1.4) + ($previousUsage * 1.1) + ($currentUsage * 0.6) + ($stockPressure * 0.4);
+
+            if ($score <= 0.0) {
+                continue;
+            }
+
+            $signal = $this->resolveBorrowingCandidateSignal($currentUsage, $previousUsage, $previousYearUsage, $availabilityRate);
+            $candidates[] = [
+                'name' => $name,
+                'count' => $candidateUsage,
+                'reason' => $this->resolveBorrowingCandidateReason($signal, $currentUsage, $previousUsage, $previousYearUsage, $availabilityRate),
+                'score' => $score,
+            ];
+        }
+
+        usort($candidates, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score']) ?: strcmp((string) $left['name'], (string) $right['name']);
+        });
+
+        return array_map(
+            static fn (array $item): array => [
+                'name' => $item['name'],
+                'count' => $item['count'],
+                'reason' => $item['reason'],
+            ],
+            array_slice($candidates, 0, 5)
+        );
+    }
+
+    private function resolveBorrowingCandidateSignal(int $currentUsage, int $previousUsage, int $previousYearUsage, float $availabilityRate): string
+    {
+        if ($previousYearUsage > max($currentUsage, $previousUsage)) {
+            return 'Seasonal';
+        }
+
+        if ($previousUsage > $currentUsage) {
+            return 'Recent';
+        }
+
+        if ($currentUsage > 0) {
+            return 'Emerging';
+        }
+
+        if ($availabilityRate <= 0.35) {
+            return 'Stock';
+        }
+
+        return 'Watch';
+    }
+
+    private function resolveBorrowingCandidateReason(
+        string $signal,
+        int $currentUsage,
+        int $previousUsage,
+        int $previousYearUsage,
+        float $availabilityRate
+    ): string {
+        return match ($signal) {
+            'Seasonal' => sprintf('Used %d times in the same days last year, so this item may return next cycle.', $previousYearUsage),
+            'Recent' => sprintf('Used %d times in the previous period, which suggests it may rebound soon.', $previousUsage),
+            'Emerging' => sprintf('Used %d times in the current period outside the highest-used items.', $currentUsage),
+            'Stock' => sprintf('Available stock is low at %d%%, so even light demand can create pressure.', (int) round($availabilityRate * 100)),
+            default => 'Historical and inventory signals make this a secondary borrowing candidate.',
+        };
     }
 
     /**

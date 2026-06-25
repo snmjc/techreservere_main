@@ -206,16 +206,15 @@
                 <h3>Top Frequently Used Equipment</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Usage Count</th><th>Utilization Rate</th></tr>
+                    <tr><th>Equipment</th><th>Times Used</th></tr>
                   </thead>
                   <tbody>
-                    <tr v-if="topEquipment.length === 0">
-                      <td colspan="3">No equipment requests were recorded in the selected range.</td>
+                    <tr v-if="topFrequentlyUsedEquipment.length === 0">
+                      <td colspan="2">No equipment requests were recorded in the selected range.</td>
                     </tr>
-                    <tr v-for="item in topEquipment" :key="item.name">
+                    <tr v-for="item in topFrequentlyUsedEquipment" :key="item.name">
                       <td>{{ item.name }}</td>
                       <td>{{ formatMetricNumber(item.count, 0) }}</td>
-                      <td>{{ formatMetricNumber(item.rate, 1) }}%</td>
                     </tr>
                   </tbody>
                 </table>
@@ -225,15 +224,15 @@
                 <h3>Top Possible Borrowed Equipment</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Trend Signal</th><th>Why it may move</th></tr>
+                    <tr><th>Equipment</th><th>Times Used</th><th>Why it may move</th></tr>
                   </thead>
                   <tbody>
                     <tr v-if="possibleBorrowedEquipment.length === 0">
                       <td colspan="3">No trend-based borrowing candidates are available yet.</td>
                     </tr>
-                    <tr v-for="item in possibleBorrowedEquipment" :key="item.name">
+                    <tr v-for="item in possibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
                       <td>{{ item.name }}</td>
-                      <td>{{ item.signal }}</td>
+                      <td>{{ formatMetricNumber(item.count || item.usageCount || 0, 0) }}</td>
                       <td>{{ item.reason }}</td>
                     </tr>
                   </tbody>
@@ -332,7 +331,6 @@ import {
   createEmptyUtilizationReport,
   hasRiskDistribution,
   normalizeStoredAnalyticsResponse,
-  pickNonEmptyArray,
 } from './services/reportsAnalyticsDataAdapter.js';
 import { createReportsAnalyticsChartRenderer } from './services/reportsAnalyticsChartRenderer.js';
 import {
@@ -459,16 +457,12 @@ const riskNarrative = computed(() => buildRiskNarrative(riskBands.value));
 const optimizationMetrics = computed(() => optimizationReport.value || []);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
-const topEquipment = computed(() => utilizationReport.value.topEquipment || []);
-const possibleBorrowedEquipment = computed(() => topEquipment.value.slice(0, 5).map((item, index) => ({
-  name: item.name,
-  signal: `${index + 1}`,
-  reason: Number(item.rate || 0) >= 50
-    ? 'Already trending high, so it may stay in demand next cycle.'
-    : Number(item.count || 0) >= 3
-      ? 'Repeat usage suggests this item may reappear in the next 3 days.'
-      : 'Light but consistent usage makes it a possible next-cycle borrow.',
-})));
+const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
+const topFrequentlyUsedEquipment = computed(() => topEquipment.value.slice(0, 5));
+const possibleBorrowedEquipment = computed(() => {
+  const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
+  return candidates.filter((item) => item?.name);
+});
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
 const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'N/A');
@@ -547,33 +541,9 @@ async function loadReportsAnalytics(options = {}) {
       return;
     }
 
-    if (preferLiveOnly) {
-      applyEmptyAnalyticsSections();
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-      return;
-    }
-
-    try {
-      const latestResultsResponse = await adminAnalyticsApi.getLatestAnalyticsResults();
-      if (loadSequence !== reportsLoadSequence) {
-        return;
-      }
-
-      const storedAnalytics = normalizeStoredAnalyticsResponse(latestResultsResponse);
-
-      if (storedAnalytics !== null) {
-        applyStoredAnalyticsSections(storedAnalytics);
-        reportsSourceLabel.value = buildStoredAnalyticsLabel(latestResultsResponse?.run);
-        return;
-      }
-
-      applyEmptyAnalyticsSections();
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-    } catch (fallbackError) {
-      applyEmptyAnalyticsSections();
-      reportsError.value = resolveReportsError(fallbackError || error);
-      reportsSourceLabel.value = 'Analytics data is unavailable right now.';
-    }
+    applyEmptyAnalyticsSections();
+    reportsError.value = resolveReportsError(error);
+    reportsSourceLabel.value = 'Analytics data is unavailable right now.';
   } finally {
     if (loadSequence !== reportsLoadSequence) {
       return;
@@ -667,61 +637,42 @@ function applyLiveAnalyticsSections(liveAnalytics) {
   const utilizationByCategory = Array.isArray(liveAnalytics?.utilizationByCategory)
     ? liveAnalytics.utilizationByCategory
     : [];
-  const utilizationComparisonByCategory = resolveVisibleUtilizationComparison(
-    liveAnalytics?.utilizationComparisonByCategory,
-    utilizationByCategory,
-  );
 
   forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
   riskReport.value = liveAnalytics?.riskDistribution || createEmptyRiskReport();
   optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
   utilizationReport.value = {
     items: utilizationByCategory,
-    comparisonItems: utilizationComparisonByCategory,
+    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
+      ? liveAnalytics.utilizationComparisonByCategory
+      : [],
     topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
+    possibleBorrowedEquipment: Array.isArray(liveAnalytics?.possibleBorrowedEquipment)
+      ? liveAnalytics.possibleBorrowedEquipment
+      : [],
   };
   summaryReport.value = liveAnalytics?.summary || createEmptySummaryReport();
 }
 
-function applyStoredAnalyticsSections(storedAnalytics) {
-  const utilizationByCategory = Array.isArray(storedAnalytics?.utilizationByCategory)
-    ? storedAnalytics.utilizationByCategory
-    : [];
-  const utilizationComparisonByCategory = resolveVisibleUtilizationComparison(
-    storedAnalytics?.utilizationComparisonByCategory,
-    utilizationByCategory,
-  );
-
-  forecastReport.value = storedAnalytics?.forecast || createEmptyForecastReport();
-  riskReport.value = storedAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = Array.isArray(storedAnalytics?.optimizationMetrics) ? storedAnalytics.optimizationMetrics : [];
-  utilizationReport.value = {
-    items: utilizationByCategory,
-    comparisonItems: utilizationComparisonByCategory,
-    topEquipment: Array.isArray(storedAnalytics?.topEquipment) ? storedAnalytics.topEquipment : [],
-  };
-  summaryReport.value = storedAnalytics?.summary || createEmptySummaryReport();
-}
-
 function applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics) {
-  const utilizationByCategory = pickNonEmptyArray(storedAnalytics?.utilizationByCategory, liveAnalytics?.utilizationByCategory);
-  const utilizationComparisonByCategory = resolveVisibleUtilizationComparison(
-    pickNonEmptyArray(
-      storedAnalytics?.utilizationComparisonByCategory,
-      liveAnalytics?.utilizationComparisonByCategory,
-    ),
-    utilizationByCategory,
-  );
+  const utilizationByCategory = Array.isArray(liveAnalytics?.utilizationByCategory)
+    ? liveAnalytics.utilizationByCategory
+    : [];
 
   forecastReport.value = liveAnalytics?.forecast || createEmptyForecastReport();
   riskReport.value = hasRiskDistribution(storedAnalytics?.riskDistribution)
     ? storedAnalytics.riskDistribution
     : liveAnalytics?.riskDistribution || createEmptyRiskReport();
-  optimizationReport.value = pickNonEmptyArray(storedAnalytics?.optimizationMetrics, liveAnalytics?.optimizationMetrics);
+  optimizationReport.value = Array.isArray(liveAnalytics?.optimizationMetrics) ? liveAnalytics.optimizationMetrics : [];
   utilizationReport.value = {
     items: utilizationByCategory,
-    comparisonItems: utilizationComparisonByCategory,
-    topEquipment: pickNonEmptyArray(storedAnalytics?.topEquipment, liveAnalytics?.topEquipment),
+    comparisonItems: Array.isArray(liveAnalytics?.utilizationComparisonByCategory)
+      ? liveAnalytics.utilizationComparisonByCategory
+      : [],
+    topEquipment: Array.isArray(liveAnalytics?.topEquipment) ? liveAnalytics.topEquipment : [],
+    possibleBorrowedEquipment: Array.isArray(liveAnalytics?.possibleBorrowedEquipment)
+      ? liveAnalytics.possibleBorrowedEquipment
+      : [],
   };
   summaryReport.value = {
     ...(liveAnalytics?.summary || createEmptySummaryReport()),
@@ -730,24 +681,18 @@ function applyScenarioAnalyticsSections(liveAnalytics, storedAnalytics) {
   };
 }
 
-function resolveVisibleUtilizationComparison(comparisonItems, currentItems) {
-  const normalizedComparisonItems = Array.isArray(comparisonItems) ? comparisonItems : [];
-  if (hasVisibleUtilizationItems(normalizedComparisonItems)) {
-    return normalizedComparisonItems;
-  }
-
-  if (!Array.isArray(currentItems) || currentItems.length === 0) {
+function normalizeEquipmentTrendItems(items) {
+  if (!Array.isArray(items)) {
     return [];
   }
 
-  return currentItems.map((item) => ({
-    label: item?.label || '',
-    value: Math.max(1, Math.round(Number(item?.value || 0) * 0.72 * 10) / 10),
-  }));
-}
-
-function hasVisibleUtilizationItems(items) {
-  return Array.isArray(items) && items.some((item) => Number(item?.value || 0) > 0);
+  return items
+    .map((item) => ({
+      name: item?.name || item?.equipment || item?.equipmentName || item?.equipment_name || '',
+      count: Number(item?.count ?? item?.usageCount ?? item?.usage_count ?? item?.timesUsed ?? item?.times_used ?? 0),
+      reason: item?.reason || item?.note || item?.why || '',
+    }))
+    .filter((item) => item.name);
 }
 
 function wait(milliseconds) {

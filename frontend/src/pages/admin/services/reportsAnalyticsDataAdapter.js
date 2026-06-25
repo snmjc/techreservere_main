@@ -8,6 +8,7 @@ export function createEmptyReport() {
     utilizationByCategory: emptyUtilization.items,
     utilizationComparisonByCategory: emptyUtilization.comparisonItems,
     topEquipment: emptyUtilization.topEquipment,
+    possibleBorrowedEquipment: emptyUtilization.possibleBorrowedEquipment,
     summary: createEmptySummaryReport(),
   };
 }
@@ -36,6 +37,7 @@ export function createEmptyUtilizationReport() {
     items: [],
     comparisonItems: [],
     topEquipment: [],
+    possibleBorrowedEquipment: [],
   };
 }
 
@@ -47,14 +49,6 @@ export function createEmptySummaryReport() {
     completedThisPeriod: 0,
     generatedAt: 'N/A',
   };
-}
-
-export function pickNonEmptyArray(primaryValue, fallbackValue = []) {
-  if (Array.isArray(primaryValue) && primaryValue.length > 0) {
-    return primaryValue;
-  }
-
-  return Array.isArray(fallbackValue) ? fallbackValue : [];
 }
 
 export function hasRiskDistribution(riskDistribution) {
@@ -78,6 +72,7 @@ export function normalizeStoredAnalyticsResponse(response) {
   normalized.utilizationByCategory = allocationAnalytics.utilizationByCategory;
   normalized.utilizationComparisonByCategory = allocationAnalytics.utilizationComparisonByCategory;
   normalized.topEquipment = allocationAnalytics.topEquipment;
+  normalized.possibleBorrowedEquipment = allocationAnalytics.possibleBorrowedEquipment;
   normalized.summary = allocationAnalytics.summary;
 
   return normalized;
@@ -131,6 +126,9 @@ function normalizeAllocationPayload(allocationPayload, response) {
       || allocationPayload.utilization_comparison_by_category
       || [],
     topEquipment: allocationPayload.topEquipment || allocationPayload.top_equipment || [],
+    possibleBorrowedEquipment: allocationPayload.possibleBorrowedEquipment
+      || allocationPayload.possible_borrowed_equipment
+      || [],
     summary: normalizeAllocationSummary(allocationPayload, response),
   };
 }
