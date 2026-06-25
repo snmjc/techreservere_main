@@ -1785,7 +1785,7 @@ async function fetchReservedVenuesForVisibleWeek() {
     const responses = await Promise.all(weekDateValues.map(async (dateValue) => {
       const response = await venueApi.listVenues({
         selectedDate: dateValue,
-        reservedOnly: true,
+        includeUnavailable: true,
       });
       const venuePayload = response?.data?.venues || response?.venues || [];
       const normalizedVenues = Array.isArray(venuePayload)
@@ -1793,6 +1793,7 @@ async function fetchReservedVenuesForVisibleWeek() {
           .map(normalizeVenueRecord)
           .filter(Boolean)
           .filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
+          .filter((venueRecord) => hasReservedVenueEntry(venueRecord, dateValue))
         : [];
 
       return [dateValue, normalizedVenues];
@@ -2217,6 +2218,7 @@ function normalizeVenueRecord(venue) {
     imageUrl: venue.imageUrl || '',
     photoData: venue.imageUrl || '',
     reservationTimeRanges: Array.isArray(venue.reservationTimeRanges) ? venue.reservationTimeRanges : [],
+    reservationDetails: Array.isArray(venue.reservationDetails) ? venue.reservationDetails : [],
   };
 }
 
@@ -2292,7 +2294,7 @@ function getVenueEntriesForDate(dateValue) {
 }
 
 function hasReservedVenueEntry(venueRecord, dateValue) {
-  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+  const reservationRanges = getVenueReservationRanges(venueRecord);
   if (reservationRanges.length === 0) {
     return false;
   }
@@ -2302,13 +2304,7 @@ function hasReservedVenueEntry(venueRecord, dateValue) {
 
 function isReservationRangeScheduledForDate(rangeRecord, dateValue) {
   const normalizedDate = String(dateValue || '').trim();
-  const rangeDate = String(
-    rangeRecord?.reservationDate
-      || rangeRecord?.date
-      || rangeRecord?.scheduleDate
-      || rangeRecord?.startDate
-      || '',
-  ).trim();
+  const rangeDate = resolveReservationRangeDate(rangeRecord);
 
   if (rangeDate !== '') {
     return rangeDate === normalizedDate;
@@ -2525,7 +2521,7 @@ function buildVenueTimeBlocksForDate(venueRecord, dateValue) {
 }
 
 function parseVenueTimeRanges(venueRecord, dateValue) {
-  const reservationRanges = Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+  const reservationRanges = getVenueReservationRanges(venueRecord);
 
   return reservationRanges
     .filter((rangeRecord) => isReservationRangeScheduledForDate(rangeRecord, dateValue))
@@ -2535,22 +2531,41 @@ function parseVenueTimeRanges(venueRecord, dateValue) {
 }
 
 function normalizeVenueTimeRange(rangeRecord, rangeIndex) {
-  const rawLabel = typeof rangeRecord === 'string'
-    ? rangeRecord
-    : `${rangeRecord?.label || rangeRecord?.blockLabel || rangeRecord?.title || 'Reserved'}: ${rangeRecord?.startTime || ''} - ${rangeRecord?.endTime || ''}`;
-
-  const [labelPart, timePartRaw] = rawLabel.includes(':')
-    ? rawLabel.split(/:(.+)/)
-    : ['Reserved', rawLabel];
-  const timePart = String(timePartRaw || '').trim();
-  const timeMatch = timePart.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+  const normalizedRangeRecord = typeof rangeRecord === 'string'
+    ? {
+      title: 'Reserved',
+      meta: 'Reserved schedule',
+      timeLabel: String(rangeRecord).trim(),
+    }
+    : {
+      title: String(
+        rangeRecord?.reservationCode
+          || rangeRecord?.reservedByName
+          || rangeRecord?.label
+          || rangeRecord?.blockLabel
+          || rangeRecord?.title
+          || 'Reserved'
+      ).trim(),
+      meta: String(
+        rangeRecord?.organizationName
+          || rangeRecord?.purposeDescription
+          || rangeRecord?.activityType
+          || rangeRecord?.statusLabel
+          || 'Reserved schedule'
+      ).trim(),
+      timeLabel: String(
+        rangeRecord?.timeRangeLabel
+          || `${rangeRecord?.startTime || ''} - ${rangeRecord?.endTime || ''}`
+      ).trim(),
+    };
+  const timeMatch = normalizedRangeRecord.timeLabel.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
 
   if (!timeMatch) {
     return {
       key: `fallback-${rangeIndex}`,
-      timeLabel: timePart || 'Reserved',
-      title: String(labelPart || 'Reserved').trim(),
-      meta: 'Scheduled block',
+      timeLabel: normalizedRangeRecord.timeLabel || 'Reserved',
+      title: normalizedRangeRecord.title || 'Reserved',
+      meta: normalizedRangeRecord.meta || 'Scheduled block',
       startMinutes: 480 + (rangeIndex * 30),
       endMinutes: 540 + (rangeIndex * 30),
     };
@@ -2562,11 +2577,47 @@ function normalizeVenueTimeRange(rangeRecord, rangeIndex) {
   return {
     key: `parsed-${rangeIndex}-${startMinutes}`,
     timeLabel: `${timeMatch[1].replace(/\s+/g, ' ').trim()} - ${timeMatch[2].replace(/\s+/g, ' ').trim()}`,
-    title: String(labelPart || 'Reserved').trim() || 'Reserved',
-    meta: 'Reserved schedule',
+    title: normalizedRangeRecord.title || 'Reserved',
+    meta: normalizedRangeRecord.meta || 'Reserved schedule',
     startMinutes,
     endMinutes: endMinutes > startMinutes ? endMinutes : startMinutes + 60,
   };
+}
+
+function getVenueReservationRanges(venueRecord) {
+  const reservationDetails = Array.isArray(venueRecord?.reservationDetails) ? venueRecord.reservationDetails : [];
+  if (reservationDetails.length > 0) {
+    return reservationDetails;
+  }
+
+  return Array.isArray(venueRecord?.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+}
+
+function resolveReservationRangeDate(rangeRecord) {
+  const directDate = String(
+    rangeRecord?.reservationDate
+      || rangeRecord?.date
+      || rangeRecord?.scheduleDate
+      || rangeRecord?.startDate
+      || rangeRecord?.blockDate
+      || '',
+  ).trim();
+
+  if (directDate !== '') {
+    return directDate;
+  }
+
+  const datedLabel = String(rangeRecord?.startDateTimeLabel || rangeRecord?.eventDateLabel || '').trim();
+  if (datedLabel === '') {
+    return '';
+  }
+
+  const parsedDate = new Date(datedLabel);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  return formatDateInputValue(parsedDate);
 }
 
 function convertClockLabelToMinutes(clockLabel) {
