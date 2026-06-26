@@ -38,11 +38,19 @@
               <option value="both">Both</option>
             </select>
           </label>
-          <button class="admin-ops-sort-button approved-requests-sort-button" :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`" :title="sortDirection === 'asc' ? 'Soonest schedule first' : 'Latest schedule first'" @click="toggleSortDirection">
+          <button
+            class="admin-ops-sort-button approved-requests-sort-button"
+            :class="{ 'admin-ops-sort-button--ascending': sortDirection === 'asc' }"
+            :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`"
+            :title="sortDirection === 'asc' ? 'Soonest schedule first' : 'Latest schedule first'"
+            type="button"
+            @click="toggleSortDirection"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
             </svg>
+            <span>{{ sortDirection === 'asc' ? 'Soonest First' : 'Latest First' }}</span>
           </button>
         </div>
       </div>

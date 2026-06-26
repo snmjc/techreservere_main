@@ -75,8 +75,7 @@
 }
 
 .pending-requests-sort-button {
-  width: 40px;
-  height: 40px;
+  min-width: 152px;
 }
 
 .pending-requests-sort-button:hover {
