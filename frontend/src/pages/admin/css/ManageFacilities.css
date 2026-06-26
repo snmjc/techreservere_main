@@ -2690,25 +2690,30 @@ body {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.75rem;
+  align-items: stretch;
 }
 
 .classroom-schedule-import-type-card {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.9rem;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+  min-height: 136px;
+  padding: 1rem 0.95rem;
   border: 1px solid #dbe5df;
-  border-radius: 14px;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
 }
 
 .classroom-schedule-import-type-card strong {
   color: #173322;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+  line-height: 1.3;
 }
 
 .classroom-schedule-import-type-card span {
   color: #607165;
-  font-size: 0.76rem;
-  line-height: 1.45;
+  font-size: 0.8rem;
+  line-height: 1.55;
 }
 
 .classroom-schedule-import-type-card--class {
