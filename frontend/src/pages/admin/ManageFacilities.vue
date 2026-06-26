@@ -950,8 +950,12 @@
                 <span>Minimum required mappings</span>
               </article>
               <article>
-                <strong>{{ importScheduleHeaders.length }}</strong>
-                <span>Detected file columns</span>
+                <strong>{{ importScheduleMappedColumnCount }}</strong>
+                <span>Mappings selected</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleRemainingRequiredMappingsCount }}</strong>
+                <span>Required mappings left</span>
               </article>
               <article>
                 <strong>{{ importScheduleParsedRowCount }}</strong>
@@ -1941,6 +1945,9 @@ const quickAddScheduleSummary = computed(() => {
 const importScheduleStepIndex = computed(() => importScheduleSteps.findIndex((step) => step.key === importScheduleStep.value));
 const importScheduleParsedRowCount = computed(() => importScheduleRows.value.length);
 const importScheduleMinimumRequiredMappingsCount = computed(() => 4);
+const importScheduleMappedColumnCount = computed(() => (
+  Object.values(importScheduleColumnMap.value).filter(Boolean).length
+));
 const importScheduleMissingMappings = computed(() => {
   const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
   const missingTargets = [];
@@ -1963,6 +1970,7 @@ const importScheduleMissingMappings = computed(() => {
 
   return missingTargets;
 });
+const importScheduleRemainingRequiredMappingsCount = computed(() => importScheduleMissingMappings.value.length);
 const importScheduleMissingMappingsNotice = computed(() => {
   const missingTargets = importScheduleMissingMappings.value;
   if (missingTargets.length === 0) {
