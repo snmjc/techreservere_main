@@ -8,6 +8,8 @@ jobs:
   deploy:
     name: Deploy to DigitalOcean Droplet
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_BRANCH: ${{ github.ref_name }}
 
     steps:
       - name: Deploy over SSH
@@ -23,8 +25,8 @@ jobs:
 
               cd /opt/techreserve
 
-              git fetch origin main
-              git reset --hard origin/main
+              git fetch origin ${{ env.DEPLOY_BRANCH }}
+              git reset --hard origin/${{ env.DEPLOY_BRANCH }}
 
               attempts=0
               until [ \$attempts -ge 3 ]
