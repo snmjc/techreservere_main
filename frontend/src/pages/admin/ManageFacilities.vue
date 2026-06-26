@@ -896,6 +896,11 @@
               <strong>{{ importScheduleFile ? importScheduleFile.name : 'Drag and drop your file here, or click to browse' }}</strong>
               <span>Supports `.xlsx`, `.xls`, and `.csv` files.</span>
             </label>
+            <div class="classroom-schedule-import-toolbar">
+              <button class="manage-facilities-cancel-button classroom-schedule-import-template-button" type="button" @click="downloadClassScheduleImportTemplate">
+                Download Official Template
+              </button>
+            </div>
             <div v-if="importScheduleFile" class="classroom-schedule-import-file-row">
               <div>
                 <strong>{{ importScheduleFile.name }}</strong>
@@ -915,9 +920,18 @@
                 <strong>{{ importScheduleParsedRowCount }}</strong>
                 <span>Parsed rows</span>
               </article>
+              <article>
+                <strong>{{ importScheduleDetectedSheetLabel }}</strong>
+                <span>Detected sheet</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleDetectedHeaderRowLabel }}</strong>
+                <span>Detected header row</span>
+              </article>
             </div>
 
             <p class="classroom-schedule-import-note">Upload a class schedule file, then map its columns before review and import.</p>
+            <p v-if="importScheduleDetectionNotice" class="classroom-schedule-import-note classroom-schedule-import-note--status">{{ importScheduleDetectionNotice }}</p>
 
             <div class="classroom-schedule-import-types">
               <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--class">
@@ -963,7 +977,19 @@
               </article>
             </div>
 
+            <div class="classroom-schedule-import-detection-panel">
+              <div>
+                <strong>{{ importScheduleDetectedSheetLabel }}</strong>
+                <span>Detected sheet</span>
+              </div>
+              <div>
+                <strong>{{ importScheduleDetectedHeaderRowLabel }}</strong>
+                <span>Detected header row</span>
+              </div>
+            </div>
+
             <p class="classroom-schedule-import-note">Map each file column to the matching classroom schedule field. Leave unrelated columns as Ignore.</p>
+            <p v-if="importScheduleDetectionNotice" class="classroom-schedule-import-note classroom-schedule-import-note--status">{{ importScheduleDetectionNotice }}</p>
 
             <div v-if="importScheduleMissingMappings.length > 0" class="classroom-schedule-import-warning">
               {{ importScheduleMissingMappingsNotice }}
@@ -973,13 +999,19 @@
               <article v-for="targetOption in importScheduleTargetOptions" :key="targetOption.key" class="classroom-schedule-import-mapping-card">
                 <div class="classroom-schedule-import-mapping-card__header">
                   <strong>{{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}</strong>
+                  <small
+                    class="classroom-schedule-import-mapping-card__status"
+                    :class="`classroom-schedule-import-mapping-card__status--${getImportMappingStatus(targetOption.key).tone}`"
+                  >
+                    {{ getImportMappingStatus(targetOption.key).label }}
+                  </small>
                   <span>{{ importSchedulePreviewCellForTarget(targetOption.key, importSchedulePreviewRow) }}</span>
                 </div>
                 <select
                   :value="getImportMappedHeaderForTarget(targetOption.key)"
                   @change="updateImportHeaderMapping(targetOption.key, $event.target.value)"
                 >
-                  <option value="">{{ targetOption.label }}</option>
+                  <option value="">Select file column</option>
                   <option
                     v-for="header in importScheduleHeaders"
                     :key="header"
@@ -996,16 +1028,16 @@
           <template v-else>
             <div class="classroom-schedule-import-summary">
               <article>
-                <strong>{{ importScheduleParsedRowCount }}</strong>
-                <span>Total rows</span>
-              </article>
-              <article>
-                <strong>{{ importScheduleValidReviewRows.length }}</strong>
-                <span>Valid rows</span>
+                <strong>{{ importScheduleReadyReviewRows.length }}</strong>
+                <span>Ready rows</span>
               </article>
               <article>
                 <strong>{{ importScheduleInvalidReviewRows.length }}</strong>
                 <span>Invalid rows</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleParsedRowCount }}</strong>
+                <span>Total rows</span>
               </article>
               <article v-if="importScheduleHasResults">
                 <strong>{{ importScheduleResult.importedCount }}</strong>
@@ -1013,7 +1045,7 @@
               </article>
             </div>
 
-            <p v-if="importScheduleStep === 'review'" class="classroom-schedule-import-note">Review row validation before importing. Only valid rows will be submitted.</p>
+            <p v-if="importScheduleStep === 'review'" class="classroom-schedule-import-note">Review invalid rows first, then confirm the ready rows that will be imported.</p>
             <p v-else class="classroom-schedule-import-note">Import results are listed below. Rows that failed to save include their backend error.</p>
 
             <div v-if="importScheduleImporting" class="classroom-schedule-import-progress">
@@ -1021,37 +1053,117 @@
             </div>
 
             <div class="classroom-schedule-import-review-list">
-              <article
-                v-for="reviewRow in importScheduleReviewRows"
-                :key="reviewRow.rowNumber"
-                class="classroom-schedule-import-review-card"
-                :class="{
-                  'is-valid': reviewRow.isValid,
-                  'is-invalid': !reviewRow.isValid,
-                  'is-imported': reviewRow.importStatus === 'imported',
-                  'is-failed': reviewRow.importStatus === 'failed',
-                }"
-              >
-                <div class="classroom-schedule-import-review-card__top">
-                  <div>
-                    <strong>Row {{ reviewRow.rowNumber }}</strong>
-                    <span>{{ reviewRow.venueLabel }} | {{ reviewRow.scheduleLabel }}</span>
+              <template v-if="importScheduleStep === 'review'">
+                <section v-if="importScheduleInvalidReviewRows.length > 0" class="classroom-schedule-import-review-section">
+                  <div class="classroom-schedule-import-review-section__header">
+                    <strong>Needs attention</strong>
+                    <span>{{ importScheduleInvalidReviewRows.length }} row<span v-if="importScheduleInvalidReviewRows.length !== 1">s</span></span>
                   </div>
-                  <span class="classroom-schedule-import-review-card__badge">
-                    {{ reviewRow.importStatusLabel }}
-                  </span>
-                </div>
+                  <article
+                    v-for="reviewRow in importScheduleInvalidReviewRows"
+                    :key="reviewRow.rowNumber"
+                    class="classroom-schedule-import-review-card"
+                    :class="{
+                      'is-valid': reviewRow.isValid,
+                      'is-invalid': !reviewRow.isValid,
+                      'is-imported': reviewRow.importStatus === 'imported',
+                      'is-failed': reviewRow.importStatus === 'failed',
+                    }"
+                  >
+                    <div class="classroom-schedule-import-review-card__top">
+                      <div>
+                        <strong>Row {{ reviewRow.rowNumber }}</strong>
+                        <span>{{ reviewRow.venueLabel }} | {{ reviewRow.scheduleLabel }}</span>
+                      </div>
+                      <span class="classroom-schedule-import-review-card__badge">
+                        {{ reviewRow.importStatusLabel }}
+                      </span>
+                    </div>
 
-                <div class="classroom-schedule-import-review-card__details">
-                  <span>{{ reviewRow.dateLabel }}</span>
-                  <span>{{ reviewRow.timeLabel }}</span>
-                  <span>{{ reviewRow.typeLabel }}</span>
-                </div>
+                    <div class="classroom-schedule-import-review-card__details">
+                      <span>{{ reviewRow.dateLabel }}</span>
+                      <span>{{ reviewRow.timeLabel }}</span>
+                      <span>{{ reviewRow.typeLabel }}</span>
+                    </div>
 
-                <ul v-if="reviewRow.errors.length > 0" class="classroom-schedule-import-review-card__errors">
-                  <li v-for="errorMessage in reviewRow.errors" :key="`${reviewRow.rowNumber}-${errorMessage}`">{{ errorMessage }}</li>
-                </ul>
-              </article>
+                    <ul v-if="reviewRow.errors.length > 0" class="classroom-schedule-import-review-card__errors">
+                      <li v-for="errorMessage in reviewRow.errors" :key="`${reviewRow.rowNumber}-${errorMessage}`">{{ errorMessage }}</li>
+                    </ul>
+                  </article>
+                </section>
+
+                <section v-if="importScheduleReadyReviewRows.length > 0" class="classroom-schedule-import-review-section classroom-schedule-import-review-section--ready">
+                  <div class="classroom-schedule-import-review-section__header">
+                    <strong>Ready to import</strong>
+                    <span>{{ importScheduleReadyReviewRows.length }} row<span v-if="importScheduleReadyReviewRows.length !== 1">s</span></span>
+                  </div>
+                  <article
+                    v-for="reviewRow in importScheduleReadyReviewRows"
+                    :key="reviewRow.rowNumber"
+                    class="classroom-schedule-import-review-card"
+                    :class="{
+                      'is-valid': reviewRow.isValid,
+                      'is-invalid': !reviewRow.isValid,
+                      'is-imported': reviewRow.importStatus === 'imported',
+                      'is-failed': reviewRow.importStatus === 'failed',
+                    }"
+                  >
+                    <div class="classroom-schedule-import-review-card__top">
+                      <div>
+                        <strong>Row {{ reviewRow.rowNumber }}</strong>
+                        <span>{{ reviewRow.venueLabel }} | {{ reviewRow.scheduleLabel }}</span>
+                      </div>
+                      <span class="classroom-schedule-import-review-card__badge">
+                        {{ reviewRow.importStatusLabel }}
+                      </span>
+                    </div>
+
+                    <div class="classroom-schedule-import-review-card__details">
+                      <span>{{ reviewRow.dateLabel }}</span>
+                      <span>{{ reviewRow.timeLabel }}</span>
+                      <span>{{ reviewRow.typeLabel }}</span>
+                    </div>
+
+                    <ul v-if="reviewRow.errors.length > 0" class="classroom-schedule-import-review-card__errors">
+                      <li v-for="errorMessage in reviewRow.errors" :key="`${reviewRow.rowNumber}-${errorMessage}`">{{ errorMessage }}</li>
+                    </ul>
+                  </article>
+                </section>
+              </template>
+
+              <template v-else>
+                <article
+                  v-for="reviewRow in importScheduleDisplayReviewRows"
+                  :key="reviewRow.rowNumber"
+                  class="classroom-schedule-import-review-card"
+                  :class="{
+                    'is-valid': reviewRow.isValid,
+                    'is-invalid': !reviewRow.isValid,
+                    'is-imported': reviewRow.importStatus === 'imported',
+                    'is-failed': reviewRow.importStatus === 'failed',
+                  }"
+                >
+                  <div class="classroom-schedule-import-review-card__top">
+                    <div>
+                      <strong>Row {{ reviewRow.rowNumber }}</strong>
+                      <span>{{ reviewRow.venueLabel }} | {{ reviewRow.scheduleLabel }}</span>
+                    </div>
+                    <span class="classroom-schedule-import-review-card__badge">
+                      {{ reviewRow.importStatusLabel }}
+                    </span>
+                  </div>
+
+                  <div class="classroom-schedule-import-review-card__details">
+                    <span>{{ reviewRow.dateLabel }}</span>
+                    <span>{{ reviewRow.timeLabel }}</span>
+                    <span>{{ reviewRow.typeLabel }}</span>
+                  </div>
+
+                  <ul v-if="reviewRow.errors.length > 0" class="classroom-schedule-import-review-card__errors">
+                    <li v-for="errorMessage in reviewRow.errors" :key="`${reviewRow.rowNumber}-${errorMessage}`">{{ errorMessage }}</li>
+                  </ul>
+                </article>
+              </template>
             </div>
           </template>
         </div>
@@ -1529,6 +1641,8 @@ const importScheduleParsing = ref(false);
 const importScheduleHeaders = ref([]);
 const importScheduleRows = ref([]);
 const importScheduleColumnMap = ref({});
+const importScheduleAutoMappedTargets = ref({});
+const importScheduleDetectionMetadata = ref(createEmptyImportDetectionMetadata());
 const importScheduleReviewRows = ref([]);
 const importScheduleImporting = ref(false);
 const importScheduleResult = ref(null);
@@ -1951,6 +2065,27 @@ const importScheduleMinimumRequiredMappingsCount = computed(() => 4);
 const importScheduleMappedColumnCount = computed(() => (
   Object.values(importScheduleColumnMap.value).filter(Boolean).length
 ));
+const importScheduleDetectedSheetLabel = computed(() => importScheduleDetectionMetadata.value.sheetName || 'Not detected');
+const importScheduleDetectedHeaderRowLabel = computed(() => (
+  importScheduleDetectionMetadata.value.headerRowNumber > 0
+    ? `Row ${importScheduleDetectionMetadata.value.headerRowNumber}`
+    : 'Not detected'
+));
+const importScheduleHasWeakDetection = computed(() => (
+  importScheduleDetectionMetadata.value.headerKeywordScore <= 1
+  || importScheduleHeaders.value.length < 4
+));
+const importScheduleDetectionNotice = computed(() => {
+  if (!importScheduleFile.value) {
+    return '';
+  }
+
+  if (importScheduleHasWeakDetection.value) {
+    return 'Detection confidence is low. Review the mapped columns carefully or retry with the official import template.';
+  }
+
+  return `Detected "${importScheduleDetectedSheetLabel.value}" with header ${importScheduleDetectedHeaderRowLabel.value}.`;
+});
 const importScheduleMissingMappings = computed(() => {
   const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
   const missingTargets = [];
@@ -1989,6 +2124,12 @@ const importScheduleMissingMappingsNotice = computed(() => {
 const importSchedulePreviewRow = computed(() => importScheduleRows.value[0] || []);
 const importScheduleValidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => row.isValid));
 const importScheduleInvalidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => !row.isValid));
+const importScheduleReadyReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => row.importStatus === 'ready'));
+const importScheduleDisplayReviewRows = computed(() => [
+  ...importScheduleInvalidReviewRows.value,
+  ...importScheduleReadyReviewRows.value,
+  ...importScheduleReviewRows.value.filter((row) => row.importStatus === 'imported' || row.importStatus === 'failed'),
+]);
 const importScheduleHasResults = computed(() => Boolean(importScheduleResult.value));
 const importScheduleCanAdvanceFromUpload = computed(() => (
   Boolean(importScheduleFile.value)
@@ -3590,7 +3731,11 @@ async function handleImportFileChange(event) {
 
   try {
     importScheduleParsing.value = true;
-    const { headers, rows } = await parseImportedScheduleFile(selectedFile);
+    const {
+      headers,
+      rows,
+      metadata,
+    } = await parseImportedScheduleFile(selectedFile);
 
     if (headers.length === 0) {
       throw new Error('No columns were detected in the uploaded file.');
@@ -3602,7 +3747,10 @@ async function handleImportFileChange(event) {
 
     importScheduleHeaders.value = headers;
     importScheduleRows.value = rows;
-    importScheduleColumnMap.value = buildInitialImportColumnMap(headers);
+    importScheduleDetectionMetadata.value = metadata || createEmptyImportDetectionMetadata();
+    const { columnMap, autoMappedTargets } = buildInitialImportColumnMap(headers);
+    importScheduleColumnMap.value = columnMap;
+    importScheduleAutoMappedTargets.value = autoMappedTargets;
   } catch (error) {
     importScheduleError.value = error instanceof Error ? error.message : 'Failed to parse the selected file.';
   } finally {
@@ -3681,6 +3829,8 @@ function resetImportScheduleState() {
   importScheduleHeaders.value = [];
   importScheduleRows.value = [];
   importScheduleColumnMap.value = {};
+  importScheduleAutoMappedTargets.value = {};
+  importScheduleDetectionMetadata.value = createEmptyImportDetectionMetadata();
   importScheduleReviewRows.value = [];
   importScheduleImporting.value = false;
   importScheduleResult.value = null;
@@ -3865,26 +4015,78 @@ async function parseImportedScheduleFile(file) {
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
     const workbookBuffer = await readFileAsArrayBuffer(file);
     const workbook = XLSX.read(workbookBuffer, { type: 'array', cellDates: false });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    if (!Array.isArray(workbook.SheetNames) || workbook.SheetNames.length === 0) {
       throw new Error('The workbook does not contain any sheets.');
     }
 
-    const sheet = workbook.Sheets[firstSheetName];
-    return normalizeImportedTable(XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }));
+    const bestSheetCandidate = workbook.SheetNames
+      .map((sheetName) => {
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+        const candidate = extractImportedTableCandidate(rawRows);
+
+        return {
+          sheetName,
+          ...candidate,
+        };
+      })
+      .sort((leftSheet, rightSheet) => {
+        if (leftSheet.headerKeywordScore !== rightSheet.headerKeywordScore) {
+          return rightSheet.headerKeywordScore - leftSheet.headerKeywordScore;
+        }
+
+        if (leftSheet.headers.length !== rightSheet.headers.length) {
+          return rightSheet.headers.length - leftSheet.headers.length;
+        }
+
+        if (leftSheet.rows.length !== rightSheet.rows.length) {
+          return rightSheet.rows.length - leftSheet.rows.length;
+        }
+
+        return leftSheet.sheetName.localeCompare(rightSheet.sheetName);
+      })[0];
+
+    return {
+      headers: bestSheetCandidate?.headers || [],
+      rows: bestSheetCandidate?.rows || [],
+      metadata: {
+        sheetName: bestSheetCandidate?.sheetName || '',
+        headerRowNumber: bestSheetCandidate?.headerRowNumber || 0,
+        headerKeywordScore: bestSheetCandidate?.headerKeywordScore || 0,
+      },
+    };
   }
 
   throw new Error('Unsupported file type. Please upload a CSV or Excel file.');
 }
 
 function normalizeImportedTable(rawRows) {
+  const candidate = extractImportedTableCandidate(rawRows);
+  return {
+    headers: candidate.headers,
+    rows: candidate.rows,
+    metadata: {
+      sheetName: 'CSV Upload',
+      headerRowNumber: candidate.headerRowNumber,
+      headerKeywordScore: candidate.headerKeywordScore,
+    },
+  };
+}
+
+function extractImportedTableCandidate(rawRows) {
   const normalizedRows = Array.isArray(rawRows)
     ? rawRows.map((row) => Array.isArray(row) ? row.map((cellValue) => normalizeImportedCellValue(cellValue)) : [])
     : [];
-  const firstDataIndex = resolveImportedHeaderRowIndex(normalizedRows);
+  const headerAnalysis = resolveImportedHeaderRowIndex(normalizedRows);
+  const firstDataIndex = headerAnalysis.index;
 
   if (firstDataIndex < 0) {
-    return { headers: [], rows: [] };
+    return {
+      headers: [],
+      rows: [],
+      headerKeywordScore: 0,
+      headerRowNumber: 0,
+    };
   }
 
   const headers = createImportedHeaders(normalizedRows[firstDataIndex]);
@@ -3893,7 +4095,12 @@ function normalizeImportedTable(rawRows) {
     .filter((row) => row.some((cellValue) => cellValue !== ''))
     .map((row) => headers.map((_, headerIndex) => normalizeImportedCellValue(row[headerIndex] ?? '')));
 
-  return { headers, rows };
+  return {
+    headers,
+    rows,
+    headerKeywordScore: headerAnalysis.keywordScore,
+    headerRowNumber: firstDataIndex + 1,
+  };
 }
 
 function resolveImportedHeaderRowIndex(normalizedRows) {
@@ -3908,7 +4115,7 @@ function resolveImportedHeaderRowIndex(normalizedRows) {
     .slice(0, 250);
 
   if (candidateRows.length === 0) {
-    return -1;
+    return { index: -1, keywordScore: 0 };
   }
 
   const keywordMatches = candidateRows.filter((rowMeta) => rowMeta.keywordScore > 0);
@@ -3929,7 +4136,10 @@ function resolveImportedHeaderRowIndex(normalizedRows) {
       return leftRow.index - rightRow.index;
     });
 
-    return keywordMatches[0]?.index ?? -1;
+    return {
+      index: keywordMatches[0]?.index ?? -1,
+      keywordScore: keywordMatches[0]?.keywordScore ?? 0,
+    };
   }
 
   candidateRows.sort((leftRow, rightRow) => {
@@ -3944,7 +4154,10 @@ function resolveImportedHeaderRowIndex(normalizedRows) {
     return leftRow.index - rightRow.index;
   });
 
-  return candidateRows[0]?.index ?? -1;
+  return {
+    index: candidateRows[0]?.index ?? -1,
+    keywordScore: candidateRows[0]?.keywordScore ?? 0,
+  };
 }
 
 function scoreImportedHeaderCell(cellValue) {
@@ -3974,6 +4187,7 @@ function createImportedHeaders(headerRow) {
 
 function buildInitialImportColumnMap(headers) {
   const nextColumnMap = {};
+  const autoMappedTargets = {};
   const claimedTargets = new Set();
 
   headers.forEach((header) => {
@@ -3981,12 +4195,16 @@ function buildInitialImportColumnMap(headers) {
     if (matchedTarget && !claimedTargets.has(matchedTarget)) {
       nextColumnMap[header] = matchedTarget;
       claimedTargets.add(matchedTarget);
+      autoMappedTargets[matchedTarget] = true;
     } else {
       nextColumnMap[header] = '';
     }
   });
 
-  return nextColumnMap;
+  return {
+    columnMap: nextColumnMap,
+    autoMappedTargets,
+  };
 }
 
 function matchImportTargetForHeader(header) {
@@ -4005,6 +4223,7 @@ function getImportMappedHeaderForTarget(targetKey) {
 function updateImportHeaderMapping(targetKey, selectedHeader) {
   const normalizedHeader = String(selectedHeader || '').trim();
   const nextColumnMap = { ...importScheduleColumnMap.value };
+  const nextAutoMappedTargets = { ...importScheduleAutoMappedTargets.value };
 
   Object.keys(nextColumnMap).forEach((header) => {
     if (nextColumnMap[header] === targetKey) {
@@ -4017,6 +4236,8 @@ function updateImportHeaderMapping(targetKey, selectedHeader) {
   }
 
   importScheduleColumnMap.value = nextColumnMap;
+  nextAutoMappedTargets[targetKey] = false;
+  importScheduleAutoMappedTargets.value = nextAutoMappedTargets;
 }
 
 function isImportHeaderTaken(headerName, activeTargetKey) {
@@ -4184,7 +4405,112 @@ function importSchedulePreviewCell(header, rowValues) {
 
 function importSchedulePreviewCellForTarget(targetKey, rowValues) {
   const headerName = getImportMappedHeaderForTarget(targetKey);
-  return headerName ? importSchedulePreviewCell(headerName, rowValues) : 'No sample value';
+  return headerName ? importSchedulePreviewCell(headerName, rowValues) : 'No mapped file column yet';
+}
+
+function getImportMappingStatus(targetKey) {
+  const headerName = getImportMappedHeaderForTarget(targetKey);
+  if (!headerName) {
+    return {
+      label: 'Needs file column',
+      tone: 'unmapped',
+      mappedHeader: '',
+    };
+  }
+
+  if (importScheduleAutoMappedTargets.value[targetKey]) {
+    return {
+      label: `Auto-mapped from ${headerName}`,
+      tone: 'auto',
+      mappedHeader: headerName,
+    };
+  }
+
+  return {
+    label: `Mapped to ${headerName}`,
+    tone: 'manual',
+    mappedHeader: headerName,
+  };
+}
+
+function createEmptyImportDetectionMetadata() {
+  return {
+    sheetName: '',
+    headerRowNumber: 0,
+    headerKeywordScore: 0,
+  };
+}
+
+function downloadClassScheduleImportTemplate() {
+  const templateRows = [
+    [
+      'Room / Venue',
+      'Single Date',
+      'Recurring Start Date',
+      'Recurring End Date',
+      'Days of Week',
+      'Start Time',
+      'End Time',
+      'Course Code',
+      'Course Name',
+      'Instructor',
+      'Schedule Type',
+      'Academic Year',
+      'Semester',
+      'Capacity',
+      'Notes',
+      'Schedule Label',
+    ],
+    [
+      'F704',
+      '2026-06-27',
+      '',
+      '',
+      '',
+      '07:00 AM',
+      '09:50 AM',
+      'CCS0043L',
+      'Capstone Defense',
+      'Prof. Cruz',
+      'Class Schedule',
+      '2026-2027',
+      '1st Semester',
+      '40',
+      'Single-date example row',
+      'TW21 - CCS0043L - M',
+    ],
+    [
+      'F704',
+      '',
+      '2026-06-26',
+      '2026-07-21',
+      'Mon, Wed',
+      '07:00 AM',
+      '09:50 AM',
+      'CCS0043L',
+      'Capstone Defense',
+      'Prof. Cruz',
+      'Class Schedule',
+      '2026-2027',
+      '1st Semester',
+      '40',
+      'Recurring example row',
+      'TW21 - CCS0043L - M',
+    ],
+  ];
+  const csvContent = templateRows
+    .map((rowValues) => rowValues.map((cellValue) => `"${String(cellValue ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const objectUrl = URL.createObjectURL(blob);
+  const downloadLink = document.createElement('a');
+  downloadLink.href = objectUrl;
+  downloadLink.download = 'classroom-schedule-import-template.csv';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(objectUrl);
 }
 
 function readFileAsText(file) {
