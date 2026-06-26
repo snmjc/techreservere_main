@@ -946,8 +946,12 @@
           <template v-else-if="importScheduleStep === 'map'">
             <div class="classroom-schedule-import-summary">
               <article>
+                <strong>{{ importScheduleMinimumRequiredMappingsCount }}</strong>
+                <span>Minimum required mappings</span>
+              </article>
+              <article>
                 <strong>{{ importScheduleHeaders.length }}</strong>
-                <span>Columns to map</span>
+                <span>Detected file columns</span>
               </article>
               <article>
                 <strong>{{ importScheduleParsedRowCount }}</strong>
@@ -1936,6 +1940,7 @@ const quickAddScheduleSummary = computed(() => {
 });
 const importScheduleStepIndex = computed(() => importScheduleSteps.findIndex((step) => step.key === importScheduleStep.value));
 const importScheduleParsedRowCount = computed(() => importScheduleRows.value.length);
+const importScheduleMinimumRequiredMappingsCount = computed(() => 4);
 const importScheduleMissingMappings = computed(() => {
   const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
   const missingTargets = [];
