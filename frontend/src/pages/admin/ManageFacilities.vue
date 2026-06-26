@@ -348,39 +348,61 @@
 
               <section class="manage-facilities-venue-board-panel">
                 <div class="manage-facilities-venue-board manage-facilities-venue-board--matrix">
-                  <div class="manage-facilities-venue-matrix">
-                    <div
-                      v-for="dayColumn in venueMatrixColumns"
-                      :key="dayColumn.dateValue"
-                      class="manage-facilities-venue-matrix-day-header"
-                      :class="{ 'manage-facilities-venue-matrix-day-header--selected': dayColumn.dateValue === selectedVenueCalendarDate }"
-                    >
-                      <span>{{ dayColumn.weekdayLabel }}</span>
-                      <strong>{{ dayColumn.shortDateLabel }}</strong>
-                      <small>{{ dayColumn.entryCountLabel }}</small>
+                  <div class="manage-facilities-venue-schedule">
+                    <div class="manage-facilities-venue-schedule-rail">
+                      <span
+                        v-for="timeLabel in venueScheduleRailLabels"
+                        :key="timeLabel"
+                        class="manage-facilities-venue-schedule-rail-label"
+                      >
+                        {{ timeLabel }}
+                      </span>
                     </div>
 
-                    <template v-for="venueRow in venueMatrixRows" :key="venueRow.venueIdentifier">
-                      <div
-                        v-for="dayCell in venueRow.dayCells"
-                        :key="`${venueRow.venueIdentifier}-${dayCell.dateValue}`"
-                        class="manage-facilities-venue-matrix-cell"
-                        :class="`manage-facilities-venue-matrix-cell--${dayCell.tone}`"
+                    <div class="manage-facilities-venue-schedule-grid">
+                      <article
+                        v-for="dayColumn in venueWeekScheduleColumns"
+                        :key="dayColumn.dateValue"
+                        class="manage-facilities-venue-schedule-day"
+                        :class="{ 'manage-facilities-venue-schedule-day--selected': dayColumn.dateValue === selectedVenueCalendarDate }"
                       >
-                        <button
-                          v-for="block in dayCell.blocks"
-                          :key="block.key"
-                          type="button"
-                          class="manage-facilities-venue-block"
-                          :class="`manage-facilities-venue-block--${block.tone}`"
-                          @click="handleVenueBlockClick(block, venueRow)"
-                        >
-                          <span>{{ block.timeLabel }}</span>
-                          <strong>{{ block.title }}</strong>
-                          <p>{{ block.meta }}</p>
-                        </button>
-                      </div>
-                    </template>
+                        <header class="manage-facilities-venue-schedule-day-header">
+                          <span>{{ dayColumn.weekdayLabel }}</span>
+                          <strong>{{ dayColumn.shortDateLabel }}</strong>
+                          <small>{{ dayColumn.entryCountLabel }}</small>
+                        </header>
+
+                        <div class="manage-facilities-venue-schedule-day-body">
+                          <template v-if="dayColumn.entries.length > 0">
+                            <section
+                              v-for="timeSlot in dayColumn.timeSlots"
+                              :key="`${dayColumn.dateValue}-${timeSlot.key}`"
+                              class="manage-facilities-venue-schedule-slot"
+                            >
+                              <button
+                                v-for="entry in timeSlot.entries"
+                                :key="entry.key"
+                                type="button"
+                                class="manage-facilities-venue-schedule-card"
+                                @click="handleVenueBlockClick(entry.block, entry.venueRow)"
+                              >
+                                <span>Blocked reservation window</span>
+                                <strong>{{ entry.venueName }}</strong>
+                                <p>{{ entry.locationLabel }}</p>
+                                <div class="manage-facilities-venue-schedule-card-meta">
+                                  <small>Blocked</small>
+                                  <small>{{ entry.capacityLabel }}</small>
+                                </div>
+                              </button>
+                            </section>
+                          </template>
+                          <div v-else class="manage-facilities-venue-schedule-empty">
+                            <strong>No reserved rooms surfaced</strong>
+                            <p>No reserved rooms were returned for this date.</p>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
                   </div>
                 </div>
 
@@ -1840,21 +1862,15 @@ const venueDashboardSummary = computed(() => {
   };
 });
 
-const venueMatrixColumns = computed(() => venueWeekDates.value.map((weekDate) => ({
-  dateValue: weekDate.dateKey,
-  weekdayLabel: weekDate.weekday,
-  shortDateLabel: weekDate.monthDay,
-  entryCountLabel: `${getVenueEntriesForDate(weekDate.dateKey).length} reserved`,
-})));
-
 const venueMatrixRows = computed(() => venueDirectoryRecords.value.map((venueRecord) => ({
   sourceRecord: venueRecord,
   venueIdentifier: venueRecord.venueIdentifier,
   venueName: venueRecord.venueName,
   floorLabel: venueRecord.floorLevel || 'Other Floor',
   capacityLabel: venueRecord.capacityLimit || 'N/A',
-  dayCells: venueWeekDates.value.map((weekDate) => buildVenueMatrixCell(venueRecord, weekDate.dateKey)),
 })));
+const venueScheduleRailLabels = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM'];
+const venueWeekScheduleColumns = computed(() => venueWeekDates.value.map((weekDate) => buildVenueWeekScheduleColumn(weekDate)));
 
 const venueListTotalPages = computed(() => Math.max(1, Math.ceil(venueDirectoryRecords.value.length / venueListPageSize.value)));
 const paginatedVenueListRecords = computed(() => {
@@ -2873,11 +2889,75 @@ function buildVenueCalendarEntry(venueRecord, dateValue) {
     sourceRecord: venueRecord,
     venueIdentifier: venueRecord.venueIdentifier,
     venueName: venueRecord.venueName,
+    timeLabel: metaLine,
+    startMinutes: primaryRange?.startMinutes ?? 480,
+    endMinutes: primaryRange?.endMinutes ?? 540,
     metaLine,
     descriptionLine: venueRecord.venueLocation || venueRecord.floorLevel || 'Venue location not set',
     footerLabel: 'Reserved',
     capacityLabel: `Cap ${venueRecord.capacityLimit || 'N/A'}`,
   };
+}
+
+function buildVenueWeekScheduleColumn(weekDate) {
+  const entries = getVenueEntriesForDate(weekDate.dateKey)
+    .map((entry) => buildVenueWeekScheduleEntry(entry, weekDate.dateKey))
+    .sort((leftEntry, rightEntry) => leftEntry.startMinutes - rightEntry.startMinutes);
+
+  return {
+    dateValue: weekDate.dateKey,
+    weekdayLabel: weekDate.weekday,
+    shortDateLabel: weekDate.monthDay,
+    entryCountLabel: `${entries.length} reserved`,
+    entries,
+    timeSlots: buildVenueWeekScheduleSlots(entries),
+  };
+}
+
+function buildVenueWeekScheduleEntry(entry, dateValue) {
+  const venueRow = venueMatrixRows.value.find((row) => Number(row.venueIdentifier) === Number(entry.venueIdentifier)) || {
+    venueIdentifier: entry.venueIdentifier,
+    venueName: entry.venueName,
+    capacityLabel: entry.capacityLabel,
+    sourceRecord: entry.sourceRecord,
+  };
+  const block = {
+    key: `${entry.venueIdentifier}-${dateValue}-${entry.startMinutes}`,
+    tone: 'reserved',
+    timeLabel: entry.timeLabel,
+    title: entry.venueName,
+    meta: entry.descriptionLine,
+    reservationIdentifier: null,
+    rawRangeRecord: entry.sourceRecord,
+    dateValue,
+  };
+
+  return {
+    key: block.key,
+    block,
+    venueRow,
+    venueName: entry.venueName,
+    locationLabel: entry.descriptionLine,
+    capacityLabel: entry.capacityLabel,
+    startMinutes: entry.startMinutes,
+  };
+}
+
+function buildVenueWeekScheduleSlots(entries) {
+  const slots = [
+    { key: '0800', startMinutes: 480, endMinutes: 600, entries: [] },
+    { key: '1000', startMinutes: 600, endMinutes: 720, entries: [] },
+    { key: '1200', startMinutes: 720, endMinutes: 840, entries: [] },
+    { key: '1400', startMinutes: 840, endMinutes: 960, entries: [] },
+    { key: '1600', startMinutes: 960, endMinutes: 1080, entries: [] },
+  ];
+
+  entries.forEach((entry) => {
+    const matchingSlot = slots.find((slot) => entry.startMinutes >= slot.startMinutes && entry.startMinutes < slot.endMinutes) || slots[slots.length - 1];
+    matchingSlot.entries.push(entry);
+  });
+
+  return slots;
 }
 
 function matchesVenueCapacityFilter(venueRecord, capacityFilter) {
@@ -2920,23 +3000,6 @@ function buildVenueDirectoryCardRecord(venueRecord) {
     directoryStatusLabel: resolveVenueDirectoryStatusLabel(directoryStatusTone),
     directoryMetaLabel: venueRecord.operationalStatus === 'Maintenance' ? 'Maintenance' : (venueRecord.description ? 'Managed Venue' : 'Venue Space'),
     utilizationPercent,
-  };
-}
-
-function buildVenueMatrixCell(venueRecord, dateValue) {
-  const reservedVenueRecord = findReservedVenueRecord(venueRecord, dateValue);
-  if (reservedVenueRecord && hasReservedVenueEntry(reservedVenueRecord, dateValue)) {
-    return {
-      dateValue,
-      tone: 'reserved',
-      blocks: buildVenueReservedBlocks(reservedVenueRecord || venueRecord, dateValue),
-    };
-  }
-
-  return {
-    dateValue,
-    tone: 'empty',
-    blocks: [],
   };
 }
 
@@ -2989,55 +3052,6 @@ function findReservedVenueRecord(venueRecord, dateValue) {
   return (reservedVenueMap.value[dateValue] || []).find((reservedVenue) => (
     Number(reservedVenue?.venueIdentifier) === Number(venueRecord?.venueIdentifier)
   )) || null;
-}
-
-function buildVenueReservedBlocks(venueRecord, dateValue) {
-  const { reservedBlocks, availableBlocks } = buildVenueTimeBlocksForDate(venueRecord, dateValue);
-  const blocks = [];
-
-  reservedBlocks.forEach((reservedBlock, index) => {
-    if (availableBlocks[index]) {
-      blocks.push(createVenueAvailableBlock(venueRecord, dateValue, availableBlocks[index], index));
-    }
-
-    blocks.push({
-      key: `${venueRecord.venueIdentifier}-${dateValue}-reserved-${index}`,
-      tone: 'reserved',
-      timeLabel: reservedBlock.timeLabel,
-      title: reservedBlock.title,
-      meta: reservedBlock.meta,
-      reservationIdentifier: reservedBlock.reservationIdentifier,
-      rawRangeRecord: reservedBlock.rawRangeRecord,
-      dateValue,
-    });
-  });
-
-  if (availableBlocks[reservedBlocks.length]) {
-    blocks.push(createVenueAvailableBlock(venueRecord, dateValue, availableBlocks[reservedBlocks.length], reservedBlocks.length));
-  }
-
-  return blocks.length > 0
-    ? blocks
-    : [{
-      key: `${venueRecord.venueIdentifier}-${dateValue}-reserved-fallback`,
-      tone: 'reserved',
-      timeLabel: 'Reserved',
-      title: 'Reserved',
-      meta: venueRecord.venueLocation || 'Reserved schedule',
-      reservationIdentifier: null,
-      rawRangeRecord: null,
-      dateValue,
-    }];
-}
-
-function createVenueAvailableBlock(venueRecord, dateValue, availableBlock, blockIndex) {
-  return {
-    key: `${venueRecord.venueIdentifier}-${dateValue}-available-gap-${blockIndex}`,
-    tone: 'available',
-    timeLabel: availableBlock.timeLabel,
-    title: 'Available',
-    meta: venueRecord.venueLocation || 'Open for reservations',
-  };
 }
 
 function buildVenueTimeBlocksForDate(venueRecord, dateValue) {
