@@ -113,6 +113,8 @@ const reservationFormStore = useReservationFormStore();
 const requestStore = useRequestStore();
 const isSubmitting = ref(false);
 const submissionError = ref('');
+const BUSINESS_START_MINUTES = 7 * 60;
+const BUSINESS_END_MINUTES = 21 * 60;
 
 onMounted(() => {
   if (!reservationFormStore.hasReservationDetails() || !reservationFormStore.hasSelectionForCurrentType()) {
@@ -187,6 +189,13 @@ async function handleSubmitReservationRequest() {
       return;
     }
 
+    const normalizedStartTime = normalizeTimeValue(reservationFormStore.activityTimeFrom);
+    const normalizedEndTime = normalizeTimeValue(reservationFormStore.activityTimeTo);
+    if (!normalizedStartTime || !normalizedEndTime) {
+      submissionError.value = 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
+      return;
+    }
+
     const reservationData = {
       organizationName: reservationFormStore.activityNameTitle.trim(),
       venueIdentifier: reservationFormStore.selectedVenueRecord?.venueIdentifier || null,
@@ -199,11 +208,11 @@ async function handleSubmitReservationRequest() {
       requestedQuantity: Number(reservationFormStore.participantCount),
       eventDateTime: buildReservationDateTime(
         reservationFormStore.activityDate,
-        reservationFormStore.activityTimeFrom || '00:00',
+        normalizedStartTime,
       ),
       endDateTime: buildReservationDateTime(
         reservationFormStore.activityEndDate || reservationFormStore.activityDate,
-        reservationFormStore.activityTimeTo || '00:00',
+        normalizedEndTime,
       ),
       purposeDescription: reservationPurposeLabel.value,
       activityType: reservationFormStore.activityNameTitle.trim(),
@@ -259,7 +268,7 @@ function validateReservationSubmission() {
   }
 
   if (!isAllowedTimeSlot(reservationFormStore.activityTimeFrom) || !isAllowedTimeSlot(reservationFormStore.activityTimeTo)) {
-    return 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+    return 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
   }
 
   if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
@@ -270,8 +279,8 @@ function validateReservationSubmission() {
     return 'Activity name or title is required.';
   }
 
-  if (reservationFormStore.activityNameTitle.trim().length > 120) {
-    return 'Activity name or title must be 120 characters or fewer.';
+  if (reservationFormStore.activityNameTitle.trim().length > 100) {
+    return 'Activity name or title must be 100 characters or fewer.';
   }
 
   if (!reservationFormStore.purposeText) {
@@ -283,6 +292,10 @@ function validateReservationSubmission() {
     && !String(reservationFormStore.purposeOtherText || '').trim()
   ) {
     return 'Please specify the purpose of your reservation.';
+  }
+
+  if (String(reservationPurposeLabel.value || '').trim().length > 200) {
+    return 'Purpose must be 200 characters or fewer.';
   }
 
   if (reservationFormStore.reservationType !== 'Equipment' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {
@@ -331,7 +344,16 @@ function isAllowedTimeSlot(timeValue) {
   }
 
   const totalMinutes = (hours * 60) + minutes;
-  return totalMinutes >= 7 * 60 && totalMinutes <= 19 * 60;
+  return totalMinutes >= BUSINESS_START_MINUTES && totalMinutes <= BUSINESS_END_MINUTES;
+}
+
+function normalizeTimeValue(timeValue) {
+  const normalizedValue = String(timeValue || '').trim();
+  if (normalizedValue === '') {
+    return '';
+  }
+
+  return isAllowedTimeSlot(normalizedValue) ? normalizedValue : '';
 }
 
 function buildReservationDateTime(dateValue, timeValue) {

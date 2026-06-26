@@ -2457,6 +2457,11 @@ body {
   border-bottom-color: #118044;
 }
 
+.classroom-schedule-import-steps .is-complete {
+  color: #2f6f50;
+  border-bottom-color: #9fd5b1;
+}
+
 .classroom-schedule-import-dropzone {
   display: grid;
   gap: 0.45rem;
@@ -2517,6 +2522,163 @@ body {
   font-weight: 800;
 }
 
+.classroom-schedule-import-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.classroom-schedule-import-summary article,
+.classroom-schedule-import-mapping-card,
+.classroom-schedule-import-review-card {
+  padding: 0.9rem 1rem;
+  background: #f8fbf9;
+  border: 1px solid #dbe5df;
+  border-radius: 14px;
+}
+
+.classroom-schedule-import-summary strong {
+  display: block;
+  color: #173322;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-import-summary span {
+  color: #607165;
+  font-size: 0.78rem;
+}
+
+.classroom-schedule-import-warning,
+.classroom-schedule-import-progress {
+  padding: 0.8rem 0.95rem;
+  color: #6b4a09;
+  background: #fff7e7;
+  border: 1px solid #f0d39d;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-import-progress {
+  color: #165034;
+  background: #edf9f1;
+  border-color: #a9dabb;
+}
+
+.classroom-schedule-import-mapping-grid,
+.classroom-schedule-import-review-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.classroom-schedule-import-mapping-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.classroom-schedule-import-mapping-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.classroom-schedule-import-mapping-card__header {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.classroom-schedule-import-mapping-card__header strong {
+  color: #173322;
+  font-size: 0.88rem;
+}
+
+.classroom-schedule-import-mapping-card__header span {
+  color: #6f8274;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.classroom-schedule-import-mapping-card select {
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  color: #15291d;
+  background: #ffffff;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.classroom-schedule-import-review-card {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.classroom-schedule-import-review-card.is-valid {
+  border-color: #a9dabb;
+}
+
+.classroom-schedule-import-review-card.is-invalid,
+.classroom-schedule-import-review-card.is-failed {
+  border-color: #f0b5ad;
+  background: #fff8f7;
+}
+
+.classroom-schedule-import-review-card.is-imported {
+  border-color: #9fd5b1;
+  background: #eefaf2;
+}
+
+.classroom-schedule-import-review-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.classroom-schedule-import-review-card__top strong {
+  display: block;
+  color: #173322;
+  font-size: 0.88rem;
+}
+
+.classroom-schedule-import-review-card__top span {
+  color: #607165;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.classroom-schedule-import-review-card__badge {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  color: #0f7d43;
+  background: #ecf9f0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-import-review-card.is-invalid .classroom-schedule-import-review-card__badge,
+.classroom-schedule-import-review-card.is-failed .classroom-schedule-import-review-card__badge {
+  color: #aa3b2e;
+  background: #fdecec;
+}
+
+.classroom-schedule-import-review-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  color: #31493a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-import-review-card__errors {
+  margin: 0;
+  padding-left: 1rem;
+  color: #b23b2d;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .classroom-schedule-import-types {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2565,6 +2727,20 @@ body {
 .classroom-schedule-import-type-card--maintenance {
   background: #f5f3ff;
   border-color: #d2c4ff;
+}
+
+@media (max-width: 760px) {
+  .classroom-schedule-import-mapping-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-schedule-import-review-card__top {
+    flex-direction: column;
+  }
+
+  .classroom-schedule-import-types {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .classroom-schedule-quick-modal {
@@ -2993,6 +3169,165 @@ body {
   font-weight: 700;
 }
 
+.manage-facilities-venue-reservation-modal {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding: 1.6rem;
+}
+
+.manage-facilities-venue-reservation-modal__heading {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.manage-facilities-venue-reservation-modal__heading-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: #2563eb;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+}
+
+.manage-facilities-venue-reservation-modal__heading-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.manage-facilities-venue-reservation-modal__loading {
+  padding: 1.2rem;
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.manage-facilities-venue-reservation-modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.manage-facilities-venue-reservation-modal__card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.manage-facilities-venue-reservation-modal__status-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--approved {
+  color: #067647;
+  background: #dcfce7;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--pending {
+  color: #9a6700;
+  background: #fef3c7;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--inactive {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--neutral {
+  color: #1f2937;
+  background: #e5e7eb;
+}
+
+.manage-facilities-venue-reservation-modal__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.manage-facilities-venue-reservation-modal__overview-grid,
+.manage-facilities-venue-reservation-modal__schedule-grid,
+.manage-facilities-venue-reservation-modal__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.manage-facilities-venue-reservation-modal__info-item,
+.manage-facilities-venue-reservation-modal__remarks-card {
+  padding: 0.95rem 1rem;
+  background: linear-gradient(180deg, #fbfdfc 0%, #f5faf7 100%);
+  border: 1px solid #dde9e1;
+  border-radius: 14px;
+}
+
+.manage-facilities-venue-reservation-modal__info-item span,
+.manage-facilities-venue-reservation-modal__remarks-card span,
+.manage-facilities-venue-reservation-modal__section-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-venue-reservation-modal__info-item strong {
+  color: #111827;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.manage-facilities-venue-reservation-modal__remarks-card p {
+  margin: 0;
+  color: #111827;
+  font-size: 0.94rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.manage-facilities-venue-reservation-modal__schedule-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem 1rem;
+  background: linear-gradient(180deg, #fcfefd 0%, #f6fbf8 100%);
+  border: 1px solid #dce9e1;
+  border-radius: 16px;
+}
+
+.manage-facilities-venue-reservation-modal__duration-pill {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  color: #067647;
+  background: #ecfdf3;
+  border: 1px solid #c7ead6;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 /* ========================================= */
 /* RESPONSIVE                                */
 /* ========================================= */
@@ -3061,6 +3396,13 @@ body {
 
   .manage-facilities-venue-overview-grid,
   .manage-facilities-venue-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-venue-reservation-modal__overview,
+  .manage-facilities-venue-reservation-modal__overview-grid,
+  .manage-facilities-venue-reservation-modal__schedule-grid,
+  .manage-facilities-venue-reservation-modal__meta-grid {
     grid-template-columns: 1fr;
   }
 

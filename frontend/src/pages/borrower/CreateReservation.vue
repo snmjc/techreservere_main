@@ -82,50 +82,20 @@
                           <h3>Choose Start Time</h3>
                           <p>Select only :00 or :30.</p>
                         </div>
-                        <div class="reservation-time-picker__popover-preview">{{ formatDraftLabel(startTimeDraft) }}</div>
+                        <div class="reservation-time-picker__popover-preview">{{ formatSelectedSlotLabel(startTimeDraft, 'Choose a start time') }}</div>
                         <div class="reservation-time-picker__picker-grid">
                           <div class="reservation-time-picker__picker-column">
-                            <span>Hour</span>
-                            <div class="reservation-time-picker__picker-options">
+                            <span>Available Slots</span>
+                            <div class="reservation-time-picker__picker-options reservation-time-picker__picker-options--slots">
                               <button
-                                v-for="hour in timePickerHours"
-                                :key="`start-hour-${hour}`"
+                                v-for="timeOption in startTimeOptions"
+                                :key="`start-slot-${timeOption.value}`"
                                 type="button"
                                 class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': startTimeDraft.hour === hour }"
-                                @click="startTimeDraft.hour = hour"
+                                :class="{ 'is-selected': startTimeDraft === timeOption.value }"
+                                @click="startTimeDraft = timeOption.value"
                               >
-                                {{ String(hour).padStart(2, '0') }}
-                              </button>
-                            </div>
-                          </div>
-                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
-                            <span>Minute</span>
-                            <div class="reservation-time-picker__picker-options">
-                              <button
-                                v-for="minute in timePickerMinutes"
-                                :key="`start-minute-${minute}`"
-                                type="button"
-                                class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': startTimeDraft.minute === minute }"
-                                @click="startTimeDraft.minute = minute"
-                              >
-                                {{ minute }}
-                              </button>
-                            </div>
-                          </div>
-                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
-                            <span>Period</span>
-                            <div class="reservation-time-picker__picker-options">
-                              <button
-                                v-for="period in timePickerPeriods"
-                                :key="`start-period-${period}`"
-                                type="button"
-                                class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': startTimeDraft.period === period }"
-                                @click="startTimeDraft.period = period"
-                              >
-                                {{ period }}
+                                {{ timeOption.label }}
                               </button>
                             </div>
                           </div>
@@ -153,50 +123,20 @@
                           <h3>Choose End Time</h3>
                           <p>Select a time later than the chosen start time.</p>
                         </div>
-                        <div class="reservation-time-picker__popover-preview">{{ formatDraftLabel(endTimeDraft) }}</div>
+                        <div class="reservation-time-picker__popover-preview">{{ formatSelectedSlotLabel(endTimeDraft, 'Choose an end time') }}</div>
                         <div class="reservation-time-picker__picker-grid">
                           <div class="reservation-time-picker__picker-column">
-                            <span>Hour</span>
-                            <div class="reservation-time-picker__picker-options">
+                            <span>Available Slots</span>
+                            <div class="reservation-time-picker__picker-options reservation-time-picker__picker-options--slots">
                               <button
-                                v-for="hour in timePickerHours"
-                                :key="`end-hour-${hour}`"
+                                v-for="timeOption in endTimeOptions"
+                                :key="`end-slot-${timeOption.value}`"
                                 type="button"
                                 class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': endTimeDraft.hour === hour }"
-                                @click="endTimeDraft.hour = hour"
+                                :class="{ 'is-selected': endTimeDraft === timeOption.value }"
+                                @click="endTimeDraft = timeOption.value"
                               >
-                                {{ String(hour).padStart(2, '0') }}
-                              </button>
-                            </div>
-                          </div>
-                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
-                            <span>Minute</span>
-                            <div class="reservation-time-picker__picker-options">
-                              <button
-                                v-for="minute in timePickerMinutes"
-                                :key="`end-minute-${minute}`"
-                                type="button"
-                                class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': endTimeDraft.minute === minute }"
-                                @click="endTimeDraft.minute = minute"
-                              >
-                                {{ minute }}
-                              </button>
-                            </div>
-                          </div>
-                          <div class="reservation-time-picker__picker-column reservation-time-picker__picker-column--compact">
-                            <span>Period</span>
-                            <div class="reservation-time-picker__picker-options">
-                              <button
-                                v-for="period in timePickerPeriods"
-                                :key="`end-period-${period}`"
-                                type="button"
-                                class="reservation-time-picker__picker-option"
-                                :class="{ 'is-selected': endTimeDraft.period === period }"
-                                @click="endTimeDraft.period = period"
-                              >
-                                {{ period }}
+                                {{ timeOption.label }}
                               </button>
                             </div>
                           </div>
@@ -215,8 +155,8 @@
 
               <div class="borrower-reservation-field">
                 <label for="activityNameTitle">Activity Name / Title <em>*</em></label>
-                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" maxlength="120" placeholder="IT0003 Presentation" />
-                <small class="borrower-reservation-help">Enter a short title for your activity or event.</small>
+                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" maxlength="100" placeholder="IT0003 Presentation" />
+                <small class="borrower-reservation-help">Enter a short title for your activity or event. Maximum: 100 characters.</small>
                 <small v-if="validationErrors.activityNameTitle" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityNameTitle }}</small>
               </div>
 
@@ -241,10 +181,10 @@
                   id="purposeOtherText"
                   v-model.trim="formState.purposeOtherText"
                   rows="3"
-                  maxlength="300"
+                  maxlength="200"
                   placeholder="Enter the specific purpose of your reservation..."
                 ></textarea>
-                <small class="borrower-reservation-help">Provide the exact purpose when you choose `Others: Specify`.</small>
+                <small class="borrower-reservation-help">Provide the exact purpose when you choose `Others: Specify`. Maximum: 200 characters.</small>
                 <small v-if="validationErrors.purposeOtherText" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.purposeOtherText }}</small>
               </div>
             </div>
@@ -303,11 +243,8 @@ const purposeOptions = [
   'Others: Specify',
 ];
 
-const timePickerHours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-const timePickerMinutes = ['00', '30'];
-const timePickerPeriods = ['AM', 'PM'];
 const BUSINESS_START_MINUTES = 7 * 60;
-const BUSINESS_END_MINUTES = 19 * 60;
+const BUSINESS_END_MINUTES = 21 * 60;
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
@@ -353,12 +290,35 @@ const bookingWindowHelpText = computed(() => {
     ? `Booking window for ${termLabel}: ${formattedStart} to ${formattedEnd}.`
     : `Booking window: ${formattedStart} to ${formattedEnd}.`;
 });
-const startTimeDraft = ref(createTimeDraft(formState.value.activityTimeFrom || '07:00'));
-const endTimeDraft = ref(createTimeDraft(formState.value.activityTimeTo || '07:30'));
+const allTimeSlotOptions = computed(() => buildTimeSlotOptions(BUSINESS_START_MINUTES, BUSINESS_END_MINUTES));
+const startTimeOptions = computed(() => allTimeSlotOptions.value);
+const endTimeOptions = computed(() => {
+  if (
+    !formState.value.activityDate
+    || !formState.value.activityEndDate
+    || formState.value.activityDate !== formState.value.activityEndDate
+  ) {
+    return allTimeSlotOptions.value;
+  }
+
+  const startMinutes = parseTimeToMinutes(formState.value.activityTimeFrom);
+  if (!Number.isInteger(startMinutes)) {
+    return allTimeSlotOptions.value;
+  }
+
+  return allTimeSlotOptions.value.filter((timeOption) => {
+    const optionMinutes = parseTimeToMinutes(timeOption.value);
+    return !Number.isInteger(optionMinutes) || optionMinutes > startMinutes;
+  });
+});
+const startTimeDraft = ref(normalizeTimeValue(formState.value.activityTimeFrom, formatMinutesAsValue(BUSINESS_START_MINUTES)));
+const endTimeDraft = ref(normalizeTimeValue(formState.value.activityTimeTo, formatMinutesAsValue(BUSINESS_START_MINUTES + 30)));
 
 onMounted(async () => {
   formState.value.requestDate = todayIsoDate;
   await loadBookingWindow();
+  formState.value.activityTimeFrom = normalizeTimeValue(formState.value.activityTimeFrom, '');
+  formState.value.activityTimeTo = normalizeTimeValue(formState.value.activityTimeTo, '');
   document.addEventListener('mousedown', handleGlobalPointerDown);
 });
 
@@ -407,21 +367,6 @@ async function loadBookingWindow() {
   }
 }
 
-function createTimeDraft(timeValue) {
-  const normalizedValue = String(timeValue || '').trim();
-  if (normalizedValue === '') {
-    return { hour: 7, minute: '00', period: 'AM' };
-  }
-
-  const [rawHours = '07', rawMinutes = '00'] = normalizedValue.split(':');
-  const hours24 = Number(rawHours);
-  const minute = rawMinutes === '30' ? '30' : '00';
-  const period = hours24 >= 12 ? 'PM' : 'AM';
-  const hour12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
-
-  return { hour: hour12, minute, period };
-}
-
 function toggleTimePicker(type) {
   if (openTimePicker.value === type) {
     closeTimePicker();
@@ -429,9 +374,15 @@ function toggleTimePicker(type) {
   }
 
   if (type === 'start') {
-    startTimeDraft.value = createTimeDraft(formState.value.activityTimeFrom || '07:00');
+    startTimeDraft.value = normalizeTimeValue(
+      formState.value.activityTimeFrom,
+      formatMinutesAsValue(BUSINESS_START_MINUTES),
+    );
   } else {
-    endTimeDraft.value = createTimeDraft(formState.value.activityTimeTo || '07:30');
+    endTimeDraft.value = normalizeTimeValue(
+      formState.value.activityTimeTo,
+      resolveDefaultEndTimeValue(),
+    );
   }
 
   openTimePicker.value = type;
@@ -442,7 +393,10 @@ function closeTimePicker() {
 }
 
 function applyTimeSelection(type) {
-  const timeValue = formatDraftAsValue(type === 'start' ? startTimeDraft.value : endTimeDraft.value);
+  const fallbackValue = type === 'start'
+    ? formatMinutesAsValue(BUSINESS_START_MINUTES)
+    : resolveDefaultEndTimeValue();
+  const timeValue = normalizeTimeValue(type === 'start' ? startTimeDraft.value : endTimeDraft.value, fallbackValue);
 
   if (type === 'start') {
     formState.value.activityTimeFrom = timeValue;
@@ -452,30 +406,13 @@ function applyTimeSelection(type) {
       formState.value.activityTimeTo <= timeValue
     ) {
       formState.value.activityTimeTo = '';
+      endTimeDraft.value = resolveDefaultEndTimeValue();
     }
   } else {
     formState.value.activityTimeTo = timeValue;
   }
 
   closeTimePicker();
-}
-
-function formatDraftAsValue(draft) {
-  const hours24 = convertDraftHourTo24(draft.hour, draft.period);
-  return `${String(hours24).padStart(2, '0')}:${draft.minute}`;
-}
-
-function convertDraftHourTo24(hour, period) {
-  const normalizedHour = Number(hour);
-  if (period === 'AM') {
-    return normalizedHour === 12 ? 0 : normalizedHour;
-  }
-
-  return normalizedHour === 12 ? 12 : normalizedHour + 12;
-}
-
-function formatDraftLabel(draft) {
-  return `${draft.hour}:${draft.minute} ${draft.period}`;
 }
 
 function handleGlobalPointerDown(event) {
@@ -511,6 +448,7 @@ function handleActivityDateChange() {
     formState.value.activityTimeTo <= formState.value.activityTimeFrom
   ) {
     formState.value.activityTimeTo = '';
+    endTimeDraft.value = resolveDefaultEndTimeValue();
   }
 }
 
@@ -530,6 +468,7 @@ function handleActivityEndDateChange() {
     formState.value.activityTimeTo <= formState.value.activityTimeFrom
   ) {
     formState.value.activityTimeTo = '';
+    endTimeDraft.value = resolveDefaultEndTimeValue();
   }
 }
 
@@ -538,6 +477,9 @@ function sanitizeParticipantCountField() {
 }
 
 function handleNextPage() {
+  formState.value.activityTimeFrom = normalizeTimeValue(formState.value.activityTimeFrom, '');
+  formState.value.activityTimeTo = normalizeTimeValue(formState.value.activityTimeTo, '');
+
   if (!validateReservationDetails()) {
     return;
   }
@@ -595,20 +537,22 @@ function validateReservationDetails() {
     if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
       validationErrors.activityTime = 'End time must be later than the start time.';
     } else if (!isAllowedTimeSlot(formState.value.activityTimeFrom) || !isAllowedTimeSlot(formState.value.activityTimeTo)) {
-      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
     }
   }
 
   if (!formState.value.activityNameTitle.trim()) {
     validationErrors.activityNameTitle = 'Activity name or title is required.';
-  } else if (formState.value.activityNameTitle.trim().length > 120) {
-    validationErrors.activityNameTitle = 'Activity name or title must be 120 characters or fewer.';
+  } else if (formState.value.activityNameTitle.trim().length > 100) {
+    validationErrors.activityNameTitle = 'Activity name or title must be 100 characters or fewer.';
   }
 
   if (!formState.value.purposeText) {
     validationErrors.purposeText = 'Purpose is required.';
   } else if (isOtherPurposeSelected.value && !formState.value.purposeOtherText.trim()) {
     validationErrors.purposeOtherText = 'Please specify the purpose of your reservation.';
+  } else if (isOtherPurposeSelected.value && formState.value.purposeOtherText.trim().length > 200) {
+    validationErrors.purposeOtherText = 'Purpose must be 200 characters or fewer.';
   }
 
   return Object.values(validationErrors).every((value) => value === '');
@@ -630,7 +574,11 @@ function maxIsoDate(leftValue, rightValue) {
   return leftValue > rightValue ? leftValue : rightValue;
 }
 function parseTimeToMinutes(timeValue) {
-  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  const [hours, minutes] = String(timeValue || '').trim().split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return Number.NaN;
+  }
+
   return (hours * 60) + minutes;
 }
 
@@ -667,7 +615,48 @@ function formatSelectedSlotLabel(timeValue, fallbackLabel) {
     return fallbackLabel;
   }
 
-  return formatMinutesAsLabel(parseTimeToMinutes(timeValue));
+  const totalMinutes = parseTimeToMinutes(timeValue);
+  if (!Number.isInteger(totalMinutes)) {
+    return fallbackLabel;
+  }
+
+  return formatMinutesAsLabel(totalMinutes);
+}
+
+function buildTimeSlotOptions(startMinutes, endMinutes) {
+  const timeSlotOptions = [];
+
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += 30) {
+    timeSlotOptions.push({
+      value: formatMinutesAsValue(minutes),
+      label: formatMinutesAsLabel(minutes),
+    });
+  }
+
+  return timeSlotOptions;
+}
+
+function normalizeTimeValue(timeValue, fallbackValue = '') {
+  const normalizedValue = String(timeValue || '').trim();
+  if (normalizedValue === '') {
+    return fallbackValue;
+  }
+
+  return isAllowedTimeSlot(normalizedValue) ? normalizedValue : fallbackValue;
+}
+
+function resolveDefaultEndTimeValue() {
+  const normalizedStartTime = normalizeTimeValue(formState.value.activityTimeFrom, formatMinutesAsValue(BUSINESS_START_MINUTES));
+  const startMinutes = parseTimeToMinutes(normalizedStartTime);
+  const nextSlotMinutes = Number.isInteger(startMinutes)
+    ? Math.min(startMinutes + 30, BUSINESS_END_MINUTES)
+    : BUSINESS_START_MINUTES + 30;
+
+  if (nextSlotMinutes <= startMinutes) {
+    return formatMinutesAsValue(BUSINESS_END_MINUTES);
+  }
+
+  return formatMinutesAsValue(nextSlotMinutes);
 }
 
 function formatPolicyDate(value) {

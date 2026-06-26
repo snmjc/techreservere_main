@@ -106,12 +106,9 @@ import {
   venueAvailabilityStatuses,
   venueOperationalStatuses,
 } from '@/modules/facility/utils/venueFormValidation.js';
+import { VENUE_FLOOR_OPTIONS } from '@/modules/facility/utils/venueFloorOptions.js';
 
-const floorOptions = [
-  '18th Floor', '17th Floor', '16th Floor', '15th Floor', '8th Floor',
-  '7th Floor', '6th Floor', '5th Floor', '4th Floor', '3rd Floor',
-  '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor',
-];
+const floorOptions = VENUE_FLOOR_OPTIONS;
 
 const props = defineProps({
   show: {

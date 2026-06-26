@@ -13,8 +13,21 @@ class DomainValidationException extends \Exception implements \Throwable
     // 2. Used when DTO validation fails at Service layer
     // 3. Automatically maps to 400 HTTP response
 
-    public function __construct(string $errorMessage = 'Validation failed.', int $code = 0, ?\Throwable $previous = null)
+    private string $errorType;
+
+    public function __construct(
+        string $errorMessage = 'Validation failed.',
+        string $errorType = 'ValidationError',
+        int $code = 0,
+        ?\Throwable $previous = null
+    )
     {
+        $this->errorType = trim($errorType) !== '' ? $errorType : 'ValidationError';
         parent::__construct($errorMessage, $code, $previous);
+    }
+
+    public function getErrorType(): string
+    {
+        return $this->errorType;
     }
 }

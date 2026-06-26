@@ -431,12 +431,15 @@
                     {{ formatEquipmentStatus(equipment) }}
                   </span>
                 </div>
-                <p>{{ equipment.description || equipment.scheduleDescription || 'No description provided.' }}</p>
+                <p class="borrower-facilities__equipment-brand-copy">{{ equipment.brandGroupLabel || equipment.equipmentBrand || 'Unbranded' }}</p>
+                <p>{{ getEquipmentSummaryNote(equipment) }}</p>
                 <div class="borrower-facilities__equipment-meta">
                   <span>{{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</span>
-                  <span>{{ equipment.equipmentBrand || 'N/A' }}</span>
-                  <span>Qty {{ equipment.availableQuantity }}</span>
+                  <span>{{ equipment.availableQuantityLabel || formatAvailableQuantity(equipment) }}</span>
                 </div>
+                <small v-if="getEquipmentInventoryPreview(equipment)" class="borrower-facilities__equipment-preview">
+                  {{ getEquipmentInventoryPreview(equipment) }}
+                </small>
               </div>
             </button>
           </div>
@@ -463,14 +466,16 @@
                 />
                 <div class="borrower-facilities__equipment-list-copy">
                   <strong>{{ equipment.equipmentName }}</strong>
-                  <p>{{ equipment.description || equipment.scheduleDescription || 'No description provided.' }}</p>
+                  <p>{{ equipment.brandGroupLabel || equipment.equipmentBrand || 'Unbranded' }}</p>
+                  <p>{{ getEquipmentSummaryNote(equipment) }}</p>
+                  <small v-if="getEquipmentInventoryPreview(equipment)">{{ getEquipmentInventoryPreview(equipment) }}</small>
                 </div>
               </div>
               <span class="borrower-facilities__equipment-list-status" :class="equipment.equipmentState === 'Available' ? 'borrower-facilities__equipment-list-status--available' : 'borrower-facilities__equipment-list-status--maintenance'">
                 {{ formatEquipmentStatus(equipment) }}
               </span>
               <span>{{ equipment.equipmentCategory || equipment.categoryName || 'N/A' }}</span>
-              <span>Qty {{ equipment.availableQuantity }}</span>
+              <span>{{ equipment.availableQuantityLabel || formatAvailableQuantity(equipment) }}</span>
               <button
                 type="button"
                 class="borrower-facilities__card-action-button"
@@ -1041,6 +1046,41 @@ function getEquipmentSearchableValues(equipment) {
       ? equipment.inventoryItems.flatMap((item) => [item?.assetId, item?.barcode])
       : []),
   ];
+}
+
+function getEquipmentSummaryNote(equipment) {
+  const remarks = Array.isArray(equipment?.remarksNotes)
+    ? equipment.remarksNotes.filter(Boolean)
+    : [];
+
+  return remarks[0]
+    || equipment?.description
+    || equipment?.scheduleDescription
+    || 'Admin notes will appear here when provided.';
+}
+
+function formatGroupedQuantity(equipment) {
+  const groupedItemCount = Math.max(Number(equipment?.groupedItemCount || 0), 0);
+  return `${groupedItemCount} item${groupedItemCount === 1 ? '' : 's'} grouped`;
+}
+function formatAvailableQuantity(equipment) {
+  const availableQuantity = Math.max(Number(equipment?.availableQuantity || 0), 0);
+  return `${availableQuantity} available`;
+}
+
+function getEquipmentInventoryPreview(equipment) {
+  const previewValues = Array.isArray(equipment?.inventoryPreview)
+    ? equipment.inventoryPreview.filter(Boolean)
+    : [];
+
+  if (previewValues.length === 0) {
+    return '';
+  }
+
+  const remainingCount = Math.max(Number(equipment?.groupedItemCount || 0) - previewValues.length, 0);
+  return remainingCount > 0
+    ? `Units: ${previewValues.join(', ')} +${remainingCount} more`
+    : `Units: ${previewValues.join(', ')}`;
 }
 
 function normalizeSearchText(value) {

@@ -49,12 +49,18 @@
 
       <div class="admin-ops-table-card">
         <ReservationActiveTableComponent
-          :reservation-list="activeReservationsList"
+          :reservation-list="paginatedActiveReservations"
           :search-query-text="searchQueryText"
           @view-deployment-details="handleViewDeploymentDetails"
           @return-confirmation="handleReturnConfirmation"
           @report-reservation="handleReportReservation"
         />
+      </div>
+
+      <div v-if="activeReservationsTotalPages > 1" class="active-reservations-pagination">
+        <button type="button" :disabled="activeReservationsCurrentPage === 1" @click="activeReservationsCurrentPage -= 1">Previous</button>
+        <span>Page {{ activeReservationsCurrentPage }} of {{ activeReservationsTotalPages }}</span>
+        <button type="button" :disabled="activeReservationsCurrentPage === activeReservationsTotalPages" @click="activeReservationsCurrentPage += 1">Next</button>
       </div>
 
       <div class="admin-ops-page-footer active-reservations-page-footer">
@@ -336,7 +342,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ActiveReservations.css';
@@ -352,6 +358,8 @@ const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const activeReservationsCurrentPage = ref(1);
+const activeReservationsPageSize = 8;
 const selectedReservationRecord = ref(null);
 const confirmReservationRecord = ref(null);
 const reportReservationRecord = ref(null);
@@ -369,6 +377,26 @@ const isWorkflowConfirmationSubmitting = ref(false);
 const workflowConfirmationError = ref('');
 
 const activeReservationsList = computed(() => requestStore.activeReservationsList || []);
+const filteredActiveReservations = computed(() => {
+  const queryLower = searchQueryText.value.toLowerCase().trim();
+
+  return activeReservationsList.value.filter((reservationRecord) => {
+    const requestType = String(reservationRecord?.requestType || '').toLowerCase();
+    const matchesShowing = showingFilterValue.value === 'all'
+      || requestType === showingFilterValue.value;
+    const matchesQuery = queryLower === ''
+      || String(reservationRecord?.requesterFullName || '').toLowerCase().includes(queryLower)
+      || String(reservationRecord?.requestIdentifier || '').toLowerCase().includes(queryLower)
+      || String(reservationRecord?.requestDisplayIdentifier || '').toLowerCase().includes(queryLower);
+
+    return matchesShowing && matchesQuery;
+  });
+});
+const activeReservationsTotalPages = computed(() => Math.max(1, Math.ceil(filteredActiveReservations.value.length / activeReservationsPageSize)));
+const paginatedActiveReservations = computed(() => {
+  const startIndex = (activeReservationsCurrentPage.value - 1) * activeReservationsPageSize;
+  return filteredActiveReservations.value.slice(startIndex, startIndex + activeReservationsPageSize);
+});
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim().toLowerCase();
@@ -381,6 +409,16 @@ onMounted(async () => {
     console.log('Admin Active Reservations - Count:', list.length);
   } catch (error) {
     console.error('Error fetching active reservations:', error);
+  }
+});
+
+watch([searchQueryText, showingFilterValue], () => {
+  activeReservationsCurrentPage.value = 1;
+});
+
+watch(activeReservationsTotalPages, (pageCount) => {
+  if (activeReservationsCurrentPage.value > pageCount) {
+    activeReservationsCurrentPage.value = pageCount;
   }
 });
 

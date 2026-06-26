@@ -54,11 +54,14 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem 1.2rem;
+  align-items: start;
 }
 
 .borrower-reservation-field {
   display: grid;
   gap: 0.42rem;
+  min-width: 0;
+  align-content: start;
 }
 
 .borrower-reservation-field--full {
@@ -67,9 +70,13 @@
 
 .borrower-reservation-field label,
 .borrower-reservation-field span {
+  display: flex;
+  align-items: flex-end;
+  min-height: 1.4rem;
   color: #334c40;
   font-size: 0.76rem;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 .borrower-reservation-field em {
@@ -87,6 +94,7 @@
   background: #ffffff;
   border: 1px solid #d7e1da;
   border-radius: 8px;
+  box-sizing: border-box;
   font: inherit;
   font-size: 0.82rem;
 }
@@ -152,6 +160,7 @@
   display: grid;
   gap: 0.25rem;
   align-content: start;
+  min-height: 94px;
   padding: 0.95rem 1rem;
   background: linear-gradient(180deg, #f2fbf6, #f6fbf8);
   border: 1px solid #deeee4;
