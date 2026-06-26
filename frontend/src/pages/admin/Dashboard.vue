@@ -73,46 +73,11 @@
           <div v-if="isDashboardLoading" class="admin-dashboard-inline-message">Loading dashboard data...</div>
           <div v-else-if="resourceSeries.length === 0" class="admin-dashboard-inline-message">No demand data is available for the selected range.</div>
           <div v-else class="admin-dashboard-chart">
-            <svg :viewBox="`0 0 ${resourceChart.width} ${resourceChart.height}`" role="img" aria-label="Resource utilization graph">
-              <g class="admin-dashboard-chart-grid">
-                <path
-                  v-for="(line, index) in resourceChart.gridLinesY"
-                  :key="`grid-y-${index}`"
-                  :d="`M${resourceChart.chartBounds.left} ${line.y}H${resourceChart.chartBounds.right}`"
-                />
-              </g>
-              <g class="admin-dashboard-chart-labels">
-                <text
-                  v-for="line in resourceChart.yAxisLabels"
-                  :key="`label-y-${line.value}`"
-                  :x="line.x"
-                  :y="line.y"
-                >
-                  {{ line.value }}
-                </text>
-              </g>
-              <path class="admin-dashboard-chart-area" :d="resourceChart.areaPath" />
-              <polyline class="admin-dashboard-chart-line" :points="resourceChart.polylinePoints" />
-              <g class="admin-dashboard-chart-points">
-                <circle
-                  v-for="(point, index) in resourceChart.pointMarkers"
-                  :key="`resource-point-${index}`"
-                  :cx="point.x"
-                  :cy="point.y"
-                  r="4"
-                />
-              </g>
-              <g class="admin-dashboard-chart-months">
-                <text
-                  v-for="(label, index) in resourceChart.xAxisLabels"
-                  :key="`x-label-${index}`"
-                  :x="label.x"
-                  :y="label.y"
-                >
-                  {{ label.label }}
-                </text>
-              </g>
-            </svg>
+            <canvas
+              ref="resourceChartRef"
+              class="admin-dashboard-chart-canvas"
+              aria-label="Resource utilization graph"
+            ></canvas>
           </div>
         </section>
 
@@ -220,16 +185,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
+import { createDashboardChartRenderer } from './services/dashboardChartRenderer.js';
 import {
   ADMIN_ANALYTICS_RANGE_PRESETS,
-  buildLineChartModel,
   formatDateRangeLabel,
   formatLeadTimeHours,
   formatMetricNumber,
@@ -242,14 +207,12 @@ const selectedRangeKey = ref('14d');
 const isDashboardLoading = ref(true);
 const dashboardError = ref('');
 const dashboardOverview = ref(createEmptyOverview());
+const resourceChartRef = ref(null);
+const chartRenderer = createDashboardChartRenderer();
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
 const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
 const resourceSeries = computed(() => dashboardOverview.value.resourceUtilization || []);
-const resourceChart = computed(() => buildLineChartModel(
-  resourceSeries.value.map((item) => ({ label: item.label, value: item.demand })),
-  { width: 860, height: 300, maxXAxisLabels: 7 }
-));
 
 const totalOverviewCards = computed(() => {
   const summary = dashboardOverview.value.summary || {};
@@ -346,9 +309,21 @@ onMounted(() => {
   loadDashboardOverview();
 });
 
+onBeforeUnmount(() => {
+  destroyCharts();
+});
+
 watch(selectedRangeKey, () => {
   loadDashboardOverview();
 });
+
+watch(
+  resourceSeries,
+  () => {
+    renderResourceChartAfterUpdate();
+  },
+  { deep: true }
+);
 
 async function loadDashboardOverview() {
   isDashboardLoading.value = true;
@@ -362,7 +337,25 @@ async function loadDashboardOverview() {
     dashboardError.value = resolveDashboardError(error);
   } finally {
     isDashboardLoading.value = false;
+    await renderResourceChartAfterUpdate();
   }
+}
+
+function destroyCharts() {
+  chartRenderer.destroyAll();
+}
+
+async function renderResourceChartAfterUpdate() {
+  await nextTick();
+  renderResourceChart();
+}
+
+function renderResourceChart() {
+  chartRenderer.renderResourceUtilizationChart({
+    canvas: resourceChartRef.value,
+    resourceSeries: resourceSeries.value,
+    formatMetricNumber,
+  });
 }
 
 function navigateToMetricPage(routeName) {
