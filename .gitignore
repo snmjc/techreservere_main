@@ -4,3 +4,6 @@
 !example.env
 !.env.dev.example
 node_modules
+analytics-service/models/**
+!analytics-service/models/
+!analytics-service/models/.gitkeep

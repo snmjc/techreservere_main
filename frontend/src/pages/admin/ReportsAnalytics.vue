@@ -34,6 +34,13 @@
             >
               {{ isReportsLoading ? 'Refreshing...' : 'Refresh' }}
             </button>
+            <button
+              class="reports-models-button"
+              type="button"
+              @click="openModelSheet"
+            >
+              PKL Models
+            </button>
           </div>
 
         </header>
@@ -272,6 +279,136 @@
         </button>
       </div>
 
+      <div v-if="isModelSheetOpen" class="reports-sheet-backdrop" @click.self="closeModelSheet">
+        <aside class="reports-model-sheet" aria-label="PKL model manager">
+          <div class="reports-model-sheet-header">
+            <div>
+              <p>Model Artifacts</p>
+              <h3>PKL Sets</h3>
+            </div>
+            <button type="button" class="reports-modal-close" @click="closeModelSheet">×</button>
+          </div>
+
+          <p class="reports-model-sheet-copy">
+            Create, rename, mix, and switch the PKL artifacts used by each analytics model.
+          </p>
+
+          <div class="reports-model-sheet-actions">
+            <button
+              type="button"
+              class="reports-primary-button"
+              :disabled="isRefreshingDailyAnalytics"
+              @click="handleRefreshDailyAnalytics"
+            >
+              {{ isRefreshingDailyAnalytics ? 'Refreshing...' : 'Refresh Today Analytics' }}
+            </button>
+            <button
+              type="button"
+              class="reports-secondary-button"
+              :disabled="isCreatingModelSet"
+              @click="handleCreateTestModelSet"
+            >
+              {{ isCreatingModelSet ? 'Creating PKL...' : 'Create Test PKL' }}
+            </button>
+            <button
+              type="button"
+              class="reports-secondary-button"
+              :disabled="isModelArtifactsLoading"
+              @click="loadModelArtifacts"
+            >
+              {{ isModelArtifactsLoading ? 'Loading...' : 'Refresh List' }}
+            </button>
+          </div>
+
+          <p v-if="modelArtifactMessage" class="reports-inline-message" :class="{ 'is-success': modelArtifactMessageType === 'success', 'is-error': modelArtifactMessageType === 'error' }">
+            {{ modelArtifactMessage }}
+          </p>
+
+          <div v-if="isModelArtifactsLoading" class="reports-inline-message">Loading PKL sets...</div>
+          <div v-else-if="modelArtifactSets.length === 0" class="reports-inline-message">No PKL sets are available yet.</div>
+          <div v-else class="reports-model-set-list">
+            <article
+              v-for="modelSet in modelArtifactSets"
+              :key="modelSet.setName"
+              class="reports-model-set-card"
+              :class="{ 'is-active': modelSet.active }"
+            >
+              <div class="reports-model-set-card-header">
+                <div>
+                  <strong>{{ modelSet.setName }}</strong>
+                  <span>{{ modelSet.active ? 'Active for analytics' : 'Available PKL set' }}</span>
+                </div>
+                <em>{{ modelSet.complete ? 'Complete' : 'Partial' }}</em>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Trained</dt>
+                  <dd>{{ formatModelArtifactDate(modelSet.trainedAt) }}</dd>
+                </div>
+                <div>
+                  <dt>Artifacts</dt>
+                  <dd>{{ countExistingArtifacts(modelSet) }}/3</dd>
+                </div>
+              </dl>
+
+              <ul>
+                <li v-for="artifact in modelSet.artifacts" :key="artifact.artifact">
+                  <div>
+                    <span>{{ formatArtifactLabel(artifact.artifact) }}</span>
+                    <small>{{ artifact.active ? 'active' : (artifact.exists ? 'ready' : 'missing') }}</small>
+                  </div>
+                  <button
+                    type="button"
+                    class="reports-mini-button"
+                    :disabled="artifact.active || !artifact.exists || isSwappingModelArtifact === `${modelSet.setName}:${artifact.artifact}`"
+                    @click="handleActivateModelArtifact(modelSet.setName, artifact.artifact)"
+                  >
+                    {{ artifact.active ? 'Using' : 'Use' }}
+                  </button>
+                </li>
+              </ul>
+
+              <div class="reports-model-rename-row">
+                <input
+                  v-model.trim="modelSetRenameDrafts[modelSet.setName]"
+                  type="text"
+                  :placeholder="modelSet.setName === 'default' ? 'Default cannot be renamed' : 'Rename PKL set'"
+                  :disabled="modelSet.setName === 'default' || isRenamingModelSet === modelSet.setName"
+                />
+                <button
+                  type="button"
+                  class="reports-secondary-button"
+                  :disabled="modelSet.setName === 'default' || isRenamingModelSet === modelSet.setName || !modelSetRenameDrafts[modelSet.setName]"
+                  @click="handleRenameModelSet(modelSet.setName)"
+                >
+                  {{ isRenamingModelSet === modelSet.setName ? 'Renaming...' : 'Rename' }}
+                </button>
+              </div>
+
+              <div class="reports-model-set-actions">
+                <button
+                  type="button"
+                  class="reports-secondary-button"
+                  :disabled="modelSet.active || !modelSet.complete || isSwappingModelSet"
+                  @click="handleActivateModelSet(modelSet.setName)"
+                >
+                  {{ modelSet.active ? 'Using' : 'Use This PKL' }}
+                </button>
+                <button
+                  type="button"
+                  class="reports-danger-button"
+                  :disabled="isDeletingModelSet === modelSet.setName"
+                  @click="handleDeleteModelSet(modelSet.setName)"
+                >
+                  {{ isDeletingModelSet === modelSet.setName ? 'Deleting...' : 'Delete' }}
+                </button>
+              </div>
+            </article>
+          </div>
+        </aside>
+      </div>
+
       <div v-if="isScenarioModalOpen" class="reports-modal-backdrop" @click.self="closeScenarioModal">
         <div class="reports-modal">
           <div class="reports-modal-header">
@@ -357,11 +494,21 @@ const isReportsLoading = ref(true);
 const isExporting = ref(false);
 const isTriggeringAnalytics = ref(false);
 const isScenarioModalOpen = ref(false);
+const isModelSheetOpen = ref(false);
+const isModelArtifactsLoading = ref(false);
+const isCreatingModelSet = ref(false);
+const isRefreshingDailyAnalytics = ref(false);
+const isSwappingModelSet = ref(false);
+const isSwappingModelArtifact = ref('');
+const isRenamingModelSet = ref('');
+const isDeletingModelSet = ref('');
 const selectedAnalyticsScenario = ref('clean_data');
 const reportsError = ref('');
 const analyticsToastMessage = ref('');
 const analyticsRunStatus = ref('');
 const analyticsRunStatusType = ref('info');
+const modelArtifactMessage = ref('');
+const modelArtifactMessageType = ref('info');
 const pdfError = ref('');
 const isUtilizationRefreshing = ref(false);
 const reportSurfaceRef = ref(null);
@@ -376,6 +523,12 @@ const optimizationReport = ref([]);
 const utilizationReport = ref(createEmptyUtilizationReport());
 const summaryReport = ref(createEmptySummaryReport());
 const reportsSourceLabel = ref('Loading stored analytics...');
+const modelArtifacts = ref({
+  activeSet: 'default',
+  activeArtifacts: {},
+  sets: [],
+});
+const modelSetRenameDrafts = ref({});
 
 const analyticsScenarios = [
   { key: 'clean_data', title: 'Clean Data', description: 'Reset to a neutral demo state with balanced inputs.' },
@@ -472,6 +625,7 @@ const summaryItems = computed(() => [
   { label: 'Completed This Period', value: formatMetricNumber(summaryReport.value?.completedThisPeriod || 0, 0) },
   { label: 'Generated At', value: reportGeneratedAt.value },
 ]);
+const modelArtifactSets = computed(() => Array.isArray(modelArtifacts.value?.sets) ? modelArtifacts.value.sets : []);
 
 onMounted(() => {
   loadReportsAnalytics();
@@ -590,6 +744,205 @@ function handleRefreshReports() {
   loadReportsAnalytics();
 }
 
+async function openModelSheet() {
+  isModelSheetOpen.value = true;
+  await loadModelArtifacts();
+}
+
+function closeModelSheet() {
+  if (
+    isCreatingModelSet.value
+    || isRefreshingDailyAnalytics.value
+    || isSwappingModelSet.value
+    || isSwappingModelArtifact.value
+    || isRenamingModelSet.value
+    || isDeletingModelSet.value
+  ) {
+    return;
+  }
+
+  isModelSheetOpen.value = false;
+}
+
+async function loadModelArtifacts() {
+  isModelArtifactsLoading.value = true;
+  modelArtifactMessage.value = '';
+
+  try {
+    const response = await adminAnalyticsApi.listAnalyticsModelArtifacts();
+    modelArtifacts.value = response?.modelArtifacts || response || { activeSet: 'default', sets: [] };
+    modelSetRenameDrafts.value = Object.fromEntries(
+      modelArtifactSets.value.map((modelSet) => [
+        modelSet.setName,
+        modelSetRenameDrafts.value[modelSet.setName] || '',
+      ]),
+    );
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isModelArtifactsLoading.value = false;
+  }
+}
+
+async function handleCreateTestModelSet() {
+  if (isCreatingModelSet.value) {
+    return;
+  }
+
+  isCreatingModelSet.value = true;
+  modelArtifactMessage.value = 'Training a new PKL set...';
+  modelArtifactMessageType.value = 'info';
+
+  try {
+    const setName = `test-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19).toLowerCase()}`;
+    const response = await adminAnalyticsApi.trainAnalyticsModels({ setName, activate: true });
+    const trainingRun = response?.trainingRun || response || {};
+    modelArtifactMessage.value = `Created and activated ${trainingRun.setName || setName}.`;
+    modelArtifactMessageType.value = 'success';
+    analyticsToastMessage.value = 'PKL test set created and activated.';
+    await loadModelArtifacts();
+    await loadReportsAnalytics();
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isCreatingModelSet.value = false;
+  }
+}
+
+async function handleRefreshDailyAnalytics() {
+  if (isRefreshingDailyAnalytics.value) {
+    return;
+  }
+
+  isRefreshingDailyAnalytics.value = true;
+  modelArtifactMessage.value = 'Refreshing today analytics with the active PKL set...';
+  modelArtifactMessageType.value = 'info';
+  reportsError.value = '';
+
+  try {
+    const analyticsResponse = await adminAnalyticsApi.refreshDailyAnalytics(activeRange.value);
+    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    reportsSourceLabel.value = `Using refreshed FastAPI analytics for ${activeRangeLabel.value}.`;
+    modelArtifactMessage.value = 'Today analytics refreshed.';
+    modelArtifactMessageType.value = 'success';
+    analyticsToastMessage.value = 'Today analytics refreshed with the active PKL set.';
+    await loadModelArtifacts();
+  } catch (error) {
+    const message = resolveReportsError(error);
+    reportsError.value = message;
+    modelArtifactMessage.value = message;
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isRefreshingDailyAnalytics.value = false;
+  }
+}
+
+async function handleActivateModelSet(setName) {
+  if (!setName || isSwappingModelSet.value) {
+    return;
+  }
+
+  isSwappingModelSet.value = true;
+  modelArtifactMessage.value = `Switching analytics to ${setName}...`;
+  modelArtifactMessageType.value = 'info';
+
+  try {
+    await adminAnalyticsApi.activateAnalyticsModelSet(setName);
+    modelArtifactMessage.value = `Analytics is now using ${setName}.`;
+    modelArtifactMessageType.value = 'success';
+    analyticsToastMessage.value = `Active PKL set switched to ${setName}.`;
+    await loadModelArtifacts();
+    await loadReportsAnalytics();
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isSwappingModelSet.value = false;
+  }
+}
+
+async function handleActivateModelArtifact(setName, artifact) {
+  if (!setName || !artifact || isSwappingModelArtifact.value) {
+    return;
+  }
+
+  const operationKey = `${setName}:${artifact}`;
+  isSwappingModelArtifact.value = operationKey;
+  modelArtifactMessage.value = `Using ${formatArtifactLabel(artifact)} from ${setName}...`;
+  modelArtifactMessageType.value = 'info';
+
+  try {
+    await adminAnalyticsApi.activateAnalyticsModelArtifact(setName, artifact);
+    modelArtifactMessage.value = `${formatArtifactLabel(artifact)} now uses ${setName}.`;
+    modelArtifactMessageType.value = 'success';
+    analyticsToastMessage.value = `${formatArtifactLabel(artifact)} PKL switched to ${setName}.`;
+    await loadModelArtifacts();
+    await loadReportsAnalytics();
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isSwappingModelArtifact.value = '';
+  }
+}
+
+async function handleRenameModelSet(setName) {
+  const newName = modelSetRenameDrafts.value[setName];
+  if (!setName || !newName || isRenamingModelSet.value) {
+    return;
+  }
+
+  isRenamingModelSet.value = setName;
+  modelArtifactMessage.value = `Renaming ${setName}...`;
+  modelArtifactMessageType.value = 'info';
+
+  try {
+    const response = await adminAnalyticsApi.renameAnalyticsModelSet(setName, newName);
+    const renamed = response?.renamedModelSet || response || {};
+    const resolvedName = renamed.renamedTo || newName;
+    modelArtifactMessage.value = `Renamed ${setName} to ${resolvedName}.`;
+    modelArtifactMessageType.value = 'success';
+    modelSetRenameDrafts.value[setName] = '';
+    await loadModelArtifacts();
+    await loadReportsAnalytics();
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isRenamingModelSet.value = '';
+  }
+}
+
+async function handleDeleteModelSet(setName) {
+  if (!setName || isDeletingModelSet.value) {
+    return;
+  }
+
+  const shouldDelete = window.confirm(`Delete PKL set "${setName}"?`);
+  if (!shouldDelete) {
+    return;
+  }
+
+  isDeletingModelSet.value = setName;
+  modelArtifactMessage.value = `Deleting ${setName}...`;
+  modelArtifactMessageType.value = 'info';
+
+  try {
+    await adminAnalyticsApi.deleteAnalyticsModelSet(setName);
+    modelArtifactMessage.value = `Deleted ${setName}.`;
+    modelArtifactMessageType.value = 'success';
+    await loadModelArtifacts();
+    await loadReportsAnalytics();
+  } catch (error) {
+    modelArtifactMessage.value = resolveReportsError(error);
+    modelArtifactMessageType.value = 'error';
+  } finally {
+    isDeletingModelSet.value = '';
+  }
+}
+
 function applyStoredAnalyticsSections(storedAnalytics) {
   forecastReport.value = storedAnalytics.forecast;
   riskReport.value = storedAnalytics.riskDistribution;
@@ -615,6 +968,41 @@ function normalizeEquipmentTrendItems(items) {
       reason: item?.reason || item?.note || item?.why || '',
     }))
     .filter((item) => item.name);
+}
+
+function countExistingArtifacts(modelSet) {
+  return (modelSet?.artifacts || []).filter((artifact) => artifact?.exists).length;
+}
+
+function formatArtifactLabel(artifactName) {
+  switch (artifactName) {
+    case 'demand_forecast.pkl':
+      return 'Forecast PKL';
+    case 'readiness_random_forest.pkl':
+      return 'Readiness PKL';
+    case 'allocation_optimizer.pkl':
+      return 'Allocation PKL';
+    default:
+      return artifactName || 'PKL';
+  }
+}
+
+function formatModelArtifactDate(value) {
+  if (!value) {
+    return 'Not trained yet';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function closeScenarioModal() {

@@ -1,12 +1,17 @@
 from datetime import date, timedelta
+import math
 from typing import Any
 
 from psycopg import Connection
 
 from app.analytics_utils import average
+from app.model_artifacts import FORECAST_ARTIFACT, ModelArtifactStore
 
 
 class ForecastSnapshotBuilder:
+    def __init__(self, artifact_store: ModelArtifactStore | None = None) -> None:
+        self.artifact_store = artifact_store or ModelArtifactStore()
+
     def build(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
         history_days = int(config.get("forecast", {}).get("historyDays", 180))
         forecast_days = int(config.get("forecast", {}).get("forecastDays", 30))
@@ -41,7 +46,14 @@ class ForecastSnapshotBuilder:
             })
             current_date += timedelta(days=1)
 
-        forecast_series = self._build_forecast_series(series, forecast_days)
+        trained_artifact = self.artifact_store.load(FORECAST_ARTIFACT)
+        if trained_artifact is not None and trained_artifact.get("model") is None:
+            trained_artifact = None
+        forecast_series = (
+            self._build_trained_forecast_series(series, forecast_days, trained_artifact)
+            if trained_artifact is not None
+            else self._build_forecast_series(series, forecast_days)
+        )
         history_series = self._build_history_series(
             connection,
             start_date,
@@ -57,8 +69,8 @@ class ForecastSnapshotBuilder:
             expected_change_percent = round(((average_forecast - average_actual) / average_actual) * 100, 2)
 
         return {
-            "modelName": "sarima",
-            "status": "placeholder_ready",
+            "modelName": self._artifact_model_name(trained_artifact, "sarima"),
+            "status": "trained_weekly" if trained_artifact is not None else "placeholder_ready",
             "actualSeries": series,
             "forecastSeries": forecast_series,
             "historySeries": history_series,
@@ -69,8 +81,46 @@ class ForecastSnapshotBuilder:
                 "expectedChangePercent": expected_change_percent,
                 "forecastHorizonDays": forecast_days,
             },
-            "notes": "FastAPI storage path is live. SARIMA training will replace this placeholder output.",
+            "modelStatus": self.artifact_store.describe(FORECAST_ARTIFACT),
+            "notes": (
+                "Weekly trained .pkl forecast artifact is active."
+                if trained_artifact is not None
+                else "FastAPI storage path is live. Weekly training will replace this placeholder output."
+            ),
         }
+
+    def _build_trained_forecast_series(
+        self,
+        actual_series: list[dict[str, Any]],
+        forecast_days: int,
+        artifact: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        if not actual_series:
+            return []
+
+        model = artifact.get("model")
+        model_start_date = date.fromisoformat(artifact.get("startDate"))
+        historical_counts = {
+            date.fromisoformat(day): int(count)
+            for day, count in dict(artifact.get("historicalCounts", {})).items()
+        }
+        selected_counts = {
+            date.fromisoformat(item["date"]): int(float(item["value"]))
+            for item in actual_series
+        }
+        counts_by_date = {**historical_counts, **selected_counts}
+        sorted_series = sorted(actual_series, key=lambda item: item["date"])
+        first_date = date.fromisoformat(sorted_series[0]["date"])
+        total_days = len(sorted_series) + max(0, forecast_days)
+        forecast_rows = []
+
+        for offset in range(total_days):
+            forecast_date = first_date + timedelta(days=offset)
+            features = self._trained_forecast_features(forecast_date, model_start_date, counts_by_date)
+            predicted_value = float(model.predict([features])[0])
+            forecast_rows.append({"date": forecast_date.isoformat(), "value": round(max(0.0, predicted_value), 2)})
+
+        return forecast_rows
 
     def _build_forecast_series(self, actual_series: list[dict[str, Any]], forecast_days: int) -> list[dict[str, Any]]:
         if not actual_series:
@@ -174,6 +224,41 @@ class ForecastSnapshotBuilder:
             ),
             2,
         )
+
+    def _trained_forecast_features(
+        self,
+        target_date: date,
+        start_date: date,
+        counts_by_date: dict[date, int],
+    ) -> list[float]:
+        day_index = (target_date - start_date).days
+        previous_7 = [
+            counts_by_date.get(target_date - timedelta(days=offset), 0)
+            for offset in range(1, 8)
+        ]
+        previous_14 = [
+            counts_by_date.get(target_date - timedelta(days=offset), 0)
+            for offset in range(1, 15)
+        ]
+        return [
+            float(day_index),
+            float(target_date.weekday()),
+            float(target_date.month),
+            math.sin((2 * math.pi * target_date.weekday()) / 7),
+            math.cos((2 * math.pi * target_date.weekday()) / 7),
+            math.sin((2 * math.pi * target_date.month) / 12),
+            math.cos((2 * math.pi * target_date.month) / 12),
+            sum(previous_7) / 7,
+            sum(previous_14) / 14,
+            1.0 if target_date.month in (5, 6) else 0.0,
+            1.0 if target_date.month in (1, 2) else 0.0,
+        ]
+
+    def _artifact_model_name(self, artifact: dict[str, Any] | None, fallback: str) -> str:
+        if artifact is None:
+            return fallback
+        metadata = artifact.get("metadata", {})
+        return str(metadata.get("modelName") or fallback)
 
     def _previous_year_date(self, value: date) -> date:
         try:
