@@ -38,7 +38,7 @@
               <option value="both">Both</option>
             </select>
           </label>
-          <button class="admin-ops-sort-button pending-requests-sort-button" aria-label="Sort">
+          <button class="admin-ops-sort-button pending-requests-sort-button" :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`" :title="sortDirection === 'asc' ? 'Oldest submitted first' : 'Newest submitted first'" @click="toggleSortDirection">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
@@ -392,6 +392,7 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { sortReservationRecords } from '@/modules/request/services/requestReservationMapper.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const authStore = useAuthenticationStore();
@@ -399,6 +400,7 @@ const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const sortDirection = ref('desc');
 const pendingRequestsCurrentPage = ref(1);
 const pendingRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);
@@ -421,7 +423,7 @@ const pendingRequestsList = computed(() => requestStore.pendingRequestsList || [
 const filteredPendingRequests = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
-  return pendingRequestsList.value.filter((requestRecord) => {
+  const filteredRecords = pendingRequestsList.value.filter((requestRecord) => {
     const requestType = String(requestRecord?.requestType || '').toLowerCase();
     const matchesShowing = showingFilterValue.value === 'all'
       || requestType === showingFilterValue.value;
@@ -432,6 +434,8 @@ const filteredPendingRequests = computed(() => {
 
     return matchesShowing && matchesQuery;
   });
+
+  return sortReservationRecords(filteredRecords, 'pending', sortDirection.value);
 });
 const pendingRequestsTotalPages = computed(() => Math.max(1, Math.ceil(filteredPendingRequests.value.length / pendingRequestsPageSize)));
 const paginatedPendingRequests = computed(() => {
@@ -510,6 +514,10 @@ function handleRequestRevisions(requestRecord) {
  */
 function handleRejectRequest(requestRecord) {
   deleteRequestRecord.value = requestRecord;
+}
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
 async function confirmApproveRequest() {
