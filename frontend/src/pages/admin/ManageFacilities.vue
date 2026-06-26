@@ -3470,6 +3470,12 @@ function buildClassSchedulePayload(scheduleFormState) {
 }
 
 async function submitClassSchedule() {
+  const validationError = validateClassScheduleForm(classScheduleForm.value);
+  if (validationError) {
+    classScheduleModalError.value = validationError;
+    return;
+  }
+
   const payload = buildClassSchedulePayload(classScheduleForm.value);
 
   try {
@@ -3492,6 +3498,12 @@ async function submitClassSchedule() {
 }
 
 async function submitQuickAddSchedule() {
+  const validationError = validateClassScheduleForm(quickClassScheduleForm.value);
+  if (validationError) {
+    quickClassScheduleError.value = validationError;
+    return;
+  }
+
   const payload = buildClassSchedulePayload(quickClassScheduleForm.value);
 
   try {
@@ -3589,6 +3601,38 @@ function createEmptyClassScheduleForm() {
     capacityLimit: '',
     blockDate: selectedClassroomDate.value,
   };
+}
+
+function validateClassScheduleForm(scheduleFormState) {
+  if (Number(scheduleFormState?.venueIdentifier || 0) <= 0) {
+    return 'Please select a room before saving the classroom schedule.';
+  }
+
+  if (!String(scheduleFormState?.courseCode || '').trim() && !String(scheduleFormState?.courseName || '').trim()) {
+    return 'Please provide at least a course code or course name.';
+  }
+
+  if (!String(scheduleFormState?.startTime || '').trim() || !String(scheduleFormState?.endTime || '').trim()) {
+    return 'Please provide both a start time and end time.';
+  }
+
+  if (String(scheduleFormState.endTime) <= String(scheduleFormState.startTime)) {
+    return 'End time must be later than start time.';
+  }
+
+  if (!String(scheduleFormState?.dateRangeStart || '').trim() || !String(scheduleFormState?.dateRangeEnd || '').trim()) {
+    return 'Please provide both a start date and end date.';
+  }
+
+  if (String(scheduleFormState.dateRangeEnd) < String(scheduleFormState.dateRangeStart)) {
+    return 'End date must be on or after the start date.';
+  }
+
+  if (!Array.isArray(scheduleFormState?.daysOfWeek) || scheduleFormState.daysOfWeek.length === 0) {
+    return 'Select at least one day for the class schedule.';
+  }
+
+  return '';
 }
 
 function createEmptyQuickAddScheduleForm() {
@@ -3809,7 +3853,7 @@ function normalizeImportedTable(rawRows) {
   const normalizedRows = Array.isArray(rawRows)
     ? rawRows.map((row) => Array.isArray(row) ? row.map((cellValue) => normalizeImportedCellValue(cellValue)) : [])
     : [];
-  const firstDataIndex = normalizedRows.findIndex((row) => row.some((cellValue) => cellValue !== ''));
+  const firstDataIndex = resolveImportedHeaderRowIndex(normalizedRows);
 
   if (firstDataIndex < 0) {
     return { headers: [], rows: [] };
@@ -3822,6 +3866,49 @@ function normalizeImportedTable(rawRows) {
     .map((row) => headers.map((_, headerIndex) => normalizeImportedCellValue(row[headerIndex] ?? '')));
 
   return { headers, rows };
+}
+
+function resolveImportedHeaderRowIndex(normalizedRows) {
+  const candidateRows = normalizedRows
+    .map((row, index) => ({
+      index,
+      nonEmptyCells: row.filter((cellValue) => cellValue !== '').length,
+      keywordScore: row.reduce((score, cellValue) => score + scoreImportedHeaderCell(cellValue), 0),
+    }))
+    .filter((rowMeta) => rowMeta.nonEmptyCells > 0)
+    .slice(0, 12);
+
+  if (candidateRows.length === 0) {
+    return -1;
+  }
+
+  candidateRows.sort((leftRow, rightRow) => {
+    if (leftRow.keywordScore !== rightRow.keywordScore) {
+      return rightRow.keywordScore - leftRow.keywordScore;
+    }
+
+    if (leftRow.nonEmptyCells !== rightRow.nonEmptyCells) {
+      return rightRow.nonEmptyCells - leftRow.nonEmptyCells;
+    }
+
+    return leftRow.index - rightRow.index;
+  });
+
+  return candidateRows[0]?.index ?? -1;
+}
+
+function scoreImportedHeaderCell(cellValue) {
+  const normalizedCell = normalizeImportAliasKey(cellValue);
+  if (!normalizedCell) {
+    return 0;
+  }
+
+  const knownHeaderLabels = importScheduleTargetOptions.flatMap((targetOption) => [
+    targetOption.label,
+    ...(importScheduleTargetAliases[targetOption.key] || []),
+  ]);
+
+  return knownHeaderLabels.some((headerLabel) => normalizeImportAliasKey(headerLabel) === normalizedCell) ? 1 : 0;
 }
 
 function createImportedHeaders(headerRow) {
