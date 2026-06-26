@@ -49,13 +49,6 @@
         </div>
 
         <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-inline-actions">
-          <button
-            v-if="activeFacilityTab === 'classroom-schedules'"
-            class="manage-facilities-add-button manage-facilities-add-button--compact"
-            @click="openImportSchedulesModal"
-          >
-            Import Schedules
-          </button>
           <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
