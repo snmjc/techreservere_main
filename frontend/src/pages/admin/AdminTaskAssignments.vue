@@ -1189,6 +1189,9 @@ function resetDeleteForm() {
 </script>
 
 <style scoped>
+<<<<<<< HEAD
+@import './css/AdminTaskAssignments.css';
+=======
 .admin-task-assignments-page {
   width: 100%;
   max-width: 1320px;
@@ -1990,4 +1993,6 @@ button:disabled {
     flex-wrap: wrap;
   }
 }
+>>>>>>> 9e3f0b2ce09783e703d884a0823f142c3561479f
 </style>
+

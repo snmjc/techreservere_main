@@ -63,51 +63,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.accept-invitation-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #0d5a3a, #0a783c);
-}
-
-.accept-invitation-card {
-  width: min(100%, 420px);
-  padding: 2rem 1.5rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
-  text-align: center;
-}
-
-.accept-invitation-card h1 {
-  margin: 0 0 0.65rem;
-  color: #111827;
-  font-size: 1.7rem;
-  font-weight: 900;
-}
-
-.accept-invitation-card p {
-  margin: 0;
-  color: #4b5563;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.accept-invitation-spinner {
-  width: 38px;
-  height: 38px;
-  margin: 0 auto 1rem;
-  border: 4px solid rgba(8, 120, 74, 0.16);
-  border-top-color: #08784a;
-  border-radius: 999px;
-  animation: accept-invitation-spin 0.8s linear infinite;
-}
-
-@keyframes accept-invitation-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+@import './css/AcceptInvitation.css';
 </style>
+
