@@ -21,7 +21,7 @@ use Doctrine\DBAL\ParameterType;
 class ReservationCreateService
 {
     private const BUSINESS_START_MINUTES = 420;
-    private const BUSINESS_END_MINUTES = 1140;
+    private const BUSINESS_END_MINUTES = 1260;
     private const ACTIVITY_TITLE_MAX_LENGTH = 120;
     private const PURPOSE_DESCRIPTION_MAX_LENGTH = 200;
     private const ACTIVITY_TYPE_MAX_LENGTH = 100;
