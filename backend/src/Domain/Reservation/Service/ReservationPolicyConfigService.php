@@ -653,7 +653,7 @@ class ReservationPolicyConfigService
 
     private function expandDatesForDays(string $startDate, string $endDate, array $daysOfWeek): array
     {
-        $dayNumbers = array_flip([
+        $dayNumbers = [
             'Monday' => 1,
             'Tuesday' => 2,
             'Wednesday' => 3,
@@ -661,7 +661,7 @@ class ReservationPolicyConfigService
             'Friday' => 5,
             'Saturday' => 6,
             'Sunday' => 7,
-        ]);
+        ];
         $selectedDayNumbers = array_values(array_map(static fn (string $dayName): int => $dayNumbers[$dayName] ?? 0, $daysOfWeek));
 
         $dates = [];
