@@ -3899,6 +3899,8 @@ function buildImportReviewRow(rowValues, rowIndex) {
       errors.push('Recurring rows require both start and end dates.');
     } else if (dateRangeEnd < dateRangeStart) {
       errors.push('Recurring end date must be on or after the start date.');
+    } else if (daysOfWeek.length > 0 && countRecurringImportMatches(dateRangeStart, dateRangeEnd, daysOfWeek) === 0) {
+      errors.push('No class schedule dates matched the selected day range.');
     }
 
     if (daysOfWeek.length === 0) {
@@ -4379,6 +4381,49 @@ function normalizeImportedDayList(value) {
       .map((dayValue) => dayMap[normalizeImportAliasKey(dayValue)] || '')
       .filter(Boolean)
   ));
+}
+
+function countRecurringImportMatches(startDate, endDate, daysOfWeek) {
+  if (!startDate || !endDate || !Array.isArray(daysOfWeek) || daysOfWeek.length === 0) {
+    return 0;
+  }
+
+  const dayNumbers = {
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
+    Sunday: 7,
+  };
+  const selectedDayNumbers = daysOfWeek
+    .map((dayName) => dayNumbers[dayName] || 0)
+    .filter(Boolean);
+
+  if (selectedDayNumbers.length === 0) {
+    return 0;
+  }
+
+  const startValue = new Date(`${startDate}T00:00:00Z`);
+  const endValue = new Date(`${endDate}T00:00:00Z`);
+  if (Number.isNaN(startValue.getTime()) || Number.isNaN(endValue.getTime()) || startValue > endValue) {
+    return 0;
+  }
+
+  let matchCount = 0;
+  const cursor = new Date(startValue);
+
+  while (cursor <= endValue) {
+    const weekdayNumber = cursor.getUTCDay() === 0 ? 7 : cursor.getUTCDay();
+    if (selectedDayNumbers.includes(weekdayNumber)) {
+      matchCount += 1;
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return matchCount;
 }
 
 function normalizeImportAliasKey(value) {
