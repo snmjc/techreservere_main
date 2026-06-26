@@ -2610,6 +2610,27 @@ body {
   font-size: 0.76rem;
 }
 
+.classroom-schedule-import-template-panel {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  background: #f6fbf7;
+  border: 1px solid #d9e7de;
+  border-radius: 14px;
+}
+
+.classroom-schedule-import-template-panel strong {
+  color: #173322;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-import-template-panel span {
+  color: #607165;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .classroom-schedule-import-mapping-grid,
 .classroom-schedule-import-review-list {
   display: grid;
@@ -2617,12 +2638,16 @@ body {
 }
 
 .classroom-schedule-import-mapping-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .classroom-schedule-import-mapping-card {
   display: grid;
   gap: 0.7rem;
+  padding: 0.95rem 1rem;
+  background: #ffffff;
+  border: 1px solid #d9e1dc;
+  border-radius: 14px;
 }
 
 .classroom-schedule-import-mapping-card__header {
@@ -2838,10 +2863,6 @@ body {
 }
 
 @media (max-width: 760px) {
-  .classroom-schedule-import-mapping-grid {
-    grid-template-columns: 1fr;
-  }
-
   .classroom-schedule-import-review-card__top {
     flex-direction: column;
   }

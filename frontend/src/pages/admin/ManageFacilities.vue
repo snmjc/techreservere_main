@@ -930,30 +930,12 @@
               </article>
             </div>
 
-            <p class="classroom-schedule-import-note">Upload a class schedule file, then map its columns before review and import.</p>
+            <p class="classroom-schedule-import-note">Upload a classroom schedule file, then map each detected Excel column before review and import.</p>
             <p v-if="importScheduleDetectionNotice" class="classroom-schedule-import-note classroom-schedule-import-note--status">{{ importScheduleDetectionNotice }}</p>
 
-            <div class="classroom-schedule-import-types">
-              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--class">
-                <strong>Class Schedule</strong>
-                <span>Regular classes from the registrar.</span>
-              </article>
-              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--reserved">
-                <strong>Reserved</strong>
-                <span>Room reservations and events.</span>
-              </article>
-              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--equipment">
-                <strong>Equipment Reservation</strong>
-                <span>Equipment and resource bookings.</span>
-              </article>
-              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--pending">
-                <strong>Pending</strong>
-                <span>Pending requests for approval.</span>
-              </article>
-              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--maintenance">
-                <strong>Maintenance</strong>
-                <span>Unavailable periods and maintenance blocks.</span>
-              </article>
+            <div class="classroom-schedule-import-template-panel">
+              <strong>Use the official classroom schedule template for the smoothest import.</strong>
+              <span>Extra Excel columns are allowed and can be left as Ignore during mapping.</span>
             </div>
           </template>
 
@@ -964,8 +946,8 @@
                 <span>Minimum required mappings</span>
               </article>
               <article>
-                <strong>{{ importScheduleMappedColumnCount }}</strong>
-                <span>Mappings selected</span>
+                <strong>{{ importScheduleMappedHeaderCount }}</strong>
+                <span>Excel columns mapped</span>
               </article>
               <article>
                 <strong>{{ importScheduleRemainingRequiredMappingsCount }}</strong>
@@ -996,29 +978,29 @@
             </div>
 
             <div class="classroom-schedule-import-mapping-grid">
-              <article v-for="targetOption in importScheduleTargetOptions" :key="targetOption.key" class="classroom-schedule-import-mapping-card">
+              <article v-for="header in importScheduleHeaders" :key="header" class="classroom-schedule-import-mapping-card">
                 <div class="classroom-schedule-import-mapping-card__header">
-                  <strong>{{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}</strong>
+                  <strong>{{ header }}</strong>
                   <small
                     class="classroom-schedule-import-mapping-card__status"
-                    :class="`classroom-schedule-import-mapping-card__status--${getImportMappingStatus(targetOption.key).tone}`"
+                    :class="`classroom-schedule-import-mapping-card__status--${getImportMappingStatusForHeader(header).tone}`"
                   >
-                    {{ getImportMappingStatus(targetOption.key).label }}
+                    {{ getImportMappingStatusForHeader(header).label }}
                   </small>
-                  <span>{{ importSchedulePreviewCellForTarget(targetOption.key, importSchedulePreviewRow) }}</span>
+                  <span>Sample: {{ importSchedulePreviewCell(header, importSchedulePreviewRow) }}</span>
                 </div>
                 <select
-                  :value="getImportMappedHeaderForTarget(targetOption.key)"
-                  @change="updateImportHeaderMapping(targetOption.key, $event.target.value)"
+                  :value="getImportSelectedTargetForHeader(header)"
+                  @change="updateImportTargetMapping(header, $event.target.value)"
                 >
-                  <option value="">Select file column</option>
+                  <option value="">Ignore this column</option>
                   <option
-                    v-for="header in importScheduleHeaders"
-                    :key="header"
-                    :value="header"
-                    :disabled="isImportHeaderTaken(header, targetOption.key)"
+                    v-for="targetOption in importScheduleTargetOptions"
+                    :key="targetOption.key"
+                    :value="targetOption.key"
+                    :disabled="isImportTargetTaken(targetOption.key, header)"
                   >
-                    {{ header }}
+                    {{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}
                   </option>
                 </select>
               </article>
@@ -1640,8 +1622,8 @@ const importScheduleError = ref('');
 const importScheduleParsing = ref(false);
 const importScheduleHeaders = ref([]);
 const importScheduleRows = ref([]);
-const importScheduleColumnMap = ref({});
-const importScheduleAutoMappedTargets = ref({});
+const importScheduleHeaderSelections = ref({});
+const importScheduleAutoMappedHeaders = ref({});
 const importScheduleDetectionMetadata = ref(createEmptyImportDetectionMetadata());
 const importScheduleReviewRows = ref([]);
 const importScheduleImporting = ref(false);
@@ -2062,9 +2044,16 @@ const quickAddScheduleSummary = computed(() => {
 const importScheduleStepIndex = computed(() => importScheduleSteps.findIndex((step) => step.key === importScheduleStep.value));
 const importScheduleParsedRowCount = computed(() => importScheduleRows.value.length);
 const importScheduleMinimumRequiredMappingsCount = computed(() => 4);
-const importScheduleMappedColumnCount = computed(() => (
-  Object.values(importScheduleColumnMap.value).filter(Boolean).length
+const importScheduleMappedHeaderCount = computed(() => (
+  Object.values(importScheduleHeaderSelections.value).filter(Boolean).length
 ));
+const importScheduleTargetToHeaderMap = computed(() => Object.entries(importScheduleHeaderSelections.value).reduce((targetMap, [header, targetKey]) => {
+  if (targetKey) {
+    targetMap[targetKey] = header;
+  }
+
+  return targetMap;
+}, {}));
 const importScheduleDetectedSheetLabel = computed(() => importScheduleDetectionMetadata.value.sheetName || 'Not detected');
 const importScheduleDetectedHeaderRowLabel = computed(() => (
   importScheduleDetectionMetadata.value.headerRowNumber > 0
@@ -2087,7 +2076,7 @@ const importScheduleDetectionNotice = computed(() => {
   return `Detected "${importScheduleDetectedSheetLabel.value}" with header ${importScheduleDetectedHeaderRowLabel.value}.`;
 });
 const importScheduleMissingMappings = computed(() => {
-  const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
+  const mappedTargets = new Set(Object.values(importScheduleHeaderSelections.value).filter(Boolean));
   const missingTargets = [];
 
   if (!mappedTargets.has('venueReference')) {
@@ -3748,9 +3737,9 @@ async function handleImportFileChange(event) {
     importScheduleHeaders.value = headers;
     importScheduleRows.value = rows;
     importScheduleDetectionMetadata.value = metadata || createEmptyImportDetectionMetadata();
-    const { columnMap, autoMappedTargets } = buildInitialImportColumnMap(headers);
-    importScheduleColumnMap.value = columnMap;
-    importScheduleAutoMappedTargets.value = autoMappedTargets;
+    const { headerSelections, autoMappedHeaders } = buildInitialImportHeaderSelections(headers);
+    importScheduleHeaderSelections.value = headerSelections;
+    importScheduleAutoMappedHeaders.value = autoMappedHeaders;
   } catch (error) {
     importScheduleError.value = error instanceof Error ? error.message : 'Failed to parse the selected file.';
   } finally {
@@ -3828,8 +3817,8 @@ function resetImportScheduleState() {
   importScheduleParsing.value = false;
   importScheduleHeaders.value = [];
   importScheduleRows.value = [];
-  importScheduleColumnMap.value = {};
-  importScheduleAutoMappedTargets.value = {};
+  importScheduleHeaderSelections.value = {};
+  importScheduleAutoMappedHeaders.value = {};
   importScheduleDetectionMetadata.value = createEmptyImportDetectionMetadata();
   importScheduleReviewRows.value = [];
   importScheduleImporting.value = false;
@@ -4185,25 +4174,25 @@ function createImportedHeaders(headerRow) {
   });
 }
 
-function buildInitialImportColumnMap(headers) {
-  const nextColumnMap = {};
-  const autoMappedTargets = {};
+function buildInitialImportHeaderSelections(headers) {
+  const nextHeaderSelections = {};
+  const autoMappedHeaders = {};
   const claimedTargets = new Set();
 
   headers.forEach((header) => {
     const matchedTarget = matchImportTargetForHeader(header);
     if (matchedTarget && !claimedTargets.has(matchedTarget)) {
-      nextColumnMap[header] = matchedTarget;
+      nextHeaderSelections[header] = matchedTarget;
       claimedTargets.add(matchedTarget);
-      autoMappedTargets[matchedTarget] = true;
+      autoMappedHeaders[header] = true;
     } else {
-      nextColumnMap[header] = '';
+      nextHeaderSelections[header] = '';
     }
   });
 
   return {
-    columnMap: nextColumnMap,
-    autoMappedTargets,
+    headerSelections: nextHeaderSelections,
+    autoMappedHeaders,
   };
 }
 
@@ -4216,42 +4205,40 @@ function matchImportTargetForHeader(header) {
   ))?.key || '';
 }
 
-function getImportMappedHeaderForTarget(targetKey) {
-  return Object.keys(importScheduleColumnMap.value).find((header) => importScheduleColumnMap.value[header] === targetKey) || '';
+function getImportSelectedTargetForHeader(headerName) {
+  return importScheduleHeaderSelections.value[headerName] || '';
 }
 
-function updateImportHeaderMapping(targetKey, selectedHeader) {
-  const normalizedHeader = String(selectedHeader || '').trim();
-  const nextColumnMap = { ...importScheduleColumnMap.value };
-  const nextAutoMappedTargets = { ...importScheduleAutoMappedTargets.value };
+function updateImportTargetMapping(headerName, selectedTargetKey) {
+  const normalizedTargetKey = String(selectedTargetKey || '').trim();
+  const nextHeaderSelections = { ...importScheduleHeaderSelections.value };
+  const nextAutoMappedHeaders = { ...importScheduleAutoMappedHeaders.value };
 
-  Object.keys(nextColumnMap).forEach((header) => {
-    if (nextColumnMap[header] === targetKey) {
-      nextColumnMap[header] = '';
+  Object.keys(nextHeaderSelections).forEach((header) => {
+    if (header !== headerName && nextHeaderSelections[header] === normalizedTargetKey) {
+      nextHeaderSelections[header] = '';
+      nextAutoMappedHeaders[header] = false;
     }
   });
 
-  if (normalizedHeader) {
-    nextColumnMap[normalizedHeader] = targetKey;
-  }
-
-  importScheduleColumnMap.value = nextColumnMap;
-  nextAutoMappedTargets[targetKey] = false;
-  importScheduleAutoMappedTargets.value = nextAutoMappedTargets;
+  nextHeaderSelections[headerName] = normalizedTargetKey;
+  nextAutoMappedHeaders[headerName] = false;
+  importScheduleHeaderSelections.value = nextHeaderSelections;
+  importScheduleAutoMappedHeaders.value = nextAutoMappedHeaders;
 }
 
-function isImportHeaderTaken(headerName, activeTargetKey) {
-  if (!headerName) {
+function isImportTargetTaken(targetKey, activeHeaderName) {
+  if (!targetKey) {
     return false;
   }
 
-  return Object.entries(importScheduleColumnMap.value).some(([header, mappedTarget]) => (
-    header === headerName && mappedTarget && mappedTarget !== activeTargetKey
+  return Object.entries(importScheduleHeaderSelections.value).some(([header, mappedTarget]) => (
+    header !== activeHeaderName && mappedTarget === targetKey
   ));
 }
 
 function getImportMappedValue(targetKey, rowValues) {
-  const headerName = Object.keys(importScheduleColumnMap.value).find((header) => importScheduleColumnMap.value[header] === targetKey);
+  const headerName = importScheduleTargetToHeaderMap.value[targetKey] || '';
   if (!headerName) {
     return '';
   }
@@ -4403,33 +4390,30 @@ function importSchedulePreviewCell(header, rowValues) {
   return headerIndex >= 0 ? normalizeImportedText(rowValues[headerIndex] ?? '') || 'No sample value' : 'No sample value';
 }
 
-function importSchedulePreviewCellForTarget(targetKey, rowValues) {
-  const headerName = getImportMappedHeaderForTarget(targetKey);
-  return headerName ? importSchedulePreviewCell(headerName, rowValues) : 'No mapped file column yet';
-}
-
-function getImportMappingStatus(targetKey) {
-  const headerName = getImportMappedHeaderForTarget(targetKey);
-  if (!headerName) {
+function getImportMappingStatusForHeader(headerName) {
+  const targetKey = getImportSelectedTargetForHeader(headerName);
+  if (!targetKey) {
     return {
-      label: 'Needs file column',
+      label: 'Ignored',
       tone: 'unmapped',
-      mappedHeader: '',
+      mappedTarget: '',
     };
   }
 
-  if (importScheduleAutoMappedTargets.value[targetKey]) {
+  const targetLabel = importScheduleTargetOptions.find((targetOption) => targetOption.key === targetKey)?.label || targetKey;
+
+  if (importScheduleAutoMappedHeaders.value[headerName]) {
     return {
-      label: `Auto-mapped from ${headerName}`,
+      label: `Auto-mapped to ${targetLabel}`,
       tone: 'auto',
-      mappedHeader: headerName,
+      mappedTarget: targetKey,
     };
   }
 
   return {
-    label: `Mapped to ${headerName}`,
+    label: `Mapped to ${targetLabel}`,
     tone: 'manual',
-    mappedHeader: headerName,
+    mappedTarget: targetKey,
   };
 }
 
