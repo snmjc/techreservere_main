@@ -1,6 +1,7 @@
 const PENDING_STATUSES = ['pending review', 'pending', 'submitted'];
 const SCHEDULED_STATUSES = ['approved', 'prepared', 'deployed', 'active'];
 const PAST_RECORD_STATUSES = ['completed', 'rejected', 'cancelled', 'returned', 'request revision'];
+const ACTIVE_QUEUE_STATUSES = ['deployed', 'active'];
 
 export function normalizeReservationListResponse(response) {
   if (Array.isArray(response)) {
@@ -35,6 +36,12 @@ export function buildReservationBuckets(apiReservations = [], taskRecords = []) 
   });
 
   return buckets;
+}
+
+export function sortReservationRecords(records = [], bucketType = 'pending', direction = getDefaultSortDirection(bucketType)) {
+  return [...(Array.isArray(records) ? records : [])].sort((leftRecord, rightRecord) =>
+    compareReservationRecords(leftRecord, rightRecord, bucketType, direction)
+  );
 }
 
 function createEmptyReservationBuckets() {
@@ -112,6 +119,50 @@ function normalizeReservationStatus(status) {
   return String(status || '').trim().toLowerCase();
 }
 
+function compareReservationRecords(leftRecord, rightRecord, bucketType, direction) {
+  const leftValue = resolveReservationSortValue(leftRecord, bucketType);
+  const rightValue = resolveReservationSortValue(rightRecord, bucketType);
+
+  if (leftValue !== rightValue) {
+    return direction === 'asc'
+      ? leftValue - rightValue
+      : rightValue - leftValue;
+  }
+
+  const leftIdentifier = resolveReservationIdentifier(leftRecord);
+  const rightIdentifier = resolveReservationIdentifier(rightRecord);
+
+  return direction === 'asc'
+    ? leftIdentifier - rightIdentifier
+    : rightIdentifier - leftIdentifier;
+}
+
+function resolveReservationSortValue(record, bucketType) {
+  if (bucketType === 'approved' || bucketType === 'active') {
+    return resolveReservationDateValue(
+      record?.requestScheduleStart
+        || record?.activityTime
+        || record?.neededDate
+        || record?.requestedDate
+    );
+  }
+
+  return resolveReservationDateValue(record?.requestedDate || record?.requestScheduleStart || record?.activityTime);
+}
+
+function resolveReservationDateValue(value) {
+  const parsedDate = parseReservationDate(value);
+  return parsedDate ? parsedDate.getTime() : 0;
+}
+
+function resolveReservationIdentifier(record) {
+  return Number(record?.requestIdentifier || record?.reservationIdentifier || 0);
+}
+
+function getDefaultSortDirection(bucketType) {
+  return bucketType === 'pending' ? 'desc' : 'asc';
+}
+
 export function resolveReservationScheduleState(reservation) {
   const start = parseReservationDate(
     reservation?.eventDateTime
@@ -174,7 +225,7 @@ export function addReservationRecordToBuckets(buckets, record, status, scheduleS
       scheduleBucket: scheduleState,
     };
 
-    if (scheduleState === 'active') {
+    if (scheduleState === 'active' || ACTIVE_QUEUE_STATUSES.includes(normalizedStatus)) {
       buckets.active.push({
         ...scheduledRecord,
         deploymentStatus: resolveActiveDeploymentLabel(status),

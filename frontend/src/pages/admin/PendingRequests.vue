@@ -38,11 +38,19 @@
               <option value="both">Both</option>
             </select>
           </label>
-          <button class="admin-ops-sort-button pending-requests-sort-button" aria-label="Sort">
+          <button
+            class="admin-ops-sort-button pending-requests-sort-button"
+            :class="{ 'admin-ops-sort-button--ascending': sortDirection === 'asc' }"
+            :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`"
+            :title="sortDirection === 'asc' ? 'Oldest submitted first' : 'Newest submitted first'"
+            type="button"
+            @click="toggleSortDirection"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
             </svg>
+            <span>{{ sortDirection === 'asc' ? 'Oldest First' : 'Newest First' }}</span>
           </button>
         </div>
       </div>
@@ -138,6 +146,13 @@
               </div>
             </div>
           </section>
+
+          <div class="pending-request-details-remarks">
+            <strong>Borrower Remarks:</strong>
+            <div class="pending-request-details-remarks-box">
+              {{ approveRequestRecord.borrowerRemarks || 'No borrower remarks added.' }}
+            </div>
+          </div>
 
           <label class="pending-request-action-field pending-request-action-field--full">
             <span>Remarks (Optional)</span>
@@ -245,6 +260,13 @@
               </div>
             </div>
           </section>
+
+          <div class="pending-request-details-remarks">
+            <strong>Borrower Remarks:</strong>
+            <div class="pending-request-details-remarks-box">
+              {{ deleteRequestRecord.borrowerRemarks || 'No borrower remarks added.' }}
+            </div>
+          </div>
 
           <label class="pending-request-action-field pending-request-action-field--full">
             <span>Remarks (Optional)</span>
@@ -367,7 +389,14 @@
           <div class="pending-request-details-divider"></div>
 
           <div class="pending-request-details-remarks">
-            <strong>Remarks:</strong>
+            <strong>Borrower Remarks:</strong>
+            <div class="pending-request-details-remarks-box">
+              {{ selectedRequestRecord.borrowerRemarks || 'No borrower remarks added.' }}
+            </div>
+          </div>
+
+          <div class="pending-request-details-remarks">
+            <strong>Admin / Status Remarks:</strong>
             <div class="pending-request-details-remarks-box">
               {{ selectedRequestRecord.remarks || 'No remarks added yet.' }}
             </div>
@@ -392,6 +421,7 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import RequestPendingTableComponent from '@/modules/request/components/RequestPendingTableComponent.vue';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { sortReservationRecords } from '@/modules/request/services/requestReservationMapper.js';
 
 const APP_FONT_STACK = "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 const authStore = useAuthenticationStore();
@@ -399,6 +429,7 @@ const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const sortDirection = ref('desc');
 const pendingRequestsCurrentPage = ref(1);
 const pendingRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);
@@ -421,7 +452,7 @@ const pendingRequestsList = computed(() => requestStore.pendingRequestsList || [
 const filteredPendingRequests = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
-  return pendingRequestsList.value.filter((requestRecord) => {
+  const filteredRecords = pendingRequestsList.value.filter((requestRecord) => {
     const requestType = String(requestRecord?.requestType || '').toLowerCase();
     const matchesShowing = showingFilterValue.value === 'all'
       || requestType === showingFilterValue.value;
@@ -432,6 +463,8 @@ const filteredPendingRequests = computed(() => {
 
     return matchesShowing && matchesQuery;
   });
+
+  return sortReservationRecords(filteredRecords, 'pending', sortDirection.value);
 });
 const pendingRequestsTotalPages = computed(() => Math.max(1, Math.ceil(filteredPendingRequests.value.length / pendingRequestsPageSize)));
 const paginatedPendingRequests = computed(() => {
@@ -510,6 +543,10 @@ function handleRequestRevisions(requestRecord) {
  */
 function handleRejectRequest(requestRecord) {
   deleteRequestRecord.value = requestRecord;
+}
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
 async function confirmApproveRequest() {

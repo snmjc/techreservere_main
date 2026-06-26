@@ -2323,6 +2323,7 @@ body {
 .classroom-schedule-form-days {
   display: grid;
   gap: 0.38rem;
+  min-width: 0;
 }
 
 .classroom-schedule-form-grid span,
@@ -2336,6 +2337,8 @@ body {
 .classroom-schedule-form-grid input,
 .classroom-schedule-form-grid select,
 .classroom-schedule-form-notes textarea {
+  width: 100%;
+  max-width: 100%;
   min-height: 42px;
   padding: 0.65rem 0.75rem;
   color: #15291d;
@@ -2435,6 +2438,7 @@ body {
 .classroom-schedule-import-shell {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .classroom-schedule-import-steps {
@@ -2472,6 +2476,7 @@ body {
   border-radius: 16px;
   background: #fbfdfc;
   cursor: pointer;
+  min-width: 0;
 }
 
 .classroom-schedule-import-dropzone input {
@@ -2598,6 +2603,8 @@ body {
 }
 
 .classroom-schedule-import-mapping-card select {
+  width: 100%;
+  max-width: 100%;
   min-height: 42px;
   padding: 0.65rem 0.75rem;
   color: #15291d;
@@ -2681,27 +2688,37 @@ body {
 
 .classroom-schedule-import-types {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.75rem;
+  align-items: stretch;
 }
 
 .classroom-schedule-import-type-card {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.9rem;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+  min-height: 136px;
+  min-width: 0;
+  padding: 1rem 0.95rem;
   border: 1px solid #dbe5df;
-  border-radius: 14px;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
 }
 
 .classroom-schedule-import-type-card strong {
   color: #173322;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .classroom-schedule-import-type-card span {
   color: #607165;
-  font-size: 0.76rem;
-  line-height: 1.45;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .classroom-schedule-import-type-card--class {
@@ -2770,16 +2787,18 @@ body {
   inset: 0;
   z-index: 1000;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   overflow-y: auto;
-  padding: 1.5rem 1rem;
+  padding: 1rem;
   background: rgba(15, 23, 42, 0.45);
 }
 
 .manage-facilities-delete-modal {
   position: relative;
   width: min(520px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
   padding: 1.5rem;
   background: #ffffff;
   border: 1px solid #dbe4de;
@@ -2894,6 +2913,7 @@ body {
 .manage-facilities-modal-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.7rem;
   margin-top: 1rem;
   padding-top: 1rem;
@@ -3370,6 +3390,7 @@ body {
 
   .manage-facilities-modal-overlay {
     padding: 0.75rem;
+    align-items: flex-start;
   }
 
   .manage-facilities-equipment-details-layout,

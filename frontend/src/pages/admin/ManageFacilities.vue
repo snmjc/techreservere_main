@@ -946,8 +946,16 @@
           <template v-else-if="importScheduleStep === 'map'">
             <div class="classroom-schedule-import-summary">
               <article>
-                <strong>{{ importScheduleHeaders.length }}</strong>
-                <span>Columns to map</span>
+                <strong>{{ importScheduleMinimumRequiredMappingsCount }}</strong>
+                <span>Minimum required mappings</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleMappedColumnCount }}</strong>
+                <span>Mappings selected</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleRemainingRequiredMappingsCount }}</strong>
+                <span>Required mappings left</span>
               </article>
               <article>
                 <strong>{{ importScheduleParsedRowCount }}</strong>
@@ -958,7 +966,7 @@
             <p class="classroom-schedule-import-note">Map each file column to the matching classroom schedule field. Leave unrelated columns as Ignore.</p>
 
             <div v-if="importScheduleMissingMappings.length > 0" class="classroom-schedule-import-warning">
-              Missing required mappings: {{ importScheduleMissingMappings.join(', ') }}
+              {{ importScheduleMissingMappingsNotice }}
             </div>
 
             <div class="classroom-schedule-import-mapping-grid">
@@ -1936,6 +1944,10 @@ const quickAddScheduleSummary = computed(() => {
 });
 const importScheduleStepIndex = computed(() => importScheduleSteps.findIndex((step) => step.key === importScheduleStep.value));
 const importScheduleParsedRowCount = computed(() => importScheduleRows.value.length);
+const importScheduleMinimumRequiredMappingsCount = computed(() => 4);
+const importScheduleMappedColumnCount = computed(() => (
+  Object.values(importScheduleColumnMap.value).filter(Boolean).length
+));
 const importScheduleMissingMappings = computed(() => {
   const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
   const missingTargets = [];
@@ -1957,6 +1969,19 @@ const importScheduleMissingMappings = computed(() => {
   }
 
   return missingTargets;
+});
+const importScheduleRemainingRequiredMappingsCount = computed(() => importScheduleMissingMappings.value.length);
+const importScheduleMissingMappingsNotice = computed(() => {
+  const missingTargets = importScheduleMissingMappings.value;
+  if (missingTargets.length === 0) {
+    return '';
+  }
+
+  if (missingTargets.length === 1) {
+    return `1 more required mapping is needed to proceed: ${missingTargets[0]}`;
+  }
+
+  return `${missingTargets.length} required mappings are still needed: ${missingTargets.join(', ')}`;
 });
 const importSchedulePreviewRow = computed(() => importScheduleRows.value[0] || []);
 const importScheduleValidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => row.isValid));
@@ -3470,6 +3495,12 @@ function buildClassSchedulePayload(scheduleFormState) {
 }
 
 async function submitClassSchedule() {
+  const validationError = validateClassScheduleForm(classScheduleForm.value);
+  if (validationError) {
+    classScheduleModalError.value = validationError;
+    return;
+  }
+
   const payload = buildClassSchedulePayload(classScheduleForm.value);
 
   try {
@@ -3492,6 +3523,12 @@ async function submitClassSchedule() {
 }
 
 async function submitQuickAddSchedule() {
+  const validationError = validateClassScheduleForm(quickClassScheduleForm.value);
+  if (validationError) {
+    quickClassScheduleError.value = validationError;
+    return;
+  }
+
   const payload = buildClassSchedulePayload(quickClassScheduleForm.value);
 
   try {
@@ -3589,6 +3626,38 @@ function createEmptyClassScheduleForm() {
     capacityLimit: '',
     blockDate: selectedClassroomDate.value,
   };
+}
+
+function validateClassScheduleForm(scheduleFormState) {
+  if (Number(scheduleFormState?.venueIdentifier || 0) <= 0) {
+    return 'Please select a room before saving the classroom schedule.';
+  }
+
+  if (!String(scheduleFormState?.courseCode || '').trim() && !String(scheduleFormState?.courseName || '').trim()) {
+    return 'Please provide at least a course code or course name.';
+  }
+
+  if (!String(scheduleFormState?.startTime || '').trim() || !String(scheduleFormState?.endTime || '').trim()) {
+    return 'Please provide both a start time and end time.';
+  }
+
+  if (String(scheduleFormState.endTime) <= String(scheduleFormState.startTime)) {
+    return 'End time must be later than start time.';
+  }
+
+  if (!String(scheduleFormState?.dateRangeStart || '').trim() || !String(scheduleFormState?.dateRangeEnd || '').trim()) {
+    return 'Please provide both a start date and end date.';
+  }
+
+  if (String(scheduleFormState.dateRangeEnd) < String(scheduleFormState.dateRangeStart)) {
+    return 'End date must be on or after the start date.';
+  }
+
+  if (!Array.isArray(scheduleFormState?.daysOfWeek) || scheduleFormState.daysOfWeek.length === 0) {
+    return 'Select at least one day for the class schedule.';
+  }
+
+  return '';
 }
 
 function createEmptyQuickAddScheduleForm() {
@@ -3809,7 +3878,7 @@ function normalizeImportedTable(rawRows) {
   const normalizedRows = Array.isArray(rawRows)
     ? rawRows.map((row) => Array.isArray(row) ? row.map((cellValue) => normalizeImportedCellValue(cellValue)) : [])
     : [];
-  const firstDataIndex = normalizedRows.findIndex((row) => row.some((cellValue) => cellValue !== ''));
+  const firstDataIndex = resolveImportedHeaderRowIndex(normalizedRows);
 
   if (firstDataIndex < 0) {
     return { headers: [], rows: [] };
@@ -3822,6 +3891,49 @@ function normalizeImportedTable(rawRows) {
     .map((row) => headers.map((_, headerIndex) => normalizeImportedCellValue(row[headerIndex] ?? '')));
 
   return { headers, rows };
+}
+
+function resolveImportedHeaderRowIndex(normalizedRows) {
+  const candidateRows = normalizedRows
+    .map((row, index) => ({
+      index,
+      nonEmptyCells: row.filter((cellValue) => cellValue !== '').length,
+      keywordScore: row.reduce((score, cellValue) => score + scoreImportedHeaderCell(cellValue), 0),
+    }))
+    .filter((rowMeta) => rowMeta.nonEmptyCells > 0)
+    .slice(0, 12);
+
+  if (candidateRows.length === 0) {
+    return -1;
+  }
+
+  candidateRows.sort((leftRow, rightRow) => {
+    if (leftRow.keywordScore !== rightRow.keywordScore) {
+      return rightRow.keywordScore - leftRow.keywordScore;
+    }
+
+    if (leftRow.nonEmptyCells !== rightRow.nonEmptyCells) {
+      return rightRow.nonEmptyCells - leftRow.nonEmptyCells;
+    }
+
+    return leftRow.index - rightRow.index;
+  });
+
+  return candidateRows[0]?.index ?? -1;
+}
+
+function scoreImportedHeaderCell(cellValue) {
+  const normalizedCell = normalizeImportAliasKey(cellValue);
+  if (!normalizedCell) {
+    return 0;
+  }
+
+  const knownHeaderLabels = importScheduleTargetOptions.flatMap((targetOption) => [
+    targetOption.label,
+    ...(importScheduleTargetAliases[targetOption.key] || []),
+  ]);
+
+  return knownHeaderLabels.some((headerLabel) => normalizeImportAliasKey(headerLabel) === normalizedCell) ? 1 : 0;
 }
 
 function createImportedHeaders(headerRow) {

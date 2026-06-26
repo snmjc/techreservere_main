@@ -38,11 +38,19 @@
               <option value="both">Both</option>
             </select>
           </label>
-          <button class="admin-ops-sort-button approved-requests-sort-button" aria-label="Sort">
+          <button
+            class="admin-ops-sort-button approved-requests-sort-button"
+            :class="{ 'admin-ops-sort-button--ascending': sortDirection === 'asc' }"
+            :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`"
+            :title="sortDirection === 'asc' ? 'Soonest schedule first' : 'Latest schedule first'"
+            type="button"
+            @click="toggleSortDirection"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
             </svg>
+            <span>{{ sortDirection === 'asc' ? 'Soonest First' : 'Latest First' }}</span>
           </button>
         </div>
       </div>
@@ -473,12 +481,14 @@ import '@/modules/request/components/requestWorkflowModal.css';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { taskWorkflowApi } from '@/modules/task/services/taskWorkflowApi.js';
+import { sortReservationRecords } from '@/modules/request/services/requestReservationMapper.js';
 
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const sortDirection = ref('asc');
 const approvedRequestsCurrentPage = ref(1);
 const approvedRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);
@@ -507,7 +517,7 @@ const approvedRequestsList = computed(() => requestStore.approvedRequestsList ||
 const filteredApprovedRequests = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
-  return approvedRequestsList.value.filter((requestRecord) => {
+  const filteredRecords = approvedRequestsList.value.filter((requestRecord) => {
     const requestType = String(requestRecord?.requestType || '').toLowerCase();
     const matchesShowing = showingFilterValue.value === 'all'
       || requestType === showingFilterValue.value;
@@ -518,6 +528,8 @@ const filteredApprovedRequests = computed(() => {
 
     return matchesShowing && matchesQuery;
   });
+
+  return sortReservationRecords(filteredRecords, 'approved', sortDirection.value);
 });
 const approvedRequestsTotalPages = computed(() => Math.max(1, Math.ceil(filteredApprovedRequests.value.length / approvedRequestsPageSize)));
 const paginatedApprovedRequests = computed(() => {
@@ -581,6 +593,10 @@ async function handleEditWorkflow(requestRecord) {
 
 function handleCancelRequest(requestRecord) {
   cancelRequestRecord.value = requestRecord;
+}
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
 async function submitEditWorkflow() {
