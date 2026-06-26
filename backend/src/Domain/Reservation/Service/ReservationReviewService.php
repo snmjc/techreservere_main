@@ -67,7 +67,7 @@ class ReservationReviewService
             throw new DomainNotFoundException('Reservation not found: ' . $reservationIdentifier);
         }
 
-        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+        if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
             return $this->transformEntityToDTO($entity);
         }
 

@@ -184,7 +184,7 @@ class ReservationController extends AbstractController
         error_log('Reservation List - Resolved Role: ' . $resolvedRole);
         error_log('Reservation List - Identity: ' . json_encode($identity));
 
-        if ($resolvedRole === RoleConstants::ROLE_ADMIN) {
+        if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
             $dtos = $this->reservationReviewService->getAllReservations();
         } elseif ($resolvedRole === RoleConstants::ROLE_BORROWER) {
             $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
