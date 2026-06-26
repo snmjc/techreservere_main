@@ -3902,21 +3902,43 @@ function resolveImportedHeaderRowIndex(normalizedRows) {
       index,
       nonEmptyCells: row.filter((cellValue) => cellValue !== '').length,
       keywordScore: row.reduce((score, cellValue) => score + scoreImportedHeaderCell(cellValue), 0),
+      populatedCellRatio: row.length > 0 ? row.filter((cellValue) => cellValue !== '').length / row.length : 0,
     }))
     .filter((rowMeta) => rowMeta.nonEmptyCells > 0)
-    .slice(0, 12);
+    .slice(0, 250);
 
   if (candidateRows.length === 0) {
     return -1;
   }
 
-  candidateRows.sort((leftRow, rightRow) => {
-    if (leftRow.keywordScore !== rightRow.keywordScore) {
-      return rightRow.keywordScore - leftRow.keywordScore;
-    }
+  const keywordMatches = candidateRows.filter((rowMeta) => rowMeta.keywordScore > 0);
+  if (keywordMatches.length > 0) {
+    keywordMatches.sort((leftRow, rightRow) => {
+      if (leftRow.keywordScore !== rightRow.keywordScore) {
+        return rightRow.keywordScore - leftRow.keywordScore;
+      }
 
+      if (leftRow.nonEmptyCells !== rightRow.nonEmptyCells) {
+        return rightRow.nonEmptyCells - leftRow.nonEmptyCells;
+      }
+
+      if (leftRow.populatedCellRatio !== rightRow.populatedCellRatio) {
+        return rightRow.populatedCellRatio - leftRow.populatedCellRatio;
+      }
+
+      return leftRow.index - rightRow.index;
+    });
+
+    return keywordMatches[0]?.index ?? -1;
+  }
+
+  candidateRows.sort((leftRow, rightRow) => {
     if (leftRow.nonEmptyCells !== rightRow.nonEmptyCells) {
       return rightRow.nonEmptyCells - leftRow.nonEmptyCells;
+    }
+
+    if (leftRow.populatedCellRatio !== rightRow.populatedCellRatio) {
+      return rightRow.populatedCellRatio - leftRow.populatedCellRatio;
     }
 
     return leftRow.index - rightRow.index;
