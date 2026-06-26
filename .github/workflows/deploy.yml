@@ -2,7 +2,7 @@ name: Deploy TechReserve
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main_repair"]
 
 jobs:
   deploy:
