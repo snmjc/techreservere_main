@@ -62,11 +62,11 @@
           <div class="logs-board-empty">Loading completed reservations...</div>
         </template>
 
-        <template v-else-if="filteredLogs.length === 0">
+        <template v-else-if="paginatedLogs.length === 0">
           <div class="logs-board-empty">No completed reservation logs found.</div>
         </template>
 
-        <article v-for="log in filteredLogs" :key="log.id" class="logs-board-row">
+        <article v-for="log in paginatedLogs" :key="log.id" class="logs-board-row">
           <div class="logs-cell">
             <strong>{{ log.reservationId }}</strong>
             <span>{{ log.name }}</span>
@@ -98,6 +98,12 @@
         </article>
       </section>
 
+      <div v-if="totalPages > 1" class="logs-pagination">
+        <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
+      </div>
+
       <div class="logs-page-footer">
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
@@ -106,7 +112,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
@@ -119,6 +125,8 @@ const searchQuery = ref('');
 const statusFilter = ref('all');
 const sortBy = ref('date');
 const sortOrder = ref('desc');
+const currentPage = ref(1);
+const pageSize = 8;
 const isLoading = ref(false);
 
 onMounted(async () => {
@@ -152,6 +160,21 @@ const filteredLogs = computed(() => {
   }
 
   return sortLogs(logs, sortBy.value, sortOrder.value);
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)));
+const paginatedLogs = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredLogs.value.slice(startIndex, startIndex + pageSize);
+});
+
+watch([searchQuery, statusFilter, sortBy, sortOrder], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 function toggleSortOrder() {

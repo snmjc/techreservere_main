@@ -259,7 +259,7 @@ function validateReservationSubmission() {
   }
 
   if (!isAllowedTimeSlot(reservationFormStore.activityTimeFrom) || !isAllowedTimeSlot(reservationFormStore.activityTimeTo)) {
-    return 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+    return 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
   }
 
   if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
@@ -270,8 +270,8 @@ function validateReservationSubmission() {
     return 'Activity name or title is required.';
   }
 
-  if (reservationFormStore.activityNameTitle.trim().length > 120) {
-    return 'Activity name or title must be 120 characters or fewer.';
+  if (reservationFormStore.activityNameTitle.trim().length > 100) {
+    return 'Activity name or title must be 100 characters or fewer.';
   }
 
   if (!reservationFormStore.purposeText) {
@@ -283,6 +283,10 @@ function validateReservationSubmission() {
     && !String(reservationFormStore.purposeOtherText || '').trim()
   ) {
     return 'Please specify the purpose of your reservation.';
+  }
+
+  if (String(reservationPurposeLabel.value || '').trim().length > 200) {
+    return 'Purpose must be 200 characters or fewer.';
   }
 
   if (reservationFormStore.reservationType !== 'Equipment' && !reservationFormStore.selectedVenueRecord?.venueIdentifier) {
@@ -331,7 +335,7 @@ function isAllowedTimeSlot(timeValue) {
   }
 
   const totalMinutes = (hours * 60) + minutes;
-  return totalMinutes >= 7 * 60 && totalMinutes <= 19 * 60;
+  return totalMinutes >= 7 * 60 && totalMinutes <= 21 * 60;
 }
 
 function buildReservationDateTime(dateValue, timeValue) {

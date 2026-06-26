@@ -11,12 +11,6 @@ usePostLoginRedirect();
 </script>
 
 <style scoped>
-.post-login {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.05rem;
-  color: #555;
-}
+@import './css/PostLogin.css';
 </style>
+

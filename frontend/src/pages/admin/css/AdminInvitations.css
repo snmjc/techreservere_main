@@ -1,0 +1,283 @@
+.admin-invitations-page {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 6rem 1rem 2rem;
+}
+
+.invitations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.invitations-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.invitations-content {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1rem;
+}
+
+.invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.invitation-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border-left: 4px solid #1a6e3a;
+}
+
+.invitation-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex: 1;
+}
+
+.invitation-icon {
+  font-size: 2rem;
+}
+
+.invitation-details {
+  flex: 1;
+}
+
+.invitation-email {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.25rem 0;
+}
+
+.invitation-role,
+.invitation-date,
+.invitation-status {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0 0 0.25rem 0;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.accepted {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.declined {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.invitation-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #1a6e3a;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #145a30;
+}
+
+.btn-secondary {
+  background-color: #ddd;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background-color: #ccc;
+}
+
+.btn-resend {
+  background-color: #2196f3;
+  color: white;
+}
+
+.btn-resend:hover {
+  background-color: #1976d2;
+}
+
+.btn-delete {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #da190b;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.1);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .admin-invitations-page {
+    padding: 1rem;
+  }
+
+  .invitations-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .invitation-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .invitation-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}

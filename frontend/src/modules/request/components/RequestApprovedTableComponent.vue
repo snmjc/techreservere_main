@@ -16,7 +16,7 @@
       </thead>
       <tbody>
         <tr
-          v-for="requestRecord in filteredRequestList"
+          v-for="requestRecord in requestList"
           :key="requestRecord.requestIdentifier + requestRecord.requesterFullName"
           class="request-approved-table-body-row"
         >
@@ -90,7 +90,7 @@
             </div>
           </td>
         </tr>
-        <tr v-if="filteredRequestList.length === 0">
+        <tr v-if="requestList.length === 0">
           <td colspan="8" class="request-approved-table-cell request-approved-table-empty-row">
             No approved requests found.
           </td>
@@ -101,14 +101,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-
 /**
  * @typedef {Object} RequestApprovedTableProps
  * @property {Array<Object>} requestList - Array of approved request records
  * @property {string} searchQueryText - Current search query for filtering
  */
-const props = defineProps({
+defineProps({
   requestList: {
     type: Array,
     required: true,
@@ -126,25 +124,6 @@ const emit = defineEmits([
   'deployReleaseRecord',
   'cancelRequestRecord',
 ]);
-
-/**
- * @function filteredRequestList
- * @description Filters request list based on search query matching name or ID.
- * @returns {Array<Object>}
- */
-const filteredRequestList = computed(() => {
-  const queryLower = props.searchQueryText?.toLowerCase().trim() || '';
-  const list = props.requestList || [];
-  if (!queryLower) {
-    return list;
-  }
-  return list.filter((requestRecord) => {
-    return (
-      requestRecord.requesterFullName?.toLowerCase().includes(queryLower) ||
-      requestRecord.requestIdentifier?.toString().includes(queryLower)
-    );
-  });
-});
 
 /**
  * @function getTypeBadgeClass

@@ -1,0 +1,71 @@
+.account-deactivated-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: #f3f6f4;
+  color: #101827;
+  font-family: inherit;
+}
+
+.account-deactivated-card {
+  width: min(100%, 520px);
+  padding: 2rem;
+  border: 1px solid #d8e1dc;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 63, 42, 0.12);
+  text-align: center;
+}
+
+.account-deactivated-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+
+.account-deactivated-kicker {
+  margin: 0 0 0.45rem;
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.account-deactivated-card h1 {
+  margin: 0;
+  color: #101827;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.account-deactivated-message,
+.account-deactivated-support {
+  margin: 1rem 0 0;
+  color: #52615a;
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.account-deactivated-support {
+  margin-top: 0.55rem;
+}
+
+.account-deactivated-logout {
+  margin-top: 1.5rem;
+  min-width: 140px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.8rem 1.25rem;
+  color: #ffffff;
+  background: #0f6f43;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.account-deactivated-logout:hover {
+  background: #095b35;
+}
