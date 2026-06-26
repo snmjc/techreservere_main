@@ -37,6 +37,12 @@ export function buildReservationBuckets(apiReservations = [], taskRecords = []) 
   return buckets;
 }
 
+export function sortReservationRecords(records = [], bucketType = 'pending', direction = getDefaultSortDirection(bucketType)) {
+  return [...(Array.isArray(records) ? records : [])].sort((leftRecord, rightRecord) =>
+    compareReservationRecords(leftRecord, rightRecord, bucketType, direction)
+  );
+}
+
 function createEmptyReservationBuckets() {
   return {
     pending: [],
@@ -110,6 +116,50 @@ function mapReservationRecord(reservation, linkedTasks = []) {
 
 function normalizeReservationStatus(status) {
   return String(status || '').trim().toLowerCase();
+}
+
+function compareReservationRecords(leftRecord, rightRecord, bucketType, direction) {
+  const leftValue = resolveReservationSortValue(leftRecord, bucketType);
+  const rightValue = resolveReservationSortValue(rightRecord, bucketType);
+
+  if (leftValue !== rightValue) {
+    return direction === 'asc'
+      ? leftValue - rightValue
+      : rightValue - leftValue;
+  }
+
+  const leftIdentifier = resolveReservationIdentifier(leftRecord);
+  const rightIdentifier = resolveReservationIdentifier(rightRecord);
+
+  return direction === 'asc'
+    ? leftIdentifier - rightIdentifier
+    : rightIdentifier - leftIdentifier;
+}
+
+function resolveReservationSortValue(record, bucketType) {
+  if (bucketType === 'approved' || bucketType === 'active') {
+    return resolveReservationDateValue(
+      record?.requestScheduleStart
+        || record?.activityTime
+        || record?.neededDate
+        || record?.requestedDate
+    );
+  }
+
+  return resolveReservationDateValue(record?.requestedDate || record?.requestScheduleStart || record?.activityTime);
+}
+
+function resolveReservationDateValue(value) {
+  const parsedDate = parseReservationDate(value);
+  return parsedDate ? parsedDate.getTime() : 0;
+}
+
+function resolveReservationIdentifier(record) {
+  return Number(record?.requestIdentifier || record?.reservationIdentifier || 0);
+}
+
+function getDefaultSortDirection(bucketType) {
+  return bucketType === 'pending' ? 'desc' : 'asc';
 }
 
 export function resolveReservationScheduleState(reservation) {

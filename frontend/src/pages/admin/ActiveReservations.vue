@@ -38,7 +38,7 @@
               <option value="both">Both</option>
             </select>
           </label>
-          <button class="admin-ops-sort-button active-reservations-sort-button" aria-label="Sort">
+          <button class="admin-ops-sort-button active-reservations-sort-button" :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`" :title="sortDirection === 'asc' ? 'Soonest schedule first' : 'Latest schedule first'" @click="toggleSortDirection">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
@@ -353,11 +353,13 @@ import '@/modules/reservation/components/reservationDeploymentModal.css';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { taskWorkflowApi } from '@/modules/task/services/taskWorkflowApi.js';
+import { sortReservationRecords } from '@/modules/request/services/requestReservationMapper.js';
 
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
+const sortDirection = ref('asc');
 const activeReservationsCurrentPage = ref(1);
 const activeReservationsPageSize = 8;
 const selectedReservationRecord = ref(null);
@@ -380,7 +382,7 @@ const activeReservationsList = computed(() => requestStore.activeReservationsLis
 const filteredActiveReservations = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
-  return activeReservationsList.value.filter((reservationRecord) => {
+  const filteredRecords = activeReservationsList.value.filter((reservationRecord) => {
     const requestType = String(reservationRecord?.requestType || '').toLowerCase();
     const matchesShowing = showingFilterValue.value === 'all'
       || requestType === showingFilterValue.value;
@@ -391,6 +393,8 @@ const filteredActiveReservations = computed(() => {
 
     return matchesShowing && matchesQuery;
   });
+
+  return sortReservationRecords(filteredRecords, 'active', sortDirection.value);
 });
 const activeReservationsTotalPages = computed(() => Math.max(1, Math.ceil(filteredActiveReservations.value.length / activeReservationsPageSize)));
 const paginatedActiveReservations = computed(() => {
@@ -469,6 +473,10 @@ async function handleConfirmReturn(reservationRecord) {
  */
 function handleReportReservation(reservationRecord) {
   reportReservationRecord.value = reservationRecord;
+}
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
 }
 
 async function submitConfirmReturn() {
