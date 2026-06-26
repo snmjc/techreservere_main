@@ -74,14 +74,20 @@ export async function resolveAuthToken() {
     return storedToken;
   }
 
+  return refreshAuthToken();
+}
+
+export async function refreshAuthToken() {
   const clerkSession = window?.Clerk?.session;
   if (!clerkSession || typeof clerkSession.getToken !== 'function') {
+    removeStoredToken();
     return null;
   }
 
   try {
     const clerkToken = normalizeAuthToken(await clerkSession.getToken());
     if (!clerkToken) {
+      removeStoredToken();
       return null;
     }
 
@@ -90,6 +96,7 @@ export async function resolveAuthToken() {
     writeStoredToken(clerkToken, false);
     return clerkToken;
   } catch {
+    removeStoredToken();
     return null;
   }
 }

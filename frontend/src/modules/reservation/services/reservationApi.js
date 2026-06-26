@@ -3,12 +3,17 @@ import { apiUrl } from '@/shared/utils/apiBase.js';
 import {
   buildAuthorizationHeaders,
   buildJsonAuthorizationHeaders,
+  refreshAuthToken,
   resolveAuthToken,
 } from '@/shared/utils/authToken.js';
 
 const reservationApi = {
   async createReservation(reservationData) {
-    const authToken = await resolveAuthToken();
+    let authToken = await resolveAuthToken();
+
+    if (!authToken) {
+      authToken = await refreshAuthToken();
+    }
 
     // If the user is logged out, avoid calling protected endpoints.
     if (!authToken) {
@@ -16,22 +21,22 @@ const reservationApi = {
     }
     
     try {
-      const response = await axios.post(apiUrl('/api/v1/reservations'), reservationData, {
-        headers: buildJsonAuthorizationHeaders(authToken)
-      });
+      const response = await postReservationRequest(reservationData, authToken);
       return response.data;
     } catch (apiError) {
-      const backendPayload = apiError?.response?.data || {};
-      const backendMessage = backendPayload?.errorMessage || backendPayload?.message;
-      if (backendMessage) {
-        const normalizedError = new Error(backendMessage);
-        normalizedError.name = backendPayload?.errorType || 'ReservationCreateFailed';
-        normalizedError.code = backendPayload?.errorType || 'ReservationCreateFailed';
-        normalizedError.status = apiError?.response?.status || 0;
-        normalizedError.failureBucket = backendPayload?.data?.failureBucket || '';
-        throw normalizedError;
+      if (apiError?.response?.status === 401) {
+        const refreshedToken = await refreshAuthToken();
+        if (refreshedToken) {
+          try {
+            const retryResponse = await postReservationRequest(reservationData, refreshedToken);
+            return retryResponse.data;
+          } catch (retryError) {
+            throw normalizeReservationCreateError(retryError);
+          }
+        }
       }
-      throw apiError;
+
+      throw normalizeReservationCreateError(apiError);
     }
   },
 
@@ -90,5 +95,34 @@ const reservationApi = {
     }
   }
 };
+
+async function postReservationRequest(reservationData, authToken) {
+  return axios.post(apiUrl('/api/v1/reservations'), reservationData, {
+    headers: buildJsonAuthorizationHeaders(authToken)
+  });
+}
+
+function normalizeReservationCreateError(apiError) {
+  const backendPayload = apiError?.response?.data || {};
+  const backendMessage = backendPayload?.errorMessage || backendPayload?.message;
+  if (backendMessage) {
+    const normalizedError = new Error(backendMessage);
+    normalizedError.name = backendPayload?.errorType || 'ReservationCreateFailed';
+    normalizedError.code = backendPayload?.errorType || 'ReservationCreateFailed';
+    normalizedError.status = apiError?.response?.status || 0;
+    normalizedError.failureBucket = backendPayload?.data?.failureBucket || '';
+    throw normalizedError;
+  }
+
+  if (apiError?.response?.status === 401) {
+    const unauthorizedError = new Error('Your session expired. Please sign in again before submitting the reservation.');
+    unauthorizedError.name = 'AuthenticationRequired';
+    unauthorizedError.code = 'AuthenticationRequired';
+    unauthorizedError.status = 401;
+    throw unauthorizedError;
+  }
+
+  throw apiError;
+}
 
 export default reservationApi;
