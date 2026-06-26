@@ -33,9 +33,11 @@ class AccountResponseMapperService
 
         $accountType = $isAdmin ? 'Admin' : ($isEmployee ? 'Employee' : 'User');
         $roleLabel = $this->resolveRoleLabelForAccountRow($row, $accountType);
-        $idNumber = ($isEmployee && !empty($row['staff_employee_id_number']))
-            ? (string)$row['staff_employee_id_number']
-            : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT));
+        $staffEmployeeIdNumber = !empty($row['staff_employee_id_number']) ? (string)$row['staff_employee_id_number'] : null;
+        $accountIdNumber = !empty($row['id_number']) ? (string)$row['id_number'] : null;
+        $idNumber = ($isEmployee && $staffEmployeeIdNumber !== null)
+            ? $staffEmployeeIdNumber
+            : ($accountIdNumber ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT));
         $firstName = ($isEmployee && !empty($row['staff_first_name'])) ? (string)$row['staff_first_name'] : (string)$row['first_name'];
         $lastName = ($isEmployee && !empty($row['staff_last_name'])) ? (string)$row['staff_last_name'] : (string)$row['last_name'];
         $contactNumber = ($isEmployee && !empty($row['staff_phone_number']))
@@ -52,6 +54,9 @@ class AccountResponseMapperService
         return [
             'accountIdentifier' => (int)$row['account_identifier'],
             'idNumber' => $idNumber,
+            'rawIdNumber' => $idNumber,
+            'accountIdNumber' => $accountIdNumber,
+            'staffEmployeeIdNumber' => $staffEmployeeIdNumber,
             'lastName' => $lastName,
             'firstName' => $firstName,
             'emailAddress' => (string)$row['email_address'],

@@ -52,8 +52,8 @@ export function createReportsAnalyticsChartRenderer() {
           {
             label: 'Actual Demand',
             data: displaySeries.actualValues || [],
-            borderColor: '#1d4ed8',
-            backgroundColor: 'rgba(29, 78, 216, 0.12)',
+            borderColor: '#540d6e',
+            backgroundColor: 'rgba(84, 13, 110, 0.12)',
             tension: 0.35,
             pointRadius: 2,
             pointHoverRadius: 4,
@@ -61,17 +61,27 @@ export function createReportsAnalyticsChartRenderer() {
           {
             label: 'Forecasted Demand',
             data: displaySeries.forecastValues || [],
-            borderColor: '#60a5fa',
+            borderColor: '#ee4266',
             borderDash: [8, 6],
             tension: 0.35,
             pointRadius: 2,
             pointHoverRadius: 4,
           },
           {
-            label: 'Midpoint Trend',
+            label: 'Midpoint Demand',
             data: midpointSeries || [],
-            borderColor: '#10b981',
+            borderColor: '#ffd23f',
             borderDash: [2, 4],
+            tension: 0.35,
+            pointRadius: 1,
+            pointHoverRadius: 3,
+            borderWidth: 2,
+          },
+          {
+            label: 'History Demand',
+            data: displaySeries.historyValues || [],
+            borderColor: '#0ea5e9',
+            borderDash: [10, 4, 2, 4],
             tension: 0.35,
             pointRadius: 1,
             pointHoverRadius: 3,
@@ -92,6 +102,31 @@ export function createReportsAnalyticsChartRenderer() {
                 const label = context.dataset?.label || '';
                 const value = Number(context.raw || 0);
                 return `${label}: ${formatMetricNumber(value, 1)} requests`;
+              },
+              afterBody(contexts) {
+                const dataIndex = contexts?.[0]?.dataIndex;
+                if (!Number.isInteger(dataIndex)) return '';
+                const actual = displaySeries.actualValues?.[dataIndex];
+                const forecast = displaySeries.forecastValues?.[dataIndex];
+                if (actual === null || actual === undefined || forecast === null || forecast === undefined) {
+                  return '';
+                }
+
+                const actualValue = Number(actual || 0);
+                const forecastValue = Number(forecast || 0);
+                const difference = actualValue - forecastValue;
+                const differencePercent = forecastValue === 0
+                  ? (actualValue === 0 ? 0 : 100)
+                  : (difference / forecastValue) * 100;
+                const accuracyPercent = Math.max(
+                  0,
+                  100 - ((Math.abs(difference) / Math.max(1, Math.abs(forecastValue))) * 100),
+                );
+
+                return [
+                  `Actual vs forecast: ${difference >= 0 ? '+' : ''}${formatMetricNumber(differencePercent, 1)}%`,
+                  `Expectation hit: ${formatMetricNumber(accuracyPercent, 1)}%`,
+                ];
               },
             },
           },

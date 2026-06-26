@@ -19,6 +19,9 @@
           <button class="admin-task-assignments-secondary" type="button" :disabled="isLoading" @click="loadPageData">
             {{ isLoading ? 'Refreshing...' : 'Refresh' }}
           </button>
+          <button class="admin-task-assignments-secondary" type="button" @click="openSmsTestModal">
+            Test SMS
+          </button>
           <button class="admin-task-assignments-primary" type="button" @click="openCreateModal">
             + Assign Task
           </button>
@@ -317,6 +320,110 @@
       </section>
     </div>
 
+    <div v-if="showSmsTestModal" class="admin-task-assignments-modal-overlay" @click.self="closeSmsTestModal">
+      <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
+        <header class="admin-task-assignments-modal-header">
+          <div>
+            <h2>Send Test SMS</h2>
+            <p>Send a direct TextBee test message without creating a task assignment.</p>
+          </div>
+          <button type="button" aria-label="Close" @click="closeSmsTestModal">x</button>
+        </header>
+
+        <p v-if="smsTestError" class="admin-task-assignments-error">{{ smsTestError }}</p>
+
+        <form class="admin-task-assignments-form admin-task-sms-test-form" @submit.prevent="submitSmsTest">
+          <div class="admin-task-sms-test-mode">
+            <button
+              type="button"
+              :class="{ 'is-active': smsTestForm.messageMode === 'template' }"
+              @click="smsTestForm.messageMode = 'template'"
+            >
+              Fill Template
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': smsTestForm.messageMode === 'custom' }"
+              @click="smsTestForm.messageMode = 'custom'"
+            >
+              Custom Message
+            </button>
+          </div>
+
+          <label>
+            <span>Recipient Number</span>
+            <input
+              v-model.trim="smsTestForm.phoneNumber"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="09171234567"
+            />
+            <small>Use 09XXXXXXXXX or +639XXXXXXXXX.</small>
+          </label>
+
+          <template v-if="smsTestForm.messageMode === 'template'">
+            <div class="admin-task-sms-template-grid">
+              <label>
+                <span>Assigned Staff</span>
+                <input v-model.trim="smsTestForm.assignedStaff" type="text" placeholder="Alex Santos" />
+              </label>
+
+              <label>
+                <span>Due Date</span>
+                <input v-model.trim="smsTestForm.dueDate" type="text" placeholder="Jun 30, 2026 10:00 AM" />
+              </label>
+
+              <label>
+                <span>Task Name</span>
+                <input v-model.trim="smsTestForm.taskName" type="text" placeholder="Academic Preparation" />
+              </label>
+
+              <label>
+                <span>Reservation Code</span>
+                <input v-model.trim="smsTestForm.reservationCode" type="text" placeholder="TR-2026-010" />
+              </label>
+
+              <label class="admin-task-sms-template-purpose">
+                <span>Reservation Purpose</span>
+                <textarea
+                  v-model.trim="smsTestForm.reservationPurpose"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Prepare the requested equipment."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="admin-task-sms-preview">
+              <strong>Message Preview</strong>
+              <pre>{{ templateSmsMessage }}</pre>
+            </div>
+          </template>
+
+          <label v-else>
+            <span>Custom Message</span>
+            <textarea
+              v-model="smsTestForm.customMessage"
+              rows="8"
+              maxlength="1000"
+              placeholder="Write the SMS message here."
+            ></textarea>
+            <small>{{ smsTestForm.customMessage.length }}/1000 characters</small>
+          </label>
+
+          <footer class="admin-task-assignments-modal-actions">
+            <button type="button" class="admin-task-assignments-secondary" :disabled="isSendingTestSms" @click="closeSmsTestModal">
+              Cancel
+            </button>
+            <button type="submit" class="admin-task-assignments-primary" :disabled="isSendingTestSms">
+              {{ isSendingTestSms ? 'Sending...' : 'Send Test SMS' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
     <div v-if="verifyTask" class="admin-task-assignments-modal-overlay" @click.self="closeVerifyModal">
       <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
         <header class="admin-task-assignments-modal-header">
@@ -370,8 +477,10 @@ import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
+const isSendingTestSms = ref(false);
 const loadError = ref('');
 const modalError = ref('');
+const smsTestError = ref('');
 const taskToastMessage = ref('');
 const taskSubmissionFeedback = reactive({
   message: '',
@@ -381,6 +490,7 @@ const tasks = ref([]);
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
 const showTaskModal = ref(false);
+const showSmsTestModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
 const viewTask = ref(null);
@@ -414,6 +524,30 @@ const taskForm = reactive({
 const deleteForm = reactive({
   confirmedAdminEmail: '',
   confirmedAdminPassword: '',
+});
+
+const smsTestForm = reactive({
+  phoneNumber: '',
+  messageMode: 'template',
+  assignedStaff: '',
+  dueDate: '',
+  taskName: '',
+  reservationCode: '',
+  reservationPurpose: '',
+  customMessage: '',
+});
+
+const templateSmsMessage = computed(() => {
+  const assignedStaff = smsTestForm.assignedStaff.trim() || '<Assigned Staff>';
+  const dueDate = smsTestForm.dueDate.trim() || '<Due Date>';
+  const taskName = smsTestForm.taskName.trim() || '<Task Name>';
+  const reservationCode = smsTestForm.reservationCode.trim() || '<Reservation Code>';
+  const reservationPurpose = smsTestForm.reservationPurpose.trim() || '<Reservation Purpose>';
+
+  return `hi! ${assignedStaff}.\n\n`
+    + `You have task on ${dueDate}, ${taskName}: ${reservationCode}.\n`
+    + `${reservationPurpose}\n\n`
+    + "If you can't please do contact the Facilities Office for changing of staff";
 });
 
 const currentAdminEmail = computed(() => {
@@ -575,6 +709,19 @@ function openCreateModal() {
   showTaskModal.value = true;
 }
 
+function openSmsTestModal() {
+  smsTestError.value = '';
+  smsTestForm.phoneNumber = '';
+  smsTestForm.messageMode = 'template';
+  smsTestForm.assignedStaff = '';
+  smsTestForm.dueDate = '';
+  smsTestForm.taskName = '';
+  smsTestForm.reservationCode = '';
+  smsTestForm.reservationPurpose = '';
+  smsTestForm.customMessage = '';
+  showSmsTestModal.value = true;
+}
+
 function openViewModal(task) {
   viewTask.value = task;
 }
@@ -614,6 +761,12 @@ function closeTaskModal() {
   modalError.value = '';
 }
 
+function closeSmsTestModal() {
+  if (isSendingTestSms.value) return;
+  showSmsTestModal.value = false;
+  smsTestError.value = '';
+}
+
 function closeVerifyModal() {
   verifyTask.value = null;
   resetDeleteForm();
@@ -646,7 +799,11 @@ async function submitTaskForm() {
   }
 
   await loadPageData();
-  const feedback = buildTaskSubmissionFeedback(result.data?.warning);
+  const smsExpected = taskModalMode.value === 'create'
+    ? Boolean(payload.assignedToAccountId)
+    : Boolean(payload.assignedToAccountId)
+      && Number(payload.assignedToAccountId) !== Number(editingTask.value?.assignedToAccountId || 0);
+  const feedback = buildTaskSubmissionFeedback(result.data?.warning, smsExpected);
   taskSubmissionFeedback.message = feedback.message;
   taskSubmissionFeedback.tone = feedback.tone;
   showTaskToast(feedback.message);
@@ -656,6 +813,56 @@ async function submitTaskForm() {
       closeTaskModal();
     }
   }, feedback.tone === 'warning' ? 2600 : 1800);
+}
+
+async function submitSmsTest() {
+  if (isSendingTestSms.value) return;
+
+  if (smsTestForm.phoneNumber.trim() === '') {
+    smsTestError.value = 'Recipient number is required.';
+    return;
+  }
+
+  if (smsTestForm.messageMode === 'template') {
+    const missingFields = [
+      ['Assigned staff', smsTestForm.assignedStaff],
+      ['Due date', smsTestForm.dueDate],
+      ['Task name', smsTestForm.taskName],
+      ['Reservation code', smsTestForm.reservationCode],
+      ['Reservation purpose', smsTestForm.reservationPurpose],
+    ].filter(([, value]) => value.trim() === '').map(([label]) => label);
+
+    if (missingFields.length > 0) {
+      smsTestError.value = `Please fill in: ${missingFields.join(', ')}.`;
+      return;
+    }
+  } else if (smsTestForm.customMessage.trim() === '') {
+    smsTestError.value = 'Custom message is required.';
+    return;
+  }
+
+  const message = smsTestForm.messageMode === 'template'
+    ? templateSmsMessage.value
+    : smsTestForm.customMessage.trim();
+
+  isSendingTestSms.value = true;
+  smsTestError.value = '';
+  const result = await requestJson('/api/v1/tasks/sms/test', {
+    method: 'POST',
+    body: JSON.stringify({
+      phoneNumber: smsTestForm.phoneNumber.trim(),
+      message,
+    }),
+  });
+  isSendingTestSms.value = false;
+
+  if (!result.success) {
+    smsTestError.value = result.error || 'Unable to send the test SMS.';
+    return;
+  }
+
+  showSmsTestModal.value = false;
+  showTaskToast(`Test SMS submitted to ${result.data?.delivery?.recipient || smsTestForm.phoneNumber}.`);
 }
 
 async function confirmVerifyTask() {
@@ -938,7 +1145,7 @@ function showTaskToast(message) {
 showTaskToast.timeoutId = null;
 submitTaskForm.closeTimeoutId = null;
 
-function buildTaskSubmissionFeedback(warning) {
+function buildTaskSubmissionFeedback(warning, smsExpected = true) {
   const normalizedWarning = typeof warning === 'string' ? warning.trim() : '';
   if (normalizedWarning !== '') {
     return {
@@ -948,7 +1155,9 @@ function buildTaskSubmissionFeedback(warning) {
   }
 
   return {
-    message: 'Task assignment saved and SMS sent to assigned staff.',
+    message: smsExpected
+      ? 'Task assignment saved and SMS sent to assigned staff.'
+      : 'Task assignment saved. No SMS was needed because the assigned staff did not change.',
     tone: 'success',
   };
 }
@@ -980,6 +1189,810 @@ function resetDeleteForm() {
 </script>
 
 <style scoped>
+<<<<<<< HEAD
 @import './css/AdminTaskAssignments.css';
+=======
+.admin-task-assignments-page {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0;
+  padding: 0.4rem 0 2rem;
+  color: #14261f;
+}
+
+.admin-task-assignments-toast {
+  margin-bottom: 0.9rem;
+  padding: 0.82rem 0.95rem;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+  padding: 1.4rem 1.5rem;
+  background:
+    radial-gradient(circle at top right, rgba(21, 153, 87, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 248, 246, 0.98));
+  border: 1px solid #dfe7e1;
+  border-radius: 24px;
+  box-shadow: 0 20px 38px rgba(15, 23, 42, 0.08);
+}
+
+.admin-task-assignments-header-copy {
+  max-width: 760px;
+}
+
+.admin-task-assignments-kicker {
+  margin: 0 0 0.35rem;
+  color: #15803d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-task-assignments-header h1,
+.admin-task-assignments-modal-header h2 {
+  margin: 0;
+  color: #143222;
+  font-size: clamp(1.85rem, 2.2vw, 2.45rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.admin-task-assignments-header-copy > p:last-child,
+.admin-task-assignments-modal-header p,
+.admin-task-assignments-state {
+  margin: 0.5rem 0 0;
+  color: #587062;
+  font-size: 0.95rem;
+}
+
+.admin-task-assignments-header-actions,
+.admin-task-assignments-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-task-assignments-modal-actions {
+  align-items: center;
+}
+
+.admin-task-assignments-primary,
+.admin-task-assignments-secondary,
+.admin-task-assignments-danger,
+.admin-task-action,
+.admin-task-assignments-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-task-assignments-primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #159957, #0f8f46);
+  border: 1px solid #0f8f46;
+  box-shadow: 0 14px 26px rgba(21, 153, 87, 0.22);
+}
+
+.admin-task-assignments-secondary {
+  color: #1f3a2c;
+  background: #ffffff;
+  border: 1px solid #d6e3da;
+}
+
+.admin-task-assignments-danger {
+  color: #ffffff;
+  background: #dc2626;
+  border: 1px solid #b91c1c;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.admin-task-assignments-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-task-summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 246, 0.95));
+  border: 1px solid #dfe9e2;
+  border-radius: 18px;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.07);
+}
+
+.admin-task-summary-card-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 1.25rem;
+}
+
+.admin-task-summary-card p,
+.admin-task-summary-card strong,
+.admin-task-summary-card small {
+  display: block;
+}
+
+.admin-task-summary-card p {
+  margin: 0 0 0.22rem;
+  color: #567061;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-task-summary-card strong {
+  color: #10281d;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.admin-task-summary-card small {
+  margin-top: 0.3rem;
+  color: #6b7f74;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.admin-task-summary-card--emerald .admin-task-summary-card-icon {
+  background: #dcfce7;
+}
+
+.admin-task-summary-card--amber .admin-task-summary-card-icon {
+  background: #fef3c7;
+}
+
+.admin-task-summary-card--sky .admin-task-summary-card-icon {
+  background: #dbeafe;
+}
+
+.admin-task-summary-card--rose .admin-task-summary-card-icon {
+  background: #fee2e2;
+}
+
+.admin-task-assignments-panel {
+  width: 100%;
+  padding: 1.1rem;
+  background:
+    radial-gradient(circle at top right, rgba(21, 153, 87, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 248, 0.98));
+  border: 1px solid #dfe7e1;
+  border-radius: 22px;
+  box-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
+}
+
+.admin-task-assignments-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(5, minmax(130px, 0.7fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  align-items: end;
+}
+
+.admin-task-assignments-filters label,
+.admin-task-assignments-form label,
+.admin-task-assignments-security-grid label {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.admin-task-assignments-filters span,
+.admin-task-assignments-form span,
+.admin-task-assignments-delete-summary strong {
+  color: #566c60;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.admin-task-assignments-filters input,
+.admin-task-assignments-filters select,
+.admin-task-assignments-form input,
+.admin-task-assignments-form textarea,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.68rem 0.78rem;
+  color: #12271d;
+  background: #ffffff;
+  border: 1px solid #d6e2da;
+  border-radius: 12px;
+}
+
+.admin-task-assignments-form input,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  min-height: 40px;
+  padding: 0.58rem 0.78rem;
+}
+
+.admin-task-assignments-search input {
+  padding-left: 0.92rem;
+}
+
+.admin-task-assignments-error {
+  margin: 0 0 1rem;
+  padding: 0.82rem 0.95rem;
+  color: #9f1239;
+  background: #ffe4e6;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0.78rem 0.92rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-submit-feedback--success {
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.admin-task-assignments-submit-feedback--warning {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.admin-task-assignments-state {
+  padding: 1rem;
+  text-align: center;
+  background: #f7faf8;
+  border: 1px dashed #cfddd4;
+  border-radius: 16px;
+}
+
+.admin-task-assignments-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-task-assignments-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-task-assignments-table thead th {
+  padding: 0.95rem 0.8rem;
+  color: #294638;
+  background: #f2f7f4;
+  border-bottom: 1px solid #dbe6df;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-task-assignments-table tbody td {
+  padding: 0.95rem 0.8rem;
+  color: #12271d;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e6ede8;
+  vertical-align: top;
+}
+
+.admin-task-assignments-table tbody tr:hover td {
+  background: #fcfefd;
+}
+
+.admin-task-cell-id strong,
+.admin-task-cell-details strong,
+.admin-task-cell-staff strong,
+.admin-task-cell-schedule strong,
+.admin-task-progress-copy strong {
+  display: block;
+  color: #123224;
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.admin-task-cell-id small,
+.admin-task-cell-details span,
+.admin-task-cell-details small,
+.admin-task-cell-staff small,
+.admin-task-cell-schedule small {
+  display: block;
+  margin-top: 0.24rem;
+  color: #688072;
+  font-size: 0.75rem;
+}
+
+.admin-task-cell-details span {
+  color: #25513d;
+  font-weight: 800;
+}
+
+.admin-task-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 102px;
+  min-height: 32px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.admin-task-status-pill--pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.admin-task-status-pill--progress {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.admin-task-status-pill--completed {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.admin-task-status-pill--overdue {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.admin-task-status-pill--neutral {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+.admin-task-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.admin-task-action {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+
+.admin-task-action--edit {
+  color: #0f766e;
+  background: #ccfbf1;
+  border-color: #99f6e4;
+}
+
+.admin-task-action--view {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.admin-task-action--verify {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.admin-task-assignments-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.9rem;
+}
+
+.admin-task-assignments-footer p {
+  margin: 0;
+  color: #607668;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-task-assignments-pagination {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-task-assignments-pagination button {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  color: #305040;
+  background: #ffffff;
+  border: 1px solid #d3dfd7;
+  border-radius: 10px;
+}
+
+.admin-task-assignments-pagination .is-active {
+  color: #ffffff;
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.admin-task-assignments-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.95rem;
+  color: #607668;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.legend-dot--pending {
+  background: #f59e0b;
+}
+
+.legend-dot--progress {
+  background: #3b82f6;
+}
+
+.legend-dot--done {
+  background: #16a34a;
+}
+
+.legend-dot--overdue {
+  background: #ef4444;
+}
+
+.admin-task-assignments-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.admin-task-assignments-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #d8e3dd;
+  border-radius: 18px;
+  box-shadow: 0 26px 45px rgba(15, 23, 42, 0.18);
+}
+
+.admin-task-assignments-modal--narrow {
+  width: min(560px, 100%);
+}
+
+.admin-task-assignments-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-task-assignments-modal-header button {
+  border: 0;
+  background: transparent;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.admin-task-assignments-form,
+.admin-task-assignments-security-grid,
+.admin-task-assignments-delete-summary {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-task-assignments-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 1rem;
+  row-gap: 0.95rem;
+}
+
+.admin-task-assignments-form textarea,
+.admin-task-assignments-override,
+.admin-task-assignments-modal-actions,
+.admin-task-assignments-delete-summary {
+  grid-column: 1 / -1;
+}
+
+.admin-task-assignments-form > label,
+.admin-task-assignments-security-grid > label {
+  min-width: 0;
+  align-content: start;
+}
+
+.admin-task-assignments-form > label > span,
+.admin-task-assignments-security-grid > label > span {
+  display: flex;
+  align-items: flex-end;
+  min-height: 1.4rem;
+  line-height: 1.35;
+}
+
+.admin-task-assignments-form textarea {
+  width: 100%;
+  min-height: 88px;
+  max-height: 120px;
+  padding: 0.72rem 0.78rem;
+  box-sizing: border-box;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.admin-task-assignments-form input,
+.admin-task-assignments-form select,
+.admin-task-assignments-security-grid input {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-task-sms-test-form {
+  grid-template-columns: 1fr;
+}
+
+.admin-task-sms-test-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-task-sms-test-mode button {
+  padding: 0.7rem 0.9rem;
+  color: #315647;
+  background: #f4f8f6;
+  border: 1px solid #cbdad2;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-task-sms-test-mode button.is-active {
+  color: #ffffff;
+  background: #16724b;
+  border-color: #16724b;
+}
+
+.admin-task-sms-test-form label {
+  grid-column: 1 / -1;
+}
+
+.admin-task-sms-test-form label small {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.admin-task-sms-test-form textarea {
+  max-height: 240px;
+}
+
+.admin-task-sms-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.admin-task-sms-template-purpose {
+  grid-column: 1 / -1 !important;
+}
+
+.admin-task-sms-preview {
+  padding: 0.85rem;
+  background: #f7faf8;
+  border: 1px solid #dbe4df;
+  border-radius: 12px;
+}
+
+.admin-task-sms-preview strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #193d2c;
+}
+
+.admin-task-sms-preview pre {
+  margin: 0;
+  color: #334155;
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-task-assignments-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.admin-task-assignments-checkbox input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.admin-task-assignments-override {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  background: #f7faf8;
+  border: 1px solid #dbe4df;
+  border-radius: 12px;
+}
+
+.admin-task-assignments-delete-summary {
+  margin-bottom: 1rem;
+}
+
+.admin-task-assignments-delete-summary p {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  background: #f8fbf9;
+  border: 1px solid #e2ebe5;
+  border-radius: 10px;
+}
+
+.admin-task-assignments-delete-summary span {
+  color: #13271d;
+  font-weight: 800;
+  text-align: right;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (hover: hover) {
+  .admin-task-assignments-primary:hover,
+  .admin-task-assignments-secondary:hover,
+  .admin-task-assignments-danger:hover,
+  .admin-task-action:hover,
+  .admin-task-assignments-pagination button:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .admin-task-assignments-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-task-assignments-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-task-sms-test-mode,
+  .admin-task-sms-template-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-task-assignments-page {
+    max-width: 100%;
+    padding-top: 0.2rem;
+  }
+
+  .admin-task-assignments-header,
+  .admin-task-assignments-header-actions,
+  .admin-task-assignments-footer,
+  .admin-task-assignments-modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-task-assignments-summary,
+  .admin-task-assignments-filters,
+  .admin-task-assignments-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-task-assignments-panel {
+    padding: 0.9rem;
+  }
+
+  .admin-task-actions {
+    flex-direction: column;
+  }
+
+  .admin-task-action,
+  .admin-task-assignments-header-actions > button,
+  .admin-task-assignments-modal-actions > button {
+    width: 100%;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-task-assignments-header,
+  .admin-task-summary-card,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    border-radius: 16px;
+  }
+
+  .admin-task-assignments-header,
+  .admin-task-assignments-panel,
+  .admin-task-assignments-modal {
+    padding: 0.9rem;
+  }
+
+  .admin-task-assignments-header h1,
+  .admin-task-assignments-modal-header h2 {
+    font-size: 1.55rem;
+  }
+
+  .admin-task-assignments-table {
+    min-width: 640px;
+  }
+
+  .admin-task-assignments-pagination {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+>>>>>>> 9e3f0b2ce09783e703d884a0823f142c3561479f
 </style>
 

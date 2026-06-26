@@ -21,7 +21,7 @@ use Doctrine\DBAL\ParameterType;
 class ReservationCreateService
 {
     private const BUSINESS_START_MINUTES = 420;
-    private const BUSINESS_END_MINUTES = 1140;
+    private const BUSINESS_END_MINUTES = 1260;
     private const ACTIVITY_TITLE_MAX_LENGTH = 120;
     private const PURPOSE_DESCRIPTION_MAX_LENGTH = 200;
     private const ACTIVITY_TYPE_MAX_LENGTH = 100;
@@ -124,7 +124,7 @@ class ReservationCreateService
 
         if (!$this->isAllowedReservationTimeSlot($eventDateTime) || !$this->isAllowedReservationTimeSlot($endDateTime)) {
             throw new DomainValidationException(
-                'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.',
+                'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.',
                 'ReservationTimeSlotInvalid'
             );
         }

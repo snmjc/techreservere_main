@@ -2457,6 +2457,11 @@ body {
   border-bottom-color: #118044;
 }
 
+.classroom-schedule-import-steps .is-complete {
+  color: #2f6f50;
+  border-bottom-color: #9fd5b1;
+}
+
 .classroom-schedule-import-dropzone {
   display: grid;
   gap: 0.45rem;
@@ -2517,6 +2522,163 @@ body {
   font-weight: 800;
 }
 
+.classroom-schedule-import-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.classroom-schedule-import-summary article,
+.classroom-schedule-import-mapping-card,
+.classroom-schedule-import-review-card {
+  padding: 0.9rem 1rem;
+  background: #f8fbf9;
+  border: 1px solid #dbe5df;
+  border-radius: 14px;
+}
+
+.classroom-schedule-import-summary strong {
+  display: block;
+  color: #173322;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-import-summary span {
+  color: #607165;
+  font-size: 0.78rem;
+}
+
+.classroom-schedule-import-warning,
+.classroom-schedule-import-progress {
+  padding: 0.8rem 0.95rem;
+  color: #6b4a09;
+  background: #fff7e7;
+  border: 1px solid #f0d39d;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-import-progress {
+  color: #165034;
+  background: #edf9f1;
+  border-color: #a9dabb;
+}
+
+.classroom-schedule-import-mapping-grid,
+.classroom-schedule-import-review-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.classroom-schedule-import-mapping-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.classroom-schedule-import-mapping-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.classroom-schedule-import-mapping-card__header {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.classroom-schedule-import-mapping-card__header strong {
+  color: #173322;
+  font-size: 0.88rem;
+}
+
+.classroom-schedule-import-mapping-card__header span {
+  color: #6f8274;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.classroom-schedule-import-mapping-card select {
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  color: #15291d;
+  background: #ffffff;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.classroom-schedule-import-review-card {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.classroom-schedule-import-review-card.is-valid {
+  border-color: #a9dabb;
+}
+
+.classroom-schedule-import-review-card.is-invalid,
+.classroom-schedule-import-review-card.is-failed {
+  border-color: #f0b5ad;
+  background: #fff8f7;
+}
+
+.classroom-schedule-import-review-card.is-imported {
+  border-color: #9fd5b1;
+  background: #eefaf2;
+}
+
+.classroom-schedule-import-review-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.classroom-schedule-import-review-card__top strong {
+  display: block;
+  color: #173322;
+  font-size: 0.88rem;
+}
+
+.classroom-schedule-import-review-card__top span {
+  color: #607165;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.classroom-schedule-import-review-card__badge {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  color: #0f7d43;
+  background: #ecf9f0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-import-review-card.is-invalid .classroom-schedule-import-review-card__badge,
+.classroom-schedule-import-review-card.is-failed .classroom-schedule-import-review-card__badge {
+  color: #aa3b2e;
+  background: #fdecec;
+}
+
+.classroom-schedule-import-review-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  color: #31493a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-import-review-card__errors {
+  margin: 0;
+  padding-left: 1rem;
+  color: #b23b2d;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .classroom-schedule-import-types {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2565,6 +2727,20 @@ body {
 .classroom-schedule-import-type-card--maintenance {
   background: #f5f3ff;
   border-color: #d2c4ff;
+}
+
+@media (max-width: 760px) {
+  .classroom-schedule-import-mapping-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-schedule-import-review-card__top {
+    flex-direction: column;
+  }
+
+  .classroom-schedule-import-types {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .classroom-schedule-quick-modal {

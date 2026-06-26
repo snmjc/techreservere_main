@@ -2,6 +2,7 @@
 
 namespace App\Domain\Task\Service;
 
+use App\Shared\Exceptions\DomainValidationException;
 use Symfony\Component\HttpFoundation\Request;
 
 class TaskWorkflowService
@@ -9,7 +10,8 @@ class TaskWorkflowService
     public function __construct(
         private readonly TaskManagementService $taskManagementService,
         private readonly TaskReadService $taskReadService,
-        private readonly TaskMutationCommandService $taskMutationCommandService
+        private readonly TaskMutationCommandService $taskMutationCommandService,
+        private readonly TaskAssignmentSmsService $taskAssignmentSmsService
     ) {
     }
 
@@ -45,6 +47,28 @@ class TaskWorkflowService
         return $this->success([
             'tasks' => $this->taskReadService->fetchTaskRowsByReservation($reservationIdentifier),
         ]);
+    }
+
+    public function sendTestSms(array $body): array
+    {
+        try {
+            $delivery = $this->taskAssignmentSmsService->sendTestSms(
+                (string)($body['phoneNumber'] ?? ''),
+                isset($body['message']) ? (string)$body['message'] : null
+            );
+
+            return $this->success([
+                'message' => 'Test SMS submitted to TextBee.',
+                'delivery' => $delivery,
+            ]);
+        } catch (DomainValidationException $exception) {
+            return [
+                'success' => false,
+                'errorCode' => 'TestSmsFailed',
+                'message' => $exception->getMessage(),
+                'status' => 422,
+            ];
+        }
     }
 
     private function success(array $data, int $status = 200): array
