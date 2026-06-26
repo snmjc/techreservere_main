@@ -260,8 +260,12 @@ class ReservationPolicyConfigService
         return array_values(array_filter(
             array_map([$this, 'mapScheduleBlockRow'], $rows),
             static function (array $scheduleBlock) use ($rangeStartValue, $rangeEndValue): bool {
-                $blockStart = new \DateTimeImmutable(sprintf('%s %s', $scheduleBlock['blockDate'], $scheduleBlock['startTime']), AppClock::timezone());
-                $blockEnd = new \DateTimeImmutable(sprintf('%s %s', $scheduleBlock['blockDate'], $scheduleBlock['endTime']), AppClock::timezone());
+                try {
+                    $blockStart = new \DateTimeImmutable(sprintf('%s %s', $scheduleBlock['blockDate'], $scheduleBlock['startTime']), AppClock::timezone());
+                    $blockEnd = new \DateTimeImmutable(sprintf('%s %s', $scheduleBlock['blockDate'], $scheduleBlock['endTime']), AppClock::timezone());
+                } catch (\Throwable) {
+                    return false;
+                }
 
                 return $blockStart < $rangeEndValue && $blockEnd > $rangeStartValue;
             }
