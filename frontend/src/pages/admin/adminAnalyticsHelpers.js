@@ -1,4 +1,5 @@
 export const ADMIN_ANALYTICS_RANGE_PRESETS = [
+  { key: 'demo_2026_may_june', label: 'Demo: May 25-Jun 23, 2026', startDateIso: '2026-05-25', endDateIso: '2026-06-23' },
   { key: '30d', label: 'Last 30 Days', days: 30 },
   { key: '14d', label: 'Last 14 Days', days: 14 },
   { key: '7d', label: 'Last 7 days', days: 7 },
@@ -6,6 +7,19 @@ export const ADMIN_ANALYTICS_RANGE_PRESETS = [
 
 export function resolveAdminAnalyticsDateRange(presetKey, now = new Date()) {
   const preset = ADMIN_ANALYTICS_RANGE_PRESETS.find((item) => item.key === presetKey) || ADMIN_ANALYTICS_RANGE_PRESETS[0];
+  if (preset.startDateIso && preset.endDateIso) {
+    const startDate = parseDateOnly(preset.startDateIso);
+    const endDate = parseDateOnly(preset.endDateIso);
+    const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
+    return {
+      days,
+      startDate,
+      endDate,
+      startDateIso: preset.startDateIso,
+      endDateIso: preset.endDateIso,
+    };
+  }
+
   const endDate = startOfDay(now);
   let startDate = startOfDay(now);
 

@@ -15,7 +15,7 @@
           <div class="reports-analytics-controls">
             <label class="reports-analytics-date-range">
               <span>Date Range:</span>
-              <select v-model="selectedRangeKey">
+              <select v-model="selectedRangeKey" :disabled="isReportsLoading">
                 <option
                   v-for="preset in ADMIN_ANALYTICS_RANGE_PRESETS"
                   :key="preset.key"
@@ -39,7 +39,7 @@
               type="button"
               @click="openModelSheet"
             >
-              PKL Models
+              Analytics Models
             </button>
           </div>
 
@@ -58,6 +58,7 @@
           >
             <p>{{ model.number }}. {{ model.title }}</p>
             <h2>{{ model.subtitle }}</h2>
+            <em>{{ model.modelLabel }}</em>
             <span>{{ model.description }}</span>
             <svg v-if="model.tone === 'blue'" viewBox="0 0 120 52" aria-hidden="true">
               <polyline points="5,42 18,35 29,38 41,23 53,29 65,18 76,22 88,10 99,35 114,31" />
@@ -76,7 +77,7 @@
         <section class="reports-panel reports-forecast-panel">
           <div class="reports-panel-heading">
             <div>
-              <h2>Demand Forecasting (Operational Trend Model)</h2>
+              <h2>Demand Forecasting (SARIMA)</h2>
               <p>Forecasted equipment demand based on recent reservation volume.</p>
             </div>
           </div>
@@ -121,11 +122,24 @@
               </dl>
             </aside>
           </div>
+
+          <div class="reports-validation-grid">
+            <article
+              v-for="metric in forecastValidationCards"
+              :key="metric.label"
+              class="reports-validation-card"
+              :class="{ 'is-good': metric.good, 'is-bad': metric.bad }"
+            >
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+              <small>{{ metric.note }}</small>
+            </article>
+          </div>
         </section>
 
         <div class="reports-two-column">
           <section class="reports-panel">
-            <h2>Readiness Risk Detection (Operational Risk Bands)</h2>
+            <h2>Readiness Risk Detection (Random Forest)</h2>
             <p>Risk level distribution across tracked equipment inventory.</p>
             <div class="reports-risk-layout">
               <div class="reports-chart-canvas-wrap reports-chart-canvas-wrap--donut">
@@ -147,6 +161,38 @@
                 </ol>
               </div>
             </div>
+            <div class="reports-rf-metrics-grid">
+              <article v-for="metric in randomForestMetricCards" :key="metric.label">
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+                <small>{{ metric.note }}</small>
+              </article>
+            </div>
+            <div class="reports-confusion-matrix-wrap" v-if="confusionMatrixRows.length > 0">
+              <h3>Confusion Matrix</h3>
+              <table class="reports-confusion-matrix">
+                <thead>
+                  <tr>
+                    <th>Actual \\ Predicted</th>
+                    <th v-for="label in confusionMatrixLabels" :key="label">{{ label }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in confusionMatrixRows" :key="row.label">
+                    <th>{{ row.label }}</th>
+                    <td v-for="cell in row.values" :key="`${row.label}-${cell.label}`">{{ cell.value }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="reports-matrix-explainer">{{ confusionMatrixExplanation }}</p>
+            </div>
+            <div class="reports-risk-probability-grid">
+              <article v-for="metric in riskProbabilityCards" :key="metric.label">
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+                <small>{{ metric.note }}</small>
+              </article>
+            </div>
             <div class="reports-accordion">
               <details>
                 <summary>What this graph shows</summary>
@@ -160,7 +206,7 @@
           </section>
 
           <section class="reports-panel">
-            <h2>Resource Allocation Optimization (Operational Efficiency)</h2>
+            <h2>Resource Allocation Optimization (B-ILP)</h2>
             <p>Efficiency indicators derived from request throughput and inventory usage.</p>
             <div class="reports-optimization-list">
               <article v-for="metric in optimizationMetrics" :key="metric.label">
@@ -188,7 +234,7 @@
 
         <div class="reports-bottom-grid">
           <section class="reports-panel">
-            <h2>Equipment Utilization Overview</h2>
+            <h2>Equipment Utilization Overview (Random Forest)</h2>
             <div v-if="isUtilizationRefreshing" class="reports-inline-message">Refreshing live utilization data from the backend...</div>
             <div v-else-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
             <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
@@ -228,19 +274,25 @@
               </div>
 
               <div>
-                <h3>Top Possible Borrowed Equipment</h3>
+                <h3>Equipment Preparation Decisions</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Times Used</th><th>Why it may move</th></tr>
+                    <tr><th>Equipment</th><th>Demand Signal</th><th>Decision</th><th>Recommended Action</th></tr>
                   </thead>
                   <tbody>
                     <tr v-if="possibleBorrowedEquipment.length === 0">
-                      <td colspan="3">No trend-based borrowing candidates are available yet.</td>
+                      <td colspan="4">No equipment needs preparation based on current and same-date historical demand.</td>
                     </tr>
                     <tr v-for="item in possibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
                       <td>{{ item.name }}</td>
-                      <td>{{ formatMetricNumber(item.count || item.usageCount || 0, 0) }}</td>
-                      <td>{{ item.reason }}</td>
+                      <td>
+                        <strong>{{ item.signal }}</strong>
+                        <small>{{ item.reason }}</small>
+                      </td>
+                      <td>
+                        <span class="reports-decision-pill" :class="`reports-decision-pill--${item.tone}`">{{ item.decision }}</span>
+                      </td>
+                      <td>{{ item.action }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -280,17 +332,17 @@
       </div>
 
       <div v-if="isModelSheetOpen" class="reports-sheet-backdrop" @click.self="closeModelSheet">
-        <aside class="reports-model-sheet" aria-label="PKL model manager">
+        <aside class="reports-model-sheet" aria-label="Analytics model manager">
           <div class="reports-model-sheet-header">
             <div>
               <p>Model Artifacts</p>
-              <h3>PKL Sets</h3>
+              <h3>Analytics Sets</h3>
             </div>
             <button type="button" class="reports-modal-close" @click="closeModelSheet">×</button>
           </div>
 
           <p class="reports-model-sheet-copy">
-            Create, rename, mix, and switch the PKL artifacts used by each analytics model.
+            Create, rename, mix, and switch the Analytics artifacts used by each analytics model.
           </p>
 
           <div class="reports-model-sheet-actions">
@@ -308,7 +360,7 @@
               :disabled="isCreatingModelSet"
               @click="handleCreateTestModelSet"
             >
-              {{ isCreatingModelSet ? 'Creating PKL...' : 'Create Test PKL' }}
+              {{ isCreatingModelSet ? 'Creating Analytics...' : 'Create Test Analytics' }}
             </button>
             <button
               type="button"
@@ -324,8 +376,8 @@
             {{ modelArtifactMessage }}
           </p>
 
-          <div v-if="isModelArtifactsLoading" class="reports-inline-message">Loading PKL sets...</div>
-          <div v-else-if="modelArtifactSets.length === 0" class="reports-inline-message">No PKL sets are available yet.</div>
+          <div v-if="isModelArtifactsLoading" class="reports-inline-message">Loading Analytics sets...</div>
+          <div v-else-if="modelArtifactSets.length === 0" class="reports-inline-message">No Analytics sets are available yet.</div>
           <div v-else class="reports-model-set-list">
             <article
               v-for="modelSet in modelArtifactSets"
@@ -336,7 +388,7 @@
               <div class="reports-model-set-card-header">
                 <div>
                   <strong>{{ modelSet.setName }}</strong>
-                  <span>{{ modelSet.active ? 'Active for analytics' : 'Available PKL set' }}</span>
+                  <span>{{ modelSet.active ? 'Active for analytics' : 'Available Analytics set' }}</span>
                 </div>
                 <em>{{ modelSet.complete ? 'Complete' : 'Partial' }}</em>
               </div>
@@ -373,7 +425,7 @@
                 <input
                   v-model.trim="modelSetRenameDrafts[modelSet.setName]"
                   type="text"
-                  :placeholder="modelSet.setName === 'default' ? 'Default cannot be renamed' : 'Rename PKL set'"
+                  :placeholder="modelSet.setName === 'default' ? 'Default cannot be renamed' : 'Rename Analytics set'"
                   :disabled="modelSet.setName === 'default' || isRenamingModelSet === modelSet.setName"
                 />
                 <button
@@ -393,7 +445,7 @@
                   :disabled="modelSet.active || !modelSet.complete || isSwappingModelSet"
                   @click="handleActivateModelSet(modelSet.setName)"
                 >
-                  {{ modelSet.active ? 'Using' : 'Use This PKL' }}
+                  {{ modelSet.active ? 'Using' : 'Use This Analytics' }}
                 </button>
                 <button
                   type="button"
@@ -547,6 +599,7 @@ const modelCards = [
     number: 1,
     title: 'Demand Trend Projection',
     subtitle: 'Operational Forecasting',
+    modelLabel: 'SARIMA',
     description: 'Projects upcoming equipment demand from live reservation activity in the selected period.',
     tone: 'blue',
   },
@@ -554,6 +607,7 @@ const modelCards = [
     number: 2,
     title: 'Readiness Risk Bands',
     subtitle: 'Inventory Monitoring',
+    modelLabel: 'Random Forest',
     description: 'Highlights equipment pressure using stock levels, overdue linkage, and recent usage frequency.',
     tone: 'green',
   },
@@ -561,8 +615,17 @@ const modelCards = [
     number: 3,
     title: 'Allocation Efficiency',
     subtitle: 'Operational Optimization',
+    modelLabel: 'B-ILP',
     description: 'Tracks fulfillment, utilization, and pending-request pressure for current admin operations.',
     tone: 'orange',
+  },
+  {
+    number: 4,
+    title: 'Utilization Overview',
+    subtitle: 'Equipment Usage Modeling',
+    modelLabel: 'Random Forest',
+    description: 'Models category-level equipment utilization from reservation usage and inventory pressure.',
+    tone: 'green',
   },
 ];
 
@@ -600,12 +663,161 @@ const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels
 }));
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
 const forecastNarrative = computed(() => buildForecastNarrative(forecastData.value, forecastSeries.value, forecastProjectionSeries.value));
+const forecastAccuracy = computed(() => forecastData.value?.accuracyMetrics || {});
+const forecastAccuracyDateLabel = computed(() => {
+  const startDate = formatShortDate(forecastAccuracy.value.evaluationStartDate);
+  const endDate = formatShortDate(forecastAccuracy.value.evaluationEndDate);
+  if (!startDate || !endDate) {
+    return 'No validation date';
+  }
+  return startDate === endDate ? startDate : `${startDate} to ${endDate}`;
+});
+const forecastAccuracyEvaluationNote = computed(() => {
+  const evaluatedPeriods = Number(forecastAccuracy.value.evaluatedPeriods || 0);
+  const zeroDemandExcluded = Number(forecastAccuracy.value.zeroDemandExcluded || 0);
+  if (evaluatedPeriods <= 0) {
+    return `No non-zero actual demand in ${forecastAccuracyDateLabel.value}; ${formatMetricNumber(zeroDemandExcluded, 0)} zero-demand dates excluded.`;
+  }
+  return `${formatMetricNumber(evaluatedPeriods, 0)} demand dates evaluated in ${forecastAccuracyDateLabel.value}; ${formatMetricNumber(zeroDemandExcluded, 0)} zero-demand dates excluded.`;
+});
+const forecastValidationCards = computed(() => {
+  const mape = forecastAccuracy.value.sarimaMape;
+  const status = forecastAccuracy.value.accuracyStatus || 'insufficient_data';
+  const improvement = Number(forecastAccuracy.value.forecastImprovementPercent);
+  return [
+    {
+      label: 'SARIMA MAPE',
+      value: formatOptionalPercent(mape, 2, false, 'Not computable'),
+      note: `${status === 'good' ? 'Good: average forecast error is within the 20% target.' : status === 'needs_review' ? 'Needs review: average forecast error is above the 20% target.' : 'Not computable because MAPE needs non-zero actual demand.'} ${forecastAccuracyEvaluationNote.value}`,
+      good: status === 'good',
+      bad: status === 'needs_review',
+    },
+    {
+      label: 'Naive MAPE',
+      value: formatOptionalPercent(forecastAccuracy.value.naiveMape, 2, false, 'Not computable'),
+      note: `Simple benchmark for ${forecastAccuracyDateLabel.value}: predicts each day using the previous actual demand. SARIMA should beat this to justify the model.`,
+      good: false,
+      bad: false,
+    },
+    {
+      label: 'Seasonal Naive MAPE',
+      value: formatOptionalPercent(forecastAccuracy.value.seasonalNaiveMape, 2, false, 'Not computable'),
+      note: `Weekly benchmark for ${forecastAccuracyDateLabel.value}: predicts each day from the same weekday last week. Best comparison when demand has weekly patterns.`,
+      good: false,
+      bad: false,
+    },
+    {
+      label: 'SARIMA Improvement',
+      value: formatOptionalPercent(forecastAccuracy.value.forecastImprovementPercent, 2, true, 'Not computable'),
+      note: `${Number.isFinite(improvement) && improvement > 0 ? 'SARIMA is outperforming the benchmark.' : Number.isFinite(improvement) && improvement < 0 ? 'SARIMA is worse than the benchmark for this range.' : 'No improvement score because one of the MAPE values is not computable.'} Compared with ${formatBenchmarkMethod(forecastAccuracy.value.benchmarkMethod)} over ${forecastAccuracyDateLabel.value}.`,
+      good: Number.isFinite(improvement) && improvement > 0,
+      bad: Number.isFinite(improvement) && improvement < 0,
+    },
+  ];
+});
 const riskBands = computed(() => riskReport.value?.bands || []);
 const topRiskFactors = computed(() => riskReport.value?.topRiskFactors || []);
 const highRiskEquipment = computed(() => riskReport.value?.highRiskEquipment || []);
 const safeRateLabel = computed(() => `${formatMetricNumber(riskReport.value?.safeRate || 0, 0)}%`);
 const highRiskTooltip = computed(() => resolveHighRiskTooltip());
 const riskNarrative = computed(() => buildRiskNarrative(riskBands.value));
+const randomForestMetrics = computed(() => riskReport.value?.modelMetrics || {});
+const randomForestMetricNote = computed(() => (
+  Object.keys(randomForestMetrics.value).length > 0
+    ? 'From the active Random Forest validation split.'
+    : 'Train or refresh Analytics Models to generate validation metrics.'
+));
+const randomForestMetricCards = computed(() => {
+  if (Object.keys(randomForestMetrics.value).length === 0) {
+    return [
+      { label: 'Accuracy', value: 'No trained metrics', note: randomForestMetricNote.value },
+      { label: 'Precision', value: 'No trained metrics', note: randomForestMetricNote.value },
+      { label: 'Recall', value: 'No trained metrics', note: randomForestMetricNote.value },
+      { label: 'F1 Score', value: 'No trained metrics', note: randomForestMetricNote.value },
+    ];
+  }
+
+  return [
+    {
+      label: 'Accuracy',
+      value: formatOptionalPercent(metricRatioToPercent(randomForestMetrics.value.accuracy), 1, false, 'No trained metrics'),
+      note: 'Overall correctness: share of validation items where the predicted risk band matched the actual band.',
+    },
+    {
+      label: 'Precision',
+      value: formatOptionalPercent(metricRatioToPercent(randomForestMetrics.value.precision), 1, false, 'No trained metrics'),
+      note: 'Trust in flagged bands: higher means fewer items are incorrectly placed into a risk band.',
+    },
+    {
+      label: 'Recall',
+      value: formatOptionalPercent(metricRatioToPercent(randomForestMetrics.value.recall), 1, false, 'No trained metrics'),
+      note: 'Coverage of real risk: higher means the model catches more equipment that truly belongs in each band.',
+    },
+    {
+      label: 'F1 Score',
+      value: formatOptionalPercent(metricRatioToPercent(randomForestMetrics.value.f1), 1, false, 'No trained metrics'),
+      note: 'Balanced score between precision and recall; useful when both false alarms and missed risks matter.',
+    },
+  ];
+});
+const confusionMatrixLabels = computed(() => Array.isArray(randomForestMetrics.value.labels) ? randomForestMetrics.value.labels : []);
+const confusionMatrixRows = computed(() => {
+  const matrix = Array.isArray(randomForestMetrics.value.confusionMatrix) ? randomForestMetrics.value.confusionMatrix : [];
+  return matrix.map((values, rowIndex) => ({
+    label: confusionMatrixLabels.value[rowIndex] || `Class ${rowIndex + 1}`,
+    values: (Array.isArray(values) ? values : []).map((value, cellIndex) => ({
+      label: confusionMatrixLabels.value[cellIndex] || `Class ${cellIndex + 1}`,
+      value: formatMetricNumber(value || 0, 0),
+    })),
+  }));
+});
+const confusionMatrixExplanation = computed(() => {
+  const matrix = Array.isArray(randomForestMetrics.value.confusionMatrix) ? randomForestMetrics.value.confusionMatrix : [];
+  if (matrix.length === 0) {
+    return 'Train or refresh Analytics Models to generate the confusion matrix.';
+  }
+
+  let correctCount = 0;
+  let totalCount = 0;
+  matrix.forEach((row, rowIndex) => {
+    (Array.isArray(row) ? row : []).forEach((value, columnIndex) => {
+      const count = Number(value || 0);
+      totalCount += count;
+      if (rowIndex === columnIndex) {
+        correctCount += count;
+      }
+    });
+  });
+  const mistakeCount = Math.max(0, totalCount - correctCount);
+  return `${formatMetricNumber(correctCount, 0)} of ${formatMetricNumber(totalCount, 0)} validation items landed on the diagonal, meaning the actual and predicted risk bands matched. ${formatMetricNumber(mistakeCount, 0)} items were off-diagonal and should be reviewed as model mistakes.`;
+});
+const riskProbabilityCards = computed(() => {
+  const summary = riskReport.value?.riskProbabilitySummary || {};
+  if (Object.keys(summary).length === 0) {
+    return [
+      { label: 'Average At-Risk Probability', value: 'Not calculated', note: 'Refresh analytics to calculate risk probability.' },
+      { label: 'Highest At-Risk Probability', value: 'Not calculated', note: 'Refresh analytics to calculate risk probability.' },
+      { label: 'High Probability Items', value: '0', note: 'Refresh analytics to calculate risk probability.' },
+    ];
+  }
+  return [
+    {
+      label: 'Average At-Risk Probability',
+      value: formatOptionalPercent(summary.averageRiskProbability, 1, false, 'Not calculated'),
+      note: 'Mean probability that equipment belongs to Medium Risk or High Risk. Lower is healthier overall.',
+    },
+    {
+      label: 'Highest At-Risk Probability',
+      value: formatOptionalPercent(summary.maxRiskProbability, 1, false, 'Not calculated'),
+      note: 'Worst single equipment probability. Use this to identify the item most likely to need attention.',
+    },
+    {
+      label: 'High Probability Items',
+      value: formatMetricNumber(summary.highProbabilityCount || 0, 0),
+      note: 'Count of equipment at or above 65% at-risk probability. These are priority review candidates.',
+    },
+  ];
+});
 const optimizationMetrics = computed(() => optimizationReport.value || []);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
@@ -613,11 +825,11 @@ const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationRepo
 const topFrequentlyUsedEquipment = computed(() => topEquipment.value.slice(0, 5));
 const possibleBorrowedEquipment = computed(() => {
   const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
-  return candidates.filter((item) => item?.name);
+  return candidates.filter((item) => item?.name).map(buildPreparationDecisionItem);
 });
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
-const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'N/A');
+const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'Not generated');
 const summaryItems = computed(() => [
   { label: 'Total Equipment', value: formatMetricNumber(summaryReport.value?.totalEquipment || 0, 0) },
   { label: 'Active Reservations', value: formatMetricNumber(summaryReport.value?.activeReservations || 0, 0) },
@@ -791,7 +1003,7 @@ async function handleCreateTestModelSet() {
   }
 
   isCreatingModelSet.value = true;
-  modelArtifactMessage.value = 'Training a new PKL set...';
+  modelArtifactMessage.value = 'Training a new Analytics set...';
   modelArtifactMessageType.value = 'info';
 
   try {
@@ -800,7 +1012,7 @@ async function handleCreateTestModelSet() {
     const trainingRun = response?.trainingRun || response || {};
     modelArtifactMessage.value = `Created and activated ${trainingRun.setName || setName}.`;
     modelArtifactMessageType.value = 'success';
-    analyticsToastMessage.value = 'PKL test set created and activated.';
+    analyticsToastMessage.value = 'Analytics test set created and activated.';
     await loadModelArtifacts();
     await loadReportsAnalytics();
   } catch (error) {
@@ -817,7 +1029,7 @@ async function handleRefreshDailyAnalytics() {
   }
 
   isRefreshingDailyAnalytics.value = true;
-  modelArtifactMessage.value = 'Refreshing today analytics with the active PKL set...';
+  modelArtifactMessage.value = 'Refreshing today analytics with the active Analytics set...';
   modelArtifactMessageType.value = 'info';
   reportsError.value = '';
 
@@ -827,7 +1039,7 @@ async function handleRefreshDailyAnalytics() {
     reportsSourceLabel.value = `Using refreshed FastAPI analytics for ${activeRangeLabel.value}.`;
     modelArtifactMessage.value = 'Today analytics refreshed.';
     modelArtifactMessageType.value = 'success';
-    analyticsToastMessage.value = 'Today analytics refreshed with the active PKL set.';
+    analyticsToastMessage.value = 'Today analytics refreshed with the active Analytics set.';
     await loadModelArtifacts();
   } catch (error) {
     const message = resolveReportsError(error);
@@ -852,7 +1064,7 @@ async function handleActivateModelSet(setName) {
     await adminAnalyticsApi.activateAnalyticsModelSet(setName);
     modelArtifactMessage.value = `Analytics is now using ${setName}.`;
     modelArtifactMessageType.value = 'success';
-    analyticsToastMessage.value = `Active PKL set switched to ${setName}.`;
+    analyticsToastMessage.value = `Active Analytics set switched to ${setName}.`;
     await loadModelArtifacts();
     await loadReportsAnalytics();
   } catch (error) {
@@ -877,7 +1089,7 @@ async function handleActivateModelArtifact(setName, artifact) {
     await adminAnalyticsApi.activateAnalyticsModelArtifact(setName, artifact);
     modelArtifactMessage.value = `${formatArtifactLabel(artifact)} now uses ${setName}.`;
     modelArtifactMessageType.value = 'success';
-    analyticsToastMessage.value = `${formatArtifactLabel(artifact)} PKL switched to ${setName}.`;
+    analyticsToastMessage.value = `${formatArtifactLabel(artifact)} Analytics switched to ${setName}.`;
     await loadModelArtifacts();
     await loadReportsAnalytics();
   } catch (error) {
@@ -920,7 +1132,7 @@ async function handleDeleteModelSet(setName) {
     return;
   }
 
-  const shouldDelete = window.confirm(`Delete PKL set "${setName}"?`);
+  const shouldDelete = window.confirm(`Delete Analytics set "${setName}"?`);
   if (!shouldDelete) {
     return;
   }
@@ -965,9 +1177,39 @@ function normalizeEquipmentTrendItems(items) {
     .map((item) => ({
       name: item?.name || item?.equipment || item?.equipmentName || item?.equipment_name || '',
       count: Number(item?.count ?? item?.usageCount ?? item?.usage_count ?? item?.timesUsed ?? item?.times_used ?? 0),
+      previousYearCount: Number(item?.previousYearCount ?? item?.previous_year_count ?? item?.historicalCount ?? item?.historical_count ?? 0),
       reason: item?.reason || item?.note || item?.why || '',
+      decision: item?.decision || '',
+      action: item?.action || '',
     }))
     .filter((item) => item.name);
+}
+
+function buildPreparationDecisionItem(item) {
+  const currentCount = Number(item?.count || 0);
+  const previousYearCount = Number(item?.previousYearCount || extractSameDateUsageCount(item.reason) || 0);
+  const seasonalPressure = previousYearCount > currentCount;
+  const decision = item.decision || (seasonalPressure ? 'Prepare extra stock' : 'Keep prepared');
+  const action = item.action || (seasonalPressure
+    ? `Reserve a buffer for about ${formatMetricNumber(previousYearCount - currentCount, 0)} more expected uses.`
+    : 'Monitor availability and avoid lending all units early.');
+
+  return {
+    ...item,
+    previousYearCount,
+    signal: previousYearCount > 0
+      ? `Current: ${formatMetricNumber(currentCount, 0)} | Same dates last year: ${formatMetricNumber(previousYearCount, 0)}`
+      : `Current: ${formatMetricNumber(currentCount, 0)} uses`,
+    decision,
+    action,
+    reason: item.reason || (seasonalPressure ? 'Historical same-date demand is higher than current usage.' : 'Current demand is already active in this range.'),
+    tone: seasonalPressure ? 'urgent' : 'steady',
+  };
+}
+
+function extractSameDateUsageCount(value) {
+  const match = String(value || '').match(/Used\s+(\d+)\s+times/i);
+  return match ? Number(match[1]) : 0;
 }
 
 function countExistingArtifacts(modelSet) {
@@ -977,13 +1219,13 @@ function countExistingArtifacts(modelSet) {
 function formatArtifactLabel(artifactName) {
   switch (artifactName) {
     case 'demand_forecast.pkl':
-      return 'Forecast PKL';
+      return 'Demand Forecasting - SARIMA';
     case 'readiness_random_forest.pkl':
-      return 'Readiness PKL';
+      return 'Readiness Risk Detection - Random Forest';
     case 'allocation_optimizer.pkl':
-      return 'Allocation PKL';
+      return 'Allocation Optimization - B-ILP';
     default:
-      return artifactName || 'PKL';
+      return artifactName || 'Analytics';
   }
 }
 
@@ -1127,6 +1369,40 @@ function formatLongDate(value) {
   const date = parseDateOnly(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+function formatOptionalPercent(value, digits = 1, signed = false, emptyLabel = 'Not available') {
+  if (value === null || value === undefined || value === '') {
+    return emptyLabel;
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return emptyLabel;
+  }
+  const prefix = signed && number > 0 ? '+' : '';
+  return `${prefix}${formatMetricNumber(number, digits)}%`;
+}
+
+function metricRatioToPercent(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return null;
+  }
+  return number <= 1 ? number * 100 : number;
+}
+
+function formatBenchmarkMethod(value) {
+  switch (value) {
+    case 'seasonal_naive':
+      return 'seasonal naive';
+    case 'naive':
+      return 'naive';
+    default:
+      return 'the benchmark';
+  }
 }
 
 function resolveRiskBandColorTooltip(risk) {

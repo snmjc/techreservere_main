@@ -67,6 +67,7 @@ class ForecastSnapshotBuilder:
         expected_change_percent = 0.0
         if average_actual > 0:
             expected_change_percent = round(((average_forecast - average_actual) / average_actual) * 100, 2)
+        accuracy_metrics = self._build_accuracy_metrics(series, forecast_series)
 
         return {
             "modelName": self._artifact_model_name(trained_artifact, "sarima"),
@@ -75,11 +76,17 @@ class ForecastSnapshotBuilder:
             "forecastSeries": forecast_series,
             "historySeries": history_series,
             "forecastPeak": forecast_peak,
+            "accuracyMetrics": accuracy_metrics,
             "summary": {
                 "averageActualDemand": round(average_actual, 2),
                 "averageForecastDemand": round(average_forecast, 2),
                 "expectedChangePercent": expected_change_percent,
                 "forecastHorizonDays": forecast_days,
+                "sarimaMape": accuracy_metrics["sarimaMape"],
+                "naiveMape": accuracy_metrics["naiveMape"],
+                "seasonalNaiveMape": accuracy_metrics["seasonalNaiveMape"],
+                "forecastImprovementPercent": accuracy_metrics["forecastImprovementPercent"],
+                "accuracyStatus": accuracy_metrics["accuracyStatus"],
             },
             "modelStatus": self.artifact_store.describe(FORECAST_ARTIFACT),
             "notes": (
@@ -97,6 +104,11 @@ class ForecastSnapshotBuilder:
     ) -> list[dict[str, Any]]:
         if not actual_series:
             return []
+
+        if artifact.get("modelType") == "sarima":
+            sarima_series = self._build_sarima_forecast_series(actual_series, forecast_days, artifact)
+            if sarima_series:
+                return sarima_series
 
         model = artifact.get("model")
         model_start_date = date.fromisoformat(artifact.get("startDate"))
@@ -119,6 +131,37 @@ class ForecastSnapshotBuilder:
             features = self._trained_forecast_features(forecast_date, model_start_date, counts_by_date)
             predicted_value = float(model.predict([features])[0])
             forecast_rows.append({"date": forecast_date.isoformat(), "value": round(max(0.0, predicted_value), 2)})
+
+        return forecast_rows
+
+    def _build_sarima_forecast_series(
+        self,
+        actual_series: list[dict[str, Any]],
+        forecast_days: int,
+        artifact: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        model = artifact.get("model")
+        if model is None:
+            return []
+
+        model_start_date = date.fromisoformat(artifact.get("startDate"))
+        sorted_series = sorted(actual_series, key=lambda item: item["date"])
+        first_date = date.fromisoformat(sorted_series[0]["date"])
+        start_offset = (first_date - model_start_date).days
+        if start_offset < 0:
+            return []
+
+        total_days = len(sorted_series) + max(0, forecast_days)
+        end_offset = start_offset + total_days - 1
+        try:
+            predictions = model.get_prediction(start=start_offset, end=end_offset).predicted_mean
+        except Exception:
+            return []
+
+        forecast_rows = []
+        for offset, predicted_value in enumerate(predictions):
+            forecast_date = first_date + timedelta(days=offset)
+            forecast_rows.append({"date": forecast_date.isoformat(), "value": round(max(0.0, float(predicted_value)), 2)})
 
         return forecast_rows
 
@@ -153,6 +196,65 @@ class ForecastSnapshotBuilder:
             forecast_series.append({"date": forecast_date.isoformat(), "value": projected_value})
 
         return forecast_series
+
+    def _build_accuracy_metrics(
+        self,
+        actual_series: list[dict[str, Any]],
+        forecast_series: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        actual_by_date = {
+            item["date"]: float(item["value"])
+            for item in actual_series
+        }
+        forecast_by_date = {
+            item["date"]: float(item["value"])
+            for item in forecast_series
+        }
+        ordered_dates = sorted(actual_by_date)
+        actual_values = [actual_by_date[day] for day in ordered_dates]
+        sarima_predictions = [forecast_by_date.get(day, 0.0) for day in ordered_dates]
+        naive_predictions = []
+        seasonal_naive_predictions = []
+
+        for index, actual_value in enumerate(actual_values):
+            naive_predictions.append(actual_values[index - 1] if index >= 1 else actual_value)
+            seasonal_naive_predictions.append(actual_values[index - 7] if index >= 7 else naive_predictions[-1])
+
+        sarima_mape = self._mape(actual_values, sarima_predictions)
+        naive_mape = self._mape(actual_values, naive_predictions)
+        seasonal_naive_mape = self._mape(actual_values, seasonal_naive_predictions)
+        benchmark_mape = seasonal_naive_mape if seasonal_naive_mape is not None else naive_mape
+        improvement_percent = None
+        if benchmark_mape is not None and benchmark_mape > 0 and sarima_mape is not None:
+            improvement_percent = round(((benchmark_mape - sarima_mape) / benchmark_mape) * 100, 2)
+
+        return {
+            "sarimaMape": sarima_mape,
+            "naiveMape": naive_mape,
+            "seasonalNaiveMape": seasonal_naive_mape,
+            "forecastImprovementPercent": improvement_percent,
+            "accuracyStatus": self._mape_status(sarima_mape),
+            "benchmarkMethod": "seasonal_naive" if seasonal_naive_mape is not None else "naive",
+            "zeroDemandExcluded": sum(1 for value in actual_values if value == 0),
+            "evaluatedPeriods": sum(1 for value in actual_values if value != 0),
+            "evaluationStartDate": ordered_dates[0] if ordered_dates else None,
+            "evaluationEndDate": ordered_dates[-1] if ordered_dates else None,
+        }
+
+    def _mape(self, actual_values: list[float], predicted_values: list[float]) -> float | None:
+        errors = [
+            abs((float(actual) - float(predicted)) / float(actual))
+            for actual, predicted in zip(actual_values, predicted_values)
+            if float(actual) != 0
+        ]
+        if not errors:
+            return None
+        return round((sum(errors) / len(errors)) * 100, 2)
+
+    def _mape_status(self, value: float | None) -> str:
+        if value is None:
+            return "insufficient_data"
+        return "good" if value <= 20 else "needs_review"
 
     def _build_history_series(
         self,
