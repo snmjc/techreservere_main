@@ -11,6 +11,7 @@ use App\Domain\Reservation\Entity\ReservationEntity;
 use App\Domain\Reservation\Repository\ReservationRepository;
 use App\Domain\Venue\Entity\VenueEntity;
 use App\Domain\Venue\Repository\VenueRepository;
+use App\Shared\Exceptions\DomainOperationException;
 use App\Shared\Exceptions\DomainValidationException;
 use App\Shared\Utils\AppClock;
 use App\Shared\Utils\RoleConstants;
@@ -20,10 +21,16 @@ use Doctrine\DBAL\ParameterType;
 class ReservationCreateService
 {
     private const BUSINESS_START_MINUTES = 420;
-    private const BUSINESS_END_MINUTES = 1140;
+    private const BUSINESS_END_MINUTES = 1260;
+    private const ACTIVITY_TITLE_MAX_LENGTH = 120;
+    private const PURPOSE_DESCRIPTION_MAX_LENGTH = 200;
+    private const ACTIVITY_TYPE_MAX_LENGTH = 100;
+    private const SUPPORTING_DOCUMENT_NAME_MAX_LENGTH = 255;
+    private const MAX_SUPPORTING_DOCUMENTS = 25;
 
     private ReservationRepository $reservationRepository;
     private bool $reservationSchemaEnsured = false;
+    private ?array $reservationColumnMetadataCache = null;
 
     public function __construct(
         ReservationRepository $reservationRepository,
@@ -57,22 +64,49 @@ class ReservationCreateService
         $borrowerRemarks = trim((string)($requestDTO->borrowerRemarks ?? ''));
 
         if ($activityTitle === '') {
-            throw new DomainValidationException('Organization name is required.');
+            throw new DomainValidationException('Organization name is required.', 'ReservationTitleRequired');
         }
-        if (mb_strlen($activityTitle) > 120 || mb_strlen($activityType) > 120) {
-            throw new DomainValidationException('Activity name or title must be 120 characters or fewer.');
+        if (mb_strlen($activityTitle) > self::ACTIVITY_TITLE_MAX_LENGTH) {
+            throw new DomainValidationException(sprintf(
+                'Activity name or title must be %d characters or fewer.',
+                self::ACTIVITY_TITLE_MAX_LENGTH
+            ), 'ReservationTitleTooLong');
+        }
+        if ($activityType !== '' && mb_strlen($activityType) > self::ACTIVITY_TYPE_MAX_LENGTH) {
+            throw new DomainValidationException(sprintf(
+                'Activity type must be %d characters or fewer.',
+                self::ACTIVITY_TYPE_MAX_LENGTH
+            ), 'ReservationActivityTypeTooLong');
         }
         if ($purposeDescription === '') {
-            throw new DomainValidationException('Purpose is required.');
+            throw new DomainValidationException('Purpose is required.', 'ReservationPurposeRequired');
+        }
+        if (mb_strlen($purposeDescription) > self::PURPOSE_DESCRIPTION_MAX_LENGTH) {
+            throw new DomainValidationException(sprintf(
+                'Purpose must be %d characters or fewer.',
+                self::PURPOSE_DESCRIPTION_MAX_LENGTH
+            ), 'ReservationPurposeTooLong');
         }
         if ($requestDTO->requestedQuantity < 1 || $requestDTO->requestedQuantity > 500) {
-            throw new DomainValidationException('Participant count must be between 1 and 500.');
+            throw new DomainValidationException('Participant count must be between 1 and 500.', 'ReservationParticipantCountInvalid');
         }
         if (empty($requestDTO->eventDateTime)) {
-            throw new DomainValidationException('Event date and time is required.');
+            throw new DomainValidationException('Event date and time is required.', 'ReservationStartRequired');
         }
         if (empty($requestDTO->endDateTime)) {
-            throw new DomainValidationException('Reservation end time is required.');
+            throw new DomainValidationException('Reservation end time is required.', 'ReservationEndRequired');
+        }
+        if ($requestDTO->venueIdentifier !== null && $requestDTO->venueIdentifier <= 0) {
+            throw new DomainValidationException('A valid venue selection is required.', 'ReservationVenueInvalid');
+        }
+        if (!is_array($requestDTO->requestedEquipmentList)) {
+            throw new DomainValidationException('Requested equipment must be provided as a list.', 'ReservationEquipmentListInvalid');
+        }
+        if ($requestDTO->venueIdentifier === null && $requestDTO->requestedEquipmentList === []) {
+            throw new DomainValidationException(
+                'Please select a venue, equipment, or both before submitting.',
+                'ReservationSelectionRequired'
+            );
         }
 
         try {
@@ -81,20 +115,25 @@ class ReservationCreateService
             $endDateTime = (new \DateTimeImmutable($requestDTO->endDateTime))
                 ->setTimezone(AppClock::timezone());
         } catch (\Throwable) {
-            throw new DomainValidationException('Reservation time range is invalid.');
+            throw new DomainValidationException('Reservation time range is invalid.', 'ReservationTimeRangeInvalid');
         }
 
         if ($endDateTime <= $eventDateTime) {
-            throw new DomainValidationException('Reservation end time must be after the start time.');
+            throw new DomainValidationException('Reservation end time must be after the start time.', 'ReservationEndBeforeStart');
         }
 
         if (!$this->isAllowedReservationTimeSlot($eventDateTime) || !$this->isAllowedReservationTimeSlot($endDateTime)) {
-            throw new DomainValidationException('Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.');
+            throw new DomainValidationException(
+                'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.',
+                'ReservationTimeSlotInvalid'
+            );
         }
 
         if ($eventDateTime < $today || $endDateTime < $today) {
-            throw new DomainValidationException('Reservation dates must not be earlier than today.');
+            throw new DomainValidationException('Reservation dates must not be earlier than today.', 'ReservationDateInPast');
         }
+
+        $normalizedSupportingDocuments = $this->validateAndNormalizeSupportingDocuments($requestDTO->supportingDocuments);
 
         $this->reservationBookingPolicyService->validateReservationWindow($requestDTO, $eventDateTime, $endDateTime);
         $this->validateSelectedVenue($requestDTO, $eventDateTime, $endDateTime);
@@ -115,7 +154,9 @@ class ReservationCreateService
         $entity->setActivityType($activityType === '' ? $activityTitle : $activityType);
         $entity->setBorrowerRemarks($borrowerRemarks !== '' ? $borrowerRemarks : null);
         $entity->setCurrentStatus('Pending Review');
-        $entity->setSupportingDocuments($requestDTO->supportingDocuments);
+        $entity->setSupportingDocuments($normalizedSupportingDocuments);
+
+        $this->validatePersistedFieldCompatibility($entity);
 
         $this->persistReservationWithFallback($entity);
         $this->notifyAdminsOfSubmittedReservation($entity);
@@ -252,6 +293,7 @@ class ReservationCreateService
                     $missingColumns,
                     static fn (string $column): bool => $column !== $columnName
                 ));
+                $this->reservationColumnMetadataCache = null;
             } catch (\Throwable $exception) {
                 error_log(sprintf(
                     'Reservation Creation - Unable to add %s column at runtime [%s]: %s',
@@ -270,6 +312,89 @@ class ReservationCreateService
         }
 
         $this->reservationSchemaEnsured = true;
+    }
+
+    private function validateAndNormalizeSupportingDocuments(?array $supportingDocuments): ?array
+    {
+        if ($supportingDocuments === null) {
+            return null;
+        }
+
+        if (!is_array($supportingDocuments)) {
+            throw new DomainValidationException(
+                'Supporting documents must be provided as a list of filenames.',
+                'ReservationSupportingDocumentsInvalid'
+            );
+        }
+
+        if (count($supportingDocuments) > self::MAX_SUPPORTING_DOCUMENTS) {
+            throw new DomainValidationException(
+                sprintf('A maximum of %d supporting documents may be attached.', self::MAX_SUPPORTING_DOCUMENTS),
+                'ReservationSupportingDocumentsTooMany'
+            );
+        }
+
+        $normalizedDocuments = [];
+        foreach ($supportingDocuments as $documentName) {
+            $normalizedDocumentName = trim((string) $documentName);
+            if ($normalizedDocumentName === '') {
+                throw new DomainValidationException(
+                    'Supporting document filenames must not be empty.',
+                    'ReservationSupportingDocumentNameInvalid'
+                );
+            }
+
+            if (mb_strlen($normalizedDocumentName) > self::SUPPORTING_DOCUMENT_NAME_MAX_LENGTH) {
+                throw new DomainValidationException(
+                    sprintf(
+                        'Supporting document names must be %d characters or fewer.',
+                        self::SUPPORTING_DOCUMENT_NAME_MAX_LENGTH
+                    ),
+                    'ReservationSupportingDocumentNameTooLong'
+                );
+            }
+
+            $normalizedDocuments[] = $normalizedDocumentName;
+        }
+
+        return $normalizedDocuments;
+    }
+
+    private function validatePersistedFieldCompatibility(ReservationEntity $entity): void
+    {
+        $columnsByName = $this->fetchReservationColumnsByName();
+        if ($columnsByName === []) {
+            return;
+        }
+
+        $this->assertFieldFitsColumn($columnsByName, 'organization_name', $entity->getOrganizationName(), 'Activity name or title');
+        $this->assertFieldFitsColumn($columnsByName, 'purpose_description', $entity->getPurposeDescription(), 'Purpose');
+        $this->assertFieldFitsColumn($columnsByName, 'activity_type', $entity->getActivityType(), 'Activity type');
+
+        $this->assertSystemFieldFitsColumn($columnsByName, 'reservation_code', $entity->getReservationCode());
+        $this->assertSystemFieldFitsColumn($columnsByName, 'current_status', $entity->getCurrentStatus());
+    }
+
+    private function assertFieldFitsColumn(array $columnsByName, string $columnName, string $value, string $fieldLabel): void
+    {
+        $columnMaxLength = $this->resolveColumnMaxLength($columnsByName[$columnName] ?? null);
+        if ($columnMaxLength !== null && mb_strlen($value) > $columnMaxLength) {
+            throw new DomainValidationException(
+                sprintf('%s must be %d characters or fewer.', $fieldLabel, $columnMaxLength),
+                'ReservationFieldTooLong'
+            );
+        }
+    }
+
+    private function assertSystemFieldFitsColumn(array $columnsByName, string $columnName, string $value): void
+    {
+        $columnMaxLength = $this->resolveColumnMaxLength($columnsByName[$columnName] ?? null);
+        if ($columnMaxLength !== null && mb_strlen($value) > $columnMaxLength) {
+            throw new DomainOperationException(
+                sprintf('Reservation schema is incompatible for column %s.', $columnName),
+                'ReservationSchemaIncompatible'
+            );
+        }
     }
 
     private function persistReservationWithFallback(ReservationEntity $entity): void
@@ -363,7 +488,7 @@ class ReservationCreateService
             }
 
             $insertColumns[] = $columnName;
-            $placeholders[] = $this->buildInsertPlaceholder($columnName, $columnsByName[$columnName]);
+            $placeholders[] = $this->buildInsertPlaceholder($columnName, $this->resolveColumnType($columnsByName[$columnName]));
             $parameters[$columnName] = $value;
             $parameterTypes[$columnName] = $this->resolveParameterType($value);
         }
@@ -394,9 +519,13 @@ class ReservationCreateService
 
     private function fetchReservationColumnsByName(): array
     {
+        if ($this->reservationColumnMetadataCache !== null) {
+            return $this->reservationColumnMetadataCache;
+        }
+
         try {
             $columns = $this->connection->fetchAllAssociative(
-                "SELECT column_name, data_type, udt_name, table_schema
+                "SELECT column_name, data_type, udt_name, table_schema, character_maximum_length
                  FROM information_schema.columns
                  WHERE table_name = 'reservations'
                  ORDER BY CASE
@@ -413,6 +542,7 @@ class ReservationCreateService
                 $exception->getMessage()
             ));
 
+            $this->reservationColumnMetadataCache = [];
             return [];
         }
 
@@ -425,8 +555,16 @@ class ReservationCreateService
 
             $dataType = strtolower(trim((string)($column['data_type'] ?? '')));
             $udtName = strtolower(trim((string)($column['udt_name'] ?? '')));
-            $columnsByName[$columnName] = $udtName !== '' ? $udtName : $dataType;
+            $columnType = $udtName !== '' ? $udtName : $dataType;
+            $columnsByName[$columnName] = [
+                'type' => $columnType,
+                'maxLength' => isset($column['character_maximum_length']) && $column['character_maximum_length'] !== null
+                    ? (int) $column['character_maximum_length']
+                    : null,
+            ];
         }
+
+        $this->reservationColumnMetadataCache = $columnsByName;
 
         return $columnsByName;
     }
@@ -553,7 +691,7 @@ class ReservationCreateService
             }
 
             $insertColumns[] = $columnName;
-            $placeholders[] = $this->buildInsertPlaceholder($columnName, $columnsByName[$columnName]);
+            $placeholders[] = $this->buildInsertPlaceholder($columnName, $this->resolveColumnType($columnsByName[$columnName]));
             $parameters[$columnName] = $value;
             $parameterTypes[$columnName] = $this->resolveParameterType($value);
         }
@@ -597,7 +735,26 @@ class ReservationCreateService
         return $placeholder;
     }
 
-    private function resolveParameterType(mixed $value): int
+    private function resolveColumnType(array|string|null $columnMetadata): string
+    {
+        if (is_array($columnMetadata)) {
+            return strtolower(trim((string) ($columnMetadata['type'] ?? '')));
+        }
+
+        return strtolower(trim((string) $columnMetadata));
+    }
+
+    private function resolveColumnMaxLength(array|string|null $columnMetadata): ?int
+    {
+        if (!is_array($columnMetadata)) {
+            return null;
+        }
+
+        $maxLength = $columnMetadata['maxLength'] ?? null;
+        return is_int($maxLength) && $maxLength > 0 ? $maxLength : null;
+    }
+
+    private function resolveParameterType(mixed $value)
     {
         if ($value === null) {
             return ParameterType::NULL;
@@ -615,14 +772,12 @@ class ReservationCreateService
         $reservationIdentifier = (int)($row['reservation_identifier'] ?? 0);
         if ($reservationIdentifier > 0) {
             $identifierProperty = new \ReflectionProperty($entity, 'reservationIdentifier');
-            $identifierProperty->setAccessible(true);
             $identifierProperty->setValue($entity, $reservationIdentifier);
         }
 
         $submissionTimestamp = (string)($row['submission_timestamp'] ?? '');
         if ($submissionTimestamp !== '') {
             $submissionProperty = new \ReflectionProperty($entity, 'submissionTimestamp');
-            $submissionProperty->setAccessible(true);
             $submissionProperty->setValue($entity, new \DateTime($submissionTimestamp));
         }
     }
@@ -677,11 +832,11 @@ class ReservationCreateService
 
         $venue = $this->venueRepository->find($requestDTO->venueIdentifier);
         if ($venue === null) {
-            throw new DomainValidationException('Selected room is no longer available.');
+            throw new DomainValidationException('Selected room is no longer available.', 'ReservationVenueUnavailable');
         }
 
         if (!$this->isVenueBookable($venue)) {
-            throw new DomainValidationException('Selected room is no longer available.');
+            throw new DomainValidationException('Selected room is no longer available.', 'ReservationVenueUnavailable');
         }
 
         $capacityLimit = (int)($venue->getCapacityLimit() ?? 0);
@@ -689,11 +844,14 @@ class ReservationCreateService
             throw new DomainValidationException(sprintf(
                 'Participant count exceeds the selected room capacity of %d.',
                 max($capacityLimit, 0)
-            ));
+            ), 'ReservationVenueCapacityExceeded');
         }
 
         if ($this->hasVenueReservationConflict($requestDTO->venueIdentifier, $eventDateTime, $endDateTime)) {
-            throw new DomainValidationException('Selected room is no longer available for the requested time.');
+            throw new DomainValidationException(
+                'Selected room is no longer available for the requested time.',
+                'ReservationVenueConflict'
+            );
         }
     }
 
@@ -702,6 +860,23 @@ class ReservationCreateService
         \DateTimeInterface $eventDateTime,
         \DateTimeInterface $endDateTime
     ): bool {
+        try {
+            $overlappingReservations = $this->reservationRepository->findVenueReservationsOverlappingRange(
+                [$venueIdentifier],
+                $eventDateTime,
+                $endDateTime
+            );
+            if ($overlappingReservations !== []) {
+                return true;
+            }
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Reservation Creation - Repository venue conflict lookup failed [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+        }
+
         $columnsByName = $this->fetchReservationColumnsByName();
         if ($columnsByName === []) {
             return $this->hasVenueReservationConflictWithoutSchemaMetadata(
@@ -886,21 +1061,30 @@ class ReservationCreateService
             $requestedQuantity = (int)($equipmentItem['quantity'] ?? $equipmentItem['selectedQuantity'] ?? 0);
 
             if ($equipmentIdentifier <= 0) {
-                throw new DomainValidationException('Each requested equipment item must include a valid equipment identifier.');
+                throw new DomainValidationException(
+                    'Each requested equipment item must include a valid equipment identifier.',
+                    'ReservationEquipmentIdentifierInvalid'
+                );
             }
 
             if ($requestedQuantity <= 0) {
-                throw new DomainValidationException('Each requested equipment quantity must be at least 1.');
+                throw new DomainValidationException(
+                    'Each requested equipment quantity must be at least 1.',
+                    'ReservationEquipmentQuantityInvalid'
+                );
             }
 
             if (isset($seenEquipmentIdentifiers[$equipmentIdentifier])) {
-                throw new DomainValidationException('Duplicate equipment selections are not allowed.');
+                throw new DomainValidationException(
+                    'Duplicate equipment selections are not allowed.',
+                    'ReservationEquipmentDuplicate'
+                );
             }
             $seenEquipmentIdentifiers[$equipmentIdentifier] = true;
 
             $equipment = $this->equipmentRepository->find($equipmentIdentifier);
             if ($equipment === null) {
-                throw new DomainValidationException('Selected equipment was not found.');
+                throw new DomainValidationException('Selected equipment was not found.', 'ReservationEquipmentNotFound');
             }
 
             $availableQuantity = $equipment->getAvailableQuantity();
@@ -910,7 +1094,10 @@ class ReservationCreateService
                 && ($equipmentState === 'available' || $operationalStatus === 'active' || $operationalStatus === 'available');
 
             if (!$isAvailable) {
-                throw new DomainValidationException(sprintf('Selected equipment "%s" is not available.', $equipment->getEquipmentName()));
+                throw new DomainValidationException(
+                    sprintf('Selected equipment "%s" is not available.', $equipment->getEquipmentName()),
+                    'ReservationEquipmentUnavailable'
+                );
             }
 
             if ($requestedQuantity > $availableQuantity) {
@@ -918,7 +1105,7 @@ class ReservationCreateService
                     'Requested quantity for "%s" exceeds the available quantity of %d.',
                     $equipment->getEquipmentName(),
                     $availableQuantity
-                ));
+                ), 'ReservationEquipmentQuantityExceeded');
             }
         }
     }

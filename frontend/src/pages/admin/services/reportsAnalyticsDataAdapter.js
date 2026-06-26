@@ -52,6 +52,14 @@ export function createEmptySummaryReport() {
   };
 }
 
+export function pickNonEmptyArray(primaryValue, fallbackValue = []) {
+  if (Array.isArray(primaryValue) && primaryValue.length > 0) {
+    return primaryValue;
+  }
+
+  return Array.isArray(fallbackValue) ? fallbackValue : [];
+}
+
 export function hasRiskDistribution(riskDistribution) {
   return Array.isArray(riskDistribution?.bands) && riskDistribution.bands.length > 0;
 }

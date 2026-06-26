@@ -215,8 +215,8 @@
 
               <div class="borrower-reservation-field">
                 <label for="activityNameTitle">Activity Name / Title <em>*</em></label>
-                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" maxlength="120" placeholder="IT0003 Presentation" />
-                <small class="borrower-reservation-help">Enter a short title for your activity or event.</small>
+                <input id="activityNameTitle" v-model.trim="formState.activityNameTitle" type="text" maxlength="100" placeholder="IT0003 Presentation" />
+                <small class="borrower-reservation-help">Enter a short title for your activity or event. Maximum: 100 characters.</small>
                 <small v-if="validationErrors.activityNameTitle" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.activityNameTitle }}</small>
               </div>
 
@@ -241,10 +241,10 @@
                   id="purposeOtherText"
                   v-model.trim="formState.purposeOtherText"
                   rows="3"
-                  maxlength="300"
+                  maxlength="200"
                   placeholder="Enter the specific purpose of your reservation..."
                 ></textarea>
-                <small class="borrower-reservation-help">Provide the exact purpose when you choose `Others: Specify`.</small>
+                <small class="borrower-reservation-help">Provide the exact purpose when you choose `Others: Specify`. Maximum: 200 characters.</small>
                 <small v-if="validationErrors.purposeOtherText" class="borrower-reservation-help borrower-reservation-help--error">{{ validationErrors.purposeOtherText }}</small>
               </div>
             </div>
@@ -307,7 +307,7 @@ const timePickerHours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const timePickerMinutes = ['00', '30'];
 const timePickerPeriods = ['AM', 'PM'];
 const BUSINESS_START_MINUTES = 7 * 60;
-const BUSINESS_END_MINUTES = 19 * 60;
+const BUSINESS_END_MINUTES = 21 * 60;
 const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
@@ -595,20 +595,22 @@ function validateReservationDetails() {
     if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime()) || endDateTime <= startDateTime) {
       validationErrors.activityTime = 'End time must be later than the start time.';
     } else if (!isAllowedTimeSlot(formState.value.activityTimeFrom) || !isAllowedTimeSlot(formState.value.activityTimeTo)) {
-      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+      validationErrors.activityTime = 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
     }
   }
 
   if (!formState.value.activityNameTitle.trim()) {
     validationErrors.activityNameTitle = 'Activity name or title is required.';
-  } else if (formState.value.activityNameTitle.trim().length > 120) {
-    validationErrors.activityNameTitle = 'Activity name or title must be 120 characters or fewer.';
+  } else if (formState.value.activityNameTitle.trim().length > 100) {
+    validationErrors.activityNameTitle = 'Activity name or title must be 100 characters or fewer.';
   }
 
   if (!formState.value.purposeText) {
     validationErrors.purposeText = 'Purpose is required.';
   } else if (isOtherPurposeSelected.value && !formState.value.purposeOtherText.trim()) {
     validationErrors.purposeOtherText = 'Please specify the purpose of your reservation.';
+  } else if (isOtherPurposeSelected.value && formState.value.purposeOtherText.trim().length > 200) {
+    validationErrors.purposeOtherText = 'Purpose must be 200 characters or fewer.';
   }
 
   return Object.values(validationErrors).every((value) => value === '');

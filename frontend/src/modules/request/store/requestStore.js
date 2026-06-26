@@ -5,6 +5,7 @@ import reservationApi from '@/modules/reservation/services/reservationApi.js';
 import taskApi from '@/modules/task/services/taskApi.js';
 import { useNotificationStore } from '@/modules/notification/store/notificationStore.js';
 import {
+  addReservationRecordToBuckets,
   buildReservationBuckets,
   normalizeReservationListResponse,
 } from '@/modules/request/services/requestReservationMapper.js';
@@ -203,33 +204,32 @@ export const useRequestStore = defineStore('requestStore', () => {
   }
 
   function addRecordToStatusBucket(record, status) {
-    const normalizedStatus = String(status || '').trim().toLowerCase();
+    const buckets = {
+      pending: [],
+      approved: [],
+      active: [],
+      past: [],
+    };
 
-    if (['pending review', 'pending', 'submitted'].includes(normalizedStatus)) {
-      pendingRequestsList.value = upsertRecordByIdentifier(pendingRequestsList.value, record);
-      return;
-    }
+    addReservationRecordToBuckets(buckets, record, status, record);
 
-    if (['approved', 'prepared'].includes(normalizedStatus)) {
-      approvedRequestsList.value = upsertRecordByIdentifier(approvedRequestsList.value, record);
-      return;
-    }
-
-    if (['deployed', 'active'].includes(normalizedStatus)) {
-      activeReservationsList.value = upsertRecordByIdentifier(activeReservationsList.value, record);
-      return;
-    }
-
-    pastRecordsList.value = upsertRecordByIdentifier(pastRecordsList.value, {
-      ...record,
-      recordStatus: status,
-    });
+    pendingRequestsList.value = upsertRecordBatchByIdentifier(pendingRequestsList.value, buckets.pending);
+    approvedRequestsList.value = upsertRecordBatchByIdentifier(approvedRequestsList.value, buckets.approved);
+    activeReservationsList.value = upsertRecordBatchByIdentifier(activeReservationsList.value, buckets.active);
+    pastRecordsList.value = upsertRecordBatchByIdentifier(pastRecordsList.value, buckets.past);
   }
 
   function upsertRecordByIdentifier(records, record) {
     const requestIdentifier = resolveRequestIdentifier(record);
     const nextRecords = records.filter((existingRecord) => resolveRequestIdentifier(existingRecord) !== requestIdentifier);
     return [record, ...nextRecords];
+  }
+
+  function upsertRecordBatchByIdentifier(records, nextRecords) {
+    return nextRecords.reduce(
+      (currentRecords, currentRecord) => upsertRecordByIdentifier(currentRecords, currentRecord),
+      records,
+    );
   }
 
   function resolveStatusRemarks(reason, existingRecord, status) {

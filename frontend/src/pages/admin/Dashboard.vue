@@ -279,6 +279,14 @@ const totalOverviewCards = computed(() => {
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>',
     },
     {
+      label: 'Under Maintenance',
+      value: metricValue(summary.maintenanceEquipmentCount),
+      meta: 'Inventory items temporarily unavailable for borrowers',
+      className: 'admin-dashboard-stat-card--overdue',
+      routeName: 'adminManageEquipmentPage',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-7.8 7.8-3.2.8.8-3.2 7.2-7.2Z"/><path d="m13 8 3 3"/><path d="M5 19h14"/></svg>',
+    },
+    {
       label: 'Active Equipment / Facilities',
       value: isDashboardLoading.value
         ? '...'
@@ -316,6 +324,11 @@ const groupedStats = computed(() => {
       label: 'Active Facility Usage',
       value: `${formatMetricNumber(grouped.facilityUtilizationRate, 1)}%`,
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg>',
+    },
+    {
+      label: 'Under Maintenance',
+      value: metricValue(dashboardOverview.value.summary?.maintenanceEquipmentCount),
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-7.8 7.8-3.2.8.8-3.2 7.2-7.2Z"/><path d="m13 8 3 3"/><path d="M5 19h14"/></svg>',
     },
     {
       label: 'Average Lead Time',
@@ -364,6 +377,7 @@ function createEmptyOverview() {
       pendingReservations: 0,
       approvedReservations: 0,
       activeEquipmentCount: 0,
+      maintenanceEquipmentCount: 0,
       activeFacilityCount: 0,
       overdueEquipmentCount: 0,
     },

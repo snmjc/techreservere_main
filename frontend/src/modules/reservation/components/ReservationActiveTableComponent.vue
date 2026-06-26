@@ -17,7 +17,7 @@
       </thead>
       <tbody>
         <tr
-          v-for="reservationRecord in filteredReservationList"
+          v-for="reservationRecord in reservationList"
           :key="reservationRecord.requestIdentifier + reservationRecord.requesterFullName"
           class="reservation-active-table-body-row"
         >
@@ -85,7 +85,7 @@
             </div>
           </td>
         </tr>
-        <tr v-if="filteredReservationList.length === 0">
+        <tr v-if="reservationList.length === 0">
           <td colspan="9" class="reservation-active-table-cell reservation-active-table-empty-row">
             No active reservations found.
           </td>
@@ -96,14 +96,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-
 /**
  * @typedef {Object} ReservationActiveTableProps
  * @property {Array<Object>} reservationList - Array of active reservation records
  * @property {string} searchQueryText - Current search query for filtering
  */
-const props = defineProps({
+defineProps({
   reservationList: {
     type: Array,
     required: true,
@@ -120,25 +118,6 @@ const emit = defineEmits([
   'returnConfirmation',
   'reportReservation',
 ]);
-
-/**
- * @function filteredReservationList
- * @description Filters reservation list based on search query matching name or ID.
- * @returns {Array<Object>}
- */
-const filteredReservationList = computed(() => {
-  const queryLower = props.searchQueryText?.toLowerCase().trim() || '';
-  const list = props.reservationList || [];
-  if (!queryLower) {
-    return list;
-  }
-  return list.filter((reservationRecord) => {
-    return (
-      reservationRecord.requesterFullName?.toLowerCase().includes(queryLower) ||
-      reservationRecord.requestIdentifier?.toString().includes(queryLower)
-    );
-  });
-});
 
 /**
  * @function getTypeBadgeClass

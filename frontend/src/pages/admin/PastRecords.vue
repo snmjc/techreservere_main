@@ -106,11 +106,11 @@
                 <tr v-if="requestStore.isLoadingReservations">
                   <td colspan="8" class="admin-past-records-empty-state">Loading archived reservations...</td>
                 </tr>
-                <tr v-else-if="filteredRecordList.length === 0">
+                <tr v-else-if="paginatedRecordList.length === 0">
                   <td colspan="8" class="admin-past-records-empty-state">No past records match the current filters.</td>
                 </tr>
                 <tr
-                  v-for="record in filteredRecordList"
+                  v-for="record in paginatedRecordList"
                   v-else
                   :key="record.requestIdentifier"
                   class="admin-past-records-row"
@@ -152,7 +152,13 @@
             </table>
 
             <div class="admin-past-records-table-footer">
-              <span>Showing {{ filteredRecordList.length }} of {{ pastRecordsList.length }} records</span>
+              <span>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRecordList.length }} records</span>
+            </div>
+
+            <div v-if="totalPages > 1" class="admin-past-records-pagination">
+              <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+              <span>Page {{ currentPage }} of {{ totalPages }}</span>
+              <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
             </div>
           </div>
         </div>
@@ -283,6 +289,7 @@ const searchQueryText = ref('');
 const showingFilterValue = ref('all');
 const sortOrderAscending = ref(false);
 const sortByValue = ref('requestedDate');
+const currentPage = ref(1);
 const selectedRecord = ref(null);
 
 onMounted(async () => {
@@ -381,15 +388,38 @@ const filteredRecordList = computed(() => {
     return String(first.requestIdentifier).localeCompare(String(second.requestIdentifier));
   });
 
-  if (showingFilterValue.value !== 'all') {
-    recordsFiltered = recordsFiltered.slice(0, Number(showingFilterValue.value));
-  }
-
   return recordsFiltered;
 });
 
+const resolvedPageSize = computed(() => (
+  showingFilterValue.value === 'all'
+    ? Math.max(filteredRecordList.value.length, 1)
+    : Number(showingFilterValue.value)
+));
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / resolvedPageSize.value)));
+const paginatedRecordList = computed(() => {
+  const startIndex = (currentPage.value - 1) * resolvedPageSize.value;
+  return filteredRecordList.value.slice(startIndex, startIndex + resolvedPageSize.value);
+});
+const pageStart = computed(() => (
+  filteredRecordList.value.length === 0
+    ? 0
+    : ((currentPage.value - 1) * resolvedPageSize.value) + 1
+));
+const pageEnd = computed(() => Math.min(currentPage.value * resolvedPageSize.value, filteredRecordList.value.length));
+
+watch([activeRecordTab, searchQueryText, showingFilterValue, sortOrderAscending, sortByValue], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
+});
+
 watch(
-  filteredRecordList,
+  paginatedRecordList,
   (records) => {
     if (records.length === 0) {
       selectedRecord.value = null;

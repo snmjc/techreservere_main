@@ -31,7 +31,6 @@ class UserApprovalMiddleware implements EventSubscriberInterface
             '/api/v1/auth/register',
             '/api/v1/clerk/webhook',
             '/api/clerk/webhook',
-            '/api/v1/reservations',
             '/api/v1/equipment',
             '/api/v1/venues',
             '/api/v1/dashboard/summary',

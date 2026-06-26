@@ -49,13 +49,6 @@
         </div>
 
         <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-inline-actions">
-          <button
-            v-if="activeFacilityTab === 'classroom-schedules'"
-            class="manage-facilities-add-button manage-facilities-add-button--compact"
-            @click="openImportSchedulesModal"
-          >
-            Import Schedules
-          </button>
           <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
@@ -380,7 +373,7 @@
                           type="button"
                           class="manage-facilities-venue-block"
                           :class="`manage-facilities-venue-block--${block.tone}`"
-                          @click="handleViewVenue(venueRow)"
+                          @click="handleVenueBlockClick(block, venueRow)"
                         >
                           <span>{{ block.timeLabel }}</span>
                           <strong>{{ block.title }}</strong>
@@ -884,52 +877,213 @@
 
         <div class="classroom-schedule-import-shell">
           <div class="classroom-schedule-import-steps">
-            <span class="is-active">1 Upload File</span>
-            <span>2 Map Columns</span>
-            <span>3 Review</span>
-            <span>4 Import</span>
+            <span
+              v-for="(step, stepIndex) in importScheduleSteps"
+              :key="step.key"
+              :class="{
+                'is-active': step.key === importScheduleStep,
+                'is-complete': stepIndex < importScheduleStepIndex,
+              }"
+            >
+              {{ step.label }}
+            </span>
           </div>
-          <label class="classroom-schedule-import-dropzone">
-            <input type="file" accept=".xlsx,.xls,.csv" @change="handleImportFileChange" />
-            <strong>{{ importScheduleFile ? importScheduleFile.name : 'Drag and drop your file here, or click to browse' }}</strong>
-            <span>Supports `.xlsx`, `.xls`, and `.csv` files.</span>
-          </label>
-          <div v-if="importScheduleFile" class="classroom-schedule-import-file-row">
-            <div>
-              <strong>{{ importScheduleFile.name }}</strong>
-              <span>{{ formatImportFileSize(importScheduleFile.size) }}</span>
-            </div>
-            <span class="classroom-schedule-import-file-check">Ready</span>
-          </div>
-          <p class="classroom-schedule-import-note">File import UI is ready. Manual entry is fully supported in this build, while bulk import parsing can be connected next.</p>
+          <p v-if="importScheduleError" class="manage-facilities-modal-error">{{ importScheduleError }}</p>
 
-          <div class="classroom-schedule-import-types">
-            <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--class">
-              <strong>Class Schedule</strong>
-              <span>Regular classes from the registrar.</span>
-            </article>
-            <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--reserved">
-              <strong>Reserved</strong>
-              <span>Room reservations and events.</span>
-            </article>
-            <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--equipment">
-              <strong>Equipment Reservation</strong>
-              <span>Equipment and resource bookings.</span>
-            </article>
-            <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--pending">
-              <strong>Pending</strong>
-              <span>Pending requests for approval.</span>
-            </article>
-            <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--maintenance">
-              <strong>Maintenance</strong>
-              <span>Unavailable periods and maintenance blocks.</span>
-            </article>
-          </div>
+          <template v-if="importScheduleStep === 'upload'">
+            <label class="classroom-schedule-import-dropzone">
+              <input type="file" accept=".xlsx,.xls,.csv" @change="handleImportFileChange" />
+              <strong>{{ importScheduleFile ? importScheduleFile.name : 'Drag and drop your file here, or click to browse' }}</strong>
+              <span>Supports `.xlsx`, `.xls`, and `.csv` files.</span>
+            </label>
+            <div v-if="importScheduleFile" class="classroom-schedule-import-file-row">
+              <div>
+                <strong>{{ importScheduleFile.name }}</strong>
+                <span>{{ formatImportFileSize(importScheduleFile.size) }}</span>
+              </div>
+              <span class="classroom-schedule-import-file-check">
+                {{ importScheduleParsing ? 'Parsing...' : importScheduleParsedRowCount > 0 ? 'Ready' : 'Waiting' }}
+              </span>
+            </div>
+
+            <div v-if="importScheduleHeaders.length > 0" class="classroom-schedule-import-summary">
+              <article>
+                <strong>{{ importScheduleHeaders.length }}</strong>
+                <span>Detected columns</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleParsedRowCount }}</strong>
+                <span>Parsed rows</span>
+              </article>
+            </div>
+
+            <p class="classroom-schedule-import-note">Upload a class schedule file, then map its columns before review and import.</p>
+
+            <div class="classroom-schedule-import-types">
+              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--class">
+                <strong>Class Schedule</strong>
+                <span>Regular classes from the registrar.</span>
+              </article>
+              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--reserved">
+                <strong>Reserved</strong>
+                <span>Room reservations and events.</span>
+              </article>
+              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--equipment">
+                <strong>Equipment Reservation</strong>
+                <span>Equipment and resource bookings.</span>
+              </article>
+              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--pending">
+                <strong>Pending</strong>
+                <span>Pending requests for approval.</span>
+              </article>
+              <article class="classroom-schedule-import-type-card classroom-schedule-import-type-card--maintenance">
+                <strong>Maintenance</strong>
+                <span>Unavailable periods and maintenance blocks.</span>
+              </article>
+            </div>
+          </template>
+
+          <template v-else-if="importScheduleStep === 'map'">
+            <div class="classroom-schedule-import-summary">
+              <article>
+                <strong>{{ importScheduleHeaders.length }}</strong>
+                <span>Columns to map</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleParsedRowCount }}</strong>
+                <span>Rows ready for review</span>
+              </article>
+            </div>
+
+            <p class="classroom-schedule-import-note">Map each file column to the matching classroom schedule field. Leave unrelated columns as Ignore.</p>
+
+            <div v-if="importScheduleMissingMappings.length > 0" class="classroom-schedule-import-warning">
+              Missing required mappings: {{ importScheduleMissingMappings.join(', ') }}
+            </div>
+
+            <div class="classroom-schedule-import-mapping-grid">
+              <article v-for="header in importScheduleHeaders" :key="header" class="classroom-schedule-import-mapping-card">
+                <div class="classroom-schedule-import-mapping-card__header">
+                  <strong>{{ header }}</strong>
+                  <span>{{ importSchedulePreviewCell(header, importSchedulePreviewRow) }}</span>
+                </div>
+                <select v-model="importScheduleColumnMap[header]">
+                  <option value="">Ignore this column</option>
+                  <option
+                    v-for="targetOption in importScheduleTargetOptions"
+                    :key="targetOption.key"
+                    :value="targetOption.key"
+                    :disabled="isImportTargetTaken(targetOption.key, header)"
+                  >
+                    {{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}
+                  </option>
+                </select>
+              </article>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="classroom-schedule-import-summary">
+              <article>
+                <strong>{{ importScheduleParsedRowCount }}</strong>
+                <span>Total rows</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleValidReviewRows.length }}</strong>
+                <span>Valid rows</span>
+              </article>
+              <article>
+                <strong>{{ importScheduleInvalidReviewRows.length }}</strong>
+                <span>Invalid rows</span>
+              </article>
+              <article v-if="importScheduleHasResults">
+                <strong>{{ importScheduleResult.importedCount }}</strong>
+                <span>Imported rows</span>
+              </article>
+            </div>
+
+            <p v-if="importScheduleStep === 'review'" class="classroom-schedule-import-note">Review row validation before importing. Only valid rows will be submitted.</p>
+            <p v-else class="classroom-schedule-import-note">Import results are listed below. Rows that failed to save include their backend error.</p>
+
+            <div v-if="importScheduleImporting" class="classroom-schedule-import-progress">
+              Importing {{ importScheduleResult?.processedCount || 0 }} of {{ importScheduleValidReviewRows.length }} valid rows...
+            </div>
+
+            <div class="classroom-schedule-import-review-list">
+              <article
+                v-for="reviewRow in importScheduleReviewRows"
+                :key="reviewRow.rowNumber"
+                class="classroom-schedule-import-review-card"
+                :class="{
+                  'is-valid': reviewRow.isValid,
+                  'is-invalid': !reviewRow.isValid,
+                  'is-imported': reviewRow.importStatus === 'imported',
+                  'is-failed': reviewRow.importStatus === 'failed',
+                }"
+              >
+                <div class="classroom-schedule-import-review-card__top">
+                  <div>
+                    <strong>Row {{ reviewRow.rowNumber }}</strong>
+                    <span>{{ reviewRow.venueLabel }} | {{ reviewRow.scheduleLabel }}</span>
+                  </div>
+                  <span class="classroom-schedule-import-review-card__badge">
+                    {{ reviewRow.importStatusLabel }}
+                  </span>
+                </div>
+
+                <div class="classroom-schedule-import-review-card__details">
+                  <span>{{ reviewRow.dateLabel }}</span>
+                  <span>{{ reviewRow.timeLabel }}</span>
+                  <span>{{ reviewRow.typeLabel }}</span>
+                </div>
+
+                <ul v-if="reviewRow.errors.length > 0" class="classroom-schedule-import-review-card__errors">
+                  <li v-for="errorMessage in reviewRow.errors" :key="`${reviewRow.rowNumber}-${errorMessage}`">{{ errorMessage }}</li>
+                </ul>
+              </article>
+            </div>
+          </template>
         </div>
 
         <div class="manage-facilities-modal-actions">
-          <button class="manage-facilities-cancel-button" type="button" @click="closeImportSchedulesModal">Cancel</button>
-          <button class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral" type="button" :disabled="!importScheduleFile">Next</button>
+          <button
+            v-if="importScheduleStep !== 'upload' && !importScheduleImporting"
+            class="manage-facilities-cancel-button"
+            type="button"
+            @click="goToPreviousImportStep"
+          >
+            Back
+          </button>
+          <button class="manage-facilities-cancel-button" type="button" @click="closeImportSchedulesModal">
+            {{ importScheduleHasResults && importScheduleStep === 'import' ? 'Close' : 'Cancel' }}
+          </button>
+          <button
+            v-if="importScheduleStep === 'upload'"
+            class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
+            type="button"
+            :disabled="!importScheduleCanAdvanceFromUpload"
+            @click="goToNextImportStep"
+          >
+            Next
+          </button>
+          <button
+            v-else-if="importScheduleStep === 'map'"
+            class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
+            type="button"
+            :disabled="!importScheduleCanAdvanceFromMap"
+            @click="goToNextImportStep"
+          >
+            Review Rows
+          </button>
+          <button
+            v-else-if="importScheduleStep === 'review'"
+            class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
+            type="button"
+            :disabled="!importScheduleCanImport"
+            @click="submitImportedSchedules"
+          >
+            {{ importScheduleImporting ? 'Importing...' : `Import ${importScheduleValidReviewRows.length} Valid Row${importScheduleValidReviewRows.length === 1 ? '' : 's'}` }}
+          </button>
         </div>
       </section>
     </div>
@@ -1010,6 +1164,121 @@
       @close="handleVenueModalClose"
       @saved="handleVenueModalSaved"
     />
+
+    <div
+      v-if="selectedVenueReservationEntry || venueReservationModalLoading || venueReservationModalError"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeVenueReservationModal"
+    >
+      <section class="manage-facilities-delete-modal manage-facilities-venue-reservation-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeVenueReservationModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
+        <div class="manage-facilities-modal-heading manage-facilities-venue-reservation-modal__heading">
+          <div class="manage-facilities-venue-reservation-modal__heading-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="3" />
+              <path d="M16 2v4" />
+              <path d="M8 2v4" />
+              <path d="M3 10h18" />
+            </svg>
+          </div>
+          <div>
+            <h2>{{ venueReservationModalHeading }}</h2>
+            <p>{{ venueReservationModalCountLabel }}</p>
+          </div>
+        </div>
+
+        <p v-if="venueReservationModalError" class="manage-facilities-modal-error">{{ venueReservationModalError }}</p>
+        <div v-else-if="venueReservationModalLoading" class="manage-facilities-venue-reservation-modal__loading">Loading reservation details...</div>
+        <div v-else-if="selectedVenueReservationEntry" class="manage-facilities-venue-reservation-modal__body">
+          <section class="manage-facilities-venue-reservation-modal__card">
+            <div class="manage-facilities-venue-reservation-modal__status-row">
+              <span
+                class="manage-facilities-venue-reservation-modal__status-badge"
+                :class="`manage-facilities-venue-reservation-modal__status-badge--${selectedVenueReservationEntry.statusTone}`"
+              >
+                {{ selectedVenueReservationEntry.statusLabel }}
+              </span>
+            </div>
+
+            <div class="manage-facilities-venue-reservation-modal__overview">
+              <div class="manage-facilities-venue-reservation-modal__overview-grid">
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Borrower</span>
+                  <strong>{{ selectedVenueReservationEntry.borrowerName }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Venue / Room</span>
+                  <strong>{{ selectedVenueReservationEntry.venueLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Purpose</span>
+                  <strong>{{ selectedVenueReservationEntry.purposeLabel }}</strong>
+                </article>
+              </div>
+
+              <article class="manage-facilities-venue-reservation-modal__remarks-card">
+                <span>Remarks</span>
+                <p>{{ selectedVenueReservationEntry.remarksLabel }}</p>
+              </article>
+            </div>
+
+            <section class="manage-facilities-venue-reservation-modal__schedule-card">
+              <div class="manage-facilities-venue-reservation-modal__section-label">Date &amp; Time</div>
+              <div class="manage-facilities-venue-reservation-modal__schedule-grid">
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Start Date</span>
+                  <strong>{{ selectedVenueReservationEntry.startDateLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>End Date</span>
+                  <strong>{{ selectedVenueReservationEntry.endDateLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>Start Time</span>
+                  <strong>{{ selectedVenueReservationEntry.startTimeLabel }}</strong>
+                </article>
+                <article class="manage-facilities-venue-reservation-modal__info-item">
+                  <span>End Time</span>
+                  <strong>{{ selectedVenueReservationEntry.endTimeLabel }}</strong>
+                </article>
+              </div>
+              <div class="manage-facilities-venue-reservation-modal__duration-pill">
+                Total Duration: {{ selectedVenueReservationEntry.durationLabel }}
+              </div>
+            </section>
+
+            <section class="manage-facilities-venue-reservation-modal__meta-grid">
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Status</span>
+                <strong>{{ selectedVenueReservationEntry.statusLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Reserved On</span>
+                <strong>{{ selectedVenueReservationEntry.reservedOnLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Approved By</span>
+                <strong>{{ selectedVenueReservationEntry.approvedByLabel }}</strong>
+              </article>
+              <article class="manage-facilities-venue-reservation-modal__info-item">
+                <span>Approved On</span>
+                <strong>{{ selectedVenueReservationEntry.approvedOnLabel }}</strong>
+              </article>
+            </section>
+          </section>
+
+          <div class="manage-facilities-modal-actions">
+            <button class="manage-facilities-cancel-button" type="button" @click="closeVenueReservationModal">Close</button>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <VenueDetailsModalComponent
       :show="Boolean(viewVenueRecord || viewVenueLoading || viewVenueError)"
@@ -1146,6 +1415,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import * as XLSX from 'xlsx';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import '@/pages/borrower/css/Logs.css';
@@ -1159,6 +1429,7 @@ import VenueDetailsModalComponent from '@/modules/facility/components/VenueDetai
 import VenueModalComponent from '@/modules/facility/components/VenueModalComponent.vue';
 import EquipmentDetailsModalComponent from '@/modules/facility/components/EquipmentDetailsModalComponent.vue';
 import EquipmentModalComponent from '@/modules/facility/components/EquipmentModalComponent.vue';
+import reservationApi from '@/modules/reservation/services/reservationApi.js';
 import venueApi from '@/modules/reservation/services/venueApi.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import classScheduleApi from '@/modules/reservation/services/classScheduleApi.js';
@@ -1168,6 +1439,7 @@ import {
   isVenueFloorPlaceholderRecord,
   resolveVenuePhoto,
 } from '@/modules/facility/utils/venueFormValidation.js';
+import { sortVenueFloorLabels, VENUE_FLOOR_OPTIONS } from '@/modules/facility/utils/venueFloorOptions.js';
 import {
   formatEquipmentQuantity,
   formatEquipmentStatus,
@@ -1240,22 +1512,25 @@ const selectedClassScheduleRecord = ref(null);
 const viewClassScheduleRecord = ref(null);
 const isDeletingClassSchedule = ref(false);
 const importScheduleFile = ref(null);
+const importScheduleStep = ref('upload');
+const importScheduleError = ref('');
+const importScheduleParsing = ref(false);
+const importScheduleHeaders = ref([]);
+const importScheduleRows = ref([]);
+const importScheduleColumnMap = ref({});
+const importScheduleReviewRows = ref([]);
+const importScheduleImporting = ref(false);
+const importScheduleResult = ref(null);
 const classScheduleForm = ref(createEmptyClassScheduleForm());
 const quickClassScheduleForm = ref(createEmptyQuickAddScheduleForm());
+const selectedVenueReservationEntry = ref(null);
+const venueReservationModalLoading = ref(false);
+const venueReservationModalError = ref('');
 let activeReservedVenueWeekRequestSequence = 0;
 
 const currentAdminEmail = computed(() =>
   authStore.accountData?.emailAddress || authStore.clerkAccountData?.emailAddress || ''
 );
-const excludedFacilityFloors = new Set([
-  '4th Floor',
-  '5th Floor',
-  '6th Floor',
-  '7th Floor',
-  '9th Floor',
-  '11th Floor',
-  '4th-7th Floors',
-]);
 const currentAdminDisplayName = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   const firstName = String(account.firstName || '').trim();
@@ -1277,15 +1552,53 @@ const isDeleteEquipmentReady = computed(() =>
   && deleteEquipmentConfirmPassword.value.trim() !== ''
 );
 
-const floorOrder = [
-  '18th Floor', '17th Floor', '16th Floor', '15th Floor', '8th Floor',
-  '7th Floor', '6th Floor', '5th Floor', '4th Floor', '3rd Floor',
-  '2nd Floor', '1st Floor', 'GF / 1st Floor', 'MH Floor', 'Pool', 'Outdoor',
-];
+const floorOrder = VENUE_FLOOR_OPTIONS;
 const classroomDayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const classroomScheduleTypeOptions = ['Class Schedule', 'Reserved', 'Equipment Reservation', 'Pending', 'Maintenance'];
 const academicYearOptions = ['2025 - 2026', '2026 - 2027', '2027 - 2028', '2028 - 2029'];
 const semesterOptions = ['1st Semester', '2nd Semester', 'Summer'];
+const importScheduleSteps = [
+  { key: 'upload', label: '1 Upload File' },
+  { key: 'map', label: '2 Map Columns' },
+  { key: 'review', label: '3 Review' },
+  { key: 'import', label: '4 Import' },
+];
+const importScheduleTargetOptions = [
+  { key: 'venueReference', label: 'Room / Venue', required: true },
+  { key: 'blockDate', label: 'Single Date' },
+  { key: 'dateRangeStart', label: 'Recurring Start Date' },
+  { key: 'dateRangeEnd', label: 'Recurring End Date' },
+  { key: 'daysOfWeek', label: 'Days of Week' },
+  { key: 'startTime', label: 'Start Time', required: true },
+  { key: 'endTime', label: 'End Time', required: true },
+  { key: 'courseCode', label: 'Course Code' },
+  { key: 'courseName', label: 'Course Name' },
+  { key: 'instructorName', label: 'Instructor' },
+  { key: 'blockType', label: 'Schedule Type' },
+  { key: 'academicYear', label: 'Academic Year' },
+  { key: 'semesterLabel', label: 'Semester' },
+  { key: 'capacityLimit', label: 'Capacity' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'blockLabel', label: 'Schedule Label' },
+];
+const importScheduleTargetAliases = {
+  venueReference: ['venue', 'room', 'classroom', 'venue name', 'room name', 'venue id', 'room id', 'venue identifier', 'room identifier'],
+  blockDate: ['date', 'class date', 'block date', 'schedule date'],
+  dateRangeStart: ['start date', 'date start', 'from date', 'range start', 'recurring start date'],
+  dateRangeEnd: ['end date', 'date end', 'to date', 'range end', 'recurring end date'],
+  daysOfWeek: ['days', 'day', 'weekday', 'weekdays', 'days of week', 'meeting days'],
+  startTime: ['start time', 'time start', 'starts at', 'from time'],
+  endTime: ['end time', 'time end', 'ends at', 'to time'],
+  courseCode: ['course code', 'subject code', 'code', 'class code'],
+  courseName: ['course name', 'subject name', 'course', 'subject', 'class name'],
+  instructorName: ['instructor', 'faculty', 'teacher', 'professor', 'instructor name'],
+  blockType: ['type', 'schedule type', 'block type', 'status'],
+  academicYear: ['academic year', 'ay', 'school year'],
+  semesterLabel: ['semester', 'term'],
+  capacityLimit: ['capacity', 'capacity limit', 'slots', 'seat limit'],
+  notes: ['notes', 'remarks', 'comment', 'comments', 'description'],
+  blockLabel: ['label', 'block label', 'schedule label', 'title'],
+};
 const miniCalendarWeekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const compactWeekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const classroomTimeLabels = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
@@ -1335,6 +1648,11 @@ const selectedVenueWeekdayLabel = computed(() => new Intl.DateTimeFormat('en-US'
 const selectedVenueMonthShortLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(`${selectedVenueCalendarDate.value}T00:00:00`)).toUpperCase());
 const selectedVenueDayNumberLabel = computed(() => new Date(`${selectedVenueCalendarDate.value}T00:00:00`).getDate());
 const venueMonthCalendarCells = computed(() => buildSimpleCalendarDays(venueMonthCursor.value));
+const venueReservationModalHeading = computed(() => {
+  const eventDateTime = selectedVenueReservationEntry.value?.eventDateTime || selectedVenueReservationEntry.value?.dateValue || selectedVenueCalendarDate.value;
+  return `Reservations for ${formatDisplayDateHeadingWithWeekday(resolveDateValue(eventDateTime))}`;
+});
+const venueReservationModalCountLabel = computed(() => '1 reservation(s) found');
 const selectedVenueSummary = computed(() => {
   const reservedEntries = getVenueEntriesForDate(selectedVenueCalendarDate.value);
   const visibleCount = reservedEntries.length;
@@ -1465,21 +1783,15 @@ const filteredEquipmentBaseRecords = computed(() => {
 
 const showingFilterOptions = computed(() => {
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
-    const floorOptions = Array.from(new Set(
+    const floorOptions = sortVenueFloorLabels(
       searchedAndSortedVenues.value
         .map((venueRecord) => venueRecord.floorLevel)
         .filter(Boolean)
-        .filter((floorLabel) => !excludedFacilityFloors.has(String(floorLabel).trim()))
-    ));
+    );
 
     return [
       { value: 'all', label: 'All floors' },
-      ...floorOrder
-        .filter((floorLabel) => floorOptions.includes(floorLabel))
-        .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
       ...floorOptions
-        .filter((floorLabel) => !floorOrder.includes(floorLabel))
-        .sort((left, right) => left.localeCompare(right))
         .map((floorLabel) => ({ value: floorLabel, label: floorLabel })),
     ];
   }
@@ -1622,6 +1934,50 @@ const quickAddScheduleSummary = computed(() => {
 
   return `${formatDisplayDateHeading(quickClassScheduleForm.value.dateRangeStart)} | ${formatClassroomScheduleTime(quickClassScheduleForm.value.startTime, quickClassScheduleForm.value.endTime)} | ${venueName}`;
 });
+const importScheduleStepIndex = computed(() => importScheduleSteps.findIndex((step) => step.key === importScheduleStep.value));
+const importScheduleParsedRowCount = computed(() => importScheduleRows.value.length);
+const importScheduleMissingMappings = computed(() => {
+  const mappedTargets = new Set(Object.values(importScheduleColumnMap.value).filter(Boolean));
+  const missingTargets = [];
+
+  if (!mappedTargets.has('venueReference')) {
+    missingTargets.push('Room / Venue');
+  }
+  if (!mappedTargets.has('startTime')) {
+    missingTargets.push('Start Time');
+  }
+  if (!mappedTargets.has('endTime')) {
+    missingTargets.push('End Time');
+  }
+
+  const hasSingleDate = mappedTargets.has('blockDate');
+  const hasRecurringSet = mappedTargets.has('dateRangeStart') && mappedTargets.has('dateRangeEnd') && mappedTargets.has('daysOfWeek');
+  if (!hasSingleDate && !hasRecurringSet) {
+    missingTargets.push('Single Date or Recurring Start Date + Recurring End Date + Days of Week');
+  }
+
+  return missingTargets;
+});
+const importSchedulePreviewRow = computed(() => importScheduleRows.value[0] || []);
+const importScheduleValidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => row.isValid));
+const importScheduleInvalidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => !row.isValid));
+const importScheduleHasResults = computed(() => Boolean(importScheduleResult.value));
+const importScheduleCanAdvanceFromUpload = computed(() => (
+  Boolean(importScheduleFile.value)
+  && !importScheduleParsing.value
+  && importScheduleHeaders.value.length > 0
+  && importScheduleRows.value.length > 0
+  && !importScheduleError.value
+));
+const importScheduleCanAdvanceFromMap = computed(() => (
+  importScheduleHeaders.value.length > 0
+  && importScheduleRows.value.length > 0
+  && importScheduleMissingMappings.value.length === 0
+));
+const importScheduleCanImport = computed(() => (
+  importScheduleValidReviewRows.value.length > 0
+  && !importScheduleImporting.value
+));
 
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
@@ -1630,6 +1986,7 @@ function handleFacilityTabChange(tabName) {
 
   if (activeFacilityTab.value === 'venue' || activeFacilityTab.value === 'all') {
     handleVenueModalClose();
+    closeVenueReservationModal();
     closeVenueDetails();
     closeDeleteVenueModal();
   }
@@ -1713,6 +2070,42 @@ async function handleViewVenue(venueRecord) {
   } finally {
     viewVenueLoading.value = false;
   }
+}
+
+async function handleVenueBlockClick(block, venueRow) {
+  if (block?.tone === 'reserved') {
+    await openVenueReservationModal(block, venueRow);
+    return;
+  }
+
+  await handleViewVenue(venueRow);
+}
+
+async function openVenueReservationModal(block, venueRow) {
+  const reservationIdentifier = Number(block?.reservationIdentifier || block?.rawRangeRecord?.reservationIdentifier || 0);
+  selectedVenueReservationEntry.value = normalizeVenueReservationEntry(null, block, venueRow);
+  venueReservationModalLoading.value = reservationIdentifier > 0;
+  venueReservationModalError.value = '';
+
+  if (reservationIdentifier <= 0) {
+    venueReservationModalLoading.value = false;
+    return;
+  }
+
+  try {
+    const response = await reservationApi.getReservationById(reservationIdentifier);
+    selectedVenueReservationEntry.value = normalizeVenueReservationEntry(response?.data || response, block, venueRow);
+  } catch (error) {
+    venueReservationModalError.value = error?.response?.data?.errorMessage || 'Failed to load reservation details.';
+  } finally {
+    venueReservationModalLoading.value = false;
+  }
+}
+
+function closeVenueReservationModal() {
+  selectedVenueReservationEntry.value = null;
+  venueReservationModalLoading.value = false;
+  venueReservationModalError.value = '';
 }
 
 function closeVenueDetails() {
@@ -2455,6 +2848,9 @@ function buildVenueReservedBlocks(venueRecord, dateValue) {
       timeLabel: reservedBlock.timeLabel,
       title: reservedBlock.title,
       meta: reservedBlock.meta,
+      reservationIdentifier: reservedBlock.reservationIdentifier,
+      rawRangeRecord: reservedBlock.rawRangeRecord,
+      dateValue,
     });
   });
 
@@ -2470,6 +2866,9 @@ function buildVenueReservedBlocks(venueRecord, dateValue) {
       timeLabel: 'Reserved',
       title: 'Reserved',
       meta: venueRecord.venueLocation || 'Reserved schedule',
+      reservationIdentifier: null,
+      rawRangeRecord: null,
+      dateValue,
     }];
 }
 
@@ -2581,6 +2980,8 @@ function normalizeVenueTimeRange(rangeRecord, rangeIndex) {
     meta: normalizedRangeRecord.meta || 'Reserved schedule',
     startMinutes,
     endMinutes: endMinutes > startMinutes ? endMinutes : startMinutes + 60,
+    reservationIdentifier: Number(rangeRecord?.reservationIdentifier || 0) || null,
+    rawRangeRecord: rangeRecord,
   };
 }
 
@@ -2805,6 +3206,154 @@ function formatDisplayDateHeading(dateValue) {
   }).format(new Date(`${dateValue}T00:00:00`));
 }
 
+function formatDisplayDateHeadingWithWeekday(dateValue) {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${dateValue}T00:00:00`));
+}
+
+function resolveDateValue(dateTimeValue) {
+  const normalizedValue = String(dateTimeValue || '').trim();
+  if (normalizedValue === '') {
+    return selectedVenueCalendarDate.value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return selectedVenueCalendarDate.value;
+  }
+
+  return formatDateInputValue(parsedDate);
+}
+
+function formatDateTimeLong(dateTimeValue) {
+  const parsedDate = new Date(String(dateTimeValue || '').trim());
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Not yet recorded';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function formatTimeFromDateTime(dateTimeValue) {
+  const parsedDate = new Date(String(dateTimeValue || '').trim());
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsedDate);
+}
+
+function formatReservationDuration(startDateTimeValue, endDateTimeValue) {
+  const startDate = new Date(String(startDateTimeValue || '').trim());
+  const endDate = new Date(String(endDateTimeValue || '').trim());
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    return 'N/A';
+  }
+
+  const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  const durationHours = Math.floor(durationMinutes / 60);
+  const remainderMinutes = durationMinutes % 60;
+
+  if (remainderMinutes === 0) {
+    return `${durationHours} hour${durationHours === 1 ? '' : 's'}`;
+  }
+
+  if (durationHours === 0) {
+    return `${remainderMinutes} minute${remainderMinutes === 1 ? '' : 's'}`;
+  }
+
+  return `${durationHours} hour${durationHours === 1 ? '' : 's'} ${remainderMinutes} minute${remainderMinutes === 1 ? '' : 's'}`;
+}
+
+function normalizeReservationStatusTone(statusValue) {
+  const normalizedStatus = normalizeFilterQuery(statusValue);
+  if (normalizedStatus.includes('approved')) return 'approved';
+  if (normalizedStatus.includes('pending')) return 'pending';
+  if (normalizedStatus.includes('rejected') || normalizedStatus.includes('cancelled')) return 'inactive';
+  return 'neutral';
+}
+
+function normalizeVenueReservationEntry(reservationRecord, block, venueRow) {
+  const fallbackRecord = block?.rawRangeRecord || {};
+  const startDateTime = String(
+    reservationRecord?.eventDateTime
+      || fallbackRecord?.startDateTimeLabel
+      || ''
+  ).trim();
+  const endDateTime = String(
+    reservationRecord?.endDateTime
+      || fallbackRecord?.endDateTimeLabel
+      || ''
+  ).trim();
+  const statusLabel = String(
+    reservationRecord?.currentStatus
+      || fallbackRecord?.statusLabel
+      || 'Reserved'
+  ).trim();
+  const reservationCode = String(
+    reservationRecord?.reservationCode
+      || fallbackRecord?.reservationCode
+      || ''
+  ).trim();
+  const venueName = String(venueRow?.venueName || reservationRecord?.venueName || 'Venue').trim();
+
+  return {
+    reservationIdentifier: Number(
+      reservationRecord?.reservationIdentifier
+        || block?.reservationIdentifier
+        || fallbackRecord?.reservationIdentifier
+        || 0
+    ) || null,
+    reservationCode,
+    borrowerName: String(
+      reservationRecord?.borrowerFullName
+        || fallbackRecord?.reservedByName
+        || 'Borrower record unavailable'
+    ).trim() || 'Borrower record unavailable',
+    venueLabel: reservationCode ? `${venueName} ${reservationCode}` : venueName,
+    purposeLabel: String(
+      reservationRecord?.purposeDescription
+        || fallbackRecord?.purposeDescription
+        || reservationRecord?.activityType
+        || fallbackRecord?.activityType
+        || 'No purpose recorded.'
+    ).trim(),
+    remarksLabel: String(
+      reservationRecord?.borrowerRemarks
+        || 'No remarks added.'
+    ).trim(),
+    statusLabel: statusLabel || 'Reserved',
+    statusTone: normalizeReservationStatusTone(statusLabel),
+    eventDateTime: startDateTime,
+    dateValue: block?.dateValue || resolveDateValue(startDateTime),
+    startDateLabel: startDateTime ? formatDisplayDateHeading(resolveDateValue(startDateTime)) : 'N/A',
+    endDateLabel: endDateTime ? formatDisplayDateHeading(resolveDateValue(endDateTime)) : (startDateTime ? formatDisplayDateHeading(resolveDateValue(startDateTime)) : 'N/A'),
+    startTimeLabel: startDateTime ? formatTimeFromDateTime(startDateTime) : (block?.timeLabel?.split('-')?.[0]?.trim() || 'N/A'),
+    endTimeLabel: endDateTime ? formatTimeFromDateTime(endDateTime) : (block?.timeLabel?.split('-')?.[1]?.trim() || 'N/A'),
+    durationLabel: formatReservationDuration(startDateTime, endDateTime),
+    reservedOnLabel: reservationRecord?.submissionTimestamp ? formatDateTimeLong(reservationRecord.submissionTimestamp) : 'Not yet recorded',
+    approvedByLabel: 'Not yet recorded',
+    approvedOnLabel: 'Not yet recorded',
+  };
+}
+
 function syncSelectedClassSchedule() {
   const scheduleForDate = filteredClassScheduleRecords.value.find((scheduleRecord) => scheduleRecord.blockDate === selectedClassroomDate.value);
   selectedClassScheduleRecord.value = scheduleForDate || null;
@@ -2981,17 +3530,44 @@ async function deleteClassSchedule(scheduleRecord) {
 
 function openImportSchedulesModal() {
   showClassScheduleActionMenu.value = false;
-  importScheduleFile.value = null;
+  resetImportScheduleState();
   showImportSchedulesModal.value = true;
 }
 
 function closeImportSchedulesModal() {
-  importScheduleFile.value = null;
+  resetImportScheduleState();
   showImportSchedulesModal.value = false;
 }
 
-function handleImportFileChange(event) {
-  importScheduleFile.value = event?.target?.files?.[0] || null;
+async function handleImportFileChange(event) {
+  const selectedFile = event?.target?.files?.[0] || null;
+  resetImportScheduleState();
+  importScheduleFile.value = selectedFile;
+
+  if (!selectedFile) {
+    return;
+  }
+
+  try {
+    importScheduleParsing.value = true;
+    const { headers, rows } = await parseImportedScheduleFile(selectedFile);
+
+    if (headers.length === 0) {
+      throw new Error('No columns were detected in the uploaded file.');
+    }
+
+    if (rows.length === 0) {
+      throw new Error('The uploaded file does not contain any data rows to import.');
+    }
+
+    importScheduleHeaders.value = headers;
+    importScheduleRows.value = rows;
+    importScheduleColumnMap.value = buildInitialImportColumnMap(headers);
+  } catch (error) {
+    importScheduleError.value = error instanceof Error ? error.message : 'Failed to parse the selected file.';
+  } finally {
+    importScheduleParsing.value = false;
+  }
 }
 
 function createEmptyClassScheduleForm() {
@@ -3023,6 +3599,495 @@ function createEmptyQuickAddScheduleForm() {
     startTime: '13:00',
     endTime: '15:00',
   };
+}
+
+function resetImportScheduleState() {
+  importScheduleFile.value = null;
+  importScheduleStep.value = 'upload';
+  importScheduleError.value = '';
+  importScheduleParsing.value = false;
+  importScheduleHeaders.value = [];
+  importScheduleRows.value = [];
+  importScheduleColumnMap.value = {};
+  importScheduleReviewRows.value = [];
+  importScheduleImporting.value = false;
+  importScheduleResult.value = null;
+}
+
+function goToPreviousImportStep() {
+  if (importScheduleImporting.value) {
+    return;
+  }
+
+  if (importScheduleStep.value === 'map') {
+    importScheduleStep.value = 'upload';
+    return;
+  }
+
+  if (importScheduleStep.value === 'review') {
+    importScheduleStep.value = 'map';
+    return;
+  }
+
+  if (importScheduleStep.value === 'import') {
+    importScheduleStep.value = 'review';
+  }
+}
+
+function goToNextImportStep() {
+  if (importScheduleStep.value === 'upload' && importScheduleCanAdvanceFromUpload.value) {
+    importScheduleStep.value = 'map';
+    return;
+  }
+
+  if (importScheduleStep.value === 'map' && importScheduleCanAdvanceFromMap.value) {
+    buildImportReviewRows();
+    importScheduleStep.value = 'review';
+  }
+}
+
+function buildImportReviewRows() {
+  importScheduleReviewRows.value = importScheduleRows.value.map((rowValues, rowIndex) => buildImportReviewRow(rowValues, rowIndex));
+  importScheduleResult.value = null;
+}
+
+function buildImportReviewRow(rowValues, rowIndex) {
+  const errors = [];
+  const venueValue = getImportMappedValue('venueReference', rowValues);
+  const resolvedVenue = resolveImportedVenue(venueValue);
+  const startTime = normalizeImportedTime(getImportMappedValue('startTime', rowValues));
+  const endTime = normalizeImportedTime(getImportMappedValue('endTime', rowValues));
+  const blockDate = normalizeImportedDate(getImportMappedValue('blockDate', rowValues));
+  const dateRangeStart = normalizeImportedDate(getImportMappedValue('dateRangeStart', rowValues));
+  const dateRangeEnd = normalizeImportedDate(getImportMappedValue('dateRangeEnd', rowValues));
+  const daysOfWeek = normalizeImportedDayList(getImportMappedValue('daysOfWeek', rowValues));
+  const courseCode = normalizeImportedText(getImportMappedValue('courseCode', rowValues));
+  const courseName = normalizeImportedText(getImportMappedValue('courseName', rowValues));
+  const instructorName = normalizeImportedText(getImportMappedValue('instructorName', rowValues));
+  const blockType = normalizeImportedText(getImportMappedValue('blockType', rowValues)) || 'Class Schedule';
+  const academicYear = normalizeImportedText(getImportMappedValue('academicYear', rowValues));
+  const semesterLabel = normalizeImportedText(getImportMappedValue('semesterLabel', rowValues));
+  const notes = normalizeImportedText(getImportMappedValue('notes', rowValues));
+  const explicitLabel = normalizeImportedText(getImportMappedValue('blockLabel', rowValues));
+  const capacityLimit = normalizeImportedCapacity(getImportMappedValue('capacityLimit', rowValues));
+  const hasRecurringInputs = Boolean(dateRangeStart || dateRangeEnd || daysOfWeek.length > 0);
+  const blockLabel = explicitLabel || `${courseCode} ${courseName}`.trim();
+
+  if (!resolvedVenue) {
+    errors.push('Room / venue must match an existing classroom venue.');
+  }
+
+  if (!startTime || !endTime) {
+    errors.push('Valid start and end times are required.');
+  } else if (endTime <= startTime) {
+    errors.push('End time must be later than start time.');
+  }
+
+  if (hasRecurringInputs) {
+    if (!dateRangeStart || !dateRangeEnd) {
+      errors.push('Recurring rows require both start and end dates.');
+    } else if (dateRangeEnd < dateRangeStart) {
+      errors.push('Recurring end date must be on or after the start date.');
+    }
+
+    if (daysOfWeek.length === 0) {
+      errors.push('Recurring rows require at least one day of week.');
+    }
+  } else if (!blockDate) {
+    errors.push('A single date is required when recurring fields are not provided.');
+  }
+
+  if (!blockLabel) {
+    errors.push('Provide a schedule label or at least a course code/name.');
+  }
+
+  if (capacityLimit === 'invalid') {
+    errors.push('Capacity must be a whole number when provided.');
+  }
+
+  const payload = errors.length === 0
+    ? {
+      venueIdentifier: Number(resolvedVenue.venueIdentifier),
+      venueNameSnapshot: resolvedVenue.venueName,
+      courseCode,
+      courseName,
+      instructorName,
+      scheduleType: blockType,
+      blockType,
+      daysOfWeek,
+      startTime,
+      endTime,
+      dateRangeStart: hasRecurringInputs ? dateRangeStart : '',
+      dateRangeEnd: hasRecurringInputs ? dateRangeEnd : '',
+      blockDate: hasRecurringInputs ? dateRangeStart : blockDate,
+      academicYear,
+      semesterLabel,
+      capacityLimit: typeof capacityLimit === 'number' ? capacityLimit : null,
+      notes,
+      blockLabel,
+    }
+    : null;
+
+  return {
+    rowNumber: rowIndex + 2,
+    isValid: errors.length === 0,
+    errors,
+    payload,
+    venueLabel: resolvedVenue?.venueName || normalizeImportedText(venueValue) || 'Unknown venue',
+    scheduleLabel: blockLabel || 'Unlabeled schedule',
+    dateLabel: hasRecurringInputs
+      ? `${dateRangeStart || 'Missing start'} to ${dateRangeEnd || 'Missing end'} | ${daysOfWeek.length > 0 ? daysOfWeek.join(', ') : 'Missing days'}`
+      : blockDate || 'Missing date',
+    timeLabel: startTime && endTime ? formatClassroomScheduleTime(startTime, endTime) : 'Missing time',
+    typeLabel: blockType,
+    importStatus: errors.length === 0 ? 'ready' : 'invalid',
+    importStatusLabel: errors.length === 0 ? 'Ready' : 'Invalid',
+  };
+}
+
+async function submitImportedSchedules() {
+  if (!importScheduleCanImport.value) {
+    return;
+  }
+
+  const validRows = importScheduleReviewRows.value.filter((row) => row.isValid);
+  importScheduleImporting.value = true;
+  importScheduleStep.value = 'import';
+  importScheduleError.value = '';
+  importScheduleResult.value = {
+    processedCount: 0,
+    importedCount: 0,
+    failedCount: 0,
+  };
+
+  for (const reviewRow of validRows) {
+    try {
+      await classScheduleApi.createScheduleBlock(reviewRow.payload);
+      reviewRow.importStatus = 'imported';
+      reviewRow.importStatusLabel = 'Imported';
+      importScheduleResult.value.importedCount += 1;
+    } catch (error) {
+      const errorMessage = error?.response?.data?.errorMessage || 'Failed to save this row.';
+      reviewRow.importStatus = 'failed';
+      reviewRow.importStatusLabel = 'Failed';
+      reviewRow.errors = [...reviewRow.errors, errorMessage];
+      importScheduleResult.value.failedCount += 1;
+    } finally {
+      importScheduleResult.value.processedCount += 1;
+    }
+  }
+
+  importScheduleImporting.value = false;
+
+  if (importScheduleResult.value.importedCount > 0) {
+    await fetchClassSchedules();
+  }
+}
+
+async function parseImportedScheduleFile(file) {
+  const fileName = String(file?.name || '').toLowerCase();
+  if (fileName.endsWith('.csv')) {
+    return normalizeImportedTable(parseCsvText(await readFileAsText(file)));
+  }
+
+  if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+    const workbookBuffer = await readFileAsArrayBuffer(file);
+    const workbook = XLSX.read(workbookBuffer, { type: 'array', cellDates: false });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) {
+      throw new Error('The workbook does not contain any sheets.');
+    }
+
+    const sheet = workbook.Sheets[firstSheetName];
+    return normalizeImportedTable(XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }));
+  }
+
+  throw new Error('Unsupported file type. Please upload a CSV or Excel file.');
+}
+
+function normalizeImportedTable(rawRows) {
+  const normalizedRows = Array.isArray(rawRows)
+    ? rawRows.map((row) => Array.isArray(row) ? row.map((cellValue) => normalizeImportedCellValue(cellValue)) : [])
+    : [];
+  const firstDataIndex = normalizedRows.findIndex((row) => row.some((cellValue) => cellValue !== ''));
+
+  if (firstDataIndex < 0) {
+    return { headers: [], rows: [] };
+  }
+
+  const headers = createImportedHeaders(normalizedRows[firstDataIndex]);
+  const rows = normalizedRows
+    .slice(firstDataIndex + 1)
+    .filter((row) => row.some((cellValue) => cellValue !== ''))
+    .map((row) => headers.map((_, headerIndex) => normalizeImportedCellValue(row[headerIndex] ?? '')));
+
+  return { headers, rows };
+}
+
+function createImportedHeaders(headerRow) {
+  const usedHeaders = new Map();
+
+  return headerRow.map((headerValue, headerIndex) => {
+    const baseHeader = normalizeImportedText(headerValue) || `Column ${headerIndex + 1}`;
+    const existingCount = usedHeaders.get(baseHeader) || 0;
+    usedHeaders.set(baseHeader, existingCount + 1);
+    return existingCount === 0 ? baseHeader : `${baseHeader} (${existingCount + 1})`;
+  });
+}
+
+function buildInitialImportColumnMap(headers) {
+  const nextColumnMap = {};
+  const claimedTargets = new Set();
+
+  headers.forEach((header) => {
+    const matchedTarget = matchImportTargetForHeader(header);
+    if (matchedTarget && !claimedTargets.has(matchedTarget)) {
+      nextColumnMap[header] = matchedTarget;
+      claimedTargets.add(matchedTarget);
+    } else {
+      nextColumnMap[header] = '';
+    }
+  });
+
+  return nextColumnMap;
+}
+
+function matchImportTargetForHeader(header) {
+  const normalizedHeader = normalizeImportAliasKey(header);
+
+  return importScheduleTargetOptions.find((targetOption) => (
+    normalizedHeader === normalizeImportAliasKey(targetOption.label)
+    || (importScheduleTargetAliases[targetOption.key] || []).some((alias) => normalizeImportAliasKey(alias) === normalizedHeader)
+  ))?.key || '';
+}
+
+function isImportTargetTaken(targetKey, activeHeader) {
+  if (!targetKey) {
+    return false;
+  }
+
+  return Object.entries(importScheduleColumnMap.value).some(([header, mappedTarget]) => (
+    header !== activeHeader && mappedTarget === targetKey
+  ));
+}
+
+function getImportMappedValue(targetKey, rowValues) {
+  const headerName = Object.keys(importScheduleColumnMap.value).find((header) => importScheduleColumnMap.value[header] === targetKey);
+  if (!headerName) {
+    return '';
+  }
+
+  const headerIndex = importScheduleHeaders.value.indexOf(headerName);
+  return headerIndex >= 0 ? rowValues[headerIndex] ?? '' : '';
+}
+
+function resolveImportedVenue(venueValue) {
+  const normalizedVenue = normalizeImportedText(venueValue);
+  if (!normalizedVenue) {
+    return null;
+  }
+
+  return classroomVenueOptions.value.find((venueOption) => (
+    String(venueOption.venueIdentifier) === normalizedVenue
+    || normalizeImportAliasKey(venueOption.venueName) === normalizeImportAliasKey(normalizedVenue)
+  )) || null;
+}
+
+function normalizeImportedText(value) {
+  return String(value ?? '').trim();
+}
+
+function normalizeImportedCellValue(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
+function normalizeImportedCapacity(value) {
+  const normalizedValue = normalizeImportedText(value);
+  if (!normalizedValue) {
+    return null;
+  }
+
+  if (!/^-?\d+$/.test(normalizedValue)) {
+    return 'invalid';
+  }
+
+  return Number(normalizedValue);
+}
+
+function normalizeImportedDate(value) {
+  const normalizedValue = normalizeImportedText(value);
+  if (!normalizedValue) {
+    return '';
+  }
+
+  const numericValue = Number(normalizedValue);
+  if (Number.isFinite(numericValue) && normalizedValue !== '') {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    excelEpoch.setUTCDate(excelEpoch.getUTCDate() + numericValue);
+    return excelEpoch.toISOString().slice(0, 10);
+  }
+
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}-${String(parsedDate.getDate()).padStart(2, '0')}`;
+}
+
+function normalizeImportedTime(value) {
+  const normalizedValue = normalizeImportedText(value);
+  if (!normalizedValue) {
+    return '';
+  }
+
+  if (/^\d{1,2}:\d{2}$/.test(normalizedValue)) {
+    const [hourValue, minuteValue] = normalizedValue.split(':').map(Number);
+    if (hourValue >= 0 && hourValue <= 23 && minuteValue >= 0 && minuteValue <= 59) {
+      return `${String(hourValue).padStart(2, '0')}:${String(minuteValue).padStart(2, '0')}`;
+    }
+  }
+
+  const timeMatch = normalizedValue.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (timeMatch) {
+    let hourValue = Number(timeMatch[1]);
+    const minuteValue = Number(timeMatch[2] || '00');
+    const meridiem = timeMatch[3].toLowerCase();
+    if (meridiem === 'pm' && hourValue < 12) hourValue += 12;
+    if (meridiem === 'am' && hourValue === 12) hourValue = 0;
+    if (hourValue >= 0 && hourValue <= 23 && minuteValue >= 0 && minuteValue <= 59) {
+      return `${String(hourValue).padStart(2, '0')}:${String(minuteValue).padStart(2, '0')}`;
+    }
+  }
+
+  const numericValue = Number(normalizedValue);
+  if (Number.isFinite(numericValue) && numericValue >= 0 && numericValue < 1) {
+    const totalMinutes = Math.round(numericValue * 24 * 60);
+    const hourValue = Math.floor(totalMinutes / 60) % 24;
+    const minuteValue = totalMinutes % 60;
+    return `${String(hourValue).padStart(2, '0')}:${String(minuteValue).padStart(2, '0')}`;
+  }
+
+  const parsedTime = new Date(`1970-01-01T${normalizedValue}`);
+  if (!Number.isNaN(parsedTime.getTime())) {
+    return `${String(parsedTime.getHours()).padStart(2, '0')}:${String(parsedTime.getMinutes()).padStart(2, '0')}`;
+  }
+
+  return '';
+}
+
+function normalizeImportedDayList(value) {
+  const normalizedValue = normalizeImportedText(value);
+  if (!normalizedValue) {
+    return [];
+  }
+
+  const dayMap = {
+    mon: 'Monday',
+    monday: 'Monday',
+    tue: 'Tuesday',
+    tues: 'Tuesday',
+    tuesday: 'Tuesday',
+    wed: 'Wednesday',
+    weds: 'Wednesday',
+    wednesday: 'Wednesday',
+    thu: 'Thursday',
+    thur: 'Thursday',
+    thurs: 'Thursday',
+    thursday: 'Thursday',
+    fri: 'Friday',
+    friday: 'Friday',
+    sat: 'Saturday',
+    saturday: 'Saturday',
+    sun: 'Sunday',
+    sunday: 'Sunday',
+  };
+
+  return Array.from(new Set(
+    normalizedValue
+      .split(/[,/|]+/)
+      .map((dayValue) => dayMap[normalizeImportAliasKey(dayValue)] || '')
+      .filter(Boolean)
+  ));
+}
+
+function normalizeImportAliasKey(value) {
+  return normalizeImportedText(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function importSchedulePreviewCell(header, rowValues) {
+  const headerIndex = importScheduleHeaders.value.indexOf(header);
+  return headerIndex >= 0 ? normalizeImportedText(rowValues[headerIndex] ?? '') || 'No sample value' : 'No sample value';
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    fileReader.onload = () => resolve(String(fileReader.result || ''));
+    fileReader.onerror = () => reject(new Error('Failed to read the selected file.'));
+    fileReader.readAsText(file);
+  });
+}
+
+function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    fileReader.onload = () => resolve(fileReader.result);
+    fileReader.onerror = () => reject(new Error('Failed to read the selected file.'));
+    fileReader.readAsArrayBuffer(file);
+  });
+}
+
+function parseCsvText(csvText) {
+  const rows = [];
+  let currentRow = [];
+  let currentCell = '';
+  let isInsideQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const currentCharacter = csvText[index];
+    const nextCharacter = csvText[index + 1];
+
+    if (currentCharacter === '"') {
+      if (isInsideQuotes && nextCharacter === '"') {
+        currentCell += '"';
+        index += 1;
+      } else {
+        isInsideQuotes = !isInsideQuotes;
+      }
+      continue;
+    }
+
+    if (currentCharacter === ',' && !isInsideQuotes) {
+      currentRow.push(currentCell);
+      currentCell = '';
+      continue;
+    }
+
+    if ((currentCharacter === '\n' || currentCharacter === '\r') && !isInsideQuotes) {
+      if (currentCharacter === '\r' && nextCharacter === '\n') {
+        index += 1;
+      }
+      currentRow.push(currentCell);
+      rows.push(currentRow);
+      currentRow = [];
+      currentCell = '';
+      continue;
+    }
+
+    currentCell += currentCharacter;
+  }
+
+  if (currentCell !== '' || currentRow.length > 0) {
+    currentRow.push(currentCell);
+    rows.push(currentRow);
+  }
+
+  return rows;
 }
 
 function formatScheduleDuration(startTime, endTime) {
