@@ -958,7 +958,7 @@
             <p class="classroom-schedule-import-note">Map each file column to the matching classroom schedule field. Leave unrelated columns as Ignore.</p>
 
             <div v-if="importScheduleMissingMappings.length > 0" class="classroom-schedule-import-warning">
-              Missing required mappings: {{ importScheduleMissingMappings.join(', ') }}
+              {{ importScheduleMissingMappingsNotice }}
             </div>
 
             <div class="classroom-schedule-import-mapping-grid">
@@ -1957,6 +1957,18 @@ const importScheduleMissingMappings = computed(() => {
   }
 
   return missingTargets;
+});
+const importScheduleMissingMappingsNotice = computed(() => {
+  const missingTargets = importScheduleMissingMappings.value;
+  if (missingTargets.length === 0) {
+    return '';
+  }
+
+  if (missingTargets.length === 1) {
+    return `1 more required mapping is needed to proceed: ${missingTargets[0]}`;
+  }
+
+  return `${missingTargets.length} required mappings are still needed: ${missingTargets.join(', ')}`;
 });
 const importSchedulePreviewRow = computed(() => importScheduleRows.value[0] || []);
 const importScheduleValidReviewRows = computed(() => importScheduleReviewRows.value.filter((row) => row.isValid));
