@@ -418,7 +418,7 @@ class AnalyticsController
                 ],
                 'allocation' => [
                     'enabled' => true,
-                    'model' => 'binary_linear_programming',
+                    'model' => 'bilp',
                     'objective' => 'maximize_fulfillment',
                 ],
             ],

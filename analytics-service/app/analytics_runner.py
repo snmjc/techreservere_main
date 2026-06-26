@@ -27,7 +27,7 @@ DEFAULT_CONFIG = {
     },
     "allocation": {
         "enabled": True,
-        "model": "binary_linear_programming",
+        "model": "bilp",
         "historyDays": 30,
         "objective": "maximize_fulfillment",
     },

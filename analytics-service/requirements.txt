@@ -3,5 +3,7 @@ fastapi==0.115.6
 joblib==1.4.2
 psycopg[binary]==3.2.3
 pydantic-settings==2.7.1
+pulp==2.9.0
 scikit-learn==1.6.0
+statsmodels==0.14.4
 uvicorn[standard]==0.34.0

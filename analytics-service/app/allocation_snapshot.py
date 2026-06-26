@@ -3,6 +3,10 @@ import json
 from typing import Any
 
 from psycopg import Connection
+try:
+    import pulp
+except Exception:
+    pulp = None
 
 from app.model_artifacts import ALLOCATION_ARTIFACT, ModelArtifactStore
 
@@ -10,6 +14,7 @@ from app.model_artifacts import ALLOCATION_ARTIFACT, ModelArtifactStore
 class AllocationSnapshotBuilder:
     def __init__(self, artifact_store: ModelArtifactStore | None = None) -> None:
         self.artifact_store = artifact_store or ModelArtifactStore()
+        self._last_optimizer_status = "not_run"
 
     def build(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
         range_days = int(config.get("allocation", {}).get("historyDays", 30))
@@ -28,7 +33,7 @@ class AllocationSnapshotBuilder:
 
         current_usage_map = self._build_equipment_usage_map(connection, start_date, end_date)
         previous_year_usage_map = self._build_equipment_usage_map(connection, previous_year_start, previous_year_end)
-        utilization_by_category = self._build_utilization_by_category(equipment_rows, current_usage_map)
+        utilization_by_category = self._build_utilization_by_category(equipment_rows, current_usage_map, trained_artifact)
         utilization_comparison_by_category = self._build_utilization_by_category(equipment_rows, previous_year_usage_map)
         top_equipment = self._build_top_equipment(equipment_rows, current_usage_map, limit=10)
         possible_borrowed_equipment = self._build_possible_borrowed_equipment(
@@ -38,7 +43,9 @@ class AllocationSnapshotBuilder:
         )
 
         return {
-            "modelName": self._artifact_model_name(trained_artifact, "binary_linear_programming"),
+            "modelName": self._artifact_model_name(trained_artifact, "bilp"),
+            "utilizationModelName": self._artifact_utilization_model_name(trained_artifact, "random_forest"),
+            "optimizerStatus": self._last_optimizer_status,
             "status": "trained_weekly" if trained_artifact is not None else "placeholder_ready",
             "dateRange": {
                 "startDate": start_date.isoformat(),
@@ -61,11 +68,7 @@ class AllocationSnapshotBuilder:
             "fulfilledCount": sum(1 for item in allocation_plan if item["status"] == "allocated"),
             "partialCount": sum(1 for item in allocation_plan if item["status"] == "partial"),
             "modelStatus": self.artifact_store.describe(ALLOCATION_ARTIFACT),
-            "notes": (
-                "Weekly trained .pkl allocation optimizer profile is active."
-                if trained_artifact is not None
-                else "FastAPI storage path is live. Weekly training will replace this placeholder output."
-            ),
+            "notes": self._build_notes(trained_artifact),
         }
 
     def _fetch_pending_reservations(self, connection: Connection) -> list[Any]:
@@ -107,6 +110,11 @@ class AllocationSnapshotBuilder:
         equipment_rows: list[Any],
         artifact: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
+        bilp_plan = self._build_bilp_allocation_plan(pending_rows, equipment_rows, artifact)
+        if bilp_plan is not None:
+            return bilp_plan
+
+        self._last_optimizer_status = "greedy_fallback"
         allocation_plan: list[dict[str, Any]] = []
         equipment_weights = dict(artifact.get("equipmentWeights", {})) if artifact else {}
         priority_weights = dict(artifact.get("priorityWeights", {})) if artifact else {}
@@ -174,11 +182,215 @@ class AllocationSnapshotBuilder:
 
         return allocation_plan
 
+    def _build_bilp_allocation_plan(
+        self,
+        pending_rows: list[Any],
+        equipment_rows: list[Any],
+        artifact: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]] | None:
+        if pulp is None:
+            return None
+        if not pending_rows:
+            self._last_optimizer_status = "bilp_no_pending_requests"
+            return []
+
+        equipment_weights = dict(artifact.get("equipmentWeights", {})) if artifact else {}
+        priority_weights = dict(artifact.get("priorityWeights", {})) if artifact else {}
+        active_equipment = [
+            row for row in equipment_rows
+            if max(0, int(row["available_quantity"] or 0)) > 0
+            and str(row["equipment_state"] or "").lower() not in {"under maintenance", "unavailable"}
+            and str(row["operational_status"] or "").lower() not in {"under maintenance", "unavailable"}
+        ]
+        equipment_by_id = {
+            int(row["equipment_identifier"]): row
+            for row in active_equipment
+        }
+        request_lines = []
+        request_line_count: dict[int, int] = {}
+        for request_index, request in enumerate(pending_rows):
+            for line_index, item in enumerate(self._parse_requested_items(request["requested_equipment_list"])):
+                item_name = str(item.get("equipmentName") or item.get("name") or "Unknown")
+                item_quantity = max(0, int(item.get("quantity") or 0))
+                if item_quantity <= 0:
+                    continue
+                request_lines.append(
+                    {
+                        "requestIndex": request_index,
+                        "lineIndex": line_index,
+                        "equipmentName": item_name,
+                        "quantity": item_quantity,
+                    }
+                )
+                request_line_count[request_index] = request_line_count.get(request_index, 0) + 1
+
+        if not request_lines:
+            self._last_optimizer_status = "bilp_no_requested_equipment"
+            return self._empty_allocation_plan(pending_rows)
+
+        problem = pulp.LpProblem("techreserve_bilp_allocation", pulp.LpMaximize)
+        assignments: dict[tuple[int, int, int], Any] = {}
+        fulfilled_vars: dict[int, Any] = {
+            request_index: pulp.LpVariable(f"u_{request_index}", cat="Binary")
+            for request_index in range(len(pending_rows))
+        }
+
+        for line in request_lines:
+            for equipment_id, equipment in equipment_by_id.items():
+                if str(equipment["equipment_name"]).lower() != line["equipmentName"].lower():
+                    continue
+                assignments[(line["requestIndex"], line["lineIndex"], equipment_id)] = pulp.LpVariable(
+                    f"x_{line['requestIndex']}_{line['lineIndex']}_{equipment_id}",
+                    cat="Binary",
+                )
+
+        if not assignments:
+            self._last_optimizer_status = "bilp_no_feasible_matches"
+            return self._empty_allocation_plan(pending_rows)
+
+        for line in request_lines:
+            line_vars = [
+                variable
+                for (request_index, line_index, _equipment_id), variable in assignments.items()
+                if request_index == line["requestIndex"] and line_index == line["lineIndex"]
+            ]
+            problem += pulp.lpSum(line_vars) <= 1
+
+        for equipment_id, equipment in equipment_by_id.items():
+            problem += (
+                pulp.lpSum(
+                    line["quantity"] * variable
+                    for line in request_lines
+                    for (request_index, line_index, assigned_equipment_id), variable in assignments.items()
+                    if assigned_equipment_id == equipment_id
+                    and request_index == line["requestIndex"]
+                    and line_index == line["lineIndex"]
+                )
+                <= max(0, int(equipment["available_quantity"] or 0))
+            )
+
+        for request_index, line_count in request_line_count.items():
+            line_vars = [
+                variable
+                for (assigned_request_index, _line_index, _equipment_id), variable in assignments.items()
+                if assigned_request_index == request_index
+            ]
+            problem += fulfilled_vars[request_index] <= pulp.lpSum(line_vars) / max(1, line_count)
+            problem += fulfilled_vars[request_index] >= pulp.lpSum(line_vars) - line_count + 1
+
+        objective_terms = []
+        for (request_index, line_index, equipment_id), variable in assignments.items():
+            request = pending_rows[request_index]
+            equipment = equipment_by_id[equipment_id]
+            priority_weight = float(priority_weights.get(str(request["priority_level"] or "Normal").lower(), 1.0))
+            equipment_weight = float(equipment_weights.get(str(equipment["equipment_name"] or "").lower(), 1.0))
+            quantity = next(
+                line["quantity"]
+                for line in request_lines
+                if line["requestIndex"] == request_index and line["lineIndex"] == line_index
+            )
+            objective_terms.append((priority_weight + equipment_weight) * quantity * variable)
+        objective_terms.extend(100 * variable for variable in fulfilled_vars.values())
+        problem += pulp.lpSum(objective_terms)
+
+        problem.solve(pulp.PULP_CBC_CMD(msg=False))
+        status = str(pulp.LpStatus.get(problem.status, "Unknown")).lower()
+        if status not in {"optimal", "feasible"}:
+            self._last_optimizer_status = f"bilp_{status}_fallback"
+            return None
+
+        self._last_optimizer_status = f"bilp_{status}"
+        return self._allocation_plan_from_solution(pending_rows, request_lines, assignments)
+
+    def _allocation_plan_from_solution(
+        self,
+        pending_rows: list[Any],
+        request_lines: list[dict[str, Any]],
+        assignments: dict[tuple[int, int, int], Any],
+    ) -> list[dict[str, Any]]:
+        allocation_plan = []
+        lines_by_request: dict[int, list[dict[str, Any]]] = {}
+        for line in request_lines:
+            allocated_quantity = 0
+            for (request_index, line_index, _equipment_id), variable in assignments.items():
+                if request_index == line["requestIndex"] and line_index == line["lineIndex"] and float(variable.value() or 0) >= 0.5:
+                    allocated_quantity = line["quantity"]
+                    break
+            lines_by_request.setdefault(line["requestIndex"], []).append(
+                {
+                    "equipmentName": line["equipmentName"],
+                    "requestedQuantity": line["quantity"],
+                    "allocatedQuantity": allocated_quantity,
+                }
+            )
+
+        for request_index, request in enumerate(pending_rows):
+            line_items = lines_by_request.get(request_index, [])
+            allocated_total = sum(int(item["allocatedQuantity"]) for item in line_items)
+            requested_total = int(request["requested_quantity"] or 0)
+            allocation_plan.append(
+                {
+                    "reservationCode": request["reservation_code"],
+                    "organizationName": request["organization_name"],
+                    "eventDate": request["event_date_time"].date().isoformat(),
+                    "priorityLevel": request["priority_level"],
+                    "requestedQuantity": requested_total,
+                    "allocatedQuantity": allocated_total,
+                    "lineItems": line_items,
+                    "status": "partial" if allocated_total < requested_total else "allocated",
+                }
+            )
+        return allocation_plan
+
+    def _empty_allocation_plan(self, pending_rows: list[Any]) -> list[dict[str, Any]]:
+        allocation_plan = []
+        for request in pending_rows:
+            line_items = [
+                {
+                    "equipmentName": str(item.get("equipmentName") or item.get("name") or "Unknown"),
+                    "requestedQuantity": max(0, int(item.get("quantity") or 0)),
+                    "allocatedQuantity": 0,
+                }
+                for item in self._parse_requested_items(request["requested_equipment_list"])
+            ]
+            allocation_plan.append(
+                {
+                    "reservationCode": request["reservation_code"],
+                    "organizationName": request["organization_name"],
+                    "eventDate": request["event_date_time"].date().isoformat(),
+                    "priorityLevel": request["priority_level"],
+                    "requestedQuantity": int(request["requested_quantity"] or 0),
+                    "allocatedQuantity": 0,
+                    "lineItems": line_items,
+                    "status": "partial",
+                }
+            )
+        return allocation_plan
+
     def _artifact_model_name(self, artifact: dict[str, Any] | None, fallback: str) -> str:
         if artifact is None:
             return fallback
         metadata = artifact.get("metadata", {})
         return str(metadata.get("modelName") or fallback)
+
+    def _artifact_utilization_model_name(self, artifact: dict[str, Any] | None, fallback: str) -> str:
+        if artifact is None:
+            return fallback
+        metadata = artifact.get("metadata", {})
+        return str(metadata.get("utilizationModelName") or fallback)
+
+    def _build_notes(self, artifact: dict[str, Any] | None) -> str:
+        solver_note = (
+            "B-ILP solver is active."
+            if self._last_optimizer_status in {"bilp_optimal", "bilp_feasible"}
+            else "B-ILP solver fell back to sequential allocation."
+        )
+        artifact_note = (
+            "Weekly trained .pkl allocation optimizer profile is active."
+            if artifact is not None
+            else "FastAPI storage path is live. Weekly training will replace this placeholder output."
+        )
+        return f"{artifact_note} {solver_note}"
 
     def _build_equipment_usage_map(self, connection: Connection, start_date: date, end_date: date) -> dict[str, int]:
         rows = connection.execute(
@@ -202,16 +414,28 @@ class AllocationSnapshotBuilder:
 
         return usage
 
-    def _build_utilization_by_category(self, equipment_rows: list[Any], usage_map: dict[str, int]) -> list[dict[str, Any]]:
+    def _build_utilization_by_category(
+        self,
+        equipment_rows: list[Any],
+        usage_map: dict[str, int],
+        artifact: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         category_usage: dict[str, int] = {}
         category_total: dict[str, int] = {}
+        utilization_model = artifact.get("utilizationModel") if artifact else None
 
         for row in equipment_rows:
             category = str(row["equipment_category"] or "Others")
             equipment_name = str(row["equipment_name"] or "")
             total_quantity = max(1, int(row["total_quantity"] or 1))
             category_total[category] = category_total.get(category, 0) + total_quantity
-            category_usage[category] = category_usage.get(category, 0) + usage_map.get(equipment_name.lower(), 0)
+            usage_count = usage_map.get(equipment_name.lower(), 0)
+            if utilization_model is not None:
+                try:
+                    usage_count = max(0, int(round(float(utilization_model.predict([self._utilization_features(row, usage_map)])[0]))))
+                except Exception:
+                    usage_count = usage_map.get(equipment_name.lower(), 0)
+            category_usage[category] = category_usage.get(category, 0) + usage_count
 
         result = [
             {
@@ -221,6 +445,28 @@ class AllocationSnapshotBuilder:
             for category, total in category_total.items()
         ]
         return sorted(result, key=lambda item: (-float(item["value"]), str(item["label"])))[:5]
+
+    def _utilization_features(self, row: Any, usage_map: dict[str, int]) -> list[float]:
+        total_quantity = max(0, int(row["total_quantity"] or 0))
+        available_quantity = max(0, int(row["available_quantity"] or 0))
+        availability_ratio = available_quantity / total_quantity if total_quantity > 0 else 1
+        equipment_state = str(row["equipment_state"] or "").lower()
+        operational_status = str(row["operational_status"] or "").lower()
+        is_inactive = (
+            equipment_state in {"under maintenance", "unavailable"}
+            or operational_status in {"under maintenance", "unavailable"}
+        )
+        usage_count = usage_map.get(str(row["equipment_name"] or "").lower(), 0)
+        category_key = str(row["equipment_category"] or "Others").lower()
+        category_bucket = sum(ord(character) for character in category_key) % 17
+        return [
+            float(total_quantity),
+            float(available_quantity),
+            float(availability_ratio),
+            1.0 if is_inactive else 0.0,
+            float(usage_count),
+            float(category_bucket),
+        ]
 
     def _build_top_equipment(self, equipment_rows: list[Any], usage_map: dict[str, int], limit: int) -> list[dict[str, Any]]:
         items = []
@@ -263,6 +509,7 @@ class AllocationSnapshotBuilder:
                 {
                     "name": equipment_name,
                     "count": current_usage,
+                    "previousYearCount": previous_year_usage,
                     "score": score,
                     "reason": self._build_candidate_reason(current_usage, previous_year_usage),
                 }
@@ -270,16 +517,34 @@ class AllocationSnapshotBuilder:
 
         ordered_candidates = sorted(candidates, key=lambda item: (-float(item["score"]), str(item["name"])))
         return [
-            {"name": item["name"], "count": item["count"], "reason": item["reason"]}
+            {
+                "name": item["name"],
+                "count": item["count"],
+                "previousYearCount": item["previousYearCount"],
+                "reason": item["reason"],
+                "decision": self._build_candidate_decision(item["count"], item["previousYearCount"]),
+                "action": self._build_candidate_action(item["count"], item["previousYearCount"]),
+            }
             for item in ordered_candidates[:5]
         ]
 
     def _build_candidate_reason(self, current_usage: int, previous_year_usage: int) -> str:
         if previous_year_usage > current_usage:
-            return f"Used {previous_year_usage} times on the same dates last year, so prepare it for seasonal demand."
+            return "Seasonal demand is higher than current usage."
         if current_usage > 0:
-            return f"Already used {current_usage} times in this range, so keep it prepared."
-        return f"Used {previous_year_usage} times historically on the same dates."
+            return "Current demand is already active in this range."
+        return "Historical same-date demand exists."
+
+    def _build_candidate_decision(self, current_usage: int, previous_year_usage: int) -> str:
+        if previous_year_usage > current_usage:
+            return "Prepare extra stock"
+        return "Keep prepared"
+
+    def _build_candidate_action(self, current_usage: int, previous_year_usage: int) -> str:
+        if previous_year_usage > current_usage:
+            gap = previous_year_usage - current_usage
+            return f"Reserve a buffer for about {gap} more expected uses."
+        return "Monitor availability and avoid lending all units early."
 
     def _count_completed_reservations(self, connection: Connection, start_date: date, end_date: date) -> int:
         row = connection.execute(

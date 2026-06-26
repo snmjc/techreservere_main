@@ -21,6 +21,22 @@ export function createEmptyForecastReport() {
     peakDate: null,
     peakValue: 0,
     growthPercent: 0,
+    accuracyMetrics: createEmptyForecastAccuracyMetrics(),
+  };
+}
+
+export function createEmptyForecastAccuracyMetrics() {
+  return {
+    sarimaMape: null,
+    naiveMape: null,
+    seasonalNaiveMape: null,
+    forecastImprovementPercent: null,
+    accuracyStatus: 'insufficient_data',
+    benchmarkMethod: 'naive',
+    zeroDemandExcluded: 0,
+    evaluatedPeriods: 0,
+    evaluationStartDate: '',
+    evaluationEndDate: '',
   };
 }
 
@@ -30,6 +46,8 @@ export function createEmptyRiskReport() {
     topRiskFactors: [],
     highRiskEquipment: [],
     safeRate: 0,
+    modelMetrics: {},
+    riskProbabilitySummary: {},
   };
 }
 
@@ -48,16 +66,8 @@ export function createEmptySummaryReport() {
     activeReservations: 0,
     pendingRequests: 0,
     completedThisPeriod: 0,
-    generatedAt: 'N/A',
+    generatedAt: 'Not generated',
   };
-}
-
-export function pickNonEmptyArray(primaryValue, fallbackValue = []) {
-  if (Array.isArray(primaryValue) && primaryValue.length > 0) {
-    return primaryValue;
-  }
-
-  return Array.isArray(fallbackValue) ? fallbackValue : [];
 }
 
 export function hasRiskDistribution(riskDistribution) {
@@ -120,12 +130,13 @@ function resolveReadinessPayload(payloadByType) {
 }
 
 function resolveAllocationPayload(payloadByType) {
-  return payloadByType.binary_linear_programming || payloadByType.allocation || {};
+  return payloadByType.bilp || payloadByType.binary_linear_programming || payloadByType.allocation || {};
 }
 
 function normalizeForecastPayload(forecastPayload) {
   const forecastPeak = forecastPayload.forecastPeak || forecastPayload.forecast_peak || {};
   const summary = forecastPayload.summary || {};
+  const accuracyMetrics = forecastPayload.accuracyMetrics || forecastPayload.accuracy_metrics || {};
 
   return {
     actualSeries: (forecastPayload.actualSeries || forecastPayload.actual_series || []).map(normalizeSeriesPoint),
@@ -140,6 +151,7 @@ function normalizeForecastPayload(forecastPayload) {
       || summary.expected_change_percent
       || 0
     ),
+    accuracyMetrics: normalizeForecastAccuracyMetrics(accuracyMetrics, summary),
   };
 }
 
@@ -149,7 +161,42 @@ function normalizeReadinessPayload(readinessPayload) {
     topRiskFactors: readinessPayload.topRiskFactors || readinessPayload.top_risk_factors || [],
     highRiskEquipment: readinessPayload.highRiskEquipment || readinessPayload.high_risk_equipment || [],
     safeRate: Number(readinessPayload.safeRate || readinessPayload.safe_rate || 0),
+    modelMetrics: readinessPayload.modelMetrics || readinessPayload.model_metrics || {},
+    riskProbabilitySummary: readinessPayload.riskProbabilitySummary || readinessPayload.risk_probability_summary || {},
   };
+}
+
+function normalizeForecastAccuracyMetrics(accuracyMetrics, summary) {
+  return {
+    sarimaMape: nullableNumber(accuracyMetrics.sarimaMape ?? accuracyMetrics.sarima_mape ?? summary.sarimaMape ?? summary.sarima_mape),
+    naiveMape: nullableNumber(accuracyMetrics.naiveMape ?? accuracyMetrics.naive_mape ?? summary.naiveMape ?? summary.naive_mape),
+    seasonalNaiveMape: nullableNumber(
+      accuracyMetrics.seasonalNaiveMape
+      ?? accuracyMetrics.seasonal_naive_mape
+      ?? summary.seasonalNaiveMape
+      ?? summary.seasonal_naive_mape
+    ),
+    forecastImprovementPercent: nullableNumber(
+      accuracyMetrics.forecastImprovementPercent
+      ?? accuracyMetrics.forecast_improvement_percent
+      ?? summary.forecastImprovementPercent
+      ?? summary.forecast_improvement_percent
+    ),
+    accuracyStatus: accuracyMetrics.accuracyStatus || accuracyMetrics.accuracy_status || summary.accuracyStatus || summary.accuracy_status || 'insufficient_data',
+    benchmarkMethod: accuracyMetrics.benchmarkMethod || accuracyMetrics.benchmark_method || 'naive',
+    zeroDemandExcluded: Number(accuracyMetrics.zeroDemandExcluded || accuracyMetrics.zero_demand_excluded || 0),
+    evaluatedPeriods: Number(accuracyMetrics.evaluatedPeriods || accuracyMetrics.evaluated_periods || 0),
+    evaluationStartDate: accuracyMetrics.evaluationStartDate || accuracyMetrics.evaluation_start_date || '',
+    evaluationEndDate: accuracyMetrics.evaluationEndDate || accuracyMetrics.evaluation_end_date || '',
+  };
+}
+
+function nullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function normalizeAllocationPayload(allocationPayload, response) {
@@ -173,7 +220,7 @@ function normalizeAllocationSummary(allocationPayload, response) {
     activeReservations: Number(allocationPayload.summary?.activeReservations || allocationPayload.summary?.active_reservations || 0),
     pendingRequests: Number(allocationPayload.summary?.pendingRequests || allocationPayload.summary?.pending_requests || 0),
     completedThisPeriod: Number(allocationPayload.summary?.completedThisPeriod || allocationPayload.summary?.completed_this_period || 0),
-    generatedAt: response?.completedAt || response?.startedAt || response?.run?.started_at || response?.run?.startedAt || 'N/A',
+    generatedAt: response?.completedAt || response?.startedAt || response?.run?.started_at || response?.run?.startedAt || 'Not generated',
   };
 }
 

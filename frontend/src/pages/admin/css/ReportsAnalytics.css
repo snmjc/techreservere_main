@@ -90,6 +90,11 @@
   font-weight: 700;
 }
 
+.reports-analytics-date-range select:disabled {
+  color: #94a3b8;
+  cursor: progress;
+}
+
 .reports-refresh-button,
 .reports-models-button {
   min-height: 42px;
@@ -120,7 +125,7 @@
 
 .reports-model-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -136,7 +141,7 @@
 
 .reports-model-card {
   position: relative;
-  min-height: 128px;
+  min-height: 158px;
   padding: 1rem;
   overflow: hidden;
 }
@@ -155,9 +160,24 @@
   font-weight: 900;
 }
 
+.reports-model-card em {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0 0 0.5rem;
+  padding: 0 0.55rem;
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .reports-model-card span {
   display: block;
-  max-width: 78%;
+  max-width: 72%;
   color: #4b5563;
   font-size: 0.76rem;
   font-weight: 650;
@@ -315,6 +335,77 @@
   line-height: 1.4;
 }
 
+.reports-validation-grid,
+.reports-rf-metrics-grid,
+.reports-risk-probability-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.reports-rf-metrics-grid,
+.reports-risk-probability-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reports-risk-probability-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reports-validation-card,
+.reports-rf-metrics-grid article,
+.reports-risk-probability-grid article {
+  display: grid;
+  gap: 0.3rem;
+  min-height: 92px;
+  padding: 0.78rem;
+  background: #ffffff;
+  border: 1px solid #dfe8e3;
+  border-radius: 8px;
+}
+
+.reports-validation-card.is-good {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.reports-validation-card.is-bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.reports-validation-card span,
+.reports-rf-metrics-grid span,
+.reports-risk-probability-grid span {
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.reports-validation-card strong,
+.reports-rf-metrics-grid strong,
+.reports-risk-probability-grid strong {
+  color: #132238;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.reports-validation-card small {
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.reports-rf-metrics-grid small,
+.reports-risk-probability-grid small {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .reports-accordion {
   display: grid;
   gap: 0.55rem;
@@ -441,6 +532,55 @@
   color: #374151;
   font-size: 0.7rem;
   font-weight: 750;
+}
+
+.reports-confusion-matrix-wrap {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.reports-confusion-matrix-wrap h3 {
+  margin: 0 0 0.55rem;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.reports-confusion-matrix {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.reports-confusion-matrix th,
+.reports-confusion-matrix td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #edf2ef;
+  color: #334155;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.reports-confusion-matrix th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.reports-confusion-matrix tbody th {
+  text-align: left;
+}
+
+.reports-matrix-explainer {
+  margin: 0.65rem 0 0;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .reports-optimization-list {
@@ -573,6 +713,38 @@
 
 .reports-equipment-table td {
   font-weight: 700;
+}
+
+.reports-equipment-table td small {
+  display: block;
+  margin-top: 0.22rem;
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.reports-decision-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.reports-decision-pill--urgent {
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fed7aa;
+}
+
+.reports-decision-pill--steady {
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
 }
 
 .reports-summary-panel dl {
@@ -1144,7 +1316,10 @@
 @media (max-width: 1180px) {
   .reports-model-grid,
   .reports-two-column,
-  .reports-bottom-grid {
+  .reports-bottom-grid,
+  .reports-validation-grid,
+  .reports-rf-metrics-grid,
+  .reports-risk-probability-grid {
     grid-template-columns: 1fr;
   }
 

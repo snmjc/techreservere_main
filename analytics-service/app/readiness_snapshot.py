@@ -26,6 +26,7 @@ class ReadinessSnapshotBuilder:
         ).fetchall()
         trained_artifact = self.artifact_store.load(READINESS_ARTIFACT)
         trained_model = trained_artifact.get("model") if trained_artifact is not None else None
+        model_metrics = self._artifact_validation_metrics(trained_artifact)
         usage_window_days = int(trained_artifact.get("usageWindowDays", 90)) if trained_artifact is not None else 90
         usage_map = self._build_usage_map(connection, usage_window_days) if trained_model is not None else {}
 
@@ -56,10 +57,14 @@ class ReadinessSnapshotBuilder:
             usage_count = usage_map.get(str(row["equipment_name"] or "").lower(), 0)
             score = self._rule_score(availability_ratio, is_inactive, usage_count)
             self._count_factors(factor_counts, availability_ratio, is_inactive, usage_count)
+            risk_probability = None
             if trained_model is not None:
-                band_label = str(trained_model.predict([self._features(row, usage_map)])[0])
+                features = self._features(row, usage_map)
+                band_label = str(trained_model.predict([features])[0])
+                risk_probability = self._risk_probability(trained_model, features)
             else:
                 band_label = self._band_from_score(score)
+                risk_probability = self._rule_risk_probability(score)
             risk_label = "ready" if band_label in {"Low Risk", "Very Low Risk"} and not is_inactive else "watch"
 
             if band_label == "High Risk":
@@ -68,6 +73,7 @@ class ReadinessSnapshotBuilder:
                         "name": row["equipment_name"],
                         "score": score,
                         "usageCount": usage_count,
+                        "riskProbability": risk_probability,
                     }
                 )
 
@@ -78,6 +84,7 @@ class ReadinessSnapshotBuilder:
                     "equipmentName": row["equipment_name"],
                     "readinessLabel": risk_label,
                     "availabilityRatio": round(availability_ratio, 3),
+                    "riskProbability": risk_probability,
                     "equipmentState": equipment_state,
                     "operationalStatus": operational_status,
                 }
@@ -96,6 +103,8 @@ class ReadinessSnapshotBuilder:
             "topRiskFactors": [factor for factor, _count in sorted_factors[:4]],
             "highRiskEquipment": high_risk_equipment[:5],
             "safeRate": round((safe_equipment / total_equipment) * 100, 1) if total_equipment > 0 else 0,
+            "modelMetrics": model_metrics,
+            "riskProbabilitySummary": self._risk_probability_summary(records),
             "riskSummary": {
                 "readyCount": sum(1 for item in records if item["readinessLabel"] == "ready"),
                 "watchCount": sum(1 for item in records if item["readinessLabel"] == "watch"),
@@ -196,3 +205,45 @@ class ReadinessSnapshotBuilder:
             return fallback
         metadata = artifact.get("metadata", {})
         return str(metadata.get("modelName") or fallback)
+
+    def _artifact_validation_metrics(self, artifact: dict[str, Any] | None) -> dict[str, Any]:
+        if artifact is None:
+            return {}
+        metadata = artifact.get("metadata", {})
+        metrics = metadata.get("validationMetrics", {})
+        return metrics if isinstance(metrics, dict) else {}
+
+    def _risk_probability(self, model: Any, features: list[float]) -> float | None:
+        if not hasattr(model, "predict_proba"):
+            return None
+        try:
+            probabilities = model.predict_proba([features])[0]
+            class_labels = [str(label) for label in model.classes_]
+        except Exception:
+            return None
+        at_risk_probability = 0.0
+        for label, probability in zip(class_labels, probabilities):
+            if label in {"High Risk", "Medium Risk"}:
+                at_risk_probability += float(probability)
+        return round(at_risk_probability * 100, 1)
+
+    def _rule_risk_probability(self, score: int) -> float:
+        return round(min(100.0, max(0.0, (score / 8) * 100)), 1)
+
+    def _risk_probability_summary(self, records: list[dict[str, Any]]) -> dict[str, Any]:
+        probabilities = [
+            float(record["riskProbability"])
+            for record in records
+            if record.get("riskProbability") is not None
+        ]
+        if not probabilities:
+            return {
+                "averageRiskProbability": None,
+                "maxRiskProbability": None,
+                "highProbabilityCount": 0,
+            }
+        return {
+            "averageRiskProbability": round(sum(probabilities) / len(probabilities), 1),
+            "maxRiskProbability": round(max(probabilities), 1),
+            "highProbabilityCount": sum(1 for value in probabilities if value >= 65),
+        }
