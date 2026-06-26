@@ -124,7 +124,7 @@ class ReservationCreateService
 
         if (!$this->isAllowedReservationTimeSlot($eventDateTime) || !$this->isAllowedReservationTimeSlot($endDateTime)) {
             throw new DomainValidationException(
-                'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.',
+                'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.',
                 'ReservationTimeSlotInvalid'
             );
         }

@@ -259,7 +259,7 @@ function validateReservationSubmission() {
   }
 
   if (!isAllowedTimeSlot(reservationFormStore.activityTimeFrom) || !isAllowedTimeSlot(reservationFormStore.activityTimeTo)) {
-    return 'Activity time must be between 7:00 AM and 7:00 PM using :00 or :30 increments.';
+    return 'Activity time must be between 7:00 AM and 9:00 PM using :00 or :30 increments.';
   }
 
   if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 500) {
@@ -335,7 +335,7 @@ function isAllowedTimeSlot(timeValue) {
   }
 
   const totalMinutes = (hours * 60) + minutes;
-  return totalMinutes >= 7 * 60 && totalMinutes <= 19 * 60;
+  return totalMinutes >= 7 * 60 && totalMinutes <= 21 * 60;
 }
 
 function buildReservationDateTime(dateValue, timeValue) {
