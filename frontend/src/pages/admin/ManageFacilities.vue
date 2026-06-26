@@ -970,20 +970,23 @@
             </div>
 
             <div class="classroom-schedule-import-mapping-grid">
-              <article v-for="header in importScheduleHeaders" :key="header" class="classroom-schedule-import-mapping-card">
+              <article v-for="targetOption in importScheduleTargetOptions" :key="targetOption.key" class="classroom-schedule-import-mapping-card">
                 <div class="classroom-schedule-import-mapping-card__header">
-                  <strong>{{ header }}</strong>
-                  <span>{{ importSchedulePreviewCell(header, importSchedulePreviewRow) }}</span>
+                  <strong>{{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}</strong>
+                  <span>{{ importSchedulePreviewCellForTarget(targetOption.key, importSchedulePreviewRow) }}</span>
                 </div>
-                <select v-model="importScheduleColumnMap[header]">
-                  <option value="">Ignore this column</option>
+                <select
+                  :value="getImportMappedHeaderForTarget(targetOption.key)"
+                  @change="updateImportHeaderMapping(targetOption.key, $event.target.value)"
+                >
+                  <option value="">{{ targetOption.label }}</option>
                   <option
-                    v-for="targetOption in importScheduleTargetOptions"
-                    :key="targetOption.key"
-                    :value="targetOption.key"
-                    :disabled="isImportTargetTaken(targetOption.key, header)"
+                    v-for="header in importScheduleHeaders"
+                    :key="header"
+                    :value="header"
+                    :disabled="isImportHeaderTaken(header, targetOption.key)"
                   >
-                    {{ targetOption.label }}{{ targetOption.required ? ' *' : '' }}
+                    {{ header }}
                   </option>
                 </select>
               </article>
@@ -3973,13 +3976,34 @@ function matchImportTargetForHeader(header) {
   ))?.key || '';
 }
 
-function isImportTargetTaken(targetKey, activeHeader) {
-  if (!targetKey) {
+function getImportMappedHeaderForTarget(targetKey) {
+  return Object.keys(importScheduleColumnMap.value).find((header) => importScheduleColumnMap.value[header] === targetKey) || '';
+}
+
+function updateImportHeaderMapping(targetKey, selectedHeader) {
+  const normalizedHeader = String(selectedHeader || '').trim();
+  const nextColumnMap = { ...importScheduleColumnMap.value };
+
+  Object.keys(nextColumnMap).forEach((header) => {
+    if (nextColumnMap[header] === targetKey) {
+      nextColumnMap[header] = '';
+    }
+  });
+
+  if (normalizedHeader) {
+    nextColumnMap[normalizedHeader] = targetKey;
+  }
+
+  importScheduleColumnMap.value = nextColumnMap;
+}
+
+function isImportHeaderTaken(headerName, activeTargetKey) {
+  if (!headerName) {
     return false;
   }
 
   return Object.entries(importScheduleColumnMap.value).some(([header, mappedTarget]) => (
-    header !== activeHeader && mappedTarget === targetKey
+    header === headerName && mappedTarget && mappedTarget !== activeTargetKey
   ));
 }
 
@@ -4134,6 +4158,11 @@ function normalizeImportAliasKey(value) {
 function importSchedulePreviewCell(header, rowValues) {
   const headerIndex = importScheduleHeaders.value.indexOf(header);
   return headerIndex >= 0 ? normalizeImportedText(rowValues[headerIndex] ?? '') || 'No sample value' : 'No sample value';
+}
+
+function importSchedulePreviewCellForTarget(targetKey, rowValues) {
+  const headerName = getImportMappedHeaderForTarget(targetKey);
+  return headerName ? importSchedulePreviewCell(headerName, rowValues) : 'No sample value';
 }
 
 function readFileAsText(file) {
