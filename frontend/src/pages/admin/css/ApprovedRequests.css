@@ -75,8 +75,7 @@
 }
 
 .approved-requests-sort-button {
-  width: 40px;
-  height: 40px;
+  min-width: 156px;
 }
 
 .approved-requests-sort-button:hover {

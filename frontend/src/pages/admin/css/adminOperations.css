@@ -78,12 +78,24 @@
   height: 17px;
 }
 
+.admin-ops-sort-button span {
+  white-space: nowrap;
+}
+
 .admin-ops-button--secondary,
 .admin-ops-sort-button {
   color: #0d7d57;
   background: #ffffff;
   border: 1px solid #d5e7dd;
   box-shadow: 0 12px 24px rgba(20, 51, 41, 0.08);
+}
+
+.admin-ops-sort-button svg {
+  transition: transform 0.16s ease;
+}
+
+.admin-ops-sort-button--ascending svg {
+  transform: rotate(180deg);
 }
 
 .admin-ops-button--primary {

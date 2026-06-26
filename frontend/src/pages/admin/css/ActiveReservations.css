@@ -75,8 +75,7 @@
 }
 
 .active-reservations-sort-button {
-  width: 40px;
-  height: 40px;
+  min-width: 156px;
 }
 
 .active-reservations-sort-button:hover {
