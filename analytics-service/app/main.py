@@ -6,9 +6,13 @@ from pydantic import BaseModel
 
 from app.analytics_runner import AnalyticsRunner
 from app.database import get_connection
+from app.model_artifacts import ModelArtifactStore
+from app.model_trainer import AnalyticsModelTrainer
 from app.settings import settings
 
 runner = AnalyticsRunner()
+artifact_store = ModelArtifactStore()
+model_trainer = AnalyticsModelTrainer()
 scheduler = BackgroundScheduler(timezone="UTC")
 
 
@@ -19,9 +23,32 @@ class RunRequest(BaseModel):
     endDate: str | None = None
 
 
+class TrainModelsRequest(BaseModel):
+    setName: str | None = None
+    activate: bool = True
+
+
+class ActivateModelSetRequest(BaseModel):
+    setName: str
+
+
+class ActivateModelArtifactRequest(BaseModel):
+    setName: str
+    artifact: str
+
+
+class RenameModelSetRequest(BaseModel):
+    newName: str
+
+
 def scheduled_daily_check() -> None:
     with get_connection() as connection:
         runner.run_daily_check(connection, triggered_by="scheduler")
+
+
+def scheduled_weekly_training() -> None:
+    with get_connection() as connection:
+        model_trainer.train_all(connection, triggered_by="weekly_scheduler")
 
 
 @asynccontextmanager
@@ -33,6 +60,15 @@ async def lifespan(app: FastAPI):
             hour=settings.analytics_daily_cron_hour,
             minute=settings.analytics_daily_cron_minute,
             id="daily_analytics_check",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            scheduled_weekly_training,
+            "cron",
+            day_of_week=settings.analytics_weekly_training_day_of_week,
+            hour=settings.analytics_weekly_training_hour,
+            minute=settings.analytics_weekly_training_minute,
+            id="weekly_model_training",
             replace_existing=True,
         )
         scheduler.start()
@@ -66,6 +102,66 @@ def run_daily_check(request: RunRequest | None = None) -> dict:
                 start_date=request.startDate if request else None,
                 end_date=request.endDate if request else None,
             )
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.post("/analytics/train-models")
+def train_models(request: TrainModelsRequest | None = None) -> dict:
+    try:
+        with get_connection() as connection:
+            return model_trainer.train_all(
+                connection,
+                triggered_by="manual",
+                set_name=request.setName if request else None,
+                activate=request.activate if request else True,
+            )
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.get("/analytics/model-artifacts")
+def list_model_artifacts() -> dict:
+    try:
+        return artifact_store.list_sets()
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.post("/analytics/model-artifacts/activate")
+def activate_model_set(request: ActivateModelSetRequest) -> dict:
+    try:
+        return artifact_store.activate_set(request.setName)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.post("/analytics/model-artifacts/activate-artifact")
+def activate_model_artifact(request: ActivateModelArtifactRequest) -> dict:
+    try:
+        return artifact_store.activate_artifact(request.artifact, request.setName)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.patch("/analytics/model-artifacts/{set_name}")
+def rename_model_set(set_name: str, request: RenameModelSetRequest) -> dict:
+    try:
+        return artifact_store.rename_set(set_name, request.newName)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.delete("/analytics/model-artifacts/{set_name}")
+def delete_model_set(set_name: str) -> dict:
+    try:
+        return artifact_store.delete_set(set_name)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 

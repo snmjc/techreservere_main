@@ -12,21 +12,22 @@ This document explains the complete `/admin/reports-analytics` page:
 
 ## Important Model Status
 
-The page currently uses **operational rule-based analytics** produced by the FastAPI analytics service.
+The page is produced by the FastAPI analytics service. The service now has two execution layers:
 
-The response names are compatible with the planned models:
+- weekly model training that writes `.pkl` artifacts;
+- analytics snapshots that use the trained artifacts when available, then fall back to rule-based calculations when training data is insufficient.
 
-- `sarima` for forecasting;
-- `random_forest` for readiness;
-- `binary_linear_programming` for allocation.
+The weekly artifacts are stored in the analytics model directory:
 
-However, the current implementation is still marked `placeholder_ready`. It does not currently train:
+| Artifact | Purpose |
+| --- | --- |
+| `demand_forecast.pkl` | Trained demand forecast regressor from reservation submission history |
+| `readiness_random_forest.pkl` | Trained readiness risk classifier from equipment state, stock, and recent usage |
+| `allocation_optimizer.pkl` | Learned allocation profile from historical equipment usage and priority patterns |
 
-- a statistical SARIMA model;
-- a machine-learning Random Forest;
-- a mathematical Binary Linear Programming solver.
+In development, these files are written to `analytics-service/models/` through the Docker volume. In production, they are written to the `analytics_models` Docker volume at `/app/models`.
 
-Instead, it uses deterministic formulas, thresholds, weighted scores, and greedy allocation rules. The page should therefore be described as rule-based operational analytics until those models replace the current calculations.
+If an artifact exists, the corresponding FastAPI payload returns `status: "trained_weekly"` and includes `modelStatus`. If no artifact exists, or the database does not have enough history to train that model, the payload returns `status: "placeholder_ready"` and keeps the deterministic fallback behavior.
 
 ## Page Data Flow
 
@@ -37,6 +38,7 @@ ReportsAnalytics.vue
     -> Symfony GET /api/v1/analytics/range-results
         -> FastAPI POST /analytics/analyze-range
             -> PostgreSQL reservations and equipment data
+            -> trained .pkl artifacts when present
             -> forecast, readiness, and allocation calculations
         -> Symfony returns the FastAPI payload
     -> Vue normalizes and displays the result
@@ -84,6 +86,33 @@ The source label reports whether the page is:
 - unable to refresh and keeping the last completed result.
 
 The existing visible result is retained if a later refresh fails.
+
+## Weekly Training
+
+The FastAPI service schedules weekly model training with APScheduler.
+
+Default schedule:
+
+```text
+Sunday 01:00 UTC
+```
+
+Environment variables:
+
+| Variable | Default |
+| --- | --- |
+| `ANALYTICS_WEEKLY_TRAINING_DAY_OF_WEEK` | `sun` |
+| `ANALYTICS_WEEKLY_TRAINING_HOUR` | `1` |
+| `ANALYTICS_WEEKLY_TRAINING_MINUTE` | `0` |
+| `ANALYTICS_MODEL_DIR` | `/app/models` |
+
+Manual training trigger:
+
+```text
+POST /analytics/train-models
+```
+
+Training writes the latest model artifacts atomically, so inference either uses the previous complete `.pkl` file or the new complete `.pkl` file.
 
 ### Refresh Button
 
@@ -142,7 +171,11 @@ selected dates + 3 future dates
 
 Forecast values are calculated on the selected dates as well as the future dates. The overlap allows the UI to compare model expectation against the observed result.
 
-For each displayed date:
+When `demand_forecast.pkl` is present, Forecasted Demand comes from the weekly trained regressor. The regressor uses calendar features, recent rolling demand, and seasonal indicators derived from reservation submission history.
+
+If the artifact is missing, Forecasted Demand uses the fallback rule below.
+
+For each displayed date in fallback mode:
 
 ```text
 Forecast =
@@ -408,7 +441,7 @@ The current FastAPI readiness snapshot reads:
 - total quantity;
 - available quantity.
 
-The range filter does not currently change the readiness score because the FastAPI readiness builder does not read reservation usage for this result.
+When `readiness_random_forest.pkl` is present, the readiness snapshot also uses recent reservation usage from the model's training window. If the artifact is missing, readiness falls back to stock and state rules.
 
 ## Availability Ratio
 
@@ -530,7 +563,7 @@ Requests are ordered by:
 
 ## Greedy Allocation Rule
 
-The current implementation is a sequential greedy allocator.
+The current implementation is a sequential allocator. When `allocation_optimizer.pkl` is present, the allocator orders requests and equipment choices using learned priority and equipment usage weights. If the artifact is missing, it uses the original submission-time and availability ordering.
 
 Initial remaining capacity:
 
@@ -968,7 +1001,7 @@ It does not independently recalculate analytics.
 
 # Rule-Based Limitations
 
-The current results should be interpreted with these limitations:
+Fallback results should be interpreted with these limitations:
 
 1. Forecasting uses fixed weights and fixed month multipliers.
 2. Forecasting has no confidence interval.

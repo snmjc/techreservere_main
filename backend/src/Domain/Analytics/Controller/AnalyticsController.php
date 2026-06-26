@@ -160,6 +160,136 @@ class AnalyticsController
         }
     }
 
+    #[Route('/model-artifacts', name: 'analytics_model_artifacts', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function listModelArtifacts(): JsonResponse
+    {
+        try {
+            $payload = $this->requestAnalyticsService('GET', '/analytics/model-artifacts');
+
+            return $this->createSuccessResponse([
+                'modelArtifacts' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelArtifactsFetchFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    #[Route('/train-models', name: 'analytics_train_models', methods: ['POST'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function trainModels(Request $request): JsonResponse
+    {
+        try {
+            $requestBody = $this->jsonBody($request);
+            $payload = $this->requestAnalyticsService('POST', '/analytics/train-models', [
+                'setName' => trim((string) ($requestBody['setName'] ?? '')),
+                'activate' => (bool) ($requestBody['activate'] ?? true),
+            ], 90);
+
+            return $this->createSuccessResponse([
+                'trainingRun' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelTrainingFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    #[Route('/model-artifacts/activate', name: 'analytics_activate_model_artifact', methods: ['POST'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function activateModelArtifact(Request $request): JsonResponse
+    {
+        try {
+            $requestBody = $this->jsonBody($request);
+            $setName = trim((string) ($requestBody['setName'] ?? ''));
+            if ($setName === '') {
+                return $this->createErrorResponse('ValidationError', 'setName is required.', 422);
+            }
+
+            $payload = $this->requestAnalyticsService('POST', '/analytics/model-artifacts/activate', [
+                'setName' => $setName,
+            ]);
+
+            return $this->createSuccessResponse([
+                'activeModelSet' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelActivationFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    #[Route('/model-artifacts/activate-artifact', name: 'analytics_activate_single_model_artifact', methods: ['POST'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function activateSingleModelArtifact(Request $request): JsonResponse
+    {
+        try {
+            $requestBody = $this->jsonBody($request);
+            $setName = trim((string) ($requestBody['setName'] ?? ''));
+            $artifact = trim((string) ($requestBody['artifact'] ?? ''));
+            if ($setName === '' || $artifact === '') {
+                return $this->createErrorResponse('ValidationError', 'setName and artifact are required.', 422);
+            }
+
+            $payload = $this->requestAnalyticsService('POST', '/analytics/model-artifacts/activate-artifact', [
+                'setName' => $setName,
+                'artifact' => $artifact,
+            ]);
+
+            return $this->createSuccessResponse([
+                'activeModelArtifacts' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelArtifactActivationFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    #[Route('/model-artifacts/{setName}', name: 'analytics_rename_model_artifact', methods: ['PATCH'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function renameModelArtifact(string $setName, Request $request): JsonResponse
+    {
+        try {
+            $requestBody = $this->jsonBody($request);
+            $newName = trim((string) ($requestBody['newName'] ?? ''));
+            if ($newName === '') {
+                return $this->createErrorResponse('ValidationError', 'newName is required.', 422);
+            }
+
+            $payload = $this->requestAnalyticsService(
+                'PATCH',
+                '/analytics/model-artifacts/' . rawurlencode(trim($setName)),
+                ['newName' => $newName]
+            );
+
+            return $this->createSuccessResponse([
+                'renamedModelSet' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelRenameFailed', $exception->getMessage(), 502);
+        }
+    }
+
+    #[Route('/model-artifacts/{setName}', name: 'analytics_delete_model_artifact', methods: ['DELETE'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function deleteModelArtifact(string $setName): JsonResponse
+    {
+        try {
+            $normalizedSetName = trim($setName);
+            if ($normalizedSetName === '') {
+                return $this->createErrorResponse('ValidationError', 'setName is required.', 422);
+            }
+
+            $payload = $this->requestAnalyticsService(
+                'DELETE',
+                '/analytics/model-artifacts/' . rawurlencode($normalizedSetName)
+            );
+
+            return $this->createSuccessResponse([
+                'deletedModelSet' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsModelDeleteFailed', $exception->getMessage(), 502);
+        }
+    }
+
     private function getStoredConfiguration(): array
     {
         $configuration = $this->connection->fetchAssociative(
@@ -248,6 +378,23 @@ class AnalyticsController
             ],
             'timeout' => 60,
         ]);
+
+        return $response->toArray(false);
+    }
+
+    private function requestAnalyticsService(
+        string $method,
+        string $path,
+        array $payload = [],
+        int $timeout = 60
+    ): array {
+        $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
+        $options = ['timeout' => $timeout];
+        if ($payload !== []) {
+            $options['json'] = $payload;
+        }
+
+        $response = $this->httpClient->request($method, $analyticsServiceUrl . $path, $options);
 
         return $response->toArray(false);
     }

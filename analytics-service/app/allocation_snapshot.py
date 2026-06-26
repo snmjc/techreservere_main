@@ -4,8 +4,13 @@ from typing import Any
 
 from psycopg import Connection
 
+from app.model_artifacts import ALLOCATION_ARTIFACT, ModelArtifactStore
+
 
 class AllocationSnapshotBuilder:
+    def __init__(self, artifact_store: ModelArtifactStore | None = None) -> None:
+        self.artifact_store = artifact_store or ModelArtifactStore()
+
     def build(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
         range_days = int(config.get("allocation", {}).get("historyDays", 30))
         configured_range = config.get("dateRange", {})
@@ -18,7 +23,8 @@ class AllocationSnapshotBuilder:
 
         pending_rows = self._fetch_pending_reservations(connection)
         equipment_rows = self._fetch_equipment(connection)
-        allocation_plan = self._build_allocation_plan(pending_rows, equipment_rows)
+        trained_artifact = self.artifact_store.load(ALLOCATION_ARTIFACT)
+        allocation_plan = self._build_allocation_plan(pending_rows, equipment_rows, trained_artifact)
 
         current_usage_map = self._build_equipment_usage_map(connection, start_date, end_date)
         previous_year_usage_map = self._build_equipment_usage_map(connection, previous_year_start, previous_year_end)
@@ -32,8 +38,8 @@ class AllocationSnapshotBuilder:
         )
 
         return {
-            "modelName": "binary_linear_programming",
-            "status": "placeholder_ready",
+            "modelName": self._artifact_model_name(trained_artifact, "binary_linear_programming"),
+            "status": "trained_weekly" if trained_artifact is not None else "placeholder_ready",
             "dateRange": {
                 "startDate": start_date.isoformat(),
                 "endDate": end_date.isoformat(),
@@ -54,7 +60,12 @@ class AllocationSnapshotBuilder:
             },
             "fulfilledCount": sum(1 for item in allocation_plan if item["status"] == "allocated"),
             "partialCount": sum(1 for item in allocation_plan if item["status"] == "partial"),
-            "notes": "FastAPI storage path is live. Binary LP solving will replace this placeholder output.",
+            "modelStatus": self.artifact_store.describe(ALLOCATION_ARTIFACT),
+            "notes": (
+                "Weekly trained .pkl allocation optimizer profile is active."
+                if trained_artifact is not None
+                else "FastAPI storage path is live. Weekly training will replace this placeholder output."
+            ),
         }
 
     def _fetch_pending_reservations(self, connection: Connection) -> list[Any]:
@@ -90,14 +101,37 @@ class AllocationSnapshotBuilder:
             """
         ).fetchall()
 
-    def _build_allocation_plan(self, pending_rows: list[Any], equipment_rows: list[Any]) -> list[dict[str, Any]]:
+    def _build_allocation_plan(
+        self,
+        pending_rows: list[Any],
+        equipment_rows: list[Any],
+        artifact: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         allocation_plan: list[dict[str, Any]] = []
+        equipment_weights = dict(artifact.get("equipmentWeights", {})) if artifact else {}
+        priority_weights = dict(artifact.get("priorityWeights", {})) if artifact else {}
+        ordered_pending_rows = sorted(
+            pending_rows,
+            key=lambda request: (
+                -float(priority_weights.get(str(request["priority_level"] or "Normal").lower(), 1.0)),
+                request["submission_timestamp"],
+                request["event_date_time"],
+            ),
+        )
+        ordered_equipment_rows = sorted(
+            equipment_rows,
+            key=lambda equipment: (
+                -float(equipment_weights.get(str(equipment["equipment_name"] or "").lower(), 1.0)),
+                -max(0, int(equipment["available_quantity"] or 0)),
+                str(equipment["equipment_name"] or ""),
+            ),
+        )
         remaining_capacity = {
             int(row["equipment_identifier"]): max(0, int(row["available_quantity"] or 0))
-            for row in equipment_rows
+            for row in ordered_equipment_rows
         }
 
-        for request in pending_rows:
+        for request in ordered_pending_rows:
             line_items: list[dict[str, Any]] = []
             allocated_total = 0
             requested_items = self._parse_requested_items(request["requested_equipment_list"])
@@ -106,7 +140,7 @@ class AllocationSnapshotBuilder:
                 item_quantity = max(0, int(item.get("quantity") or 0))
                 allocated_quantity = 0
 
-                for equipment in equipment_rows:
+                for equipment in ordered_equipment_rows:
                     equipment_identifier = int(equipment["equipment_identifier"])
                     if remaining_capacity[equipment_identifier] <= 0:
                         continue
@@ -139,6 +173,12 @@ class AllocationSnapshotBuilder:
             )
 
         return allocation_plan
+
+    def _artifact_model_name(self, artifact: dict[str, Any] | None, fallback: str) -> str:
+        if artifact is None:
+            return fallback
+        metadata = artifact.get("metadata", {})
+        return str(metadata.get("modelName") or fallback)
 
     def _build_equipment_usage_map(self, connection: Connection, start_date: date, end_date: date) -> dict[str, int]:
         rows = connection.execute(

@@ -86,10 +86,15 @@ services:
     volumes:
       - ./analytics-service/app:/app/app
       - ./docs/demo-seeds:/app/demo-seeds:ro
+      - ./analytics-service/models:/app/models
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-techreserve_user}:${POSTGRES_PASSWORD:-techreserve_pass}@database:5432/${POSTGRES_DB:-techreserve}"
       ANALYTICS_DAILY_CRON_HOUR: "${ANALYTICS_DAILY_CRON_HOUR:-2}"
       ANALYTICS_DAILY_CRON_MINUTE: "${ANALYTICS_DAILY_CRON_MINUTE:-0}"
+      ANALYTICS_WEEKLY_TRAINING_DAY_OF_WEEK: "${ANALYTICS_WEEKLY_TRAINING_DAY_OF_WEEK:-sun}"
+      ANALYTICS_WEEKLY_TRAINING_HOUR: "${ANALYTICS_WEEKLY_TRAINING_HOUR:-1}"
+      ANALYTICS_WEEKLY_TRAINING_MINUTE: "${ANALYTICS_WEEKLY_TRAINING_MINUTE:-0}"
+      ANALYTICS_MODEL_DIR: "${ANALYTICS_MODEL_DIR:-/app/models}"
       ANALYTICS_SCHEDULER_ENABLED: "${ANALYTICS_SCHEDULER_ENABLED:-true}"
     expose:
       - "9000"
