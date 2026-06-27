@@ -73,6 +73,21 @@ const adminAnalyticsApi = {
     return unwrapResponse(response);
   },
 
+  async getAnalyticsRangeSectionResults(section, range) {
+    const authToken = getStoredAuthToken();
+    const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
+      headers: buildAuthorizationHeaders(authToken),
+      params: {
+        historyDays: range?.days || 30,
+        startDate: range?.startDateIso,
+        endDate: range?.endDateIso,
+        _: Date.now(),
+      },
+    });
+
+    return unwrapResponse(response);
+  },
+
   async triggerAnalyticsRun(scenario, range) {
     const authToken = getStoredAuthToken();
     const response = await axios.post(apiUrl('/api/v1/analytics/trigger-run'), {

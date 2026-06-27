@@ -37,6 +37,7 @@
             <button
               class="reports-models-button"
               type="button"
+              :disabled="isReportsLoading"
               @click="openModelSheet"
             >
               Analytics Models
@@ -46,7 +47,7 @@
         </header>
 
         <p v-if="reportsError" class="reports-inline-message is-error">{{ reportsError }}</p>
-        <p v-else-if="isReportsLoading" class="reports-inline-message">Loading analytics report...</p>
+        <p v-else-if="isReportsLoading" class="reports-inline-message">Refreshing report sections...</p>
         <p v-if="analyticsToastMessage" class="reports-inline-message is-success">{{ analyticsToastMessage }}</p>
 
         <div class="reports-model-grid">
@@ -81,10 +82,13 @@
               <p>Forecasted equipment demand based on recent reservation volume.</p>
             </div>
           </div>
+          <p v-if="isForecastSectionLoading" class="reports-section-loading">Loading demand forecast...</p>
+          <p v-if="forecastSectionError" class="reports-inline-message is-error">{{ forecastSectionError }}</p>
 
           <div class="reports-forecast-layout">
             <div class="reports-chart-card">
-              <div v-if="forecastSeries.length === 0" class="reports-inline-message">No reservation demand data is available for this range.</div>
+              <div v-if="!isForecastSectionLoading && forecastSeries.length === 0" class="reports-inline-message">No reservation demand data is available for this range.</div>
+              <div v-else-if="isForecastSectionLoading && forecastSeries.length === 0" class="reports-section-placeholder"></div>
               <div v-else class="reports-chart-canvas-wrap">
                 <canvas ref="forecastChartRef" class="reports-chart-canvas" aria-label="Demand forecasting line chart"></canvas>
               </div>
@@ -152,6 +156,8 @@
           <section class="reports-panel">
             <h2>Readiness Risk Detection (Random Forest)</h2>
             <p>Risk level distribution across tracked equipment inventory.</p>
+            <p v-if="isRiskSectionLoading" class="reports-section-loading">Loading readiness risk detection...</p>
+            <p v-if="riskSectionError" class="reports-inline-message is-error">{{ riskSectionError }}</p>
             <div class="reports-risk-layout">
               <div class="reports-chart-canvas-wrap reports-chart-canvas-wrap--donut">
                 <canvas ref="riskChartRef" class="reports-chart-canvas" :aria-label="highRiskTooltip"></canvas>
@@ -230,6 +236,8 @@
           <section class="reports-panel">
             <h2>Resource Allocation Optimization (B-ILP)</h2>
             <p>Efficiency indicators derived from request throughput and inventory usage.</p>
+            <p v-if="isOptimizationSectionLoading" class="reports-section-loading">Loading allocation optimization...</p>
+            <p v-if="allocationSectionError" class="reports-inline-message is-error">{{ allocationSectionError }}</p>
             <div class="reports-optimization-list">
               <article v-for="metric in optimizationMetrics" :key="metric.label">
                 <span
@@ -263,8 +271,9 @@
         <div class="reports-bottom-grid">
           <section class="reports-panel">
             <h2>Equipment Utilization Overview (Random Forest)</h2>
-            <div v-if="isUtilizationRefreshing" class="reports-inline-message">Refreshing live utilization data from the backend...</div>
-            <div v-else-if="utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+            <p v-if="isUtilizationRefreshing" class="reports-section-loading">Loading equipment utilization...</p>
+            <div v-if="!isUtilizationRefreshing && utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+            <div v-else-if="isUtilizationRefreshing && utilizationItems.length === 0" class="reports-section-placeholder"></div>
             <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
               <canvas ref="utilizationChartRef" class="reports-chart-canvas" aria-label="Equipment utilization comparison chart"></canvas>
             </div>
@@ -282,6 +291,7 @@
 
           <section class="reports-panel">
             <h2>Top Equipment Trends</h2>
+            <p v-if="isEquipmentTrendsSectionLoading" class="reports-section-loading">Loading equipment trends...</p>
             <div class="reports-table-stack">
               <div>
                 <h3>Top Frequently Used Equipment</h3>
@@ -290,7 +300,10 @@
                     <tr><th>Equipment</th><th>Times Used</th></tr>
                   </thead>
                   <tbody>
-                    <tr v-if="topFrequentlyUsedEquipment.length === 0">
+                    <tr v-if="isEquipmentTrendsSectionLoading && topFrequentlyUsedEquipment.length === 0">
+                      <td colspan="2">Loading frequent equipment trends...</td>
+                    </tr>
+                    <tr v-else-if="topFrequentlyUsedEquipment.length === 0">
                       <td colspan="2">No equipment requests were recorded in the selected range.</td>
                     </tr>
                     <tr v-for="item in topFrequentlyUsedEquipment" :key="item.name">
@@ -308,7 +321,10 @@
                     <tr><th>Equipment</th><th>Demand Signal</th><th>Decision</th><th>Recommended Action</th></tr>
                   </thead>
                   <tbody>
-                    <tr v-if="possibleBorrowedEquipment.length === 0">
+                    <tr v-if="isEquipmentTrendsSectionLoading && possibleBorrowedEquipment.length === 0">
+                      <td colspan="4">Loading equipment preparation decisions...</td>
+                    </tr>
+                    <tr v-else-if="possibleBorrowedEquipment.length === 0">
                       <td colspan="4">No equipment needs preparation based on current and same-date historical demand.</td>
                     </tr>
                     <tr v-for="item in possibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
@@ -330,6 +346,7 @@
 
           <section class="reports-panel reports-summary-panel">
             <h2>System Summary</h2>
+            <p v-if="isSummarySectionLoading" class="reports-section-loading">Loading system summary...</p>
             <dl>
               <div v-for="item in summaryItems" :key="item.label">
                 <dt>{{ item.label }}</dt>
@@ -354,8 +371,13 @@
           {{ isExporting ? 'Generating PDF...' : 'Generate PDF Report' }}
         </button>
 
-        <button class="reports-trigger-button reports-trigger-button--bottom" type="button" @click="isScenarioModalOpen = true">
-          Run Analytics Now
+        <button
+          class="reports-trigger-button reports-trigger-button--bottom"
+          type="button"
+          :disabled="isReportsLoading"
+          @click="isScenarioModalOpen = true"
+        >
+          Run Scenario Test Analytics
         </button>
       </div>
 
@@ -492,7 +514,7 @@
       <div v-if="isScenarioModalOpen" class="reports-modal-backdrop" @click.self="closeScenarioModal">
         <div class="reports-modal">
           <div class="reports-modal-header">
-            <h3>Run Analytics Scenario</h3>
+            <h3>Run Scenario Test Analytics</h3>
             <button type="button" class="reports-modal-close" @click="closeScenarioModal">×</button>
           </div>
 
@@ -521,10 +543,10 @@
             <button
               type="button"
               class="reports-primary-button"
-              :disabled="isTriggeringAnalytics"
+              :disabled="isTriggeringAnalytics || isReportsLoading"
               @click="handleTriggerAnalyticsRun"
             >
-              {{ isTriggeringAnalytics ? 'Running...' : 'Run Scenario' }}
+              {{ isTriggeringAnalytics ? 'Running...' : 'Run Scenario Test Analytics' }}
             </button>
           </div>
         </div>
@@ -546,6 +568,9 @@ import {
   createEmptyRiskReport,
   createEmptySummaryReport,
   createEmptyUtilizationReport,
+  normalizeAllocationSectionResponse,
+  normalizeForecastSectionResponse,
+  normalizeReadinessSectionResponse,
   normalizeStoredAnalyticsResponse,
 } from './services/reportsAnalyticsDataAdapter.js';
 import { createReportsAnalyticsChartRenderer } from './services/reportsAnalyticsChartRenderer.js';
@@ -579,6 +604,11 @@ const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
 const authStore = useAuthenticationStore();
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
+const sectionLoadingState = ref({
+  forecast: false,
+  readiness: false,
+  allocation: false,
+});
 const isExporting = ref(false);
 const isTriggeringAnalytics = ref(false);
 const isScenarioModalOpen = ref(false);
@@ -592,6 +622,11 @@ const isRenamingModelSet = ref('');
 const isDeletingModelSet = ref('');
 const selectedAnalyticsScenario = ref('clean_data');
 const reportsError = ref('');
+const sectionErrors = ref({
+  forecast: '',
+  readiness: '',
+  allocation: '',
+});
 const analyticsToastMessage = ref('');
 const analyticsRunStatus = ref('');
 const analyticsRunStatusType = ref('info');
@@ -861,6 +896,15 @@ const riskProbabilityCards = computed(() => {
 const optimizationMetrics = computed(() => optimizationReport.value || []);
 const isForecastValidationOpen = computed(() => reportsAccordionPreferences.value.forecastValidation === true);
 const isRiskValidationOpen = computed(() => reportsAccordionPreferences.value.riskValidation === true);
+const isForecastSectionLoading = computed(() => sectionLoadingState.value.forecast);
+const isRiskSectionLoading = computed(() => sectionLoadingState.value.readiness);
+const isAllocationSectionLoading = computed(() => sectionLoadingState.value.allocation);
+const isOptimizationSectionLoading = computed(() => isAllocationSectionLoading.value);
+const isEquipmentTrendsSectionLoading = computed(() => isAllocationSectionLoading.value);
+const isSummarySectionLoading = computed(() => isAllocationSectionLoading.value);
+const forecastSectionError = computed(() => sectionErrors.value.forecast);
+const riskSectionError = computed(() => sectionErrors.value.readiness);
+const allocationSectionError = computed(() => sectionErrors.value.allocation);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
 const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
@@ -930,34 +974,102 @@ watch(
 async function loadReportsAnalytics() {
   const loadSequence = ++reportsLoadSequence;
   isReportsLoading.value = true;
-  isUtilizationRefreshing.value = true;
+  setAllSectionLoading(true);
+  clearSectionErrors();
   reportsError.value = '';
   pdfError.value = '';
   reportsSourceLabel.value = `Loading FastAPI analytics for ${activeRangeLabel.value}...`;
+  const requestedRange = activeRange.value;
 
+  const sectionRequests = [
+    loadAnalyticsSection(loadSequence, 'forecast', requestedRange),
+    loadAnalyticsSection(loadSequence, 'readiness', requestedRange),
+    loadAnalyticsSection(loadSequence, 'allocation', requestedRange),
+  ];
+
+  await Promise.allSettled(sectionRequests);
+
+  if (loadSequence !== reportsLoadSequence) {
+    return;
+  }
+
+  isReportsLoading.value = false;
+  if (Object.values(sectionErrors.value).some(Boolean)) {
+    reportsSourceLabel.value = 'Some analytics sections could not refresh; keeping their last completed result.';
+  } else {
+    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
+  }
+}
+
+async function loadAnalyticsSection(loadSequence, section, range) {
   try {
-    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeResults(activeRange.value);
+    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeSectionResults(section, range);
     if (loadSequence !== reportsLoadSequence) {
       return;
     }
 
-    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
-    reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
+    applyAnalyticsSection(section, analyticsResponse);
   } catch (error) {
     if (loadSequence !== reportsLoadSequence) {
       return;
     }
 
-    reportsError.value = resolveReportsError(error);
-    reportsSourceLabel.value = 'Unable to refresh FastAPI analytics; keeping the last completed result.';
+    sectionErrors.value = {
+      ...sectionErrors.value,
+      [section]: resolveReportsError(error),
+    };
   } finally {
-    if (loadSequence !== reportsLoadSequence) {
-      return;
+    if (loadSequence === reportsLoadSequence) {
+      sectionLoadingState.value = {
+        ...sectionLoadingState.value,
+        [section]: false,
+      };
+      if (section === 'allocation') {
+        isUtilizationRefreshing.value = false;
+      }
     }
-
-    isReportsLoading.value = false;
-    isUtilizationRefreshing.value = false;
   }
+}
+
+function applyAnalyticsSection(section, analyticsResponse) {
+  if (section === 'forecast') {
+    forecastReport.value = normalizeForecastSectionResponse(analyticsResponse);
+    return;
+  }
+
+  if (section === 'readiness') {
+    riskReport.value = normalizeReadinessSectionResponse(analyticsResponse);
+    return;
+  }
+
+  if (section === 'allocation') {
+    const allocationAnalytics = normalizeAllocationSectionResponse(analyticsResponse);
+    optimizationReport.value = allocationAnalytics.optimizationMetrics;
+    utilizationReport.value = {
+      items: allocationAnalytics.utilizationByCategory,
+      comparisonItems: allocationAnalytics.utilizationComparisonByCategory,
+      topEquipment: allocationAnalytics.topEquipment,
+      possibleBorrowedEquipment: allocationAnalytics.possibleBorrowedEquipment,
+    };
+    summaryReport.value = allocationAnalytics.summary;
+  }
+}
+
+function setAllSectionLoading(isLoading) {
+  sectionLoadingState.value = {
+    forecast: isLoading,
+    readiness: isLoading,
+    allocation: isLoading,
+  };
+  isUtilizationRefreshing.value = isLoading;
+}
+
+function clearSectionErrors() {
+  sectionErrors.value = {
+    forecast: '',
+    readiness: '',
+    allocation: '',
+  };
 }
 
 async function handleTriggerAnalyticsRun() {

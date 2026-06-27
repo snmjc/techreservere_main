@@ -90,6 +90,7 @@ def health() -> dict[str, str]:
 @app.post("/analytics/run-daily-check")
 def run_daily_check(request: RunRequest | None = None) -> dict:
     try:
+        runner.clear_cache()
         with get_connection() as connection:
             triggered_by = "manual"
             if request and request.scenario:
@@ -109,6 +110,7 @@ def run_daily_check(request: RunRequest | None = None) -> dict:
 @app.post("/analytics/train-models")
 def train_models(request: TrainModelsRequest | None = None) -> dict:
     try:
+        runner.clear_cache()
         with get_connection() as connection:
             return model_trainer.train_all(
                 connection,
@@ -131,6 +133,7 @@ def list_model_artifacts() -> dict:
 @app.post("/analytics/model-artifacts/activate")
 def activate_model_set(request: ActivateModelSetRequest) -> dict:
     try:
+        runner.clear_cache()
         return artifact_store.activate_set(request.setName)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
@@ -141,6 +144,7 @@ def activate_model_set(request: ActivateModelSetRequest) -> dict:
 @app.post("/analytics/model-artifacts/activate-artifact")
 def activate_model_artifact(request: ActivateModelArtifactRequest) -> dict:
     try:
+        runner.clear_cache()
         return artifact_store.activate_artifact(request.artifact, request.setName)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
@@ -151,6 +155,7 @@ def activate_model_artifact(request: ActivateModelArtifactRequest) -> dict:
 @app.patch("/analytics/model-artifacts/{set_name}")
 def rename_model_set(set_name: str, request: RenameModelSetRequest) -> dict:
     try:
+        runner.clear_cache()
         return artifact_store.rename_set(set_name, request.newName)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -161,6 +166,7 @@ def rename_model_set(set_name: str, request: RenameModelSetRequest) -> dict:
 @app.delete("/analytics/model-artifacts/{set_name}")
 def delete_model_set(set_name: str) -> dict:
     try:
+        runner.clear_cache()
         return artifact_store.delete_set(set_name)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
@@ -179,5 +185,25 @@ def analyze_range(request: RunRequest) -> dict:
                 start_date=request.startDate,
                 end_date=request.endDate,
             )
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.post("/analytics/analyze-range/{section}")
+def analyze_range_section(section: str, request: RunRequest) -> dict:
+    if not request.startDate or not request.endDate:
+        raise HTTPException(status_code=422, detail="startDate and endDate are required.")
+
+    try:
+        with get_connection() as connection:
+            return runner.analyze_range_section(
+                connection,
+                section=section,
+                history_days=request.historyDays or 30,
+                start_date=request.startDate,
+                end_date=request.endDate,
+            )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error

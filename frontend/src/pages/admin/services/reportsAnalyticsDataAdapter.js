@@ -99,6 +99,38 @@ export function normalizeStoredAnalyticsResponse(response) {
   return normalized;
 }
 
+export function normalizeForecastSectionResponse(response) {
+  return normalizeForecastPayload(resolveSectionPayload(response, 'forecast'));
+}
+
+export function normalizeReadinessSectionResponse(response) {
+  return normalizeReadinessPayload(resolveSectionPayload(response, 'readiness'));
+}
+
+export function normalizeAllocationSectionResponse(response) {
+  const analyticsRun = response?.analyticsServiceResponse || response || {};
+  return normalizeAllocationPayload(resolveSectionPayload(response, 'allocation'), analyticsRun);
+}
+
+function resolveSectionPayload(response, fallbackType) {
+  const analyticsRun = response?.analyticsServiceResponse || response || {};
+  if (analyticsRun.result && typeof analyticsRun.result === 'object') {
+    return analyticsRun.result;
+  }
+
+  const payloadByType = buildAnalyticsPayloadMap(analyticsRun.results);
+  switch (fallbackType) {
+    case 'forecast':
+      return resolveForecastPayload(payloadByType);
+    case 'readiness':
+      return resolveReadinessPayload(payloadByType);
+    case 'allocation':
+      return resolveAllocationPayload(payloadByType);
+    default:
+      return {};
+  }
+}
+
 function buildAnalyticsPayloadMap(resultList) {
   if (resultList && !Array.isArray(resultList) && typeof resultList === 'object') {
     return Object.fromEntries(
