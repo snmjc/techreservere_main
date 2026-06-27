@@ -239,7 +239,7 @@
               </tr>
             </tbody>
           </table>
-          <div v-if="wishlistTotalPages > 1" class="admin-wishlist-pagination">
+          <div class="admin-wishlist-pagination">
             <button type="button" :disabled="wishlistCurrentPage === 1" @click="wishlistCurrentPage -= 1">Previous</button>
             <span>Showing {{ wishlistPageStart }}-{{ wishlistPageEnd }} of {{ filteredWishlistAccounts.length }}</span>
             <button type="button" :disabled="wishlistCurrentPage === wishlistTotalPages" @click="wishlistCurrentPage += 1">Next</button>

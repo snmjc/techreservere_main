@@ -65,7 +65,7 @@
         />
       </div>
 
-      <div v-if="activeReservationsTotalPages > 1" class="active-reservations-pagination">
+      <div class="active-reservations-pagination">
         <button type="button" :disabled="activeReservationsCurrentPage === 1" @click="activeReservationsCurrentPage -= 1">Previous</button>
         <span>Page {{ activeReservationsCurrentPage }} of {{ activeReservationsTotalPages }}</span>
         <button type="button" :disabled="activeReservationsCurrentPage === activeReservationsTotalPages" @click="activeReservationsCurrentPage += 1">Next</button>

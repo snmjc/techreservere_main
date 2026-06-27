@@ -46,6 +46,18 @@ export const adminManageAccountsApi = {
     }
   },
 
+  async getAccountsByType(token, accountType) {
+    try {
+      const response = await fetch(apiUrl(`/api/v1/accounts/type/${encodeURIComponent(accountType)}`), {
+        method: 'GET',
+        headers: buildHeaders(token),
+      });
+      return parseResponse(response);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   async getAccountById(accountIdentifier, token) {
     try {
       const response = await fetch(apiUrl(`/api/v1/accounts/${accountIdentifier}`), {

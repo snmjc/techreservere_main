@@ -66,7 +66,7 @@
         />
       </div>
 
-      <div v-if="approvedRequestsTotalPages > 1" class="approved-requests-pagination">
+      <div class="approved-requests-pagination">
         <button type="button" :disabled="approvedRequestsCurrentPage === 1" @click="approvedRequestsCurrentPage -= 1">Previous</button>
         <span>Page {{ approvedRequestsCurrentPage }} of {{ approvedRequestsTotalPages }}</span>
         <button type="button" :disabled="approvedRequestsCurrentPage === approvedRequestsTotalPages" @click="approvedRequestsCurrentPage += 1">Next</button>

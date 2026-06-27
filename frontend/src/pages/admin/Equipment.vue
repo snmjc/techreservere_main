@@ -128,7 +128,7 @@
             </tr>
           </tbody>
         </table>
-        <div v-if="equipmentTotalPages > 1" class="equipment-page__pagination">
+        <div class="equipment-page__pagination">
           <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
           <span>Showing {{ equipmentPageStart }}-{{ equipmentPageEnd }} of {{ filteredEquipment.length }}</span>
           <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>

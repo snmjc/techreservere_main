@@ -65,7 +65,7 @@
         />
       </div>
 
-      <div v-if="pendingRequestsTotalPages > 1" class="pending-requests-pagination">
+      <div class="pending-requests-pagination">
         <button type="button" :disabled="pendingRequestsCurrentPage === 1" @click="pendingRequestsCurrentPage -= 1">Previous</button>
         <span>Page {{ pendingRequestsCurrentPage }} of {{ pendingRequestsTotalPages }}</span>
         <button type="button" :disabled="pendingRequestsCurrentPage === pendingRequestsTotalPages" @click="pendingRequestsCurrentPage += 1">Next</button>

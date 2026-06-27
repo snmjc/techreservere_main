@@ -306,12 +306,17 @@
                     <tr v-else-if="topFrequentlyUsedEquipment.length === 0">
                       <td colspan="2">No equipment requests were recorded in the selected range.</td>
                     </tr>
-                    <tr v-for="item in topFrequentlyUsedEquipment" :key="item.name">
+                    <tr v-for="item in paginatedTopFrequentlyUsedEquipment" :key="item.name">
                       <td>{{ item.name }}</td>
                       <td>{{ formatMetricNumber(item.count, 0) }}</td>
                     </tr>
                   </tbody>
                 </table>
+                <div class="reports-equipment-pagination">
+                  <button type="button" :disabled="topEquipmentCurrentPage === 1" @click="topEquipmentCurrentPage -= 1">Previous</button>
+                  <span>Page {{ topEquipmentCurrentPage }} of {{ topEquipmentTotalPages }}</span>
+                  <button type="button" :disabled="topEquipmentCurrentPage === topEquipmentTotalPages" @click="topEquipmentCurrentPage += 1">Next</button>
+                </div>
               </div>
 
               <div>
@@ -327,7 +332,7 @@
                     <tr v-else-if="possibleBorrowedEquipment.length === 0">
                       <td colspan="4">No equipment needs preparation based on current and same-date historical demand.</td>
                     </tr>
-                    <tr v-for="item in possibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
+                    <tr v-for="item in paginatedPossibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
                       <td>{{ item.name }}</td>
                       <td>
                         <strong>{{ item.signal }}</strong>
@@ -340,6 +345,11 @@
                     </tr>
                   </tbody>
                 </table>
+                <div class="reports-equipment-pagination">
+                  <button type="button" :disabled="possibleBorrowedCurrentPage === 1" @click="possibleBorrowedCurrentPage -= 1">Previous</button>
+                  <span>Page {{ possibleBorrowedCurrentPage }} of {{ possibleBorrowedTotalPages }}</span>
+                  <button type="button" :disabled="possibleBorrowedCurrentPage === possibleBorrowedTotalPages" @click="possibleBorrowedCurrentPage += 1">Next</button>
+                </div>
               </div>
             </div>
           </section>
@@ -623,6 +633,9 @@ const isSwappingModelArtifact = ref('');
 const isRenamingModelSet = ref('');
 const isDeletingModelSet = ref('');
 const selectedAnalyticsScenario = ref('clean_data');
+const equipmentTrendPageSize = 5;
+const topEquipmentCurrentPage = ref(1);
+const possibleBorrowedCurrentPage = ref(1);
 const reportsError = ref('');
 const sectionErrors = ref({
   forecast: '',
@@ -910,10 +923,20 @@ const allocationSectionError = computed(() => sectionErrors.value.allocation);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
 const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
-const topFrequentlyUsedEquipment = computed(() => topEquipment.value.slice(0, 5));
+const topFrequentlyUsedEquipment = computed(() => topEquipment.value);
+const topEquipmentTotalPages = computed(() => Math.max(1, Math.ceil(topFrequentlyUsedEquipment.value.length / equipmentTrendPageSize)));
+const paginatedTopFrequentlyUsedEquipment = computed(() => {
+  const startIndex = (topEquipmentCurrentPage.value - 1) * equipmentTrendPageSize;
+  return topFrequentlyUsedEquipment.value.slice(startIndex, startIndex + equipmentTrendPageSize);
+});
 const possibleBorrowedEquipment = computed(() => {
   const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
   return candidates.filter((item) => item?.name).map(buildPreparationDecisionItem);
+});
+const possibleBorrowedTotalPages = computed(() => Math.max(1, Math.ceil(possibleBorrowedEquipment.value.length / equipmentTrendPageSize)));
+const paginatedPossibleBorrowedEquipment = computed(() => {
+  const startIndex = (possibleBorrowedCurrentPage.value - 1) * equipmentTrendPageSize;
+  return possibleBorrowedEquipment.value.slice(startIndex, startIndex + equipmentTrendPageSize);
 });
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
@@ -994,6 +1017,18 @@ watch(
   },
   { deep: true }
 );
+
+watch(topEquipmentTotalPages, (pageCount) => {
+  if (topEquipmentCurrentPage.value > pageCount) {
+    topEquipmentCurrentPage.value = pageCount;
+  }
+});
+
+watch(possibleBorrowedTotalPages, (pageCount) => {
+  if (possibleBorrowedCurrentPage.value > pageCount) {
+    possibleBorrowedCurrentPage.value = pageCount;
+  }
+});
 
 async function loadReportsAnalytics() {
   const loadSequence = ++reportsLoadSequence;

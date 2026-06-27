@@ -223,7 +223,7 @@
             </tr>
           </tbody>
         </table>
-        <div v-if="manageAccountsTotalPages > 1" class="manage-accounts-pagination">
+        <div class="manage-accounts-pagination">
           <button
             type="button"
             :disabled="manageAccountsCurrentPage === 1"
@@ -545,7 +545,7 @@
 
       <AdminWishlistCreateAccountModals
         ref="createAccountModals"
-        :accounts="normalizedAccounts"
+        :accounts="allNormalizedAccounts"
         @created="handleEmployeeRequestCreated"
       />
       <DataRequestStatusFloater :items="manageAccountsStatusItems" />
@@ -572,6 +572,7 @@ const {
   sortMode,
   userRoleFilter,
   normalizedAccounts,
+  allNormalizedAccounts,
   isLoading,
   isActiveAccountTabLoading,
   isProcessing,
@@ -600,6 +601,7 @@ const {
   isUpdateFormReady,
   accountTabs,
   filteredAccounts,
+  manageAccountsStatusItems,
   handleRefreshAccounts,
   handleTabChange,
   handleToggleSortOrder,
@@ -667,14 +669,6 @@ const manageAccountsPageStart = computed(() => {
 });
 
 const manageAccountsPageEnd = computed(() => Math.min(manageAccountsCurrentPage.value * manageAccountsPageSize, filteredAccounts.value.length));
-const manageAccountsStatusItems = computed(() => [
-  {
-    key: 'accounts',
-    label: 'Accounts',
-    state: resolveManageAccountsDataState(),
-  },
-]);
-
 watch([searchQueryText, showingFilterValue, sortMode, userRoleFilter], () => {
   manageAccountsCurrentPage.value = 1;
 });
@@ -684,22 +678,6 @@ watch(manageAccountsTotalPages, (pageCount) => {
     manageAccountsCurrentPage.value = pageCount;
   }
 });
-
-function resolveManageAccountsDataState() {
-  if (isLoading.value && normalizedAccounts.value.length > 0) {
-    return 'cached-loading';
-  }
-
-  if (isLoading.value || isActiveAccountTabLoading.value) {
-    return 'loading';
-  }
-
-  if (loadErrorMessage.value) {
-    return normalizedAccounts.value.length > 0 ? 'cached' : 'error';
-  }
-
-  return normalizedAccounts.value.length > 0 ? 'fresh' : 'idle';
-}
 
 function openAddEmployeeRequestModal() {
   createAccountModals.value?.openForTab('employee');

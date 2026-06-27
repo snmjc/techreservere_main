@@ -774,6 +774,35 @@
   line-height: 1.35;
 }
 
+.reports-equipment-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.reports-equipment-pagination button {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid #d7e3dd;
+  border-radius: 6px;
+  color: #12372a;
+  background: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.reports-equipment-pagination button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
 .reports-decision-pill {
   display: inline-flex;
   align-items: center;

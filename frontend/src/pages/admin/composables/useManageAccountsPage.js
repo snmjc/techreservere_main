@@ -1,6 +1,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { adminManageAccountsApi } from '@/services/adminManageAccountsApi.js';
+import { getStoredAuthToken, normalizeAuthToken } from '@/shared/utils/authToken.js';
+import { useManageAccountsTabResource } from '../services/manageAccountsTabResource.js';
 import {
   canActivateAccount,
   canDisableAccount,
@@ -29,8 +31,6 @@ import {
   validateManageAccountUpdateForm,
 } from '../manageAccounts/manageAccountsHelpers.js';
 
-const MANAGE_ACCOUNTS_CACHE_KEY = 'techreserve_manage_accounts_cache';
-
 export function useManageAccountsPage() {
   const authStore = useAuthenticationStore();
   const activeAccountTab = ref(getDefaultAccountTab());
@@ -39,17 +39,9 @@ export function useManageAccountsPage() {
   const sortMode = ref('created');
   const userRoleFilter = ref('all');
   const sortOrderAscending = ref(true);
-  const isLoading = ref(false);
-  const tabLoadingState = reactive({
-    admin: false,
-    user: false,
-    employee: false,
-  });
   const isProcessing = ref(false);
   const toastMessage = ref('');
-  const loadErrorMessage = ref('');
   const modalErrorMessage = ref('');
-  const accounts = ref(readCachedAccountList());
   const viewAccount = ref(null);
   const viewAccountLoading = ref(false);
   const viewAccountError = ref('');
@@ -80,7 +72,6 @@ export function useManageAccountsPage() {
     profilePhotoPreview: '',
   });
 
-  const normalizedAccounts = computed(() => accounts.value.map(normalizeAccount));
   const isEmployeeUpdateModal = computed(() => updateAccount.value?.accountType === 'Employee');
   const pageTitle = computed(() => 'Manage Accounts');
   const pageDescription = computed(() => 'Manage and oversee system accounts in TechReserve.');
@@ -89,6 +80,43 @@ export function useManageAccountsPage() {
     const account = authStore.accountData || authStore.clerkAccountData || {};
     return String(account.emailAddress || account.email || '').trim();
   });
+  const manageAccountsCacheScope = computed(() => {
+    const account = authStore.accountData || authStore.clerkAccountData || {};
+    const tokenScope = normalizeAuthToken(authStore.authToken) || getStoredAuthToken() || '';
+    return String(
+      account.accountIdentifier
+        || account.emailAddress
+        || account.email
+        || currentAdminEmail.value
+        || tokenScope.slice(-32)
+        || 'anonymous',
+    ).trim();
+  });
+  const accountTabResources = {
+    admin: createAccountTabResource('admin', 'Admin Accounts'),
+    user: createAccountTabResource('user', 'User Accounts'),
+    employee: createAccountTabResource('employee', 'Employee Accounts'),
+  };
+  const activeAccountResource = computed(() => accountTabResources[activeAccountTab.value] || accountTabResources.admin);
+  const accountsByTab = computed(() => ({
+    admin: normalizeTabAccounts(accountTabResources.admin.data.value),
+    user: normalizeTabAccounts(accountTabResources.user.data.value),
+    employee: normalizeTabAccounts(accountTabResources.employee.data.value),
+  }));
+  const normalizedAccounts = computed(() => accountsByTab.value[activeAccountTab.value] || []);
+  const allNormalizedAccounts = computed(() => [
+    ...accountsByTab.value.admin,
+    ...accountsByTab.value.user,
+    ...accountsByTab.value.employee,
+  ]);
+  const isLoading = computed(() => Object.values(accountTabResources).some((resource) => resource.isLoading.value));
+  const isActiveAccountTabLoading = computed(() => activeAccountResource.value.isLoading.value);
+  const loadErrorMessage = computed(() => activeAccountResource.value.error.value);
+  const manageAccountsStatusItems = computed(() => [
+    accountTabResources.admin.statusItem.value,
+    accountTabResources.user.statusItem.value,
+    accountTabResources.employee.statusItem.value,
+  ]);
   const isAccessConfirmationReady = computed(() => {
     if (isProcessing.value || !accessAccount.value) return false;
     if (confirmEmailText.value.trim() === '') return false;
@@ -100,12 +128,11 @@ export function useManageAccountsPage() {
     return true;
   });
   const isUpdateFormReady = computed(() => !updateAccountLoading.value && validateUpdateAccountForm() === '');
-  const isActiveAccountTabLoading = computed(() => tabLoadingState[activeAccountTab.value] === true);
 
   const accountTabs = computed(() => [
-    { label: 'Admin', value: 'admin', count: countAccountsByType('Admin') },
-    { label: 'User', value: 'user', count: countAccountsByType('User') },
-    { label: 'Employee', value: 'employee', count: countAccountsByType('Employee') },
+    { label: 'Admin', value: 'admin', count: accountsByTab.value.admin.length },
+    { label: 'User', value: 'user', count: accountsByTab.value.user.length },
+    { label: 'Employee', value: 'employee', count: accountsByTab.value.employee.length },
   ]);
 
   const filteredAccounts = computed(() => {
@@ -125,28 +152,48 @@ export function useManageAccountsPage() {
   });
 
   async function loadAccounts({ showLoading = true } = {}) {
-    if (showLoading) {
-      isLoading.value = true;
-      setAllTabLoading(true);
+    if (!showLoading) {
+      await loadActiveAccountTab();
+      return;
     }
-    loadErrorMessage.value = '';
-    const result = await adminManageAccountsApi.getAccounts(authStore.authToken);
-    if (result.success) {
-      accounts.value = result.data.accounts || [];
-      writeCachedAccountList(accounts.value);
-    } else {
-      loadErrorMessage.value = result.error || 'Unable to load accounts.';
-    }
-    if (showLoading) {
-      isLoading.value = false;
-      setAllTabLoading(false);
+
+    const results = await Promise.allSettled(Object.values(accountTabResources).map((resource) => resource.load()));
+    const failedCount = results.filter((result) => result.status === 'rejected').length
+      + Object.values(accountTabResources).filter((resource) => resource.state.value === 'error').length;
+    if (failedCount > 0) {
+      showToast('Some account tabs failed to load. Check Data Status for details.');
     }
   }
 
-  function setAllTabLoading(isTabLoading) {
-    tabLoadingState.admin = isTabLoading;
-    tabLoadingState.user = isTabLoading;
-    tabLoadingState.employee = isTabLoading;
+  async function loadActiveAccountTab() {
+    await activeAccountResource.value.load();
+  }
+
+  function createAccountTabResource(tabKey, label) {
+    return useManageAccountsTabResource({
+      tabKey,
+      label,
+      cacheScope: manageAccountsCacheScope,
+      fetchAccounts: fetchAccountsByTab,
+    });
+  }
+
+  async function fetchAccountsByTab(tabKey) {
+    const result = await adminManageAccountsApi.getAccountsByType(authStore.authToken, tabKey);
+    if (!result.success) {
+      throw new Error(result.error || 'Unable to load accounts.');
+    }
+
+    const accountList = result.data?.accounts ?? result.data;
+    if (!Array.isArray(accountList)) {
+      throw new Error('Manage Accounts API returned an invalid account list.');
+    }
+
+    return accountList;
+  }
+
+  function normalizeTabAccounts(accountList) {
+    return accountList.map(normalizeAccount);
   }
 
   async function handleRefreshAccounts() {
@@ -162,6 +209,10 @@ export function useManageAccountsPage() {
     showingFilterValue.value = 'all';
     userRoleFilter.value = 'all';
     closeModals();
+
+    if (activeAccountResource.value.state.value === 'idle') {
+      loadActiveAccountTab();
+    }
   }
 
   function handleToggleSortOrder() {
@@ -212,7 +263,13 @@ export function useManageAccountsPage() {
       return;
     }
 
-    employeeWorkLogs.value = result.data.workLogs || [];
+    const workLogs = result.data?.workLogs;
+    if (!Array.isArray(workLogs)) {
+      workLogsError.value = 'Work logs API returned an invalid list.';
+      return;
+    }
+
+    employeeWorkLogs.value = workLogs;
   }
 
   function canViewWorkLogs(account) {
@@ -442,7 +499,13 @@ export function useManageAccountsPage() {
       return;
     }
 
-    upsertAccount(result.data.account);
+    const savedAccount = result.data?.account;
+    if (!savedAccount) {
+      modalErrorMessage.value = 'Account update API returned invalid account data.';
+      return;
+    }
+
+    upsertAccount(savedAccount);
     closeModals();
     showToast('Changes saved!');
   }
@@ -529,23 +592,41 @@ export function useManageAccountsPage() {
       return;
     }
 
-    upsertAccount(result.data.account);
+    const updatedAccount = result.data?.account;
+    if (!updatedAccount) {
+      modalErrorMessage.value = 'Account access API returned invalid account data.';
+      return;
+    }
+
+    upsertAccount(updatedAccount);
     closeModals();
     showToast(shouldActivate ? 'Account reactivated!' : 'Account deactivated!');
     await loadAccounts({ showLoading: false });
   }
 
   function removeAccount(accountIdentifier) {
-    accounts.value = accounts.value.filter((account) => String(account.accountIdentifier) !== String(accountIdentifier));
+    Object.values(accountTabResources).forEach((resource) => {
+      resource.data.value = resource.data.value.filter((account) => String(account.accountIdentifier) !== String(accountIdentifier));
+    });
   }
 
   function upsertAccount(updatedAccount) {
     if (!updatedAccount) return;
-    const index = accounts.value.findIndex((account) => String(account.accountIdentifier) === String(updatedAccount.accountIdentifier));
+    const normalizedAccount = normalizeAccount(updatedAccount);
+    const targetTab = getAccountTabForType(normalizedAccount.accountType);
+
+    Object.entries(accountTabResources).forEach(([tabName, resource]) => {
+      if (tabName !== targetTab) {
+        resource.data.value = resource.data.value.filter((account) => String(account.accountIdentifier) !== String(updatedAccount.accountIdentifier));
+      }
+    });
+
+    const targetData = accountTabResources[targetTab].data.value;
+    const index = targetData.findIndex((account) => String(account.accountIdentifier) === String(updatedAccount.accountIdentifier));
     if (index >= 0) {
-      accounts.value.splice(index, 1, updatedAccount);
+      targetData.splice(index, 1, updatedAccount);
     } else {
-      accounts.value.unshift(updatedAccount);
+      targetData.unshift(updatedAccount);
     }
   }
 
@@ -560,14 +641,16 @@ export function useManageAccountsPage() {
     }, 2800);
   }
 
-  function countAccountsByType(accountType) {
-    return normalizedAccounts.value.filter((account) => account.accountType === accountType).length;
-  }
-
   function getActiveAccountType() {
     if (activeAccountTab.value === 'admin') return 'Admin';
     if (activeAccountTab.value === 'employee') return 'Employee';
     return 'User';
+  }
+
+  function getAccountTabForType(accountType) {
+    if (accountType === 'Admin') return 'admin';
+    if (accountType === 'Employee') return 'employee';
+    return 'user';
   }
 
   function matchesStatusFilter(account) {
@@ -598,6 +681,7 @@ export function useManageAccountsPage() {
     sortMode,
     userRoleFilter,
     normalizedAccounts,
+    allNormalizedAccounts,
     isLoading,
     isActiveAccountTabLoading,
     isProcessing,
@@ -626,6 +710,7 @@ export function useManageAccountsPage() {
     isUpdateFormReady,
     accountTabs,
     filteredAccounts,
+    manageAccountsStatusItems,
     handleRefreshAccounts,
     handleTabChange,
     handleToggleSortOrder,
@@ -662,30 +747,4 @@ export function useManageAccountsPage() {
     getAccountTypeClass,
     getStatusClass,
   };
-}
-
-function readCachedAccountList() {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  try {
-    const cachedValue = window.sessionStorage.getItem(MANAGE_ACCOUNTS_CACHE_KEY);
-    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
-    return Array.isArray(parsedValue) ? parsedValue : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeCachedAccountList(accounts) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    window.sessionStorage.setItem(MANAGE_ACCOUNTS_CACHE_KEY, JSON.stringify(Array.isArray(accounts) ? accounts : []));
-  } catch {
-    // Cache writes are best-effort only.
-  }
 }

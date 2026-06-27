@@ -15,6 +15,16 @@ class AccountReadService
 
     public function getAcceptedAccounts(): array
     {
+        return $this->fetchAcceptedAccounts();
+    }
+
+    public function getAcceptedAccountsByType(string $accountType): array
+    {
+        return $this->fetchAcceptedAccounts(strtolower(trim($accountType)));
+    }
+
+    private function fetchAcceptedAccounts(?string $accountType = null): array
+    {
         $rows = $this->connection->fetchAllAssociative(
             "WITH accepted_accounts AS (
                 SELECT accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
@@ -56,6 +66,7 @@ class AccountReadService
                         OR LOWER(COALESCE(accounts.department, '')) LIKE '%technical%'
                         OR LOWER(COALESCE(accounts.department, '')) LIKE '%support%'
                   )
+                  {$this->resolveAccountTypeSqlFilter($accountType)}
              ),
              deduped_by_email AS (
                 SELECT DISTINCT ON (LOWER(email_address)) *
@@ -78,6 +89,30 @@ class AccountReadService
         );
 
         return array_map(fn (array $row): array => $this->accountResponseMapperService->mapAccountRow($row), $rows);
+    }
+
+    private function resolveAccountTypeSqlFilter(?string $accountType): string
+    {
+        $adminFilter = "(
+            UPPER(COALESCE(accounts.role_designation, '')) LIKE '%ADMIN%'
+            OR LOWER(COALESCE(accounts.role_designation, '')) = 'admin'
+        )";
+        $employeeFilter = "(
+            UPPER(COALESCE(accounts.role_designation, '')) LIKE '%STAFF%'
+            OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%EMPLOYEE%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%staff%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%employee%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%technical%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%maintenance%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%support%'
+        )";
+
+        return match ($accountType) {
+            'admin' => "AND {$adminFilter}",
+            'employee' => "AND NOT ({$adminFilter}) AND {$employeeFilter}",
+            'user' => "AND NOT ({$adminFilter}) AND NOT {$employeeFilter}",
+            default => '',
+        };
     }
 
     public function countDashboardAccounts(): int

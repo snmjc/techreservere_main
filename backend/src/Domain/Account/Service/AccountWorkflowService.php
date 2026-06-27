@@ -68,6 +68,19 @@ class AccountWorkflowService
         ]);
     }
 
+    public function getAccountsByType(string $accountType): array
+    {
+        $normalizedType = strtolower(trim($accountType));
+        if (!in_array($normalizedType, ['admin', 'user', 'employee'], true)) {
+            return $this->error('AccountTypeInvalid', 'Unsupported account type.', 422);
+        }
+
+        return $this->success([
+            'accountType' => $normalizedType,
+            'accounts' => $this->accountReadService->getAcceptedAccountsByType($normalizedType),
+        ]);
+    }
+
     public function getAccountById(int $accountIdentifier): array
     {
         $account = $this->accountReadService->getMappedAccountById($accountIdentifier);

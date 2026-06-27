@@ -70,7 +70,7 @@
               </div>
             </div>
           </div>
-          <div v-if="pendingTotalPages > 1" class="users-pagination">
+          <div class="users-pagination">
             <button type="button" :disabled="pendingCurrentPage === 1" @click="pendingCurrentPage -= 1">Previous</button>
             <span>Page {{ pendingCurrentPage }} of {{ pendingTotalPages }}</span>
             <button type="button" :disabled="pendingCurrentPage === pendingTotalPages" @click="pendingCurrentPage += 1">Next</button>
@@ -108,7 +108,7 @@
               </div>
             </div>
           </div>
-          <div v-if="approvedTotalPages > 1" class="users-pagination">
+          <div class="users-pagination">
             <button type="button" :disabled="approvedCurrentPage === 1" @click="approvedCurrentPage -= 1">Previous</button>
             <span>Page {{ approvedCurrentPage }} of {{ approvedTotalPages }}</span>
             <button type="button" :disabled="approvedCurrentPage === approvedTotalPages" @click="approvedCurrentPage += 1">Next</button>
@@ -146,7 +146,7 @@
               </div>
             </div>
           </div>
-          <div v-if="rejectedTotalPages > 1" class="users-pagination">
+          <div class="users-pagination">
             <button type="button" :disabled="rejectedCurrentPage === 1" @click="rejectedCurrentPage -= 1">Previous</button>
             <span>Page {{ rejectedCurrentPage }} of {{ rejectedTotalPages }}</span>
             <button type="button" :disabled="rejectedCurrentPage === rejectedTotalPages" @click="rejectedCurrentPage += 1">Next</button>
