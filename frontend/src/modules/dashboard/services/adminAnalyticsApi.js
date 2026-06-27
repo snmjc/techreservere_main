@@ -25,6 +25,10 @@ const adminAnalyticsApi = {
     return getWithRange('/api/v1/dashboard/overview', range);
   },
 
+  async getDashboardOverviewSection(section, range) {
+    return getWithRange(`/api/v1/dashboard/overview/${encodeURIComponent(section)}`, range);
+  },
+
   async getReportsAnalytics(range) {
     return getWithRange('/api/v1/reports-analytics', range);
   },

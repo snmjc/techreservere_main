@@ -14,6 +14,7 @@
         <div>
           <strong>{{ item.label }}</strong>
           <small>{{ stateLabels[item.state] || stateLabels.idle }}</small>
+          <small v-if="item.cacheNote" class="data-request-status-floater__meta">{{ item.cacheNote }}</small>
         </div>
       </div>
     </div>
@@ -45,6 +46,7 @@ const normalizedItems = computed(() => props.items
     key: item.key || `${item.label}-${index}`,
     label: item.label,
     state: stateLabels[item.state] ? item.state : 'idle',
+    cacheNote: resolveCacheNote(item),
   })));
 
 const activeSummary = computed(() => {
@@ -66,6 +68,28 @@ const activeSummary = computed(() => {
 
   return 'Idle';
 });
+
+function resolveCacheNote(item) {
+  if (!['cached', 'cached-loading'].includes(item.state) || !item.expiresAt) {
+    return '';
+  }
+
+  const expiresAt = Number(item.expiresAt);
+  if (!Number.isFinite(expiresAt)) {
+    return '';
+  }
+
+  const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+  if (seconds <= 0) {
+    return 'Cache expired';
+  }
+
+  if (seconds < 60) {
+    return `Cache expires in ${seconds}s`;
+  }
+
+  return `Cache expires in ${Math.ceil(seconds / 60)}m`;
+}
 </script>
 
 <style scoped>
@@ -129,6 +153,11 @@ const activeSummary = computed(() => {
   color: #64746d;
   font-size: 0.7rem;
   font-weight: 750;
+}
+
+.data-request-status-floater__meta {
+  color: #8a6a18;
+  font-size: 0.66rem;
 }
 
 .data-request-status-floater__dot {

@@ -70,7 +70,7 @@
             <span class="admin-dashboard-panel-badge">{{ activeRangeLabel }}</span>
           </div>
 
-          <div v-if="isDashboardLoading" class="admin-dashboard-inline-message">Loading dashboard data...</div>
+          <div v-if="resourceUtilizationResource.isLoading.value && resourceSeries.length === 0" class="admin-dashboard-inline-message">Loading resource utilization...</div>
           <div v-else-if="resourceSeries.length === 0" class="admin-dashboard-inline-message">No demand data is available for the selected range.</div>
           <div v-else class="admin-dashboard-chart">
             <canvas
@@ -90,17 +90,20 @@
           </div>
 
           <div class="admin-dashboard-grouped-stats">
-            <article
-              v-for="stat in groupedStats"
-              :key="stat.label"
-              class="admin-dashboard-grouped-stat"
-            >
-              <span class="admin-dashboard-grouped-icon" v-html="stat.icon"></span>
-              <div>
-                <strong>{{ stat.value }}</strong>
-                <span>{{ stat.label }}</span>
-              </div>
-            </article>
+            <div v-if="groupedStatsResource.isLoading.value && !hasObjectNumberData(groupedStatsResource.data.value)" class="admin-dashboard-inline-message">Loading grouped stats...</div>
+            <template v-else>
+              <article
+                v-for="stat in groupedStats"
+                :key="stat.label"
+                class="admin-dashboard-grouped-stat"
+              >
+                <span class="admin-dashboard-grouped-icon" v-html="stat.icon"></span>
+                <div>
+                  <strong>{{ stat.value }}</strong>
+                  <span>{{ stat.label }}</span>
+                </div>
+              </article>
+            </template>
           </div>
         </section>
       </div>
@@ -113,7 +116,8 @@
           </div>
         </div>
 
-        <div v-if="facilityStatus.length === 0" class="admin-dashboard-inline-message">No facility records are available yet.</div>
+        <div v-if="facilityStatusResource.isLoading.value && facilityStatus.length === 0" class="admin-dashboard-inline-message">Loading facility status...</div>
+        <div v-else-if="facilityStatus.length === 0" class="admin-dashboard-inline-message">No facility records are available yet.</div>
         <div v-else class="admin-dashboard-facility-grid">
           <article
             v-for="facility in facilityStatus"
@@ -142,18 +146,21 @@
           </div>
 
           <div class="admin-dashboard-risk-alert-list">
-            <article
-              v-for="alert in readinessAlerts"
-              :key="alert.title"
-              class="admin-dashboard-risk-alert"
-            >
-              <span class="admin-dashboard-risk-severity" :class="alert.className">{{ alert.severity }}</span>
-              <div>
-                <strong>{{ alert.title }}</strong>
-                <p>{{ alert.detail }}</p>
-              </div>
-              <span class="admin-dashboard-risk-count">{{ formatCount(alert.count) }}</span>
-            </article>
+            <div v-if="readinessAlertsResource.isLoading.value && readinessAlerts.length === 0" class="admin-dashboard-inline-message">Loading readiness alerts...</div>
+            <template v-else>
+              <article
+                v-for="alert in readinessAlerts"
+                :key="alert.title"
+                class="admin-dashboard-risk-alert"
+              >
+                <span class="admin-dashboard-risk-severity" :class="alert.className">{{ alert.severity }}</span>
+                <div>
+                  <strong>{{ alert.title }}</strong>
+                  <p>{{ alert.detail }}</p>
+                </div>
+                <span class="admin-dashboard-risk-count">{{ formatCount(alert.count) }}</span>
+              </article>
+            </template>
           </div>
         </section>
 
@@ -166,17 +173,20 @@
           </div>
 
           <div class="admin-dashboard-activity-list">
-            <article
-              v-for="activity in systemActivityOverview"
-              :key="activity.label"
-              class="admin-dashboard-activity-item"
-            >
-              <div>
-                <strong>{{ activity.label }}</strong>
-                <span>{{ activity.meta }}</span>
-              </div>
-              <b>{{ formatCount(activity.value) }}</b>
-            </article>
+            <div v-if="systemActivityResource.isLoading.value && systemActivityOverview.length === 0" class="admin-dashboard-inline-message">Loading system activity...</div>
+            <template v-else>
+              <article
+                v-for="activity in systemActivityOverview"
+                :key="activity.label"
+                class="admin-dashboard-activity-item"
+              >
+                <div>
+                  <strong>{{ activity.label }}</strong>
+                  <span>{{ activity.meta }}</span>
+                </div>
+                <b>{{ formatCount(activity.value) }}</b>
+              </article>
+            </template>
           </div>
         </section>
       </div>
@@ -196,6 +206,7 @@ import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import { createDashboardChartRenderer } from './services/dashboardChartRenderer.js';
+import { useDashboardSectionResource } from './services/dashboardSectionResource.js';
 import {
   ADMIN_ANALYTICS_RANGE_PRESETS,
   formatDateRangeLabel,
@@ -204,24 +215,31 @@ import {
   resolveAdminAnalyticsDateRange,
 } from './adminAnalyticsHelpers.js';
 
-const DASHBOARD_OVERVIEW_CACHE_KEY = 'techreserve_dashboard_overview_cache';
-
 const router = useRouter();
-
 const selectedRangeKey = ref('14d');
-const isDashboardLoading = ref(true);
-const dashboardError = ref('');
-const dashboardOverview = ref(readDashboardOverviewCache());
-const dashboardDataState = ref(hasDashboardOverviewData(dashboardOverview.value) ? 'cached' : 'idle');
 const resourceChartRef = ref(null);
 const chartRenderer = createDashboardChartRenderer();
+const summaryResource = createDashboardResource('summary', createEmptySummary(), hasObjectNumberData);
+const resourceUtilizationResource = createDashboardResource('resource-utilization', [], hasListData);
+const groupedStatsResource = createDashboardResource('grouped-stats', createEmptyGroupedStats(), hasObjectNumberData);
+const facilityStatusResource = createDashboardResource('facility-status', [], hasListData);
+const readinessAlertsResource = createDashboardResource('readiness-alerts', [], hasListData);
+const systemActivityResource = createDashboardResource('system-activity', [], hasListData);
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
 const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
-const resourceSeries = computed(() => dashboardOverview.value.resourceUtilization || []);
+const dashboardError = computed(() => [
+  summaryResource.error.value,
+  resourceUtilizationResource.error.value,
+  groupedStatsResource.error.value,
+  facilityStatusResource.error.value,
+  readinessAlertsResource.error.value,
+  systemActivityResource.error.value,
+].filter(Boolean)[0] || '');
+const resourceSeries = computed(() => normalizeArray(resourceUtilizationResource.data.value));
 
 const totalOverviewCards = computed(() => {
-  const summary = dashboardOverview.value.summary || {};
+  const summary = summaryResource.data.value || {};
   return [
     {
       label: 'Total Users',
@@ -257,7 +275,7 @@ const totalOverviewCards = computed(() => {
     },
     {
       label: 'Active Equipment / Facilities',
-      value: isDashboardLoading.value
+      value: summaryResource.isLoading.value && !hasObjectNumberData(summary)
         ? '...'
         : `${formatCount(summary.activeEquipmentCount)} / ${formatCount(summary.activeFacilityCount)}`,
       meta: 'Deployed items / booked facilities',
@@ -277,7 +295,7 @@ const totalOverviewCards = computed(() => {
 });
 
 const groupedStats = computed(() => {
-  const grouped = dashboardOverview.value.groupedStats || {};
+  const grouped = groupedStatsResource.data.value || {};
   return [
     {
       label: 'Overall Equipment Utilization',
@@ -296,7 +314,7 @@ const groupedStats = computed(() => {
     },
     {
       label: 'Under Maintenance',
-      value: metricValue(dashboardOverview.value.summary?.maintenanceEquipmentCount),
+      value: metricValue(summaryResource.data.value?.maintenanceEquipmentCount, summaryResource),
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-7.8 7.8-3.2.8.8-3.2 7.2-7.2Z"/><path d="m13 8 3 3"/><path d="M5 19h14"/></svg>',
     },
     {
@@ -307,19 +325,20 @@ const groupedStats = computed(() => {
   ];
 });
 
-const facilityStatus = computed(() => dashboardOverview.value.facilityStatus || []);
-const readinessAlerts = computed(() => dashboardOverview.value.readinessAlerts || []);
-const systemActivityOverview = computed(() => dashboardOverview.value.systemActivity || []);
+const facilityStatus = computed(() => normalizeArray(facilityStatusResource.data.value));
+const readinessAlerts = computed(() => normalizeArray(readinessAlertsResource.data.value));
+const systemActivityOverview = computed(() => normalizeArray(systemActivityResource.data.value));
 const dashboardStatusItems = computed(() => [
-  {
-    key: 'dashboard-overview',
-    label: 'Dashboard Overview',
-    state: dashboardDataState.value,
-  },
+  summaryResource.statusItem.value,
+  resourceUtilizationResource.statusItem.value,
+  groupedStatsResource.statusItem.value,
+  facilityStatusResource.statusItem.value,
+  readinessAlertsResource.statusItem.value,
+  systemActivityResource.statusItem.value,
 ]);
 
 onMounted(() => {
-  loadDashboardOverview();
+  loadDashboardSections();
 });
 
 onBeforeUnmount(() => {
@@ -327,7 +346,7 @@ onBeforeUnmount(() => {
 });
 
 watch(selectedRangeKey, () => {
-  loadDashboardOverview();
+  loadDateSensitiveDashboardSections();
 });
 
 watch(
@@ -338,31 +357,23 @@ watch(
   { deep: true }
 );
 
-async function loadDashboardOverview() {
-  isDashboardLoading.value = true;
-  dashboardError.value = '';
-  dashboardDataState.value = hasDashboardOverviewData(dashboardOverview.value) ? 'cached-loading' : 'loading';
+async function loadDashboardSections() {
+  await Promise.allSettled([
+    summaryResource.load(activeRange.value),
+    resourceUtilizationResource.load(activeRange.value).finally(renderResourceChartAfterUpdate),
+    groupedStatsResource.load(activeRange.value),
+    facilityStatusResource.load(activeRange.value),
+    readinessAlertsResource.load(activeRange.value),
+    systemActivityResource.load(activeRange.value),
+  ]);
+}
 
-  try {
-    if (!hasDashboardOverviewData(dashboardOverview.value)) {
-      dashboardOverview.value = createEmptyOverview();
-    }
-    dashboardOverview.value = await adminAnalyticsApi.getDashboardOverview(activeRange.value);
-    writeDashboardOverviewCache(dashboardOverview.value);
-    dashboardDataState.value = 'fresh';
-    if (dashboardOverview.value?.warning) {
-      dashboardError.value = dashboardOverview.value.warning;
-    }
-  } catch (error) {
-    if (!hasDashboardOverviewData(dashboardOverview.value)) {
-      dashboardOverview.value = createEmptyOverview();
-    }
-    dashboardError.value = resolveDashboardError(error);
-    dashboardDataState.value = hasDashboardOverviewData(dashboardOverview.value) ? 'cached' : 'error';
-  } finally {
-    isDashboardLoading.value = false;
-    await renderResourceChartAfterUpdate();
-  }
+async function loadDateSensitiveDashboardSections() {
+  await Promise.allSettled([
+    resourceUtilizationResource.load(activeRange.value).finally(renderResourceChartAfterUpdate),
+    groupedStatsResource.load(activeRange.value),
+    readinessAlertsResource.load(activeRange.value),
+  ]);
 }
 
 function destroyCharts() {
@@ -387,74 +398,53 @@ function navigateToMetricPage(routeName) {
   router.push({ name: routeName });
 }
 
-function createEmptyOverview() {
+function createEmptySummary() {
   return {
-    summary: {
-      totalAccounts: 0,
-      pendingReservations: 0,
-      approvedReservations: 0,
-      activeEquipmentCount: 0,
-      maintenanceEquipmentCount: 0,
-      activeFacilityCount: 0,
-      overdueEquipmentCount: 0,
-    },
-    resourceUtilization: [],
-    groupedStats: {
-      equipmentUtilizationRate: 0,
-      activeUsers: 0,
-      facilityUtilizationRate: 0,
-      averageLeadTimeHours: 0,
-    },
-    facilityStatus: [],
-    readinessAlerts: [],
-    systemActivity: [],
+    totalAccounts: 0,
+    pendingReservations: 0,
+    approvedReservations: 0,
+    activeEquipmentCount: 0,
+    maintenanceEquipmentCount: 0,
+    activeFacilityCount: 0,
+    overdueEquipmentCount: 0,
   };
 }
 
-function readDashboardOverviewCache() {
-  if (typeof window === 'undefined') {
-    return createEmptyOverview();
-  }
-
-  try {
-    const cachedValue = window.sessionStorage.getItem(DASHBOARD_OVERVIEW_CACHE_KEY);
-    const parsedValue = cachedValue ? JSON.parse(cachedValue) : null;
-    return parsedValue && typeof parsedValue === 'object' ? parsedValue : createEmptyOverview();
-  } catch {
-    return createEmptyOverview();
-  }
+function createEmptyGroupedStats() {
+  return {
+    equipmentUtilizationRate: 0,
+    activeUsers: 0,
+    facilityUtilizationRate: 0,
+    averageLeadTimeHours: 0,
+  };
 }
 
-function writeDashboardOverviewCache(overview) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    window.sessionStorage.setItem(DASHBOARD_OVERVIEW_CACHE_KEY, JSON.stringify(overview || createEmptyOverview()));
-  } catch {
-    // Cache writes are best-effort only.
-  }
+function createDashboardResource(sectionKey, defaultValue, hasData) {
+  return useDashboardSectionResource({
+    sectionKey,
+    defaultValue,
+    hasData,
+    fetchSection: (range) => adminAnalyticsApi.getDashboardOverviewSection(sectionKey, range),
+  });
 }
 
-function hasDashboardOverviewData(overview) {
-  const summary = overview?.summary || {};
-  return Object.values(summary).some((value) => Number(value || 0) > 0)
-    || (Array.isArray(overview?.resourceUtilization) && overview.resourceUtilization.length > 0)
-    || (Array.isArray(overview?.facilityStatus) && overview.facilityStatus.length > 0);
+function hasObjectNumberData(value) {
+  return Object.values(value || {}).some((item) => Number(item || 0) > 0);
 }
 
-function metricValue(value) {
-  return isDashboardLoading.value ? '...' : formatCount(value);
+function hasListData(records) {
+  return Array.isArray(records) && records.length > 0;
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function metricValue(value, resource = summaryResource) {
+  return resource.isLoading.value && !hasObjectNumberData(resource.data.value) ? '...' : formatCount(value);
 }
 
 function formatCount(value) {
   return formatMetricNumber(value, 0);
-}
-
-function resolveDashboardError(error) {
-  return error?.response?.data?.errorMessage
-    || error?.message
-    || 'Unable to load dashboard analytics right now.';
 }
 </script>

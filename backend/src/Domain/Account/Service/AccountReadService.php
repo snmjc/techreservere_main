@@ -80,6 +80,15 @@ class AccountReadService
         return array_map(fn (array $row): array => $this->accountResponseMapperService->mapAccountRow($row), $rows);
     }
 
+    public function countDashboardAccounts(): int
+    {
+        return (int) $this->connection->fetchOne(
+            "SELECT COUNT(*)
+               FROM accounts
+              WHERE LOWER(COALESCE(status, 'pending')) NOT IN ('deleted', 'archived')"
+        );
+    }
+
     public function getMappedAccountById(int $accountIdentifier): ?array
     {
         $row = $this->connection->fetchAssociative(

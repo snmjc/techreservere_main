@@ -54,10 +54,40 @@ class DashboardController extends AbstractController
                 $exception->getLine()
             ));
 
-            return $this->createSuccessResponse([
-                ...$this->createEmptyOverview(),
-                'warning' => 'Dashboard overview is temporarily using empty fallback data because aggregation failed.',
-            ]);
+            return $this->createErrorResponse(
+                'DashboardOverviewAggregationFailed',
+                'Unable to load dashboard overview right now.',
+                500
+            );
+        }
+    }
+
+    #[Route('/overview/{section}', name: 'dashboard_overview_section', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getDashboardOverviewSection(Request $request, string $section): JsonResponse
+    {
+        try {
+            [$startDate, $endDate] = $this->resolveDateRange($request, 14);
+            $sectionData = $this->dashboardAggregationService->getAdminDashboardOverviewSection($section, $startDate, $endDate);
+
+            return $this->createSuccessResponse($sectionData);
+        } catch (\InvalidArgumentException) {
+            return $this->createErrorResponse('DashboardSectionNotFound', 'Unknown dashboard overview section.', 404);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Dashboard Overview Section - Error [%s:%s]: %s in %s:%d',
+                $section,
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse(
+                'DashboardSectionAggregationFailed',
+                'Unable to load this dashboard section right now.',
+                500
+            );
         }
     }
 
@@ -104,28 +134,4 @@ class DashboardController extends AbstractController
         }
     }
 
-    private function createEmptyOverview(): array
-    {
-        return [
-            'summary' => [
-                'totalAccounts' => 0,
-                'pendingReservations' => 0,
-                'approvedReservations' => 0,
-                'activeEquipmentCount' => 0,
-                'maintenanceEquipmentCount' => 0,
-                'activeFacilityCount' => 0,
-                'overdueEquipmentCount' => 0,
-            ],
-            'resourceUtilization' => [],
-            'groupedStats' => [
-                'equipmentUtilizationRate' => 0,
-                'activeUsers' => 0,
-                'facilityUtilizationRate' => 0,
-                'averageLeadTimeHours' => 0,
-            ],
-            'facilityStatus' => [],
-            'readinessAlerts' => [],
-            'systemActivity' => [],
-        ];
-    }
 }
