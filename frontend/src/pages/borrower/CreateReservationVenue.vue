@@ -137,7 +137,7 @@
                 </table>
               </div>
             </div>
-            <div v-if="filteredVenues.length > venuePageSize" class="reservation-selection-pagination">
+            <div class="reservation-selection-pagination">
               <button type="button" :disabled="venuePage === 1" @click="venuePage -= 1">Previous</button>
               <span>Page {{ venuePage }} of {{ venueTotalPages }}</span>
               <button type="button" :disabled="venuePage === venueTotalPages" @click="venuePage += 1">Next</button>
@@ -230,7 +230,7 @@
                     </table>
                   </div>
                 </div>
-                <div v-if="filteredEquipmentRecords.length > equipmentPageSize" class="reservation-selection-pagination">
+                <div class="reservation-selection-pagination">
                   <button type="button" :disabled="equipmentPage === 1" @click="equipmentPage -= 1">Previous</button>
                   <span>Page {{ equipmentPage }} of {{ equipmentTotalPages }}</span>
                   <button type="button" :disabled="equipmentPage === equipmentTotalPages" @click="equipmentPage += 1">Next</button>

@@ -65,7 +65,7 @@
         />
       </div>
 
-      <div v-if="pendingRequestsTotalPages > 1" class="pending-requests-pagination">
+      <div class="pending-requests-pagination">
         <button type="button" :disabled="pendingRequestsCurrentPage === 1" @click="pendingRequestsCurrentPage -= 1">Previous</button>
         <span>Page {{ pendingRequestsCurrentPage }} of {{ pendingRequestsTotalPages }}</span>
         <button type="button" :disabled="pendingRequestsCurrentPage === pendingRequestsTotalPages" @click="pendingRequestsCurrentPage += 1">Next</button>
@@ -408,6 +408,7 @@
         </footer>
       </section>
     </div>
+    <DataRequestStatusFloater :items="pendingRequestsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -415,6 +416,7 @@
 import { ref, onMounted, computed, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PendingRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -449,6 +451,13 @@ const deleteForm = reactive({
 });
 
 const pendingRequestsList = computed(() => requestStore.pendingRequestsList || []);
+const pendingRequestsStatusItems = computed(() => [
+  {
+    key: 'pending-reservations',
+    label: 'Pending Reservations',
+    state: resolveReservationListState(pendingRequestsList.value),
+  },
+]);
 const filteredPendingRequests = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
@@ -747,5 +756,17 @@ function getRequestBadgeClass(requestType) {
   if (typeLower === 'venue') return 'pending-request-summary-badge--venue';
   if (typeLower === 'equipment') return 'pending-request-summary-badge--equipment';
   return 'pending-request-summary-badge--both';
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (requestStore.isLoadingReservations) {
+    return 'loading';
+  }
+
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

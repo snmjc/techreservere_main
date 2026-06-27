@@ -316,7 +316,7 @@
 
           <div class="borrower-facilities__venues-footer">
             <span>Showing {{ venueDirectoryDisplayStart }} to {{ venueDirectoryDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
-            <div v-if="venueDirectoryTotalPages > 1" class="borrower-facilities__pagination">
+            <div class="borrower-facilities__pagination">
               <button type="button" :disabled="venueDirectoryCurrentPage === 1" @click="venueDirectoryCurrentPage -= 1">Previous</button>
               <span>Page {{ venueDirectoryCurrentPage }} of {{ venueDirectoryTotalPages }}</span>
               <button type="button" :disabled="venueDirectoryCurrentPage === venueDirectoryTotalPages" @click="venueDirectoryCurrentPage += 1">Next</button>
@@ -486,7 +486,7 @@
             </article>
           </div>
 
-          <div v-if="activeFacilityTab === 'equipment' && equipmentTotalPages > 1" class="borrower-facilities__pagination">
+          <div v-if="activeFacilityTab === 'equipment'" class="borrower-facilities__pagination">
             <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
             <span>Page {{ equipmentCurrentPage }} of {{ equipmentTotalPages }}</span>
             <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>

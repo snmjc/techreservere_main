@@ -97,7 +97,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="equipment in filteredEquipment" :key="equipment.equipmentIdentifier">
+            <tr v-for="equipment in paginatedEquipment" :key="equipment.equipmentIdentifier">
               <td>{{ equipment.equipmentIdentifier }}</td>
               <td>{{ equipment.equipmentName }}</td>
               <td>{{ equipment.equipmentCategory || equipment.categoryName }}</td>
@@ -128,6 +128,11 @@
             </tr>
           </tbody>
         </table>
+        <div class="equipment-page__pagination">
+          <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
+          <span>Showing {{ equipmentPageStart }}-{{ equipmentPageEnd }} of {{ filteredEquipment.length }}</span>
+          <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>
+        </div>
       </div>
 
       <div v-if="viewEquipment" class="equipment-modal__overlay" @click.self="closeViewModal">
@@ -259,13 +264,15 @@
           </footer>
         </section>
       </div>
+      <DataRequestStatusFloater :items="equipmentStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -274,14 +281,18 @@ import {
   validateEquipmentForm,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
 
+const EQUIPMENT_PAGE_CACHE_KEY = 'techreserve_equipment_page_cache';
 const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
 
-const equipmentList = ref([]);
+const equipmentList = ref(readEquipmentCache());
 const isLoading = ref(false);
 const pageError = ref('');
+const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const sortOrder = ref('asc');
+const equipmentCurrentPage = ref(1);
+const equipmentPageSize = 10;
 
 const viewEquipment = ref(null);
 const formModalOpen = ref(false);
@@ -294,6 +305,13 @@ const isDeleting = ref(false);
 const deleteError = ref('');
 
 const form = ref(createEmptyForm());
+const equipmentStatusItems = computed(() => [
+  {
+    key: 'equipment',
+    label: 'Equipment Records',
+    state: equipmentDataState.value,
+  },
+]);
 
 const filteredEquipment = computed(() => {
   const normalizedQuery = searchQuery.value.toLowerCase();
@@ -318,6 +336,15 @@ const filteredEquipment = computed(() => {
     return sortOrder.value === 'asc' ? comparison : comparison * -1;
   });
 });
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipment.value.length / equipmentPageSize)));
+const paginatedEquipment = computed(() => {
+  const startIndex = (equipmentCurrentPage.value - 1) * equipmentPageSize;
+  return filteredEquipment.value.slice(startIndex, startIndex + equipmentPageSize);
+});
+const equipmentPageStart = computed(() => (
+  filteredEquipment.value.length === 0 ? 0 : ((equipmentCurrentPage.value - 1) * equipmentPageSize) + 1
+));
+const equipmentPageEnd = computed(() => Math.min(equipmentCurrentPage.value * equipmentPageSize, filteredEquipment.value.length));
 
 const availableCount = computed(() =>
   equipmentList.value.filter((equipment) => equipment.equipmentState === 'Available').length
@@ -337,17 +364,52 @@ onMounted(() => {
   fetchEquipment();
 });
 
+watch([searchQuery, statusFilter, sortOrder], () => {
+  equipmentCurrentPage.value = 1;
+});
+
+watch(equipmentTotalPages, (pageCount) => {
+  if (equipmentCurrentPage.value > pageCount) {
+    equipmentCurrentPage.value = pageCount;
+  }
+});
+
 async function fetchEquipment() {
   try {
     isLoading.value = true;
     pageError.value = '';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached-loading' : 'loading';
     const response = await equipmentApi.listEquipment();
     equipmentList.value = response?.data?.equipment || [];
+    writeEquipmentCache(equipmentList.value);
+    equipmentDataState.value = 'fresh';
   } catch (error) {
-    equipmentList.value = [];
     pageError.value = error?.response?.data?.errorMessage || 'Failed to load equipment records.';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached' : 'error';
   } finally {
     isLoading.value = false;
+  }
+}
+
+function readEquipmentCache() {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(EQUIPMENT_PAGE_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeEquipmentCache(records) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(EQUIPMENT_PAGE_CACHE_KEY, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Best-effort cache only.
   }
 }
 

@@ -136,8 +136,8 @@
       </div>
 
       <div v-if="activeFacilityTab === 'venue'">
-        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
-        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <div v-if="loading && venuesList.length === 0" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError && venuesList.length === 0" class="manage-facilities-modal-error">{{ venueError }}</p>
         <section v-else class="manage-facilities-venue-shell">
           <div class="manage-facilities-venue-surface">
             <div class="manage-facilities-venue-surface-toolbar">
@@ -473,7 +473,7 @@
                     <span>Showing {{ venueListDisplayStart }} to {{ venueListDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
                     <div class="manage-facilities-venue-directory-pagination">
                       <button type="button" :disabled="venueListCurrentPage === 1" @click="venueListCurrentPage -= 1">Previous</button>
-                      <span>{{ venueListCurrentPage }}</span>
+                      <span>Page {{ venueListCurrentPage }} of {{ venueListTotalPages }}</span>
                       <button type="button" :disabled="venueListCurrentPage === venueListTotalPages" @click="venueListCurrentPage += 1">Next</button>
                       <label>
                         <select v-model.number="venueListPageSize">
@@ -492,8 +492,8 @@
       </div>
 
       <div v-else-if="activeFacilityTab === 'all'">
-        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
-        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <div v-if="loading && venuesList.length === 0" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError && venuesList.length === 0" class="manage-facilities-modal-error">{{ venueError }}</p>
         <div v-else class="manage-facilities-venue-layout">
           <aside class="manage-facilities-venue-sidebar">
             <VenueAvailabilityCalendarComponent
@@ -505,12 +505,27 @@
 
           <div class="manage-facilities-venue-content">
             <FacilityVenueListComponent
-              :venue-floor-groups="venueFloorGroups"
+              :venue-floor-groups="paginatedVenueFloorGroups"
               :availability-filter="availabilityFilter"
               @view-venue="handleViewVenue"
               @edit-venue="handleEditVenue"
               @delete-venue="handleDeleteVenue"
             />
+            <div class="manage-facilities-venue-directory-footer">
+              <span>Showing {{ venueListDisplayStart }} to {{ venueListDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
+              <div class="manage-facilities-venue-directory-pagination">
+                <button type="button" :disabled="venueListCurrentPage === 1" @click="venueListCurrentPage -= 1">Previous</button>
+                <span>Page {{ venueListCurrentPage }} of {{ venueListTotalPages }}</span>
+                <button type="button" :disabled="venueListCurrentPage === venueListTotalPages" @click="venueListCurrentPage += 1">Next</button>
+                <label>
+                  <select v-model.number="venueListPageSize">
+                    <option :value="4">4 per page</option>
+                    <option :value="8">8 per page</option>
+                    <option :value="12">12 per page</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -672,8 +687,8 @@
       </div>
     </section>
 
-    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
-    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
+    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading && equipmentList.length === 0" class="manage-facilities-loading">Loading equipment...</div>
+    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError && equipmentList.length === 0" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <section v-else-if="activeFacilityTab === 'equipment'" class="manage-facilities-equipment-section">
       <div class="manage-facilities-dispatch-summary">
         <div class="manage-facilities-dispatch-summary-card">
@@ -699,7 +714,7 @@
       </div>
 
       <FacilityEquipmentGridComponent
-        :equipment-records="filteredEquipmentRecords"
+        :equipment-records="paginatedEquipmentRecords"
         :availability-filter="availabilityFilter"
         :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
         :view-mode="equipmentViewMode"
@@ -708,6 +723,21 @@
         @view-equipment="handleViewEquipment"
         @select-equipment="handleSelectEquipment"
       />
+      <div class="manage-facilities-venue-directory-footer manage-facilities-equipment-pagination-footer">
+        <span>Showing {{ equipmentDisplayStart }} to {{ equipmentDisplayEnd }} of {{ filteredEquipmentRecords.length }} equipment records</span>
+        <div class="manage-facilities-venue-directory-pagination">
+          <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
+          <span>Page {{ equipmentCurrentPage }} of {{ equipmentTotalPages }}</span>
+          <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>
+          <label>
+            <select v-model.number="equipmentPageSize">
+              <option :value="6">6 per page</option>
+              <option :value="12">12 per page</option>
+              <option :value="24">24 per page</option>
+            </select>
+          </label>
+        </div>
+      </div>
     </section>
 
     <div class="manage-facilities-page-footer">
@@ -1536,6 +1566,8 @@
         </div>
       </section>
     </div>
+
+    <DataRequestStatusFloater :items="facilityStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -1544,6 +1576,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import * as XLSX from 'xlsx';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import '@/pages/borrower/css/Logs.css';
 import './css/ManageFacilities.css';
@@ -1575,6 +1608,9 @@ import {
   resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
+const MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY = 'techreserve_manage_facilities_equipment_cache';
+const MANAGE_FACILITIES_VENUE_CACHE_KEY = 'techreserve_manage_facilities_venue_cache';
+
 const authStore = useAuthenticationStore();
 const route = useRoute();
 const router = useRouter();
@@ -1595,18 +1631,23 @@ const viewVenueRecord = ref(null);
 const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
 
-const venuesList = ref([]);
+const venuesList = ref(readSessionCache(MANAGE_FACILITIES_VENUE_CACHE_KEY));
 const reservedVenueMap = ref({});
-const equipmentList = ref([]);
+const equipmentList = ref(readSessionCache(MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY));
 const loading = ref(false);
 const venueError = ref('');
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
+const venueDataState = ref(venuesList.value.length > 0 ? 'cached' : 'idle');
+const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
+const classScheduleDataState = ref('idle');
 const equipmentViewMode = ref('card');
 const venueBuildingFilter = ref('all');
 const venueCapacityFilter = ref('all');
 const venueListCurrentPage = ref(1);
 const venueListPageSize = ref(4);
+const equipmentCurrentPage = ref(1);
+const equipmentPageSize = ref(12);
 const selectedVenueCalendarDate = ref(getTodayDateInputValue());
 const venueMonthCursor = ref(selectedVenueCalendarDate.value.slice(0, 7));
 const venueCalendarViewMode = ref('weekly');
@@ -1625,6 +1666,23 @@ const classScheduleLoading = ref(false);
 const classScheduleError = ref('');
 const selectedClassroomDate = ref(getTodayDateInputValue());
 const classroomMonthCursor = ref(selectedClassroomDate.value.slice(0, 7));
+const facilityStatusItems = computed(() => [
+  {
+    key: 'venues',
+    label: 'Venues',
+    state: venueDataState.value,
+  },
+  {
+    key: 'equipment',
+    label: 'Equipment',
+    state: equipmentDataState.value,
+  },
+  {
+    key: 'class-schedules',
+    label: 'Class Schedules',
+    state: classScheduleDataState.value,
+  },
+]);
 const classroomBoardView = ref('Weekly View');
 const showClassScheduleActionMenu = ref(false);
 const showClassScheduleModal = ref(false);
@@ -1765,8 +1823,28 @@ const filteredEquipmentRecords = computed(() => filterAndSortEquipment(
   sortValue.value,
 ));
 
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipmentRecords.value.length / equipmentPageSize.value)));
+const paginatedEquipmentRecords = computed(() => {
+  const startIndex = (equipmentCurrentPage.value - 1) * equipmentPageSize.value;
+  return filteredEquipmentRecords.value.slice(startIndex, startIndex + equipmentPageSize.value);
+});
+const equipmentDisplayStart = computed(() => (
+  filteredEquipmentRecords.value.length === 0
+    ? 0
+    : ((equipmentCurrentPage.value - 1) * equipmentPageSize.value) + 1
+));
+const equipmentDisplayEnd = computed(() => Math.min(
+  equipmentCurrentPage.value * equipmentPageSize.value,
+  filteredEquipmentRecords.value.length,
+));
+
 const venueFloorGroups = computed(() => buildVenueFloorGroups(
   filteredVenueRecords.value,
+  floorOrder,
+  selectedVenueCalendarDate.value,
+));
+const paginatedVenueFloorGroups = computed(() => buildVenueFloorGroups(
+  paginatedVenueDirectoryRecords.value,
   floorOrder,
   selectedVenueCalendarDate.value,
 ));
@@ -1873,12 +1951,11 @@ const venueScheduleRailLabels = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM'];
 const venueWeekScheduleColumns = computed(() => venueWeekDates.value.map((weekDate) => buildVenueWeekScheduleColumn(weekDate)));
 
 const venueListTotalPages = computed(() => Math.max(1, Math.ceil(venueDirectoryRecords.value.length / venueListPageSize.value)));
-const paginatedVenueListRecords = computed(() => {
+const paginatedVenueDirectoryRecords = computed(() => {
   const startIndex = (venueListCurrentPage.value - 1) * venueListPageSize.value;
-  return venueDirectoryRecords.value
-    .map((venueRecord) => buildVenueDirectoryCardRecord(venueRecord))
-    .slice(startIndex, startIndex + venueListPageSize.value);
+  return venueDirectoryRecords.value.slice(startIndex, startIndex + venueListPageSize.value);
 });
+const paginatedVenueListRecords = computed(() => paginatedVenueDirectoryRecords.value.map((venueRecord) => buildVenueDirectoryCardRecord(venueRecord)));
 const venueListDisplayStart = computed(() => (
   venueDirectoryRecords.value.length === 0
     ? 0
@@ -2314,18 +2391,33 @@ async function fetchVenues() {
   try {
     loading.value = true;
     venueError.value = '';
-    const response = await venueApi.listVenues({
+    venueDataState.value = venuesList.value.length > 0 ? 'cached-loading' : 'loading';
+    const response = await listVenuesWithFallback({
       selectedDate: selectedVenueCalendarDate.value,
     });
     const venuePayload = response?.data?.venues || response?.venues || [];
     venuesList.value = Array.isArray(venuePayload)
       ? venuePayload.map(normalizeVenueRecord).filter(Boolean).filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
       : [];
+    writeSessionCache(MANAGE_FACILITIES_VENUE_CACHE_KEY, venuesList.value);
+    venueDataState.value = 'fresh';
   } catch (error) {
-    venuesList.value = [];
+    venueDataState.value = venuesList.value.length > 0 ? 'cached' : 'error';
     venueError.value = error?.response?.data?.errorMessage || 'Failed to load venue records.';
   } finally {
     loading.value = false;
+  }
+}
+
+async function listVenuesWithFallback(options = {}) {
+  try {
+    return await venueApi.listVenues(options);
+  } catch (error) {
+    if (!options.selectedDate) {
+      throw error;
+    }
+
+    return venueApi.listVenues();
   }
 }
 
@@ -2333,10 +2425,13 @@ async function fetchEquipment() {
   try {
     equipmentLoading.value = true;
     equipmentError.value = '';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached-loading' : 'loading';
     const response = await equipmentApi.listEquipment();
     equipmentList.value = response?.data?.equipment || [];
+    writeSessionCache(MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY, equipmentList.value);
+    equipmentDataState.value = 'fresh';
   } catch (error) {
-    equipmentList.value = [];
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached' : 'error';
     equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment.';
   } finally {
     equipmentLoading.value = false;
@@ -2384,18 +2479,47 @@ async function fetchClassSchedules() {
   try {
     classScheduleLoading.value = true;
     classScheduleError.value = '';
+    classScheduleDataState.value = classScheduleList.value.length > 0 ? 'cached-loading' : 'loading';
     const { dateFrom, dateTo } = getScheduleQueryWindow(selectedClassroomDate.value);
     const response = await classScheduleApi.listScheduleBlocks({ dateFrom, dateTo });
     const schedulePayload = response?.data?.scheduleBlocks || response?.scheduleBlocks || [];
     classScheduleList.value = Array.isArray(schedulePayload)
       ? schedulePayload.map((scheduleRecord) => normalizeClassScheduleRecord(scheduleRecord))
       : [];
+    classScheduleDataState.value = 'fresh';
     syncSelectedClassSchedule();
   } catch (error) {
     classScheduleList.value = [];
     classScheduleError.value = error?.response?.data?.errorMessage || 'Failed to load classroom schedules.';
+    classScheduleDataState.value = 'error';
   } finally {
     classScheduleLoading.value = false;
+  }
+}
+
+function readSessionCache(cacheKey) {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(cacheKey);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSessionCache(cacheKey, records) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(cacheKey, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Cache writes are best-effort only.
   }
 }
 
@@ -2563,9 +2687,23 @@ watch([showingFilterValue, venueCapacityFilter, sortValue], () => {
   venueListCurrentPage.value = 1;
 });
 
+watch([searchQuery, showingFilterValue, availabilityFilter, sortValue], () => {
+  equipmentCurrentPage.value = 1;
+});
+
+watch(searchQuery, () => {
+  venueListCurrentPage.value = 1;
+});
+
 watch([venueListPageSize, venueDirectoryRecords], () => {
   if (venueListCurrentPage.value > venueListTotalPages.value) {
     venueListCurrentPage.value = venueListTotalPages.value;
+  }
+});
+
+watch([equipmentPageSize, filteredEquipmentRecords], () => {
+  if (equipmentCurrentPage.value > equipmentTotalPages.value) {
+    equipmentCurrentPage.value = equipmentTotalPages.value;
   }
 });
 

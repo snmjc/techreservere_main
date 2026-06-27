@@ -8,7 +8,6 @@
           <th class="reservation-active-table-header-cell">Name</th>
           <th class="reservation-active-table-header-cell">Role</th>
           <th class="reservation-active-table-header-cell">Schedule</th>
-          <th class="reservation-active-table-header-cell">Facility</th>
           <th class="reservation-active-table-header-cell">Quantity</th>
           <th class="reservation-active-table-header-cell">Type</th>
           <th class="reservation-active-table-header-cell">Purpose</th>
@@ -32,9 +31,6 @@
           </td>
           <td class="reservation-active-table-cell reservation-active-table-cell--schedule">
             {{ reservationRecord.requestSchedule }}
-          </td>
-          <td class="reservation-active-table-cell reservation-active-table-cell--facility">
-            {{ reservationRecord.facilityName }}
           </td>
           <td class="reservation-active-table-cell reservation-active-table-cell--quantity">
             {{ reservationRecord.requestQuantity }}
@@ -86,7 +82,7 @@
           </td>
         </tr>
         <tr v-if="reservationList.length === 0">
-          <td colspan="9" class="reservation-active-table-cell reservation-active-table-empty-row">
+          <td colspan="8" class="reservation-active-table-cell reservation-active-table-empty-row">
             No active reservations found.
           </td>
         </tr>

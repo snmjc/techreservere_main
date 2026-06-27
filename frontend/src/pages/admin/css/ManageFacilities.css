@@ -969,6 +969,16 @@ body {
   font-weight: 700;
 }
 
+.manage-facilities-venue-directory-pagination button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.manage-facilities-equipment-pagination-footer {
+  margin-top: 1rem;
+}
+
 .manage-facilities-venue-surface-toolbar {
   display: flex;
   justify-content: flex-end;

@@ -88,11 +88,16 @@
 
 .reservation-active-table-wrapper {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .reservation-active-table {
   width: 100%;
+  table-layout: fixed;
+}
+
+.admin-ops-table-card .reservation-active-table {
+  min-width: 0;
 }
 
 .reservation-active-table-header-row {
@@ -151,12 +156,6 @@
   width: 120px;
 }
 
-.reservation-active-table-cell--facility {
-  font-size: 0.72rem;
-  white-space: nowrap;
-  width: 100px;
-}
-
 .reservation-active-table-cell--quantity {
   text-align: center;
   width: 60px;
@@ -168,10 +167,10 @@
 
 .reservation-active-table-cell--purpose {
   font-size: 0.72rem;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .reservation-active-table-cell--actions {

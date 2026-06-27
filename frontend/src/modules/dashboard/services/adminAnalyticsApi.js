@@ -25,6 +25,10 @@ const adminAnalyticsApi = {
     return getWithRange('/api/v1/dashboard/overview', range);
   },
 
+  async getDashboardOverviewSection(section, range) {
+    return getWithRange(`/api/v1/dashboard/overview/${encodeURIComponent(section)}`, range);
+  },
+
   async getReportsAnalytics(range) {
     return getWithRange('/api/v1/reports-analytics', range);
   },
@@ -66,6 +70,24 @@ const adminAnalyticsApi = {
         historyDays: range?.days || 30,
         startDate: range?.startDateIso,
         endDate: range?.endDateIso,
+        _: Date.now(),
+      },
+    });
+
+    return unwrapResponse(response);
+  },
+
+  async getAnalyticsRangeSectionResults(section, range, options = {}) {
+    const authToken = getStoredAuthToken();
+    const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
+      headers: buildAuthorizationHeaders(authToken),
+      params: {
+        historyDays: range?.days || 30,
+        startDate: range?.startDateIso,
+        endDate: range?.endDateIso,
+        ...Object.fromEntries(
+          Object.entries(options || {}).filter(([, value]) => value !== null && value !== undefined && value !== '')
+        ),
         _: Date.now(),
       },
     });

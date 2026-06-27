@@ -70,6 +70,13 @@ class AccountController extends AbstractController
         return $this->serviceResultResponse($this->workflowService->getAllAccounts());
     }
 
+    #[Route('/type/{accountType}', name: 'account_get_by_type', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getAccountsByType(string $accountType): JsonResponse
+    {
+        return $this->serviceResultResponse($this->workflowService->getAccountsByType($accountType));
+    }
+
     #[Route('/{accountIdentifier}', name: 'account_get_by_id', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getAccountById(int $accountIdentifier): JsonResponse

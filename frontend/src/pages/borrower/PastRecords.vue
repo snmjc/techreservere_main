@@ -56,7 +56,6 @@
               <label>
                 <span>Showing</span>
                 <select v-model="showingFilterValue">
-                  <option value="all">All</option>
                   <option value="10">10</option>
                   <option value="25">25</option>
                   <option value="50">50</option>
@@ -146,7 +145,7 @@
               <span>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRecordList.length }} records</span>
             </div>
 
-            <div v-if="totalPages > 1" class="past-records-pagination">
+            <div class="past-records-pagination">
               <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
               <span>Page {{ currentPage }} of {{ totalPages }}</span>
               <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
@@ -248,12 +247,14 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
     </section>
+    <DataRequestStatusFloater :items="pastRecordsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import '@/shared/components/adminSidebarLayout.css';
@@ -265,7 +266,7 @@ const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
-const showingFilterValue = ref('all');
+const showingFilterValue = ref('10');
 const sortOrder = ref('desc');
 const orderByValue = ref('date');
 const currentPage = ref(1);
@@ -273,6 +274,13 @@ const selectedRecord = ref(null);
 const userFullName = computed(() => authStore.userFullName || 'USER');
 const loading = computed(() => requestStore.isLoadingReservations);
 const pastRecordsList = computed(() => requestStore.pastRecordsList || []);
+const pastRecordsStatusItems = computed(() => [
+  {
+    key: 'past-records',
+    label: 'Past records',
+    state: resolveReservationListState(pastRecordsList.value),
+  },
+]);
 
 onMounted(async () => {
   try {
@@ -344,11 +352,7 @@ const filteredRecordList = computed(() => {
   return recordsFiltered;
 });
 
-const resolvedPageSize = computed(() => (
-  showingFilterValue.value === 'all'
-    ? Math.max(filteredRecordList.value.length, 1)
-    : Number(showingFilterValue.value)
-));
+const resolvedPageSize = computed(() => Number(showingFilterValue.value) || 10);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / resolvedPageSize.value)));
 const paginatedRecordList = computed(() => {
   const startIndex = (currentPage.value - 1) * resolvedPageSize.value;
@@ -503,5 +507,11 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) return 'cached-loading';
+  if (requestStore.isLoadingReservations) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

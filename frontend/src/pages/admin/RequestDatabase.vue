@@ -106,7 +106,7 @@
         </table>
       </section>
 
-      <div v-if="totalPages > 1" class="admin-request-database-page__pagination">
+      <div class="admin-request-database-page__pagination">
         <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
         <span>Page {{ currentPage }} of {{ totalPages }}</span>
         <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>

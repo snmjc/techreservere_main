@@ -24,7 +24,19 @@ class TaskController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function listTasks(): JsonResponse
     {
-        return $this->serviceResultResponse($this->taskWorkflowService->listTasks());
+        try {
+            return $this->serviceResultResponse($this->taskWorkflowService->listTasks());
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Task List - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse('TaskListFailed', 'Unable to load task assignments at this time.', 500);
+        }
     }
 
     #[Route('', name: 'task_create', methods: ['POST'])]
@@ -39,6 +51,20 @@ class TaskController extends AbstractController
     public function sendTestSms(Request $request): JsonResponse
     {
         return $this->serviceResultResponse($this->taskWorkflowService->sendTestSms($this->jsonBody($request)));
+    }
+
+    #[Route('/template', name: 'task_template_get', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getTaskTemplate(): JsonResponse
+    {
+        return $this->serviceResultResponse($this->taskWorkflowService->getTaskTemplate());
+    }
+
+    #[Route('/template', name: 'task_template_update', methods: ['PUT'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function updateTaskTemplate(Request $request): JsonResponse
+    {
+        return $this->serviceResultResponse($this->taskWorkflowService->updateTaskTemplate($this->jsonBody($request)));
     }
 
     #[Route('/{taskIdentifier}', name: 'task_update', requirements: ['taskIdentifier' => '\d+'], methods: ['PUT'])]

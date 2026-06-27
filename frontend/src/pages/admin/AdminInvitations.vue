@@ -98,6 +98,7 @@
         </div>
       </div>
     </div>
+    <DataRequestStatusFloater :items="invitationStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -105,6 +106,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { adminManageAccountsApi } from '@/services/adminManageAccountsApi.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
@@ -137,6 +139,13 @@ const userRole = computed(() => {
 const navigationItems = computed(() => {
   return adminNavigationItems;
 });
+const invitationStatusItems = computed(() => [
+  {
+    key: 'invitations',
+    label: 'Invitations',
+    state: resolveInvitationDataState(),
+  },
+]);
 
 onMounted(() => {
   fetchInvitations();
@@ -164,7 +173,9 @@ async function fetchInvitations() {
       .filter((invitation) => invitation.sentAt || invitation.status !== 'not_sent');
   } catch (error) {
     console.error('Error fetching invitations:', error);
-    invitations.value = [];
+    if (invitations.value.length === 0) {
+      invitations.value = [];
+    }
     pageError.value = error.message || 'Failed to load invitation records.';
   } finally {
     loading.value = false;
@@ -266,6 +277,14 @@ function formatDate(dateString) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function resolveInvitationDataState() {
+  if (pageError.value && invitations.value.length === 0) return 'error';
+  if (loading.value && invitations.value.length > 0) return 'cached-loading';
+  if (loading.value) return 'loading';
+  if (pageError.value) return 'cached';
+  return invitations.value.length > 0 ? 'fresh' : 'idle';
 }
 </script>
 

@@ -1,5 +1,4 @@
 export const ADMIN_ANALYTICS_RANGE_PRESETS = [
-  { key: 'demo_2026_may_june', label: 'Demo: May 25-Jun 23, 2026', startDateIso: '2026-05-25', endDateIso: '2026-06-23' },
   { key: '30d', label: 'Last 30 Days', days: 30 },
   { key: '14d', label: 'Last 14 Days', days: 14 },
   { key: '7d', label: 'Last 7 days', days: 7 },

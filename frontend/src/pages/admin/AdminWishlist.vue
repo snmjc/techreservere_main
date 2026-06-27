@@ -105,7 +105,7 @@
           </button>
         </div>
 
-        <div v-if="isLoading" class="admin-wishlist-empty-state">
+        <div v-if="isActiveWishlistTabLoading && filteredWishlistAccounts.length === 0" class="admin-wishlist-empty-state">
           Loading request accounts...
         </div>
 
@@ -123,8 +123,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(account, index) in filteredWishlistAccounts" :key="account.accountIdentifier">
-                <td>{{ index + 1 }}</td>
+              <tr v-for="(account, index) in paginatedWishlistAccounts" :key="account.accountIdentifier">
+                <td>{{ wishlistPageStart + index }}</td>
                 <td>{{ account.idNumber }}</td>
                 <td>
                   <strong>{{ account.firstName }} {{ account.lastName }}</strong>
@@ -239,6 +239,11 @@
               </tr>
             </tbody>
           </table>
+          <div class="admin-wishlist-pagination">
+            <button type="button" :disabled="wishlistCurrentPage === 1" @click="wishlistCurrentPage -= 1">Previous</button>
+            <span>Showing {{ wishlistPageStart }}-{{ wishlistPageEnd }} of {{ filteredWishlistAccounts.length }}</span>
+            <button type="button" :disabled="wishlistCurrentPage === wishlistTotalPages" @click="wishlistCurrentPage += 1">Next</button>
+          </div>
         </div>
       </section>
 
@@ -662,19 +667,22 @@
 
       <AdminWishlistCreateAccountModals
         ref="createAccountModals"
-        :accounts="normalizedAccounts"
+        :accounts="allNormalizedAccounts"
         @created="handleAccountCreated"
       />
+      <DataRequestStatusFloater :items="wishlistStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useAuth } from '@clerk/vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
+import { useWishlistTabResource } from './services/wishlistTabResource.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -705,28 +713,60 @@ const searchText = ref('');
 const sortMode = ref('newest');
 const statusFilter = ref('all');
 const userRoleFilter = ref('all');
+const wishlistPagesByTab = reactive({
+  admin: 1,
+  user: 1,
+  employee: 1,
+});
+const wishlistPageSize = 10;
 const createAccountModals = ref(null);
 const editListMode = ref(false);
-const isLoading = ref(false);
 const toastMessage = ref('');
-const loadErrorMessage = ref('');
-const wishlistAccounts = ref([]);
 const previewAccount = ref(null);
 const previewDocumentUrl = ref('');
 const previewIsLoading = ref(false);
 const previewErrorMessage = ref('');
 
-const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim();
 });
+const wishlistCacheScope = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  const tokenScope = normalizeAuthToken(authStore.authToken) || getStoredAuthToken() || '';
+  return String(
+    account.accountIdentifier
+      || account.emailAddress
+      || account.email
+      || currentAdminEmail.value
+      || tokenScope.slice(-32)
+      || 'anonymous',
+  ).trim();
+});
+const wishlistTabResources = {
+  admin: createWishlistTabResource('admin', 'Admin Requests'),
+  user: createWishlistTabResource('user', 'User Requests'),
+  employee: createWishlistTabResource('employee', 'Employee Requests'),
+};
+const activeWishlistResource = computed(() => wishlistTabResources[activeTab.value] || wishlistTabResources.user);
+const wishlistAccountsByTab = computed(() => ({
+  admin: normalizeTabAccounts(wishlistTabResources.admin.data.value),
+  user: normalizeTabAccounts(wishlistTabResources.user.data.value),
+  employee: normalizeTabAccounts(wishlistTabResources.employee.data.value),
+}));
+const normalizedAccounts = computed(() => wishlistAccountsByTab.value[activeTab.value] || []);
+const allNormalizedAccounts = computed(() => [
+  ...wishlistAccountsByTab.value.admin,
+  ...wishlistAccountsByTab.value.user,
+  ...wishlistAccountsByTab.value.employee,
+]);
+const loadErrorMessage = computed(() => activeWishlistResource.value.error.value);
 
 const wishlistTabs = computed(() => {
-  const accounts = normalizedAccounts.value;
   return [
-    { label: 'Admin', value: 'admin', count: accounts.filter((account) => account.accountType === 'Admin').length },
-    { label: 'User', value: 'user', count: accounts.filter((account) => account.accountType === 'User').length },
+    { label: 'Admin', value: 'admin', count: wishlistAccountsByTab.value.admin.length },
+    { label: 'User', value: 'user', count: wishlistAccountsByTab.value.user.length },
+    { label: 'Employee', value: 'employee', count: wishlistAccountsByTab.value.employee.length },
   ];
 });
 
@@ -739,6 +779,27 @@ const filteredWishlistAccounts = computed(() => {
     userRoleFilter: userRoleFilter.value,
   });
 });
+const isActiveWishlistTabLoading = computed(() => activeWishlistResource.value.isLoading.value);
+const wishlistTotalPages = computed(() => Math.max(1, Math.ceil(filteredWishlistAccounts.value.length / wishlistPageSize)));
+const wishlistCurrentPage = computed({
+  get: () => wishlistPagesByTab[activeTab.value] || 1,
+  set: (pageNumber) => {
+    wishlistPagesByTab[activeTab.value] = pageNumber;
+  },
+});
+const paginatedWishlistAccounts = computed(() => {
+  const startIndex = (wishlistCurrentPage.value - 1) * wishlistPageSize;
+  return filteredWishlistAccounts.value.slice(startIndex, startIndex + wishlistPageSize);
+});
+const wishlistPageStart = computed(() => (
+  filteredWishlistAccounts.value.length === 0 ? 0 : ((wishlistCurrentPage.value - 1) * wishlistPageSize) + 1
+));
+const wishlistPageEnd = computed(() => Math.min(wishlistCurrentPage.value * wishlistPageSize, filteredWishlistAccounts.value.length));
+const wishlistStatusItems = computed(() => [
+  wishlistTabResources.admin.statusItem.value,
+  wishlistTabResources.user.statusItem.value,
+  wishlistTabResources.employee.statusItem.value,
+]);
 
 const {
   isProcessing,
@@ -786,26 +847,66 @@ onMounted(() => {
   loadWishlistAccounts();
 });
 
+watch([searchText, sortMode, statusFilter, userRoleFilter], () => {
+  wishlistCurrentPage.value = 1;
+});
+
+watch(wishlistTotalPages, (pageCount) => {
+  if (wishlistCurrentPage.value > pageCount) {
+    wishlistCurrentPage.value = pageCount;
+  }
+});
+
 function handleTabChange(tabName) {
   activeTab.value = tabName;
   searchText.value = '';
   statusFilter.value = 'all';
   userRoleFilter.value = 'all';
+
+  if (activeWishlistResource.value.state.value === 'idle') {
+    loadActiveWishlistTab();
+  }
 }
 
 async function loadWishlistAccounts() {
-  isLoading.value = true;
-  loadErrorMessage.value = '';
-  const authToken = await ensureWishlistToken();
-  const result = await adminWishlistApi.getWishlistAccounts(authToken);
-  if (result.success) {
-    wishlistAccounts.value = result.data.users || result.data || [];
-  } else {
-    wishlistAccounts.value = [];
-    loadErrorMessage.value = result.error || 'Unable to load request accounts from the backend.';
-    showToast(loadErrorMessage.value);
+  const results = await Promise.allSettled(Object.values(wishlistTabResources).map((resource) => resource.load()));
+  const failedCount = results.filter((result) => result.status === 'rejected').length
+    + Object.values(wishlistTabResources).filter((resource) => resource.state.value === 'error').length;
+  if (failedCount > 0) {
+    showToast('Some wishlist tabs failed to load. Check Data Status for details.');
   }
-  isLoading.value = false;
+}
+
+async function loadActiveWishlistTab() {
+  await activeWishlistResource.value.load();
+}
+
+function createWishlistTabResource(tabKey, label) {
+  return useWishlistTabResource({
+    tabKey,
+    label,
+    cacheScope: wishlistCacheScope,
+    fetchAccounts: fetchWishlistAccountsByTab,
+  });
+}
+
+async function fetchWishlistAccountsByTab(tabKey) {
+  const authToken = await ensureWishlistToken();
+  const result = await adminWishlistApi.getWishlistAccountsByType(authToken, tabKey);
+  if (!result.success) {
+    throw new Error(result.error || 'Unable to load request accounts from the backend.');
+  }
+
+  const users = result.data?.users ?? result.data;
+  if (!Array.isArray(users)) {
+    throw new Error('Wishlist API returned an invalid account list.');
+  }
+
+  return users;
+}
+
+function normalizeTabAccounts(accounts) {
+  return getUniqueRequestAccounts(accounts.map(normalizeWishlistAccount));
 }
 
 async function ensureWishlistToken() {

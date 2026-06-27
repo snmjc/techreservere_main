@@ -152,9 +152,9 @@ class AnalyticsController
                 : null;
             error_log(sprintf('Analytics trigger completed with forecast points: %s', $seededCount === null ? 'n/a' : (string) $seededCount));
 
-            return $this->createSuccessResponse([
+            return $this->createCachedAnalyticsResponse([
                 'analyticsServiceResponse' => $payload,
-            ]);
+            ], $request);
         } catch (\Throwable $exception) {
             return $this->createErrorResponse('AnalyticsTriggerFailed', $exception->getMessage(), 502);
         }
@@ -329,6 +329,42 @@ class AnalyticsController
         }
     }
 
+    #[Route('/range-results/{section}', name: 'analytics_range_section_results', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getRangeSectionResults(string $section, Request $request): JsonResponse
+    {
+        try {
+            $historyDays = max(1, (int) $request->query->get('historyDays', 30));
+            $startDate = trim((string) $request->query->get('startDate', ''));
+            $endDate = trim((string) $request->query->get('endDate', ''));
+            $sectionName = strtolower(trim($section));
+
+            if ($startDate === '' || $endDate === '') {
+                return $this->createErrorResponse('ValidationError', 'startDate and endDate are required.', 422);
+            }
+
+            if (!in_array($sectionName, ['forecast', 'readiness', 'allocation', 'optimization', 'utilization', 'equipment-trends', 'equipment_trends', 'summary'], true)) {
+                return $this->createErrorResponse('ValidationError', 'Unsupported analytics section.', 422);
+            }
+
+            $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
+            $extraPayload = [];
+            foreach (['topEquipmentPage', 'preparationDecisionPage', 'equipmentTrendPageSize'] as $paginationKey) {
+                $paginationValue = $request->query->get($paginationKey);
+                if ($paginationValue !== null && $paginationValue !== '') {
+                    $extraPayload[$paginationKey] = max(1, (int) $paginationValue);
+                }
+            }
+            $payload = $this->requestRangeAnalysis($analyticsServiceUrl, $historyDays, $startDate, $endDate, $sectionName, $extraPayload);
+
+            return $this->createCachedAnalyticsResponse([
+                'analyticsServiceResponse' => $payload,
+            ], $request);
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse('AnalyticsRangeSectionFetchFailed', $exception->getMessage(), 502);
+        }
+    }
+
     private function triggerAnalyticsService(
         string $analyticsServiceUrl,
         string $scenario,
@@ -368,14 +404,17 @@ class AnalyticsController
         string $analyticsServiceUrl,
         int $historyDays,
         string $startDate,
-        string $endDate
+        string $endDate,
+        ?string $section = null,
+        array $extraPayload = []
     ): array {
-        $response = $this->httpClient->request('POST', $analyticsServiceUrl . '/analytics/analyze-range', [
-            'json' => [
+        $path = '/analytics/analyze-range' . ($section !== null ? '/' . rawurlencode($section) : '');
+        $response = $this->httpClient->request('POST', $analyticsServiceUrl . $path, [
+            'json' => array_merge([
                 'historyDays' => $historyDays,
                 'startDate' => $startDate,
                 'endDate' => $endDate,
-            ],
+            ], $extraPayload),
             'timeout' => 60,
         ]);
 
@@ -397,6 +436,20 @@ class AnalyticsController
         $response = $this->httpClient->request($method, $analyticsServiceUrl . $path, $options);
 
         return $response->toArray(false);
+    }
+
+    private function createCachedAnalyticsResponse(array $data, Request $request): JsonResponse
+    {
+        $response = $this->createSuccessResponse($data);
+        $responseContent = (string) $response->getContent();
+
+        $response->setEtag(sha1($responseContent));
+        $response->headers->set('Cache-Control', 'private, max-age=60, stale-while-revalidate=120');
+        $response->headers->set('Vary', 'Authorization, Accept-Encoding');
+        $response->headers->remove('Pragma');
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     private function defaultConfiguration(): array

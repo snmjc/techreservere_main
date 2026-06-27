@@ -46,6 +46,24 @@ class WishlistAccountRequestController
         }
     }
 
+    #[Route('/wishlist/{accountType}', name: 'list_wishlist_users_by_type', methods: ['GET'])]
+    public function listWishlistUsersByType(string $accountType): JsonResponse
+    {
+        try {
+            return $this->serviceResultResponse(
+                $this->workflowService->listWishlistUsersByType($accountType),
+                'WishlistUsersByTypeFailed',
+                'Unable to load wishlist users for this account type.'
+            );
+        } catch (\Throwable $exception) {
+            return $this->createErrorResponse(
+                'WishlistUsersByTypeCrashed',
+                'Unable to load wishlist users for this account type: ' . $exception->getMessage(),
+                500
+            );
+        }
+    }
+
     #[Route('/wishlist/admin-accounts', name: 'create_wishlist_admin_account', methods: ['POST'])]
     public function createWishlistAdminAccount(Request $request): JsonResponse
     {

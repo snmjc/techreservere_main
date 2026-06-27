@@ -104,7 +104,7 @@
         </article>
       </section>
 
-      <div v-if="totalPages > 1" class="logs-pagination">
+      <div class="logs-pagination">
         <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
         <span>Page {{ currentPage }} of {{ totalPages }}</span>
         <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
@@ -114,6 +114,7 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
     </section>
+    <DataRequestStatusFloater :items="activeLogsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -121,6 +122,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -156,6 +158,13 @@ const activeLogs = computed(() =>
     status: normalizeActiveStatus(record.requestStatus),
   }))
 );
+const activeLogsStatusItems = computed(() => [
+  {
+    key: 'active-logs',
+    label: 'Active logs',
+    state: resolveLocalListState(activeLogs.value),
+  },
+]);
 
 const statusOptions = computed(() => [...new Set(activeLogs.value.map((log) => log.status).filter(Boolean))]);
 
@@ -200,5 +209,11 @@ function handleViewLog(log) {
 
 function normalizeActiveStatus(status) {
   return status || 'Active';
+}
+
+function resolveLocalListState(records) {
+  if (isLoading.value && records.length > 0) return 'cached-loading';
+  if (isLoading.value) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

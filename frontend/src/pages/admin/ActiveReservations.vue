@@ -65,7 +65,7 @@
         />
       </div>
 
-      <div v-if="activeReservationsTotalPages > 1" class="active-reservations-pagination">
+      <div class="active-reservations-pagination">
         <button type="button" :disabled="activeReservationsCurrentPage === 1" @click="activeReservationsCurrentPage -= 1">Previous</button>
         <span>Page {{ activeReservationsCurrentPage }} of {{ activeReservationsTotalPages }}</span>
         <button type="button" :disabled="activeReservationsCurrentPage === activeReservationsTotalPages" @click="activeReservationsCurrentPage += 1">Next</button>
@@ -346,12 +346,14 @@
         </footer>
       </section>
     </div>
+    <DataRequestStatusFloater :items="activeReservationsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, reactive, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ActiveReservations.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -387,6 +389,13 @@ const isWorkflowConfirmationSubmitting = ref(false);
 const workflowConfirmationError = ref('');
 
 const activeReservationsList = computed(() => requestStore.activeReservationsList || []);
+const activeReservationsStatusItems = computed(() => [
+  {
+    key: 'active-reservations',
+    label: 'Active Reservations',
+    state: resolveReservationListState(activeReservationsList.value),
+  },
+]);
 const filteredActiveReservations = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
@@ -692,5 +701,17 @@ function formatWorkflowDateTime(value) {
 
 function getEquipmentResources(reservationRecord) {
   return (reservationRecord?.reservedResources || []).filter((resource) => resource.resourceType === 'Equipment');
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (requestStore.isLoadingReservations) {
+    return 'loading';
+  }
+
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

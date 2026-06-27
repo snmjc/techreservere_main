@@ -22,6 +22,9 @@
           <button class="admin-task-assignments-secondary" type="button" @click="openSmsTestModal">
             Test SMS
           </button>
+          <button class="admin-task-assignments-secondary" type="button" @click="openTaskTemplateModal">
+            Task Format
+          </button>
           <button class="admin-task-assignments-primary" type="button" @click="openCreateModal">
             + Assign Task
           </button>
@@ -95,7 +98,7 @@
 
         <p v-if="loadError" class="admin-task-assignments-error">{{ loadError }}</p>
 
-        <div v-if="isLoading" class="admin-task-assignments-state">
+        <div v-if="isLoading && tasks.length === 0" class="admin-task-assignments-state">
           Loading task assignments...
         </div>
 
@@ -103,98 +106,97 @@
           No task assignments match the current filters.
         </div>
 
-        <template v-else>
-          <div class="admin-task-assignments-table-wrap">
-            <table class="admin-task-assignments-table">
-              <thead>
-                <tr>
-                  <th>Reservation ID</th>
-                  <th>Task Details</th>
-                  <th>Assigned To</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="task in paginatedTasks" :key="task.taskIdentifier">
-                  <td class="admin-task-cell-id">
-                    <strong>{{ getReservationCode(task) }}</strong>
-                    <small>Task #{{ task.taskIdentifier }}</small>
-                  </td>
+        <div v-else class="admin-task-assignments-table-wrap">
+          <table class="admin-task-assignments-table">
+            <thead>
+              <tr>
+                <th>Reservation ID</th>
+                <th>Task Details</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="task in paginatedTasks" :key="task.taskIdentifier">
+                <td class="admin-task-cell-id">
+                  <strong>{{ getReservationCode(task) }}</strong>
+                  <small>Task #{{ task.taskIdentifier }}</small>
+                </td>
 
-                  <td class="admin-task-cell-details">
-                    <strong>{{ task.reservationLabel || formatReservationLabel(task.reservationIdentifier) }}</strong>
-                    <span>{{ task.taskTitle }}</span>
-                    <small>{{ task.taskDescription || task.taskType }}</small>
-                    <small>{{ formatTaskSchedule(task) }}</small>
-                  </td>
+                <td class="admin-task-cell-details">
+                  <strong>{{ task.reservationLabel || formatReservationLabel(task.reservationIdentifier) }}</strong>
+                  <span>{{ task.taskTitle }}</span>
+                  <small>{{ task.taskDescription || task.taskType }}</small>
+                  <small>{{ formatTaskSchedule(task) }}</small>
+                </td>
 
-                  <td class="admin-task-cell-staff">
-                    <strong>{{ formatStaffLabel(task) }}</strong>
-                    <small>{{ task.assignedStaffRole || 'Technician' }}</small>
-                  </td>
+                <td class="admin-task-cell-staff">
+                  <strong>{{ formatStaffLabel(task) }}</strong>
+                  <small>{{ task.assignedStaffRole || 'Technician' }}</small>
+                </td>
 
-                  <td>
-                    <span
-                      class="admin-task-status-pill"
-                      :class="`admin-task-status-pill--${getStatusTone(task)}`"
+                <td>
+                  <span
+                    class="admin-task-status-pill"
+                    :class="`admin-task-status-pill--${getStatusTone(task)}`"
+                  >
+                    {{ getStatusLabel(task) }}
+                  </span>
+                </td>
+
+                <td>
+                  <div class="admin-task-actions">
+                    <button type="button" class="admin-task-action admin-task-action--view" @click="openViewModal(task)">
+                      View
+                    </button>
+                    <button type="button" class="admin-task-action admin-task-action--edit" @click="openUpdateModal(task)">
+                      Update
+                    </button>
+                    <button
+                      type="button"
+                      class="admin-task-action admin-task-action--verify"
+                      :disabled="!canVerifyTask(task)"
+                      @click="openVerifyModal(task)"
                     >
-                      {{ getStatusLabel(task) }}
-                    </span>
-                  </td>
+                      Verify
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-                  <td>
-                    <div class="admin-task-actions">
-                      <button type="button" class="admin-task-action admin-task-action--view" @click="openViewModal(task)">
-                        View
-                      </button>
-                      <button type="button" class="admin-task-action admin-task-action--edit" @click="openUpdateModal(task)">
-                        Update
-                      </button>
-                      <button
-                        type="button"
-                        class="admin-task-action admin-task-action--verify"
-                        :disabled="!canVerifyTask(task)"
-                        @click="openVerifyModal(task)"
-                      >
-                        Verify
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <footer class="admin-task-assignments-footer">
+          <p>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredTasks.length }} task assignments</p>
+
+          <div class="admin-task-assignments-pagination">
+            <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">
+              Prev
+            </button>
+            <span class="admin-task-assignments-pagination-label">Page {{ currentPage }} of {{ totalPages }}</span>
+            <button
+              v-for="pageNumber in visiblePageNumbers"
+              :key="pageNumber"
+              type="button"
+              :class="{ 'is-active': pageNumber === currentPage }"
+              @click="currentPage = pageNumber"
+            >
+              {{ pageNumber }}
+            </button>
+            <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">
+              Next
+            </button>
           </div>
+        </footer>
 
-          <footer class="admin-task-assignments-footer">
-            <p>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredTasks.length }} task assignments</p>
-
-            <div class="admin-task-assignments-pagination">
-              <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">
-                Prev
-              </button>
-              <button
-                v-for="pageNumber in visiblePageNumbers"
-                :key="pageNumber"
-                type="button"
-                :class="{ 'is-active': pageNumber === currentPage }"
-                @click="currentPage = pageNumber"
-              >
-                {{ pageNumber }}
-              </button>
-              <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">
-                Next
-              </button>
-            </div>
-          </footer>
-
-          <div class="admin-task-assignments-legend">
-            <span><i class="legend-dot legend-dot--pending" />Pending</span>
-            <span><i class="legend-dot legend-dot--progress" />In Progress</span>
-            <span><i class="legend-dot legend-dot--done" />Completed</span>
-            <span><i class="legend-dot legend-dot--overdue" />Overdue</span>
-          </div>
-        </template>
+        <div class="admin-task-assignments-legend">
+          <span><i class="legend-dot legend-dot--pending" />Pending</span>
+          <span><i class="legend-dot legend-dot--progress" />In Progress</span>
+          <span><i class="legend-dot legend-dot--done" />Completed</span>
+          <span><i class="legend-dot legend-dot--overdue" />Overdue</span>
+        </div>
       </section>
     </section>
 
@@ -424,6 +426,73 @@
       </section>
     </div>
 
+    <div v-if="showTaskTemplateModal" class="admin-task-assignments-modal-overlay" @click.self="closeTaskTemplateModal">
+      <section class="admin-task-assignments-modal admin-task-assignments-modal--wide">
+        <header class="admin-task-assignments-modal-header">
+          <div>
+            <h2>Task Assignment Format</h2>
+            <p>Server JSON format for automatic task assignments and staff SMS.</p>
+          </div>
+          <button type="button" aria-label="Close" @click="closeTaskTemplateModal">x</button>
+        </header>
+
+        <p v-if="taskTemplateError" class="admin-task-assignments-error">{{ taskTemplateError }}</p>
+
+        <form class="admin-task-assignments-form admin-task-template-form" @submit.prevent="submitTaskTemplate">
+          <label>
+            <span>Task Name Format</span>
+            <input v-model.trim="taskTemplateForm.taskTitle" type="text" maxlength="300" />
+          </label>
+
+          <label>
+            <span>Task Type Format</span>
+            <input v-model.trim="taskTemplateForm.taskType" type="text" maxlength="100" />
+          </label>
+
+          <label class="admin-task-template-full">
+            <span>Description Format</span>
+            <textarea v-model="taskTemplateForm.taskDescription" rows="4" maxlength="1000"></textarea>
+          </label>
+
+          <label class="admin-task-template-full">
+            <span>SMS Format</span>
+            <textarea v-model="taskTemplateForm.smsMessage" rows="8" maxlength="1000"></textarea>
+            <small>{{ taskTemplateForm.smsMessage.length }}/1000 characters</small>
+          </label>
+
+          <section class="admin-task-template-preview">
+            <div>
+              <strong>Task Preview</strong>
+              <p>{{ renderedTaskTemplatePreview.title }}</p>
+              <small>{{ renderedTaskTemplatePreview.description }}</small>
+            </div>
+            <div>
+              <strong>SMS Preview</strong>
+              <pre>{{ renderedTaskTemplatePreview.sms }}</pre>
+            </div>
+          </section>
+
+          <section class="admin-task-template-variables">
+            <strong>Variables</strong>
+            <div>
+              <span v-for="(label, variableName) in taskTemplateVariables" :key="variableName">
+                {{ formatTemplateVariable(variableName) }}
+              </span>
+            </div>
+          </section>
+
+          <footer class="admin-task-assignments-modal-actions">
+            <button type="button" class="admin-task-assignments-secondary" :disabled="isSavingTaskTemplate" @click="closeTaskTemplateModal">
+              Cancel
+            </button>
+            <button type="submit" class="admin-task-assignments-primary" :disabled="isSavingTaskTemplate">
+              {{ isSavingTaskTemplate ? 'Saving...' : 'Save Format' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
     <div v-if="verifyTask" class="admin-task-assignments-modal-overlay" @click.self="closeVerifyModal">
       <section class="admin-task-assignments-modal admin-task-assignments-modal--narrow">
         <header class="admin-task-assignments-modal-header">
@@ -462,35 +531,73 @@
         </footer>
       </section>
     </div>
+
+    <DataRequestStatusFloater :items="taskAssignmentStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
+import { buildAuthorizationHeaders, getStoredAuthToken } from '@/shared/utils/authToken.js';
+
+const TASK_ASSIGNMENTS_CACHE_KEY = 'techreserve_task_assignments_cache';
+const DEFAULT_TASK_TEMPLATE_VARIABLES = Object.freeze({
+  activityType: 'Reservation activity type',
+  purposeDescription: 'Reservation purpose',
+  reservationPurpose: 'Reservation purpose',
+  reservationCode: 'Reservation code',
+  reservationIdentifier: 'Reservation ID',
+  organizationName: 'Organization name',
+  venueName: 'Venue or facility name',
+  requestedQuantity: 'Requested quantity',
+  eventDate: 'Event date',
+  eventTime: 'Event time',
+  eventDateTime: 'Event date and time',
+  endDateTime: 'End date and time',
+  assignedStaff: 'Assigned staff name',
+  dueDate: 'Task due date',
+  taskName: 'Task name',
+  taskType: 'Task type',
+});
+const DEFAULT_TASK_ASSIGNMENT_TEMPLATE = Object.freeze({
+  taskTitle: '{activityType} Preparation',
+  taskDescription: '{purposeDescription}',
+  taskType: 'Preparation',
+  smsMessage: "hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
+  variables: DEFAULT_TASK_TEMPLATE_VARIABLES,
+});
 
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const isSendingTestSms = ref(false);
+const isSavingTaskTemplate = ref(false);
 const loadError = ref('');
 const modalError = ref('');
 const smsTestError = ref('');
+const taskTemplateError = ref('');
 const taskToastMessage = ref('');
 const taskSubmissionFeedback = reactive({
   message: '',
   tone: 'success',
 });
-const tasks = ref([]);
+const tasks = ref(readTaskAssignmentsCache());
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
+const taskAssignmentTemplate = ref({ ...DEFAULT_TASK_ASSIGNMENT_TEMPLATE });
+const tasksDataState = ref(tasks.value.length > 0 ? 'cached' : 'idle');
+const reservationsDataState = ref('idle');
+const accountsDataState = ref('idle');
+const taskTemplateDataState = ref('idle');
 const showTaskModal = ref(false);
 const showSmsTestModal = ref(false);
+const showTaskTemplateModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
 const viewTask = ref(null);
@@ -537,17 +644,21 @@ const smsTestForm = reactive({
   customMessage: '',
 });
 
-const templateSmsMessage = computed(() => {
-  const assignedStaff = smsTestForm.assignedStaff.trim() || '<Assigned Staff>';
-  const dueDate = smsTestForm.dueDate.trim() || '<Due Date>';
-  const taskName = smsTestForm.taskName.trim() || '<Task Name>';
-  const reservationCode = smsTestForm.reservationCode.trim() || '<Reservation Code>';
-  const reservationPurpose = smsTestForm.reservationPurpose.trim() || '<Reservation Purpose>';
+const taskTemplateForm = reactive({
+  taskTitle: DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskTitle,
+  taskDescription: DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskDescription,
+  taskType: DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskType,
+  smsMessage: DEFAULT_TASK_ASSIGNMENT_TEMPLATE.smsMessage,
+});
 
-  return `hi! ${assignedStaff}.\n\n`
-    + `You have task on ${dueDate}, ${taskName}: ${reservationCode}.\n`
-    + `${reservationPurpose}\n\n`
-    + "If you can't please do contact the Facilities Office for changing of staff";
+const templateSmsMessage = computed(() => {
+  return renderTemplateString(taskAssignmentTemplate.value.smsMessage || DEFAULT_TASK_ASSIGNMENT_TEMPLATE.smsMessage, {
+    assignedStaff: smsTestForm.assignedStaff.trim() || '<Assigned Staff>',
+    dueDate: smsTestForm.dueDate.trim() || '<Due Date>',
+    taskName: smsTestForm.taskName.trim() || '<Task Name>',
+    reservationCode: smsTestForm.reservationCode.trim() || '<Reservation Code>',
+    reservationPurpose: smsTestForm.reservationPurpose.trim() || '<Reservation Purpose>',
+  });
 });
 
 const currentAdminEmail = computed(() => {
@@ -556,6 +667,40 @@ const currentAdminEmail = computed(() => {
 });
 
 const canVerifySubmit = computed(() => deleteForm.confirmedAdminEmail.trim() !== '' && deleteForm.confirmedAdminPassword.trim() !== '');
+const taskAssignmentStatusItems = computed(() => [
+  { key: 'tasks', label: 'Tasks', state: tasksDataState.value },
+  { key: 'reservations', label: 'Reservation Options', state: reservationsDataState.value },
+  { key: 'accounts', label: 'Staff Options', state: accountsDataState.value },
+  { key: 'task-template', label: 'Task Format', state: taskTemplateDataState.value },
+]);
+
+const taskTemplateVariables = computed(() => taskAssignmentTemplate.value.variables || {});
+const renderedTaskTemplatePreview = computed(() => {
+  const sampleVariables = {
+    activityType: 'Academic',
+    purposeDescription: 'Prepare the requested equipment.',
+    reservationPurpose: 'Prepare the requested equipment.',
+    reservationCode: 'TR-2026-010',
+    reservationIdentifier: '10',
+    organizationName: 'Engineering Society',
+    venueName: 'Room 401',
+    requestedQuantity: '4',
+    eventDate: 'Jun 30, 2026',
+    eventTime: '10:00 AM',
+    eventDateTime: 'Jun 30, 2026 10:00 AM',
+    endDateTime: 'Jun 30, 2026 12:00 PM',
+    assignedStaff: 'Alex Santos',
+    dueDate: 'Jun 30, 2026 10:00 AM',
+    taskName: 'Academic Preparation',
+    taskType: 'Preparation',
+  };
+
+  return {
+    title: renderTemplateString(taskTemplateForm.taskTitle, sampleVariables),
+    description: renderTemplateString(taskTemplateForm.taskDescription, sampleVariables),
+    sms: renderTemplateString(taskTemplateForm.smsMessage, sampleVariables),
+  };
+});
 
 const summaryCards = computed(() => {
   const totalAssignments = tasks.value.length;
@@ -675,28 +820,49 @@ onMounted(() => {
 async function loadPageData() {
   isLoading.value = true;
   loadError.value = '';
-  const [tasksResult, reservationsResult, accountsResult] = await Promise.all([
+  tasksDataState.value = tasks.value.length > 0 ? 'cached-loading' : 'loading';
+  reservationsDataState.value = reservationOptions.value.length > 0 ? 'cached-loading' : 'loading';
+  accountsDataState.value = staffOptions.value.length > 0 ? 'cached-loading' : 'loading';
+  taskTemplateDataState.value = taskAssignmentTemplate.value.updatedAt ? 'cached-loading' : 'loading';
+  const [tasksResult, reservationsResult, accountsResult, taskTemplateResult] = await Promise.all([
     requestJson('/api/v1/tasks'),
     requestJson('/api/v1/reservations'),
     requestJson('/api/v1/accounts'),
+    requestJson('/api/v1/tasks/template'),
   ]);
 
   if (!tasksResult.success) {
     loadError.value = tasksResult.error || 'Unable to load task assignments.';
-    tasks.value = [];
+    tasksDataState.value = tasks.value.length > 0 ? 'cached' : 'error';
   } else {
     tasks.value = tasksResult.data.tasks || [];
+    writeTaskAssignmentsCache(tasks.value);
+    tasksDataState.value = 'fresh';
   }
 
-  reservationOptions.value = reservationsResult.success
-    ? normalizeReservations(reservationsResult.data.reservations || [])
-    : [];
-  staffOptions.value = accountsResult.success
-    ? normalizeStaff(accountsResult.data.accounts || [])
-    : [];
+  if (reservationsResult.success) {
+    reservationOptions.value = normalizeReservations(reservationsResult.data.reservations || []);
+    reservationsDataState.value = 'fresh';
+  } else {
+    reservationsDataState.value = reservationOptions.value.length > 0 ? 'cached' : 'error';
+  }
 
-  if (!loadError.value && (!reservationsResult.success || !accountsResult.success)) {
-    loadError.value = reservationsResult.error || accountsResult.error || 'Unable to load task form options.';
+  if (accountsResult.success) {
+    staffOptions.value = normalizeStaff(accountsResult.data.accounts || []);
+    accountsDataState.value = 'fresh';
+  } else {
+    accountsDataState.value = staffOptions.value.length > 0 ? 'cached' : 'error';
+  }
+
+  if (taskTemplateResult.success) {
+    applyTaskTemplate(taskTemplateResult.data.template || taskTemplateResult.data);
+    taskTemplateDataState.value = 'fresh';
+  } else {
+    taskTemplateDataState.value = taskAssignmentTemplate.value.updatedAt ? 'cached' : 'error';
+  }
+
+  if (!loadError.value && (!reservationsResult.success || !accountsResult.success || !taskTemplateResult.success)) {
+    showTaskToast(reservationsResult.error || accountsResult.error || taskTemplateResult.error || 'Some task form options could not be loaded.');
   }
 
   isLoading.value = false;
@@ -720,6 +886,12 @@ function openSmsTestModal() {
   smsTestForm.reservationPurpose = '';
   smsTestForm.customMessage = '';
   showSmsTestModal.value = true;
+}
+
+function openTaskTemplateModal() {
+  taskTemplateError.value = '';
+  syncTaskTemplateForm(taskAssignmentTemplate.value);
+  showTaskTemplateModal.value = true;
 }
 
 function openViewModal(task) {
@@ -765,6 +937,12 @@ function closeSmsTestModal() {
   if (isSendingTestSms.value) return;
   showSmsTestModal.value = false;
   smsTestError.value = '';
+}
+
+function closeTaskTemplateModal() {
+  if (isSavingTaskTemplate.value) return;
+  showTaskTemplateModal.value = false;
+  taskTemplateError.value = '';
 }
 
 function closeVerifyModal() {
@@ -865,6 +1043,41 @@ async function submitSmsTest() {
   showTaskToast(`Test SMS submitted to ${result.data?.delivery?.recipient || smsTestForm.phoneNumber}.`);
 }
 
+async function submitTaskTemplate() {
+  if (isSavingTaskTemplate.value) return;
+
+  const validationError = validateTaskTemplateForm();
+  if (validationError) {
+    taskTemplateError.value = validationError;
+    return;
+  }
+
+  isSavingTaskTemplate.value = true;
+  taskTemplateError.value = '';
+  taskTemplateDataState.value = 'loading';
+  const result = await requestJson('/api/v1/tasks/template', {
+    method: 'PUT',
+    body: JSON.stringify({
+      taskTitle: taskTemplateForm.taskTitle.trim(),
+      taskDescription: taskTemplateForm.taskDescription.trim(),
+      taskType: taskTemplateForm.taskType.trim(),
+      smsMessage: taskTemplateForm.smsMessage.trim(),
+    }),
+  });
+  isSavingTaskTemplate.value = false;
+
+  if (!result.success) {
+    taskTemplateError.value = result.error || 'Unable to save task assignment format.';
+    taskTemplateDataState.value = taskAssignmentTemplate.value.updatedAt ? 'cached' : 'error';
+    return;
+  }
+
+  applyTaskTemplate(result.data.template || result.data);
+  taskTemplateDataState.value = 'fresh';
+  showTaskToast('Task assignment format saved.');
+  closeTaskTemplateModal();
+}
+
 async function confirmVerifyTask() {
   if (!verifyTask.value || isSubmitting.value || !canVerifySubmit.value) return;
 
@@ -933,6 +1146,60 @@ function buildTaskPayload() {
   };
 }
 
+function applyTaskTemplate(template) {
+  const normalizedTemplate = {
+    ...DEFAULT_TASK_ASSIGNMENT_TEMPLATE,
+    ...(template && typeof template === 'object' ? template : {}),
+  };
+  taskAssignmentTemplate.value = normalizedTemplate;
+  syncTaskTemplateForm(normalizedTemplate);
+}
+
+function syncTaskTemplateForm(template) {
+  taskTemplateForm.taskTitle = template?.taskTitle || DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskTitle;
+  taskTemplateForm.taskDescription = template?.taskDescription || DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskDescription;
+  taskTemplateForm.taskType = template?.taskType || DEFAULT_TASK_ASSIGNMENT_TEMPLATE.taskType;
+  taskTemplateForm.smsMessage = template?.smsMessage || DEFAULT_TASK_ASSIGNMENT_TEMPLATE.smsMessage;
+}
+
+function validateTaskTemplateForm() {
+  if (taskTemplateForm.taskTitle.trim() === '') return 'Task name format is required.';
+  if (taskTemplateForm.taskType.trim() === '') return 'Task type format is required.';
+  if (taskTemplateForm.taskTitle.length > 300) return 'Task name format must not exceed 300 characters.';
+  if (taskTemplateForm.taskDescription.length > 1000) return 'Description format must not exceed 1000 characters.';
+  if (taskTemplateForm.smsMessage.length > 1000) return 'SMS format must not exceed 1000 characters.';
+
+  const allowedVariables = new Set(Object.keys(taskTemplateVariables.value));
+  const unknownVariables = [
+    taskTemplateForm.taskTitle,
+    taskTemplateForm.taskDescription,
+    taskTemplateForm.taskType,
+    taskTemplateForm.smsMessage,
+  ].flatMap((template) => extractTemplateVariables(template))
+    .filter((variableName, index, list) => !allowedVariables.has(variableName) && list.indexOf(variableName) === index);
+
+  if (unknownVariables.length > 0) {
+    return `Unknown variable(s): ${unknownVariables.map((variableName) => `{${variableName}}`).join(', ')}.`;
+  }
+
+  return '';
+}
+
+function extractTemplateVariables(template) {
+  return [...String(template || '').matchAll(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g)]
+    .map((match) => match[1]);
+}
+
+function formatTemplateVariable(variableName) {
+  return `{${variableName}}`;
+}
+
+function renderTemplateString(template, variables) {
+  return String(template || '').replace(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g, (_, variableName) => (
+    variables[variableName] ?? ''
+  )).trim();
+}
+
 async function requestJson(path, options = {}) {
   try {
     const response = await fetch(apiUrl(path), {
@@ -951,10 +1218,37 @@ async function requestJson(path, options = {}) {
 }
 
 function buildHeaders(includeJson = false) {
+  const authToken = authStore.authToken || getStoredAuthToken();
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
-    ...buildAuthorizationHeaders(authStore.authToken),
+    ...buildAuthorizationHeaders(authToken),
   };
+}
+
+function readTaskAssignmentsCache() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(TASK_ASSIGNMENTS_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTaskAssignmentsCache(records) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(TASK_ASSIGNMENTS_CACHE_KEY, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Cache writes are best-effort only.
+  }
 }
 
 function normalizeReservations(reservations) {

@@ -35,7 +35,7 @@
           </div>
           <div v-else class="users-list">
             <div
-              v-for="user in pendingUsers"
+              v-for="user in paginatedPendingUsers"
               :key="user.accountIdentifier"
               class="user-card"
             >
@@ -70,6 +70,11 @@
               </div>
             </div>
           </div>
+          <div class="users-pagination">
+            <button type="button" :disabled="pendingCurrentPage === 1" @click="pendingCurrentPage -= 1">Previous</button>
+            <span>Page {{ pendingCurrentPage }} of {{ pendingTotalPages }}</span>
+            <button type="button" :disabled="pendingCurrentPage === pendingTotalPages" @click="pendingCurrentPage += 1">Next</button>
+          </div>
         </div>
 
         <div v-if="activeTab === 'approved'" class="users-section">
@@ -81,7 +86,7 @@
           </div>
           <div v-else class="users-list">
             <div
-              v-for="user in approvedUsers"
+              v-for="user in paginatedApprovedUsers"
               :key="user.accountIdentifier"
               class="user-card"
             >
@@ -103,6 +108,11 @@
               </div>
             </div>
           </div>
+          <div class="users-pagination">
+            <button type="button" :disabled="approvedCurrentPage === 1" @click="approvedCurrentPage -= 1">Previous</button>
+            <span>Page {{ approvedCurrentPage }} of {{ approvedTotalPages }}</span>
+            <button type="button" :disabled="approvedCurrentPage === approvedTotalPages" @click="approvedCurrentPage += 1">Next</button>
+          </div>
         </div>
 
         <div v-if="activeTab === 'rejected'" class="users-section">
@@ -114,7 +124,7 @@
           </div>
           <div v-else class="users-list">
             <div
-              v-for="user in rejectedUsers"
+              v-for="user in paginatedRejectedUsers"
               :key="user.accountIdentifier"
               class="user-card"
             >
@@ -136,16 +146,23 @@
               </div>
             </div>
           </div>
+          <div class="users-pagination">
+            <button type="button" :disabled="rejectedCurrentPage === 1" @click="rejectedCurrentPage -= 1">Previous</button>
+            <span>Page {{ rejectedCurrentPage }} of {{ rejectedTotalPages }}</span>
+            <button type="button" :disabled="rejectedCurrentPage === rejectedTotalPages" @click="rejectedCurrentPage += 1">Next</button>
+          </div>
         </div>
       </div>
+      <DataRequestStatusFloater :items="adminUsersStatusItems" />
     </div>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 
@@ -153,16 +170,27 @@ const authStore = useAuthenticationStore();
 
 const activeTab = ref('pending');
 const loading = ref(false);
+const usersDataState = ref('idle');
 const isProcessing = ref(false);
 const pendingUsers = ref([]);
 const approvedUsers = ref([]);
 const rejectedUsers = ref([]);
+const pendingCurrentPage = ref(1);
+const approvedCurrentPage = ref(1);
+const rejectedCurrentPage = ref(1);
+const usersPageSize = 8;
 
 const tabs = computed(() => [
   { label: 'Pending', value: 'pending', count: pendingUsers.value.length },
   { label: 'Approved', value: 'approved', count: approvedUsers.value.length },
   { label: 'Rejected', value: 'rejected', count: rejectedUsers.value.length },
 ]);
+const pendingTotalPages = computed(() => Math.max(1, Math.ceil(pendingUsers.value.length / usersPageSize)));
+const approvedTotalPages = computed(() => Math.max(1, Math.ceil(approvedUsers.value.length / usersPageSize)));
+const rejectedTotalPages = computed(() => Math.max(1, Math.ceil(rejectedUsers.value.length / usersPageSize)));
+const paginatedPendingUsers = computed(() => paginateList(pendingUsers.value, pendingCurrentPage.value, usersPageSize));
+const paginatedApprovedUsers = computed(() => paginateList(approvedUsers.value, approvedCurrentPage.value, usersPageSize));
+const paginatedRejectedUsers = computed(() => paginateList(rejectedUsers.value, rejectedCurrentPage.value, usersPageSize));
 
 const userRole = computed(() => {
   const account = authStore.accountData;
@@ -183,9 +211,34 @@ const navigationItems = computed(() => {
 onMounted(() => {
   fetchPendingUsers();
 });
+const adminUsersStatusItems = computed(() => [
+  {
+    key: 'pending-users',
+    label: 'Pending Users',
+    state: usersDataState.value,
+  },
+]);
+
+watch(pendingTotalPages, (pageCount) => {
+  if (pendingCurrentPage.value > pageCount) pendingCurrentPage.value = pageCount;
+});
+
+watch(approvedTotalPages, (pageCount) => {
+  if (approvedCurrentPage.value > pageCount) approvedCurrentPage.value = pageCount;
+});
+
+watch(rejectedTotalPages, (pageCount) => {
+  if (rejectedCurrentPage.value > pageCount) rejectedCurrentPage.value = pageCount;
+});
+
+function paginateList(records, currentPage, pageSize) {
+  const startIndex = (currentPage - 1) * pageSize;
+  return records.slice(startIndex, startIndex + pageSize);
+}
 
 async function fetchPendingUsers() {
   loading.value = true;
+  usersDataState.value = pendingUsers.value.length > 0 ? 'cached-loading' : 'loading';
   try {
     const token = authStore.authToken;
     const response = await fetch(apiUrl('/api/v1/users/pending'), {
@@ -197,11 +250,14 @@ async function fetchPendingUsers() {
     if (response.ok) {
       const data = await response.json();
       pendingUsers.value = data.users || [];
+      usersDataState.value = 'fresh';
     } else {
       console.error('Failed to fetch pending users');
+      usersDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
     }
   } catch (error) {
     console.error('Error fetching pending users:', error);
+    usersDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
   } finally {
     loading.value = false;
   }

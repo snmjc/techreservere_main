@@ -56,7 +56,7 @@
         </div>
 
         <div
-          v-for="notification in filteredNotifications"
+          v-for="notification in paginatedNotifications"
           :key="notification.id"
           class="notification-item"
           :class="{ 'notification-item--unread': !notification.isRead }"
@@ -80,14 +80,21 @@
             @click="markAsRead(notification.id)"
           ></div>
         </div>
+        <div class="notification-pagination">
+          <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
+        </div>
       </div>
+      <DataRequestStatusFloater :items="notificationStatusItems" />
     </div>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import NotificationIconReservation from '@/components/icons/NotificationIconReservation.vue';
 import NotificationIconEquipment from '@/components/icons/NotificationIconEquipment.vue';
 import NotificationIconSystem from '@/components/icons/NotificationIconSystem.vue';
@@ -104,14 +111,35 @@ const filterTabs = [
 
 const activeFilter = ref('all');
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 const notificationStore = useNotificationStore();
 
 const notifications = computed(() => notificationStore.notifications || []);
 const unreadCount = computed(() => notificationStore.unreadCount || 0);
+const notificationStatusItems = computed(() => [
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    state: resolveNotificationState(),
+  },
+]);
 
 onMounted(() => {
   notificationStore.fetchNotifications(true).catch(() => {});
 });
+
+function resolveNotificationState() {
+  if (notificationStore.isLoading && notifications.value.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (notificationStore.isLoading) {
+    return 'loading';
+  }
+
+  return notifications.value.length > 0 ? 'fresh' : 'idle';
+}
 
 const filteredNotifications = computed(() => {
   let filtered = [...notifications.value];
@@ -133,6 +161,21 @@ const filteredNotifications = computed(() => {
   }
 
   return filtered;
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredNotifications.value.length / pageSize)));
+const paginatedNotifications = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredNotifications.value.slice(startIndex, startIndex + pageSize);
+});
+
+watch([activeFilter, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 async function markAllAsRead() {

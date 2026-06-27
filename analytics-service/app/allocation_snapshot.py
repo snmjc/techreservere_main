@@ -35,11 +35,24 @@ class AllocationSnapshotBuilder:
         previous_year_usage_map = self._build_equipment_usage_map(connection, previous_year_start, previous_year_end)
         utilization_by_category = self._build_utilization_by_category(equipment_rows, current_usage_map, trained_artifact)
         utilization_comparison_by_category = self._build_utilization_by_category(equipment_rows, previous_year_usage_map)
-        top_equipment = self._build_top_equipment(equipment_rows, current_usage_map, limit=10)
-        possible_borrowed_equipment = self._build_possible_borrowed_equipment(
+        equipment_trend_config = self._resolve_equipment_trend_config(config)
+        all_top_equipment = self._build_top_equipment(equipment_rows, current_usage_map)
+        all_possible_borrowed_equipment = self._build_possible_borrowed_equipment(
             equipment_rows,
             current_usage_map,
             previous_year_usage_map,
+        )
+        top_equipment_page = self._paginate_items(
+            all_top_equipment,
+            equipment_trend_config["topEquipmentPage"],
+            equipment_trend_config["pageSize"],
+            equipment_trend_config["maxPages"],
+        )
+        possible_borrowed_equipment_page = self._paginate_items(
+            all_possible_borrowed_equipment,
+            equipment_trend_config["preparationDecisionPage"],
+            equipment_trend_config["pageSize"],
+            equipment_trend_config["maxPages"],
         )
 
         return {
@@ -57,8 +70,12 @@ class AllocationSnapshotBuilder:
             "allocationPlan": allocation_plan,
             "utilizationByCategory": utilization_by_category,
             "utilizationComparisonByCategory": utilization_comparison_by_category,
-            "topEquipment": top_equipment,
-            "possibleBorrowedEquipment": possible_borrowed_equipment,
+            "topEquipment": top_equipment_page["items"],
+            "possibleBorrowedEquipment": possible_borrowed_equipment_page["items"],
+            "equipmentTrendPagination": {
+                "topEquipment": top_equipment_page["pagination"],
+                "preparationDecisions": possible_borrowed_equipment_page["pagination"],
+            },
             "summary": {
                 "totalEquipment": len(equipment_rows),
                 "activeReservations": len(allocation_plan),
@@ -468,7 +485,36 @@ class AllocationSnapshotBuilder:
             float(category_bucket),
         ]
 
-    def _build_top_equipment(self, equipment_rows: list[Any], usage_map: dict[str, int], limit: int) -> list[dict[str, Any]]:
+    def _resolve_equipment_trend_config(self, config: dict[str, Any]) -> dict[str, int]:
+        trend_config = config.get("equipmentTrends", {}) if isinstance(config.get("equipmentTrends"), dict) else {}
+        page_size = max(1, min(5, int(trend_config.get("pageSize") or 5)))
+        return {
+            "topEquipmentPage": max(1, int(trend_config.get("topEquipmentPage") or 1)),
+            "preparationDecisionPage": max(1, int(trend_config.get("preparationDecisionPage") or 1)),
+            "pageSize": page_size,
+            "maxPages": 5,
+        }
+
+    def _paginate_items(self, items: list[dict[str, Any]], page: int, page_size: int, max_pages: int) -> dict[str, Any]:
+        capped_total = min(len(items), max(1, page_size) * max(1, max_pages))
+        capped_items = items[:capped_total]
+        total_pages = max(1, (capped_total + page_size - 1) // page_size)
+        normalized_page = max(1, min(page, total_pages))
+        start_index = (normalized_page - 1) * page_size
+        end_index = start_index + page_size
+        return {
+            "items": capped_items[start_index:end_index],
+            "pagination": {
+                "page": normalized_page,
+                "pageSize": page_size,
+                "totalItems": capped_total,
+                "availableItems": len(items),
+                "totalPages": total_pages,
+                "maxPages": max_pages,
+            },
+        }
+
+    def _build_top_equipment(self, equipment_rows: list[Any], usage_map: dict[str, int]) -> list[dict[str, Any]]:
         items = []
         for row in equipment_rows:
             equipment_name = str(row["equipment_name"] or "")
@@ -483,7 +529,7 @@ class AllocationSnapshotBuilder:
                     "rate": round(min(100.0, (usage_count / total_quantity) * 100), 1),
                 }
             )
-        return sorted(items, key=lambda item: (-int(item["count"]), str(item["name"])))[:limit]
+        return sorted(items, key=lambda item: (-int(item["count"]), str(item["name"])))
 
     def _build_possible_borrowed_equipment(
         self,
@@ -504,14 +550,21 @@ class AllocationSnapshotBuilder:
             if current_usage <= 0:
                 continue
 
-            score = (previous_year_usage * 1.4) + (current_usage * 0.8)
+            total_quantity = max(1, int(row["total_quantity"] or 1))
+            predicted_demand = self._predict_equipment_demand(current_usage, previous_year_usage, total_quantity)
+            prediction_gap = max(0.0, predicted_demand - float(current_usage))
+            score = (predicted_demand * 1.6) + (current_usage * 0.4)
             candidates.append(
                 {
                     "name": equipment_name,
                     "count": current_usage,
+                    "currentUsage": current_usage,
                     "previousYearCount": previous_year_usage,
+                    "predictedDemand": predicted_demand,
+                    "predictionGap": round(prediction_gap, 2),
+                    "totalQuantity": total_quantity,
                     "score": score,
-                    "reason": self._build_candidate_reason(current_usage, previous_year_usage),
+                    "reason": self._build_candidate_reason(current_usage, previous_year_usage, predicted_demand),
                 }
             )
 
@@ -520,30 +573,45 @@ class AllocationSnapshotBuilder:
             {
                 "name": item["name"],
                 "count": item["count"],
+                "currentUsage": item["currentUsage"],
                 "previousYearCount": item["previousYearCount"],
+                "predictedDemand": item["predictedDemand"],
+                "predictionGap": item["predictionGap"],
+                "totalQuantity": item["totalQuantity"],
+                "score": round(float(item["score"]), 2),
                 "reason": item["reason"],
-                "decision": self._build_candidate_decision(item["count"], item["previousYearCount"]),
-                "action": self._build_candidate_action(item["count"], item["previousYearCount"]),
+                "decision": self._build_candidate_decision(item["count"], item["predictedDemand"]),
+                "action": self._build_candidate_action(item["count"], item["predictedDemand"]),
             }
-            for item in ordered_candidates[:5]
+            for item in ordered_candidates
         ]
 
-    def _build_candidate_reason(self, current_usage: int, previous_year_usage: int) -> str:
+    def _predict_equipment_demand(self, current_usage: int, previous_year_usage: int, total_quantity: int) -> float:
+        seasonal_component = previous_year_usage * 0.45
+        current_component = current_usage * 0.65
+        positive_trend_component = max(0, current_usage - previous_year_usage) * 0.25
+        capacity_pressure_component = max(0, current_usage - total_quantity) * 0.15
+        predicted = current_component + seasonal_component + positive_trend_component + capacity_pressure_component
+        return round(max(float(current_usage), predicted), 2)
+
+    def _build_candidate_reason(self, current_usage: int, previous_year_usage: int, predicted_demand: float) -> str:
+        if predicted_demand > current_usage:
+            return "Forecasted demand is higher than current usage."
         if previous_year_usage > current_usage:
-            return "Seasonal demand is higher than current usage."
+            return "Past same-date demand is higher, but the forecast keeps this item near current usage."
         if current_usage > 0:
             return "Current demand is already active in this range."
         return "Historical same-date demand exists."
 
-    def _build_candidate_decision(self, current_usage: int, previous_year_usage: int) -> str:
-        if previous_year_usage > current_usage:
-            return "Prepare extra stock"
+    def _build_candidate_decision(self, current_usage: int, predicted_demand: float) -> str:
+        if predicted_demand > current_usage:
+            return "Prepare for forecast"
         return "Keep prepared"
 
-    def _build_candidate_action(self, current_usage: int, previous_year_usage: int) -> str:
-        if previous_year_usage > current_usage:
-            gap = previous_year_usage - current_usage
-            return f"Reserve a buffer for about {gap} more expected uses."
+    def _build_candidate_action(self, current_usage: int, predicted_demand: float) -> str:
+        if predicted_demand > current_usage:
+            gap = max(1, round(predicted_demand - current_usage))
+            return f"Reserve a buffer for about {gap} forecasted uses."
         return "Monitor availability and avoid lending all units early."
 
     def _count_completed_reservations(self, connection: Connection, start_date: date, end_date: date) -> int:

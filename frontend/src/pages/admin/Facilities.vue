@@ -405,6 +405,7 @@
         </div>
       </section>
     </div>
+    <DataRequestStatusFloater :items="facilitiesStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -412,6 +413,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Facilities.css';
 import './css/ManageFacilities.css';
@@ -523,6 +525,18 @@ const paginatedVenues = computed(() => {
 const venuePageStart = computed(() => filteredVenueRecords.value.length === 0 ? 0 : ((venueCurrentPage.value - 1) * venuePageSize.value) + 1);
 const venuePageEnd = computed(() => Math.min(venueCurrentPage.value * venuePageSize.value, filteredVenueRecords.value.length));
 const visibleVenuePages = computed(() => buildVisiblePages(venueTotalPages.value));
+const facilitiesStatusItems = computed(() => [
+  {
+    key: 'venues',
+    label: 'Venue records',
+    state: venueRecords.value.length > 0 ? 'fresh' : 'idle',
+  },
+  {
+    key: 'equipment',
+    label: 'Equipment records',
+    state: resolveEquipmentDataState(),
+  },
+]);
 
 const filteredEquipmentRecords = computed(() => {
   const query = equipmentSearchQuery.value.trim().toLowerCase();
@@ -853,10 +867,20 @@ async function fetchEquipment() {
     const response = await equipmentApi.listEquipment();
     equipmentList.value = response?.data?.equipment || [];
   } catch (error) {
-    equipmentList.value = [];
+    if (equipmentList.value.length === 0) {
+      equipmentList.value = [];
+    }
     equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment records.';
   } finally {
     equipmentLoading.value = false;
   }
+}
+
+function resolveEquipmentDataState() {
+  if (equipmentError.value && equipmentList.value.length === 0) return 'error';
+  if (equipmentLoading.value && equipmentList.value.length > 0) return 'cached-loading';
+  if (equipmentLoading.value) return 'loading';
+  if (equipmentError.value) return 'cached';
+  return equipmentList.value.length > 0 ? 'fresh' : 'idle';
 }
 </script>

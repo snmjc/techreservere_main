@@ -40,10 +40,55 @@ class DashboardController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getDashboardOverview(Request $request): JsonResponse
     {
-        [$startDate, $endDate] = $this->resolveDateRange($request, 14);
-        $overviewData = $this->dashboardAggregationService->getAdminDashboardOverview($startDate, $endDate);
+        try {
+            [$startDate, $endDate] = $this->resolveDateRange($request, 14);
+            $overviewData = $this->dashboardAggregationService->getAdminDashboardOverview($startDate, $endDate);
 
-        return $this->createSuccessResponse($overviewData);
+            return $this->createSuccessResponse($overviewData);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Dashboard Overview - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse(
+                'DashboardOverviewAggregationFailed',
+                'Unable to load dashboard overview right now.',
+                500
+            );
+        }
+    }
+
+    #[Route('/overview/{section}', name: 'dashboard_overview_section', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
+    public function getDashboardOverviewSection(Request $request, string $section): JsonResponse
+    {
+        try {
+            [$startDate, $endDate] = $this->resolveDateRange($request, 14);
+            $sectionData = $this->dashboardAggregationService->getAdminDashboardOverviewSection($section, $startDate, $endDate);
+
+            return $this->createSuccessResponse($sectionData);
+        } catch (\InvalidArgumentException) {
+            return $this->createErrorResponse('DashboardSectionNotFound', 'Unknown dashboard overview section.', 404);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Dashboard Overview Section - Error [%s:%s]: %s in %s:%d',
+                $section,
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse(
+                'DashboardSectionAggregationFailed',
+                'Unable to load this dashboard section right now.',
+                500
+            );
+        }
     }
 
     // ===== AI GENERATED: getBorrowerDashboardSummary =====
@@ -88,4 +133,5 @@ class DashboardController extends AbstractController
             return null;
         }
     }
+
 }

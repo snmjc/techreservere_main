@@ -15,7 +15,8 @@ class AutomaticTaskAssignmentService
         private readonly TaskManagementService $taskManagementService,
         private readonly TaskReadService $taskReadService,
         private readonly TaskHistoryLogService $taskHistoryLogService,
-        private readonly TaskAssignmentSmsService $taskAssignmentSmsService
+        private readonly TaskAssignmentSmsService $taskAssignmentSmsService,
+        private readonly TaskAssignmentTemplateService $taskAssignmentTemplateService
     ) {
     }
 
@@ -53,16 +54,15 @@ class AutomaticTaskAssignmentService
             return null;
         }
 
-        $activityType = trim($reservation->getActivityType());
-        $taskTitle = $activityType !== ''
-            ? sprintf('%s Preparation', $activityType)
-            : 'Reservation Preparation';
-        $taskDescription = trim($reservation->getPurposeDescription());
+        $templateVariables = $this->taskAssignmentTemplateService->buildReservationContext($reservation);
+        $taskTitle = $this->taskAssignmentTemplateService->renderTaskTitle($templateVariables);
+        $taskDescription = $this->taskAssignmentTemplateService->renderTaskDescription($templateVariables);
+        $taskType = $this->taskAssignmentTemplateService->renderTaskType($templateVariables);
 
         $dto = $this->taskManagementService->createTask(new TaskMutationRequestDTO(
             taskTitle: $taskTitle,
-            taskDescription: $taskDescription !== '' ? $taskDescription : null,
-            taskType: 'Preparation',
+            taskDescription: $taskDescription,
+            taskType: $taskType,
             taskStatus: 'Pending',
             reservationIdentifier: $reservationIdentifier,
             assignedToAccountId: $assignedToAccountId,

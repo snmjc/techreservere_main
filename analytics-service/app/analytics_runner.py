@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -8,6 +8,7 @@ from psycopg import Connection
 from app.allocation_snapshot import AllocationSnapshotBuilder
 from app.analytics_utils import json_dumps
 from app.forecast_snapshot import ForecastSnapshotBuilder
+from app.model_artifacts import ModelArtifactStore
 from app.readiness_snapshot import ReadinessSnapshotBuilder
 from app.scenario_preparer import ScenarioPreparer
 
@@ -39,7 +40,10 @@ class AnalyticsRunner:
         self.forecast_builder = ForecastSnapshotBuilder()
         self.readiness_builder = ReadinessSnapshotBuilder()
         self.allocation_builder = AllocationSnapshotBuilder()
+        self.artifact_store = ModelArtifactStore()
         self.scenario_preparer = ScenarioPreparer()
+        self._range_section_cache: dict[str, tuple[datetime, dict[str, Any]]] = {}
+        self._range_section_cache_ttl = timedelta(minutes=3)
 
     def prepare_scenario(self, connection: Connection, scenario: str | None) -> None:
         self.scenario_preparer.prepare_scenario(connection, scenario)
@@ -65,6 +69,50 @@ class AnalyticsRunner:
             "completedAt": generated_at.isoformat(),
             "results": self._build_results(connection, config),
         }
+
+    def analyze_range_section(
+        self,
+        connection: Connection,
+        section: str,
+        history_days: int,
+        start_date: str,
+        end_date: str,
+        top_equipment_page: int | None = None,
+        preparation_decision_page: int | None = None,
+        equipment_trend_page_size: int | None = None,
+    ) -> dict[str, Any]:
+        result_type = self._normalize_section_name(section)
+        config = self._build_run_config(
+            connection,
+            history_days=history_days,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if top_equipment_page is not None or preparation_decision_page is not None or equipment_trend_page_size is not None:
+            config["equipmentTrends"] = {
+                "topEquipmentPage": max(1, int(top_equipment_page or 1)),
+                "preparationDecisionPage": max(1, int(preparation_decision_page or 1)),
+                "pageSize": max(1, int(equipment_trend_page_size or 5)),
+            }
+        cache_key = self._range_section_cache_key(result_type, config)
+        cached_payload = self._get_cached_range_section(cache_key)
+        if cached_payload is not None:
+            return cached_payload
+
+        generated_at = datetime.now(UTC)
+        result = self._build_result(connection, config, result_type)
+        payload = {
+            "status": "completed",
+            "startedAt": generated_at.isoformat(),
+            "completedAt": generated_at.isoformat(),
+            "resultType": result_type,
+            "result": result,
+        }
+        self._range_section_cache[cache_key] = (generated_at, payload)
+        return payload
+
+    def clear_cache(self) -> None:
+        self._range_section_cache.clear()
 
     def run_daily_check(
         self,
@@ -185,10 +233,62 @@ class AnalyticsRunner:
 
     def _build_results(self, connection: Connection, config: dict[str, Any]) -> dict[str, Any]:
         return {
-            "forecast": self.forecast_builder.build(connection, config),
-            "readiness": self.readiness_builder.build(connection),
-            "allocation": self.allocation_builder.build(connection, config),
+            "forecast": self._build_result(connection, config, "forecast"),
+            "readiness": self._build_result(connection, config, "readiness"),
+            "allocation": self._build_result(connection, config, "allocation"),
         }
+
+    def _build_result(self, connection: Connection, config: dict[str, Any], result_type: str) -> dict[str, Any]:
+        if result_type == "forecast":
+            return self.forecast_builder.build(connection, config)
+        if result_type == "readiness":
+            return self.readiness_builder.build(connection)
+        if result_type == "allocation":
+            return self.allocation_builder.build(connection, config)
+        raise ValueError(f"Unsupported analytics section '{result_type}'.")
+
+    def _normalize_section_name(self, section: str) -> str:
+        normalized = str(section or "").strip().lower().replace("-", "_")
+        aliases = {
+            "sarima": "forecast",
+            "random_forest": "readiness",
+            "risk": "readiness",
+            "bilp": "allocation",
+            "binary_linear_programming": "allocation",
+            "optimization": "allocation",
+            "utilization": "allocation",
+            "equipment_trends": "allocation",
+            "summary": "allocation",
+        }
+        normalized = aliases.get(normalized, normalized)
+        if normalized not in {"forecast", "readiness", "allocation"}:
+            raise ValueError(f"Unsupported analytics section '{section}'.")
+        return normalized
+
+    def _range_section_cache_key(self, result_type: str, config: dict[str, Any]) -> str:
+        date_range = config.get("dateRange", {})
+        return "|".join(
+            [
+                result_type,
+                str(date_range.get("startDate", "")),
+                str(date_range.get("endDate", "")),
+                str(config.get("forecast", {}).get("historyDays", "")),
+                str(config.get("allocation", {}).get("historyDays", "")),
+                json_dumps(config.get(result_type, {})),
+                json_dumps(config.get("equipmentTrends", {})),
+                json_dumps(self.artifact_store.active_artifacts()),
+            ]
+        )
+
+    def _get_cached_range_section(self, cache_key: str) -> dict[str, Any] | None:
+        cached = self._range_section_cache.get(cache_key)
+        if cached is None:
+            return None
+        cached_at, payload = cached
+        if datetime.now(UTC) - cached_at > self._range_section_cache_ttl:
+            self._range_section_cache.pop(cache_key, None)
+            return None
+        return payload
 
     def _load_or_create_config(self, connection: Connection) -> dict[str, Any]:
         row = connection.execute(

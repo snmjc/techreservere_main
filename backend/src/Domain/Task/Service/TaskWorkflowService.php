@@ -11,7 +11,8 @@ class TaskWorkflowService
         private readonly TaskManagementService $taskManagementService,
         private readonly TaskReadService $taskReadService,
         private readonly TaskMutationCommandService $taskMutationCommandService,
-        private readonly TaskAssignmentSmsService $taskAssignmentSmsService
+        private readonly TaskAssignmentSmsService $taskAssignmentSmsService,
+        private readonly TaskAssignmentTemplateService $taskAssignmentTemplateService
     ) {
     }
 
@@ -65,6 +66,29 @@ class TaskWorkflowService
             return [
                 'success' => false,
                 'errorCode' => 'TestSmsFailed',
+                'message' => $exception->getMessage(),
+                'status' => 422,
+            ];
+        }
+    }
+
+    public function getTaskTemplate(): array
+    {
+        return $this->success([
+            'template' => $this->taskAssignmentTemplateService->getTemplate(),
+        ]);
+    }
+
+    public function updateTaskTemplate(array $body): array
+    {
+        try {
+            return $this->success([
+                'template' => $this->taskAssignmentTemplateService->updateTemplate($body),
+            ]);
+        } catch (DomainValidationException $exception) {
+            return [
+                'success' => false,
+                'errorCode' => 'TaskTemplateValidationFailed',
                 'message' => $exception->getMessage(),
                 'status' => 422,
             ];

@@ -14,6 +14,11 @@ use App\Domain\Venue\Repository\VenueRepository;
 
 class DashboardAggregationService
 {
+    private const OVERVIEW_CACHE_TTL_SECONDS = 30;
+
+    /** @var array<string, array{expiresAt:int,data:array}> */
+    private static array $overviewCache = [];
+
     public function __construct(
         private readonly AccountReadService $accountReadService,
         private readonly EquipmentRepository $equipmentRepository,
@@ -25,12 +30,11 @@ class DashboardAggregationService
 
     public function getAdminDashboardSummary(): array
     {
-        $accounts = $this->accountReadService->getAcceptedAccounts();
+        $totalAccounts = $this->accountReadService->countDashboardAccounts();
         $equipment = $this->equipmentRepository->findAllEquipment();
         $reservations = $this->reservationRepository->findAllReservations();
         $releaseReturns = $this->releaseReturnRepository->findAllReleaseReturns();
 
-        $totalAccounts = count($accounts);
         $totalEquipment = count($equipment);
         $totalReservations = count($reservations);
         $pendingReservations = $this->countReservationsByStatuses($reservations, ['Pending', 'Pending Review']);
@@ -65,7 +69,7 @@ class DashboardAggregationService
     public function getAdminDashboardOverview(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
         $range = $this->normalizeRange($startDate, $endDate);
-        $accounts = $this->accountReadService->getAcceptedAccounts();
+        $totalAccounts = $this->accountReadService->countDashboardAccounts();
         $equipment = $this->equipmentRepository->findAllEquipment();
         $venues = $this->venueRepository->findAllVenues();
         $submissionReservations = $this->reservationRepository->findBySubmissionDateRange($range['start'], $range['end']);
@@ -101,7 +105,7 @@ class DashboardAggregationService
                 'generatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
             ],
             'summary' => [
-                'totalAccounts' => count($accounts),
+                'totalAccounts' => $totalAccounts,
                 'pendingReservations' => $this->countReservationsByStatuses($relevantReservations, ['Pending', 'Pending Review']),
                 'approvedReservations' => $this->countReservationsByScheduleState($relevantReservations, ['Approved', 'Prepared', 'Deployed', 'Active'], 'upcoming'),
                 'activeEquipmentCount' => max(0, $totalEquipmentUnits - $availableEquipmentUnits),
@@ -120,6 +124,41 @@ class DashboardAggregationService
             'readinessAlerts' => $this->buildReadinessAlerts($equipment, $overdueReservations, $range['start'], $range['end']),
             'systemActivity' => $this->buildSystemActivity($allReservations, $relevantReservations, $releaseReturnsInRange, $equipment, $overdueReservations, $range['start'], $range['end']),
         ];
+    }
+
+    public function getAdminDashboardOverviewSection(string $section, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    {
+        $normalizedSection = self::normalizeText($section);
+        $overview = $this->getCachedAdminDashboardOverview($startDate, $endDate);
+
+        return match ($normalizedSection) {
+            'summary' => $overview['summary'],
+            'resource-utilization', 'resourceutilization' => $overview['resourceUtilization'],
+            'grouped-stats', 'groupedstats' => $overview['groupedStats'],
+            'facility-status', 'facilitystatus' => $overview['facilityStatus'],
+            'readiness-alerts', 'readinessalerts' => $overview['readinessAlerts'],
+            'system-activity', 'systemactivity' => $overview['systemActivity'],
+            default => throw new \InvalidArgumentException('Unknown dashboard overview section.'),
+        };
+    }
+
+    private function getCachedAdminDashboardOverview(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    {
+        $range = $this->normalizeRange($startDate, $endDate);
+        $cacheKey = $range['start']->format('Y-m-d') . ':' . $range['end']->format('Y-m-d');
+        $cached = self::$overviewCache[$cacheKey] ?? null;
+
+        if (is_array($cached) && $cached['expiresAt'] > time()) {
+            return $cached['data'];
+        }
+
+        $overview = $this->getAdminDashboardOverview($startDate, $endDate);
+        self::$overviewCache[$cacheKey] = [
+            'expiresAt' => time() + self::OVERVIEW_CACHE_TTL_SECONDS,
+            'data' => $overview,
+        ];
+
+        return $overview;
     }
 
     public function getAdminReportsAnalytics(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
@@ -350,7 +389,12 @@ class DashboardAggregationService
         }
 
         foreach ($reservations as $reservation) {
-            $dateKey = $reservation->getEventDateTime()->format('Y-m-d');
+            $eventDateTime = $reservation->getEventDateTime();
+            if ($eventDateTime === null) {
+                continue;
+            }
+
+            $dateKey = $eventDateTime->format('Y-m-d');
             if (array_key_exists($dateKey, $series)) {
                 $series[$dateKey] += $this->sumRequestedEquipmentQuantity($reservation->getRequestedEquipmentList());
             }
@@ -371,7 +415,12 @@ class DashboardAggregationService
         }
 
         foreach ($reservations as $reservation) {
-            $dateKey = $reservation->getSubmissionTimestamp()->format('Y-m-d');
+            $submissionTimestamp = $reservation->getSubmissionTimestamp();
+            if ($submissionTimestamp === null) {
+                continue;
+            }
+
+            $dateKey = $submissionTimestamp->format('Y-m-d');
             if (array_key_exists($dateKey, $series)) {
                 $series[$dateKey] += $this->sumRequestedEquipmentQuantity($reservation->getRequestedEquipmentList());
             }
@@ -392,7 +441,12 @@ class DashboardAggregationService
         }
 
         foreach ($reservations as $reservation) {
-            $dateKey = $reservation->getEventDateTime()->format('Y-m-d');
+            $eventDateTime = $reservation->getEventDateTime();
+            if ($eventDateTime === null) {
+                continue;
+            }
+
+            $dateKey = $eventDateTime->format('Y-m-d');
             if (!array_key_exists($dateKey, $series)) {
                 continue;
             }
@@ -542,7 +596,7 @@ class DashboardAggregationService
         $todayKey = (new \DateTimeImmutable('now'))->format('Y-m-d');
         $requestsToday = count(array_filter(
             $allReservations,
-            static fn (ReservationEntity $reservation): bool => $reservation->getSubmissionTimestamp()->format('Y-m-d') === $todayKey
+            static fn (ReservationEntity $reservation): bool => $reservation->getSubmissionTimestamp()?->format('Y-m-d') === $todayKey
         ));
         $approvalCount = $this->countReservationsByStatuses($relevantReservations, ['Approved', 'Prepared', 'Deployed', 'Completed', 'Returned']);
         $releaseCount = $this->countReleaseReturnsByType($releaseReturnsInRange, 'release');
@@ -903,7 +957,13 @@ class DashboardAggregationService
         $count = 0;
 
         foreach ($reservations as $reservation) {
-            $leadSeconds = $reservation->getEventDateTime()->getTimestamp() - $reservation->getSubmissionTimestamp()->getTimestamp();
+            $eventDateTime = $reservation->getEventDateTime();
+            $submissionTimestamp = $reservation->getSubmissionTimestamp();
+            if ($eventDateTime === null || $submissionTimestamp === null) {
+                continue;
+            }
+
+            $leadSeconds = $eventDateTime->getTimestamp() - $submissionTimestamp->getTimestamp();
             if ($leadSeconds <= 0) {
                 continue;
             }
@@ -1015,7 +1075,8 @@ class DashboardAggregationService
                 continue;
             }
 
-            if ($reservation->getEventDateTime() >= $now) {
+            $eventDateTime = $reservation->getEventDateTime();
+            if ($eventDateTime === null || $eventDateTime >= $now) {
                 continue;
             }
 
@@ -1032,7 +1093,8 @@ class DashboardAggregationService
     {
         return count(array_filter(
             $overdueReservations,
-            static fn (ReservationEntity $reservation): bool => $reservation->getEventDateTime() >= $startDate
+            static fn (ReservationEntity $reservation): bool => $reservation->getEventDateTime() !== null
+                && $reservation->getEventDateTime() >= $startDate
                 && $reservation->getEventDateTime() <= $endDate
         ));
     }
@@ -1250,10 +1312,15 @@ class DashboardAggregationService
 
     private static function resolveReservationScheduleState(ReservationEntity $reservation): string
     {
+        $eventDateTime = $reservation->getEventDateTime();
+        if ($eventDateTime === null) {
+            return 'upcoming';
+        }
+
         $manilaTimezone = new \DateTimeZone('Asia/Manila');
         $todayKey = (new \DateTimeImmutable('now', $manilaTimezone))->format('Y-m-d');
-        $startKey = (clone $reservation->getEventDateTime())->setTimezone($manilaTimezone)->format('Y-m-d');
-        $endDateTime = $reservation->getEndDateTime() ?? $reservation->getEventDateTime();
+        $startKey = (clone $eventDateTime)->setTimezone($manilaTimezone)->format('Y-m-d');
+        $endDateTime = $reservation->getEndDateTime() ?? $eventDateTime;
         $endKey = (clone $endDateTime)->setTimezone($manilaTimezone)->format('Y-m-d');
 
         if ($startKey > $todayKey) {

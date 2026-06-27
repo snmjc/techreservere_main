@@ -57,7 +57,6 @@
               <label>
                 <span>Showing</span>
                 <select v-model="showingFilterValue">
-                  <option value="all">All</option>
                   <option value="10">10</option>
                   <option value="25">25</option>
                   <option value="50">50</option>
@@ -155,7 +154,7 @@
               <span>Showing {{ pageStart }} to {{ pageEnd }} of {{ filteredRecordList.length }} records</span>
             </div>
 
-            <div v-if="totalPages > 1" class="admin-past-records-pagination">
+            <div class="admin-past-records-pagination">
               <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
               <span>Page {{ currentPage }} of {{ totalPages }}</span>
               <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
@@ -268,6 +267,7 @@
       <div class="admin-past-records-page-footer">
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
+      <DataRequestStatusFloater :items="pastRecordsStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -275,6 +275,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -286,7 +287,7 @@ const summaryIconAttributes = 'width="22" height="22" viewBox="0 0 24 24" fill="
 const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
-const showingFilterValue = ref('all');
+const showingFilterValue = ref('10');
 const sortOrderAscending = ref(false);
 const sortByValue = ref('requestedDate');
 const currentPage = ref(1);
@@ -391,11 +392,14 @@ const filteredRecordList = computed(() => {
   return recordsFiltered;
 });
 
-const resolvedPageSize = computed(() => (
-  showingFilterValue.value === 'all'
-    ? Math.max(filteredRecordList.value.length, 1)
-    : Number(showingFilterValue.value)
-));
+const resolvedPageSize = computed(() => Number(showingFilterValue.value) || 10);
+const pastRecordsStatusItems = computed(() => [
+  {
+    key: 'past-reservations',
+    label: 'Past Reservations',
+    state: resolveReservationListState(pastRecordsList.value),
+  },
+]);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / resolvedPageSize.value)));
 const paginatedRecordList = computed(() => {
   const startIndex = (currentPage.value - 1) * resolvedPageSize.value;
@@ -564,5 +568,17 @@ function buildInitials(fullName) {
   }
 
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (requestStore.isLoadingReservations) {
+    return 'loading';
+  }
+
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

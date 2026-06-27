@@ -66,7 +66,7 @@
         />
       </div>
 
-      <div v-if="approvedRequestsTotalPages > 1" class="approved-requests-pagination">
+      <div class="approved-requests-pagination">
         <button type="button" :disabled="approvedRequestsCurrentPage === 1" @click="approvedRequestsCurrentPage -= 1">Previous</button>
         <span>Page {{ approvedRequestsCurrentPage }} of {{ approvedRequestsTotalPages }}</span>
         <button type="button" :disabled="approvedRequestsCurrentPage === approvedRequestsTotalPages" @click="approvedRequestsCurrentPage += 1">Next</button>
@@ -465,6 +465,7 @@
         </footer>
       </section>
     </div>
+    <DataRequestStatusFloater :items="approvedRequestsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -472,6 +473,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ApprovedRequests.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -514,6 +516,13 @@ const workflowInitialSnapshot = ref('[]');
 let workflowTaskCounter = 0;
 
 const approvedRequestsList = computed(() => requestStore.approvedRequestsList || []);
+const approvedRequestsStatusItems = computed(() => [
+  {
+    key: 'approved-reservations',
+    label: 'Approved Reservations',
+    state: resolveReservationListState(approvedRequestsList.value),
+  },
+]);
 const filteredApprovedRequests = computed(() => {
   const queryLower = searchQueryText.value.toLowerCase().trim();
 
@@ -1020,6 +1029,18 @@ function restoreWorkflowDrafts(noticeMessage) {
 function createWorkflowLocalId() {
   workflowTaskCounter += 1;
   return `workflow-task-${workflowTaskCounter}`;
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (requestStore.isLoadingReservations) {
+    return 'loading';
+  }
+
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 
 document.addEventListener('visibilitychange', resetWorkflowDraftsOnTabChange);

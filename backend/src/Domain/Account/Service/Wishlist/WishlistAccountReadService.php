@@ -16,6 +16,16 @@ class WishlistAccountReadService
 
     public function getWishlistAccounts(): array
     {
+        return $this->fetchWishlistAccounts();
+    }
+
+    public function getWishlistAccountsByType(string $accountType): array
+    {
+        return $this->fetchWishlistAccounts(strtolower(trim($accountType)));
+    }
+
+    private function fetchWishlistAccounts(?string $accountType = null): array
+    {
         $rows = $this->connection->fetchAllAssociative(
             "SELECT DISTINCT ON (LOWER(accounts.email_address))
                     accounts.account_identifier, accounts.id_number, accounts.last_name, accounts.first_name,
@@ -47,6 +57,7 @@ class WishlistAccountReadService
              LEFT JOIN staff_info ON staff_info.account_identifier = accounts.account_identifier
              WHERE LOWER(COALESCE(accounts.status, 'pending')) NOT IN ('active', 'approved', 'accepted')
                AND LOWER(COALESCE(accounts.invitation_status, 'not_sent')) <> 'accepted'
+               {$this->resolveAccountTypeSqlFilter($accountType)}
              ORDER BY
                 LOWER(accounts.email_address),
                 CASE
@@ -62,6 +73,26 @@ class WishlistAccountReadService
         );
 
         return array_map(fn (array $row): array => $this->mapWishlistAccountRow($row), $rows);
+    }
+
+    private function resolveAccountTypeSqlFilter(?string $accountType): string
+    {
+        $adminFilter = "UPPER(COALESCE(accounts.role_designation, '')) LIKE '%ADMIN%'";
+        $employeeFilter = "(
+            UPPER(COALESCE(accounts.role_designation, '')) LIKE '%STAFF%'
+            OR UPPER(COALESCE(accounts.role_designation, '')) LIKE '%EMPLOYEE%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%staff%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%employee%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%technical%'
+            OR LOWER(COALESCE(accounts.department, '')) LIKE '%maintenance%'
+        )";
+
+        return match ($accountType) {
+            'admin' => "AND {$adminFilter}",
+            'employee' => "AND NOT ({$adminFilter}) AND {$employeeFilter}",
+            'user' => "AND NOT ({$adminFilter}) AND NOT {$employeeFilter}",
+            default => '',
+        };
     }
 
     private function mapWishlistAccountRow(array $row): array
@@ -192,13 +223,8 @@ class WishlistAccountReadService
             return null;
         }
 
-        try {
-            return $this->signupSupportingDocumentStorageService->fileExists($relativePath)
-                ? $relativePath
-                : null;
-        } catch (\Throwable) {
-            // Invalid legacy file paths should not block the wishlist page.
-            return null;
-        }
+        return $this->signupSupportingDocumentStorageService->fileExists($relativePath)
+            ? $relativePath
+            : null;
     }
 }
