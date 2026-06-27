@@ -1,6 +1,16 @@
 const PENDING_STATUSES = ['pending review', 'pending', 'submitted'];
 const SCHEDULED_STATUSES = ['approved', 'prepared', 'deployed', 'active'];
-const PAST_RECORD_STATUSES = ['completed', 'rejected', 'cancelled', 'returned', 'request revision'];
+const PAST_RECORD_STATUSES = [
+  'completed',
+  'rejected',
+  'cancelled',
+  'canceled',
+  'returned',
+  'released',
+  'closed',
+  'expired',
+  'request revision',
+];
 const ACTIVE_QUEUE_STATUSES = ['deployed', 'active'];
 
 export function normalizeReservationListResponse(response) {

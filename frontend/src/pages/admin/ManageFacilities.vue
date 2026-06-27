@@ -2165,7 +2165,7 @@ async function fetchVenues() {
   try {
     loading.value = true;
     venueError.value = '';
-    const response = await venueApi.listVenues({
+    const response = await listVenuesWithFallback({
       selectedDate: selectedVenueCalendarDate.value,
     });
     const venuePayload = response?.data?.venues || response?.venues || [];
@@ -2177,6 +2177,18 @@ async function fetchVenues() {
     venueError.value = error?.response?.data?.errorMessage || 'Failed to load venue records.';
   } finally {
     loading.value = false;
+  }
+}
+
+async function listVenuesWithFallback(options = {}) {
+  try {
+    return await venueApi.listVenues(options);
+  } catch (error) {
+    if (!options.selectedDate) {
+      throw error;
+    }
+
+    return venueApi.listVenues();
   }
 }
 

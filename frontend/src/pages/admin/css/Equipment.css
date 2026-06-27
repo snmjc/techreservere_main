@@ -557,6 +557,34 @@
   border-top: 1px solid #edf2ee;
 }
 
+.equipment-page__pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.9rem;
+  color: #52635a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.equipment-page__pagination button {
+  min-height: 34px;
+  padding: 0 0.85rem;
+  color: #0f5132;
+  background: #ffffff;
+  border: 1px solid #cfe1d7;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+}
+
+.equipment-page__pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .equipment-modal__header h2 {
   margin: 0;
   color: #16361f;

@@ -105,7 +105,7 @@
           </button>
         </div>
 
-        <div v-if="isLoading" class="admin-wishlist-empty-state">
+        <div v-if="isActiveWishlistTabLoading && filteredWishlistAccounts.length === 0" class="admin-wishlist-empty-state">
           Loading request accounts...
         </div>
 
@@ -123,8 +123,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(account, index) in filteredWishlistAccounts" :key="account.accountIdentifier">
-                <td>{{ index + 1 }}</td>
+              <tr v-for="(account, index) in paginatedWishlistAccounts" :key="account.accountIdentifier">
+                <td>{{ wishlistPageStart + index }}</td>
                 <td>{{ account.idNumber }}</td>
                 <td>
                   <strong>{{ account.firstName }} {{ account.lastName }}</strong>
@@ -239,6 +239,11 @@
               </tr>
             </tbody>
           </table>
+          <div v-if="wishlistTotalPages > 1" class="admin-wishlist-pagination">
+            <button type="button" :disabled="wishlistCurrentPage === 1" @click="wishlistCurrentPage -= 1">Previous</button>
+            <span>Showing {{ wishlistPageStart }}-{{ wishlistPageEnd }} of {{ filteredWishlistAccounts.length }}</span>
+            <button type="button" :disabled="wishlistCurrentPage === wishlistTotalPages" @click="wishlistCurrentPage += 1">Next</button>
+          </div>
         </div>
       </section>
 
@@ -670,7 +675,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useAuth } from '@clerk/vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
@@ -697,6 +702,8 @@ import {
   normalizeWishlistAccount,
 } from './wishlist/adminWishlistHelpers.js';
 
+const WISHLIST_ACCOUNTS_CACHE_KEY = 'techreserve_wishlist_accounts_cache';
+
 const authStore = useAuthenticationStore();
 const { getToken } = useAuth();
 
@@ -705,12 +712,21 @@ const searchText = ref('');
 const sortMode = ref('newest');
 const statusFilter = ref('all');
 const userRoleFilter = ref('all');
+const wishlistPagesByTab = reactive({
+  admin: 1,
+  user: 1,
+});
+const wishlistTabLoadingState = reactive({
+  admin: false,
+  user: false,
+});
+const wishlistPageSize = 10;
 const createAccountModals = ref(null);
 const editListMode = ref(false);
 const isLoading = ref(false);
 const toastMessage = ref('');
 const loadErrorMessage = ref('');
-const wishlistAccounts = ref([]);
+const wishlistAccounts = ref(readCachedWishlistAccounts());
 const previewAccount = ref(null);
 const previewDocumentUrl = ref('');
 const previewIsLoading = ref(false);
@@ -739,6 +755,22 @@ const filteredWishlistAccounts = computed(() => {
     userRoleFilter: userRoleFilter.value,
   });
 });
+const isActiveWishlistTabLoading = computed(() => wishlistTabLoadingState[activeTab.value] === true);
+const wishlistTotalPages = computed(() => Math.max(1, Math.ceil(filteredWishlistAccounts.value.length / wishlistPageSize)));
+const wishlistCurrentPage = computed({
+  get: () => wishlistPagesByTab[activeTab.value] || 1,
+  set: (pageNumber) => {
+    wishlistPagesByTab[activeTab.value] = pageNumber;
+  },
+});
+const paginatedWishlistAccounts = computed(() => {
+  const startIndex = (wishlistCurrentPage.value - 1) * wishlistPageSize;
+  return filteredWishlistAccounts.value.slice(startIndex, startIndex + wishlistPageSize);
+});
+const wishlistPageStart = computed(() => (
+  filteredWishlistAccounts.value.length === 0 ? 0 : ((wishlistCurrentPage.value - 1) * wishlistPageSize) + 1
+));
+const wishlistPageEnd = computed(() => Math.min(wishlistCurrentPage.value * wishlistPageSize, filteredWishlistAccounts.value.length));
 
 const {
   isProcessing,
@@ -786,6 +818,16 @@ onMounted(() => {
   loadWishlistAccounts();
 });
 
+watch([searchText, sortMode, statusFilter, userRoleFilter], () => {
+  wishlistCurrentPage.value = 1;
+});
+
+watch(wishlistTotalPages, (pageCount) => {
+  if (wishlistCurrentPage.value > pageCount) {
+    wishlistCurrentPage.value = pageCount;
+  }
+});
+
 function handleTabChange(tabName) {
   activeTab.value = tabName;
   searchText.value = '';
@@ -795,17 +837,51 @@ function handleTabChange(tabName) {
 
 async function loadWishlistAccounts() {
   isLoading.value = true;
+  setAllWishlistTabsLoading(true);
   loadErrorMessage.value = '';
   const authToken = await ensureWishlistToken();
   const result = await adminWishlistApi.getWishlistAccounts(authToken);
   if (result.success) {
     wishlistAccounts.value = result.data.users || result.data || [];
+    writeCachedWishlistAccounts(wishlistAccounts.value);
   } else {
     wishlistAccounts.value = [];
     loadErrorMessage.value = result.error || 'Unable to load request accounts from the backend.';
     showToast(loadErrorMessage.value);
   }
   isLoading.value = false;
+  setAllWishlistTabsLoading(false);
+}
+
+function readCachedWishlistAccounts() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(WISHLIST_ACCOUNTS_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedWishlistAccounts(accounts) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(WISHLIST_ACCOUNTS_CACHE_KEY, JSON.stringify(Array.isArray(accounts) ? accounts : []));
+  } catch {
+    // Cache writes are best-effort only.
+  }
+}
+
+function setAllWishlistTabsLoading(isTabLoading) {
+  wishlistTabLoadingState.admin = isTabLoading;
+  wishlistTabLoadingState.user = isTabLoading;
 }
 
 async function ensureWishlistToken() {

@@ -29,6 +29,8 @@ import {
   validateManageAccountUpdateForm,
 } from '../manageAccounts/manageAccountsHelpers.js';
 
+const MANAGE_ACCOUNTS_CACHE_KEY = 'techreserve_manage_accounts_cache';
+
 export function useManageAccountsPage() {
   const authStore = useAuthenticationStore();
   const activeAccountTab = ref(getDefaultAccountTab());
@@ -38,11 +40,16 @@ export function useManageAccountsPage() {
   const userRoleFilter = ref('all');
   const sortOrderAscending = ref(true);
   const isLoading = ref(false);
+  const tabLoadingState = reactive({
+    admin: false,
+    user: false,
+    employee: false,
+  });
   const isProcessing = ref(false);
   const toastMessage = ref('');
   const loadErrorMessage = ref('');
   const modalErrorMessage = ref('');
-  const accounts = ref([]);
+  const accounts = ref(readCachedAccountList());
   const viewAccount = ref(null);
   const viewAccountLoading = ref(false);
   const viewAccountError = ref('');
@@ -93,6 +100,7 @@ export function useManageAccountsPage() {
     return true;
   });
   const isUpdateFormReady = computed(() => !updateAccountLoading.value && validateUpdateAccountForm() === '');
+  const isActiveAccountTabLoading = computed(() => tabLoadingState[activeAccountTab.value] === true);
 
   const accountTabs = computed(() => [
     { label: 'Admin', value: 'admin', count: countAccountsByType('Admin') },
@@ -117,15 +125,28 @@ export function useManageAccountsPage() {
   });
 
   async function loadAccounts({ showLoading = true } = {}) {
-    if (showLoading) isLoading.value = true;
+    if (showLoading) {
+      isLoading.value = true;
+      setAllTabLoading(true);
+    }
     loadErrorMessage.value = '';
     const result = await adminManageAccountsApi.getAccounts(authStore.authToken);
     if (result.success) {
       accounts.value = result.data.accounts || [];
+      writeCachedAccountList(accounts.value);
     } else {
       loadErrorMessage.value = result.error || 'Unable to load accounts.';
     }
-    if (showLoading) isLoading.value = false;
+    if (showLoading) {
+      isLoading.value = false;
+      setAllTabLoading(false);
+    }
+  }
+
+  function setAllTabLoading(isTabLoading) {
+    tabLoadingState.admin = isTabLoading;
+    tabLoadingState.user = isTabLoading;
+    tabLoadingState.employee = isTabLoading;
   }
 
   async function handleRefreshAccounts() {
@@ -578,6 +599,7 @@ export function useManageAccountsPage() {
     userRoleFilter,
     normalizedAccounts,
     isLoading,
+    isActiveAccountTabLoading,
     isProcessing,
     toastMessage,
     loadErrorMessage,
@@ -640,4 +662,30 @@ export function useManageAccountsPage() {
     getAccountTypeClass,
     getStatusClass,
   };
+}
+
+function readCachedAccountList() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(MANAGE_ACCOUNTS_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedAccountList(accounts) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(MANAGE_ACCOUNTS_CACHE_KEY, JSON.stringify(Array.isArray(accounts) ? accounts : []));
+  } catch {
+    // Cache writes are best-effort only.
+  }
 }

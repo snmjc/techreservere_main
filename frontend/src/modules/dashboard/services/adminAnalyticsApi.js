@@ -75,17 +75,25 @@ const adminAnalyticsApi = {
 
   async getAnalyticsRangeSectionResults(section, range) {
     const authToken = getStoredAuthToken();
-    const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
-      headers: buildAuthorizationHeaders(authToken),
-      params: {
-        historyDays: range?.days || 30,
-        startDate: range?.startDateIso,
-        endDate: range?.endDateIso,
-        _: Date.now(),
-      },
-    });
+    try {
+      const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
+        headers: buildAuthorizationHeaders(authToken),
+        params: {
+          historyDays: range?.days || 30,
+          startDate: range?.startDateIso,
+          endDate: range?.endDateIso,
+          _: Date.now(),
+        },
+      });
 
-    return unwrapResponse(response);
+      return unwrapResponse(response);
+    } catch (error) {
+      if (![404, 405].includes(Number(error?.response?.status))) {
+        throw error;
+      }
+
+      return this.getAnalyticsRangeResults(range);
+    }
   },
 
   async triggerAnalyticsRun(scenario, range) {

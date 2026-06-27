@@ -48,7 +48,7 @@
     <!-- Users List -->
     <div v-else class="users-list">
       <div
-        v-for="user in filteredUsers"
+        v-for="user in paginatedUsers"
         :key="user.id"
         class="user-card"
       >
@@ -105,6 +105,11 @@
           </button>
         </div>
       </div>
+      <div v-if="totalPages > 1" class="approval-pagination">
+        <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
+      </div>
     </div>
 
     <!-- Reject Dialog -->
@@ -139,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { pendingUserService } from '@/services/pendingUserApi';
 import { emailService } from '@/services/emailService';
 
@@ -151,6 +156,8 @@ const showRejectForm = ref(false);
 const rejectingUserId = ref(null);
 const rejectingUserName = ref('');
 const rejectionReason = ref('');
+const currentPage = ref(1);
+const pageSize = 8;
 
 const filterTabs = [
   { label: 'Pending', value: 'pending' },
@@ -168,10 +175,25 @@ const filteredUsers = computed(() => {
   }
   return pendingUsers.value;
 });
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / pageSize)));
+const paginatedUsers = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredUsers.value.slice(startIndex, startIndex + pageSize);
+});
 
 const pendingCount = computed(() => pendingUsers.value.filter(u => u.status === 'pending').length);
 const approvedCount = computed(() => pendingUsers.value.filter(u => u.status === 'approved').length);
 const rejectedCount = computed(() => pendingUsers.value.filter(u => u.status === 'rejected').length);
+
+watch(activeFilter, () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
+});
 
 const fetchPendingUsers = async () => {
   isLoading.value = true;

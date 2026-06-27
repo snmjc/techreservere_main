@@ -120,11 +120,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="isLoading">
+            <tr v-if="isActiveAccountTabLoading && filteredAccounts.length === 0">
               <td :colspan="manageAccountsColumnCount" class="manage-accounts-empty">Loading accounts...</td>
             </tr>
-            <tr v-for="(account, index) in filteredAccounts" v-else :key="account.accountIdentifier">
-              <td>{{ index + 1 }}</td>
+            <tr v-for="(account, index) in paginatedAccounts" v-else :key="account.accountIdentifier">
+              <td>{{ manageAccountsPageStart + index }}</td>
               <td>{{ account.idNumber }}</td>
               <td>{{ account.fullName }}</td>
               <td v-if="activeAccountTab === 'employee'">{{ account.contactNumber || 'N/A' }}</td>
@@ -218,11 +218,28 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="!isLoading && filteredAccounts.length === 0">
+            <tr v-if="!isActiveAccountTabLoading && filteredAccounts.length === 0">
               <td :colspan="manageAccountsColumnCount" class="manage-accounts-empty">No accounts found.</td>
             </tr>
           </tbody>
         </table>
+        <div v-if="manageAccountsTotalPages > 1" class="manage-accounts-pagination">
+          <button
+            type="button"
+            :disabled="manageAccountsCurrentPage === 1"
+            @click="manageAccountsCurrentPage -= 1"
+          >
+            Previous
+          </button>
+          <span>Showing {{ manageAccountsPageStart }}-{{ manageAccountsPageEnd }} of {{ filteredAccounts.length }}</span>
+          <button
+            type="button"
+            :disabled="manageAccountsCurrentPage === manageAccountsTotalPages"
+            @click="manageAccountsCurrentPage += 1"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <div class="manage-accounts-page-footer">
@@ -536,7 +553,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -554,6 +571,7 @@ const {
   userRoleFilter,
   normalizedAccounts,
   isLoading,
+  isActiveAccountTabLoading,
   isProcessing,
   toastMessage,
   loadErrorMessage,
@@ -616,6 +634,47 @@ const {
   getAccountTypeClass,
   getStatusClass,
 } = useManageAccountsPage();
+
+const manageAccountsPagesByTab = reactive({
+  admin: 1,
+  user: 1,
+  employee: 1,
+});
+const manageAccountsPageSize = 10;
+
+const manageAccountsCurrentPage = computed({
+  get: () => manageAccountsPagesByTab[activeAccountTab.value] || 1,
+  set: (pageNumber) => {
+    manageAccountsPagesByTab[activeAccountTab.value] = pageNumber;
+  },
+});
+
+const manageAccountsTotalPages = computed(() => Math.max(1, Math.ceil(filteredAccounts.value.length / manageAccountsPageSize)));
+
+const paginatedAccounts = computed(() => {
+  const startIndex = (manageAccountsCurrentPage.value - 1) * manageAccountsPageSize;
+  return filteredAccounts.value.slice(startIndex, startIndex + manageAccountsPageSize);
+});
+
+const manageAccountsPageStart = computed(() => {
+  if (filteredAccounts.value.length === 0) {
+    return 0;
+  }
+
+  return (manageAccountsCurrentPage.value - 1) * manageAccountsPageSize + 1;
+});
+
+const manageAccountsPageEnd = computed(() => Math.min(manageAccountsCurrentPage.value * manageAccountsPageSize, filteredAccounts.value.length));
+
+watch([searchQueryText, showingFilterValue, sortMode, userRoleFilter], () => {
+  manageAccountsCurrentPage.value = 1;
+});
+
+watch(manageAccountsTotalPages, (pageCount) => {
+  if (manageAccountsCurrentPage.value > pageCount) {
+    manageAccountsCurrentPage.value = pageCount;
+  }
+});
 
 function openAddEmployeeRequestModal() {
   createAccountModals.value?.openForTab('employee');

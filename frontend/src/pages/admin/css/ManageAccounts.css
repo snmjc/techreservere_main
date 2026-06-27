@@ -339,6 +339,37 @@
   font-weight: 700;
 }
 
+.manage-accounts-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem;
+  color: #456156;
+  border-top: 1px solid #edf2ef;
+  background: rgba(255, 255, 255, 0.88);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.manage-accounts-pagination button {
+  min-height: 36px;
+  padding: 0 0.85rem;
+  color: #047857;
+  background: #ffffff;
+  border: 1px solid #cfe0d7;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.manage-accounts-pagination button:disabled {
+  color: #9ca3af;
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
 .manage-accounts-page-footer {
   margin-top: auto;
   padding-top: 1.4rem;

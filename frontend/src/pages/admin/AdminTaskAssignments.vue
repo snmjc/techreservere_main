@@ -696,7 +696,7 @@ async function loadPageData() {
     : [];
 
   if (!loadError.value && (!reservationsResult.success || !accountsResult.success)) {
-    loadError.value = reservationsResult.error || accountsResult.error || 'Unable to load task form options.';
+    showTaskToast(reservationsResult.error || accountsResult.error || 'Some task form options could not be loaded.');
   }
 
   isLoading.value = false;

@@ -97,7 +97,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="equipment in filteredEquipment" :key="equipment.equipmentIdentifier">
+            <tr v-for="equipment in paginatedEquipment" :key="equipment.equipmentIdentifier">
               <td>{{ equipment.equipmentIdentifier }}</td>
               <td>{{ equipment.equipmentName }}</td>
               <td>{{ equipment.equipmentCategory || equipment.categoryName }}</td>
@@ -128,6 +128,11 @@
             </tr>
           </tbody>
         </table>
+        <div v-if="equipmentTotalPages > 1" class="equipment-page__pagination">
+          <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
+          <span>Showing {{ equipmentPageStart }}-{{ equipmentPageEnd }} of {{ filteredEquipment.length }}</span>
+          <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>
+        </div>
       </div>
 
       <div v-if="viewEquipment" class="equipment-modal__overlay" @click.self="closeViewModal">
@@ -264,7 +269,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
@@ -282,6 +287,8 @@ const pageError = ref('');
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const sortOrder = ref('asc');
+const equipmentCurrentPage = ref(1);
+const equipmentPageSize = 10;
 
 const viewEquipment = ref(null);
 const formModalOpen = ref(false);
@@ -318,6 +325,15 @@ const filteredEquipment = computed(() => {
     return sortOrder.value === 'asc' ? comparison : comparison * -1;
   });
 });
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipment.value.length / equipmentPageSize)));
+const paginatedEquipment = computed(() => {
+  const startIndex = (equipmentCurrentPage.value - 1) * equipmentPageSize;
+  return filteredEquipment.value.slice(startIndex, startIndex + equipmentPageSize);
+});
+const equipmentPageStart = computed(() => (
+  filteredEquipment.value.length === 0 ? 0 : ((equipmentCurrentPage.value - 1) * equipmentPageSize) + 1
+));
+const equipmentPageEnd = computed(() => Math.min(equipmentCurrentPage.value * equipmentPageSize, filteredEquipment.value.length));
 
 const availableCount = computed(() =>
   equipmentList.value.filter((equipment) => equipment.equipmentState === 'Available').length
@@ -335,6 +351,16 @@ const isFormReady = computed(() => {
 
 onMounted(() => {
   fetchEquipment();
+});
+
+watch([searchQuery, statusFilter, sortOrder], () => {
+  equipmentCurrentPage.value = 1;
+});
+
+watch(equipmentTotalPages, (pageCount) => {
+  if (equipmentCurrentPage.value > pageCount) {
+    equipmentCurrentPage.value = pageCount;
+  }
 });
 
 async function fetchEquipment() {

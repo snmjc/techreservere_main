@@ -51,7 +51,7 @@
         </div>
 
         <div
-          v-for="notification in filteredNotifications"
+          v-for="notification in paginatedNotifications"
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.isRead }"
@@ -75,13 +75,18 @@
             @click="markAsRead(notification.id)"
           ></div>
         </div>
+        <div v-if="totalPages > 1" class="notifications-pagination">
+          <button type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Previous</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
+        </div>
       </div>
     </div>
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
 import NotificationIconReservation from '@/components/icons/NotificationIconReservation.vue';
@@ -93,6 +98,8 @@ import { useNotificationStore } from '@/modules/notification/store/notificationS
 const searchQuery = ref('');
 const activeFilter = ref('all');
 const sortBy = ref('all');
+const currentPage = ref(1);
+const pageSize = 10;
 const notificationStore = useNotificationStore();
 
 const filterTabs = [
@@ -135,6 +142,21 @@ const filteredNotifications = computed(() => {
   }
 
   return filtered;
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredNotifications.value.length / pageSize)));
+const paginatedNotifications = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize;
+  return filteredNotifications.value.slice(startIndex, startIndex + pageSize);
+});
+
+watch([searchQuery, activeFilter, sortBy], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount;
+  }
 });
 
 const markAllAsRead = async () => {
