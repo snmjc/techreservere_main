@@ -420,11 +420,32 @@
 }
 
 .reports-accordion summary {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: space-between;
   cursor: pointer;
   color: #132238;
   font-size: 0.78rem;
   font-weight: 850;
   list-style: none;
+}
+
+.reports-accordion summary::after {
+  content: "v";
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.reports-accordion details[open] summary::after {
+  content: "^";
+}
+
+.reports-accordion summary small {
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
 .reports-accordion summary::-webkit-details-marker {
@@ -437,6 +458,16 @@
   font-size: 0.74rem;
   font-weight: 650;
   line-height: 1.45;
+}
+
+.reports-preference-accordion {
+  margin-top: 1rem;
+}
+
+.reports-preference-accordion .reports-validation-grid,
+.reports-preference-accordion .reports-rf-metrics-grid,
+.reports-preference-accordion .reports-risk-probability-grid {
+  margin-top: 0.8rem;
 }
 
 .positive {

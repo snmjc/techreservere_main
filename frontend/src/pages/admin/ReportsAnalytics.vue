@@ -123,17 +123,28 @@
             </aside>
           </div>
 
-          <div class="reports-validation-grid">
-            <article
-              v-for="metric in forecastValidationCards"
-              :key="metric.label"
-              class="reports-validation-card"
-              :class="{ 'is-good': metric.good, 'is-bad': metric.bad }"
+          <div class="reports-accordion reports-preference-accordion">
+            <details
+              :open="isForecastValidationOpen"
+              @toggle="handlePreferenceAccordionToggle('forecastValidation', $event)"
             >
-              <span>{{ metric.label }}</span>
-              <strong>{{ metric.value }}</strong>
-              <small>{{ metric.note }}</small>
-            </article>
+              <summary>
+                <span>SARIMA Accuracy Validation</span>
+                <small>{{ isForecastValidationOpen ? 'Hide metrics' : 'Show metrics' }}</small>
+              </summary>
+              <div class="reports-validation-grid">
+                <article
+                  v-for="metric in forecastValidationCards"
+                  :key="metric.label"
+                  class="reports-validation-card"
+                  :class="{ 'is-good': metric.good, 'is-bad': metric.bad }"
+                >
+                  <span>{{ metric.label }}</span>
+                  <strong>{{ metric.value }}</strong>
+                  <small>{{ metric.note }}</small>
+                </article>
+              </div>
+            </details>
           </div>
         </section>
 
@@ -161,37 +172,48 @@
                 </ol>
               </div>
             </div>
-            <div class="reports-rf-metrics-grid">
-              <article v-for="metric in randomForestMetricCards" :key="metric.label">
-                <span>{{ metric.label }}</span>
-                <strong>{{ metric.value }}</strong>
-                <small>{{ metric.note }}</small>
-              </article>
-            </div>
-            <div class="reports-confusion-matrix-wrap" v-if="confusionMatrixRows.length > 0">
-              <h3>Confusion Matrix</h3>
-              <table class="reports-confusion-matrix">
-                <thead>
-                  <tr>
-                    <th>Actual \\ Predicted</th>
-                    <th v-for="label in confusionMatrixLabels" :key="label">{{ label }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in confusionMatrixRows" :key="row.label">
-                    <th>{{ row.label }}</th>
-                    <td v-for="cell in row.values" :key="`${row.label}-${cell.label}`">{{ cell.value }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p class="reports-matrix-explainer">{{ confusionMatrixExplanation }}</p>
-            </div>
-            <div class="reports-risk-probability-grid">
-              <article v-for="metric in riskProbabilityCards" :key="metric.label">
-                <span>{{ metric.label }}</span>
-                <strong>{{ metric.value }}</strong>
-                <small>{{ metric.note }}</small>
-              </article>
+            <div class="reports-accordion reports-preference-accordion">
+              <details
+                :open="isRiskValidationOpen"
+                @toggle="handlePreferenceAccordionToggle('riskValidation', $event)"
+              >
+                <summary>
+                  <span>Random Forest Validation Diagnostics</span>
+                  <small>{{ isRiskValidationOpen ? 'Hide diagnostics' : 'Show diagnostics' }}</small>
+                </summary>
+                <div class="reports-rf-metrics-grid">
+                  <article v-for="metric in randomForestMetricCards" :key="metric.label">
+                    <span>{{ metric.label }}</span>
+                    <strong>{{ metric.value }}</strong>
+                    <small>{{ metric.note }}</small>
+                  </article>
+                </div>
+                <div class="reports-confusion-matrix-wrap" v-if="confusionMatrixRows.length > 0">
+                  <h3>Confusion Matrix</h3>
+                  <table class="reports-confusion-matrix">
+                    <thead>
+                      <tr>
+                        <th>Actual \\ Predicted</th>
+                        <th v-for="label in confusionMatrixLabels" :key="label">{{ label }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="row in confusionMatrixRows" :key="row.label">
+                        <th>{{ row.label }}</th>
+                        <td v-for="cell in row.values" :key="`${row.label}-${cell.label}`">{{ cell.value }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p class="reports-matrix-explainer">{{ confusionMatrixExplanation }}</p>
+                </div>
+                <div class="reports-risk-probability-grid">
+                  <article v-for="metric in riskProbabilityCards" :key="metric.label">
+                    <span>{{ metric.label }}</span>
+                    <strong>{{ metric.value }}</strong>
+                    <small>{{ metric.note }}</small>
+                  </article>
+                </div>
+              </details>
             </div>
             <div class="reports-accordion">
               <details>
@@ -517,6 +539,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
+import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import {
   createEmptyForecastReport,
@@ -547,6 +570,13 @@ import {
   resolveAdminAnalyticsDateRange,
 } from './adminAnalyticsHelpers.js';
 
+const REPORTS_ACCORDION_PREFERENCE_KEY_PREFIX = 'techreserve_reports_analytics_accordions';
+const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
+  forecastValidation: false,
+  riskValidation: false,
+});
+
+const authStore = useAuthenticationStore();
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
 const isExporting = ref(false);
@@ -587,6 +617,10 @@ const modelArtifacts = ref({
   sets: [],
 });
 const modelSetRenameDrafts = ref({});
+const reportsAccordionPreferenceStorageKey = computed(() => (
+  `${REPORTS_ACCORDION_PREFERENCE_KEY_PREFIX}:${resolveReportsPreferenceUserKey(authStore.activeAccount)}`
+));
+const reportsAccordionPreferences = ref(loadReportsAccordionPreferences());
 
 const analyticsScenarios = [
   { key: 'clean_data', title: 'Clean Data', description: 'Reset to a neutral demo state with balanced inputs.' },
@@ -825,6 +859,8 @@ const riskProbabilityCards = computed(() => {
   ];
 });
 const optimizationMetrics = computed(() => optimizationReport.value || []);
+const isForecastValidationOpen = computed(() => reportsAccordionPreferences.value.forecastValidation === true);
+const isRiskValidationOpen = computed(() => reportsAccordionPreferences.value.riskValidation === true);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
 const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
@@ -844,6 +880,10 @@ const summaryItems = computed(() => [
   { label: 'Generated At', value: reportGeneratedAt.value },
 ]);
 const modelArtifactSets = computed(() => Array.isArray(modelArtifacts.value?.sets) ? modelArtifacts.value.sets : []);
+
+watch(reportsAccordionPreferenceStorageKey, () => {
+  reportsAccordionPreferences.value = loadReportsAccordionPreferences();
+});
 
 onMounted(() => {
   loadReportsAnalytics();
@@ -1355,6 +1395,53 @@ function renderUtilizationChart() {
     utilizationComparisonItems: utilizationComparisonItems.value,
     formatMetricNumber,
   });
+}
+
+function handlePreferenceAccordionToggle(preferenceKey, event) {
+  if (!Object.hasOwn(DEFAULT_REPORTS_ACCORDION_PREFERENCES, preferenceKey)) {
+    return;
+  }
+
+  saveReportsAccordionPreference(preferenceKey, event?.target?.open === true);
+}
+
+function resolveReportsPreferenceUserKey(account) {
+  const identifier = account?.accountIdentifier
+    || account?.account_identifier
+    || account?.clerkUserId
+    || account?.clerk_user_id
+    || account?.emailAddress
+    || account?.email
+    || 'guest';
+
+  return String(identifier).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+}
+
+function loadReportsAccordionPreferences() {
+  try {
+    const storedValue = localStorage.getItem(reportsAccordionPreferenceStorageKey.value);
+    const parsedValue = storedValue ? JSON.parse(storedValue) : {};
+    return {
+      ...DEFAULT_REPORTS_ACCORDION_PREFERENCES,
+      ...(parsedValue && typeof parsedValue === 'object' ? parsedValue : {}),
+    };
+  } catch (error) {
+    return { ...DEFAULT_REPORTS_ACCORDION_PREFERENCES };
+  }
+}
+
+function saveReportsAccordionPreference(preferenceKey, isOpen) {
+  const nextPreferences = {
+    ...reportsAccordionPreferences.value,
+    [preferenceKey]: isOpen,
+  };
+  reportsAccordionPreferences.value = nextPreferences;
+
+  try {
+    localStorage.setItem(reportsAccordionPreferenceStorageKey.value, JSON.stringify(nextPreferences));
+  } catch (error) {
+    // Local storage may be unavailable in private or restricted browser contexts.
+  }
 }
 
 function resolveReportsError(error) {
