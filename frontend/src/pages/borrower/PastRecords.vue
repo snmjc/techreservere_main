@@ -56,7 +56,6 @@
               <label>
                 <span>Showing</span>
                 <select v-model="showingFilterValue">
-                  <option value="all">All</option>
                   <option value="10">10</option>
                   <option value="25">25</option>
                   <option value="50">50</option>
@@ -267,7 +266,7 @@ const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const activeRecordTab = ref('all');
 const searchQueryText = ref('');
-const showingFilterValue = ref('all');
+const showingFilterValue = ref('10');
 const sortOrder = ref('desc');
 const orderByValue = ref('date');
 const currentPage = ref(1);
@@ -353,11 +352,7 @@ const filteredRecordList = computed(() => {
   return recordsFiltered;
 });
 
-const resolvedPageSize = computed(() => (
-  showingFilterValue.value === 'all'
-    ? Math.max(filteredRecordList.value.length, 1)
-    : Number(showingFilterValue.value)
-));
+const resolvedPageSize = computed(() => Number(showingFilterValue.value) || 10);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / resolvedPageSize.value)));
 const paginatedRecordList = computed(() => {
   const startIndex = (currentPage.value - 1) * resolvedPageSize.value;

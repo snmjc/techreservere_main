@@ -237,7 +237,7 @@
             <h2>Resource Allocation Optimization (B-ILP)</h2>
             <p>Efficiency indicators derived from request throughput and inventory usage.</p>
             <p v-if="isOptimizationSectionLoading" class="reports-section-loading">Loading allocation optimization...</p>
-            <p v-if="allocationSectionError" class="reports-inline-message is-error">{{ allocationSectionError }}</p>
+            <p v-if="optimizationSectionError" class="reports-inline-message is-error">{{ optimizationSectionError }}</p>
             <div class="reports-optimization-list">
               <article v-for="metric in optimizationMetrics" :key="metric.label">
                 <span
@@ -271,9 +271,10 @@
         <div class="reports-bottom-grid">
           <section class="reports-panel">
             <h2>Equipment Utilization Overview (Random Forest)</h2>
-            <p v-if="isUtilizationRefreshing" class="reports-section-loading">Loading equipment utilization...</p>
-            <div v-if="!isUtilizationRefreshing && utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
-            <div v-else-if="isUtilizationRefreshing && utilizationItems.length === 0" class="reports-section-placeholder"></div>
+            <p v-if="isUtilizationSectionLoading" class="reports-section-loading">Loading equipment utilization...</p>
+            <p v-if="utilizationSectionError" class="reports-inline-message is-error">{{ utilizationSectionError }}</p>
+            <div v-if="!isUtilizationSectionLoading && utilizationItems.length === 0" class="reports-inline-message">No category utilization data is available yet.</div>
+            <div v-else-if="isUtilizationSectionLoading && utilizationItems.length === 0" class="reports-section-placeholder"></div>
             <div v-else class="reports-chart-canvas-wrap reports-chart-canvas-wrap--bar">
               <canvas ref="utilizationChartRef" class="reports-chart-canvas" aria-label="Equipment utilization comparison chart"></canvas>
             </div>
@@ -292,6 +293,7 @@
           <section class="reports-panel">
             <h2>Top Equipment Trends</h2>
             <p v-if="isEquipmentTrendsSectionLoading" class="reports-section-loading">Loading equipment trends...</p>
+            <p v-if="equipmentTrendsSectionError" class="reports-inline-message is-error">{{ equipmentTrendsSectionError }}</p>
             <div class="reports-table-stack">
               <div>
                 <h3>Top Frequently Used Equipment</h3>
@@ -323,25 +325,36 @@
                 <h3>Equipment Preparation Decisions</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Demand Signal</th><th>Decision</th><th>Recommended Action</th></tr>
+                    <tr><th>Equipment</th><th>Predicted Demand</th><th>Decision</th><th>Recommended Action</th><th class="reports-equipment-table__action-heading">Details</th></tr>
                   </thead>
                   <tbody>
                     <tr v-if="isEquipmentTrendsSectionLoading && possibleBorrowedEquipment.length === 0">
-                      <td colspan="4">Loading equipment preparation decisions...</td>
+                      <td colspan="5">Loading equipment preparation decisions...</td>
                     </tr>
                     <tr v-else-if="possibleBorrowedEquipment.length === 0">
-                      <td colspan="4">No equipment needs preparation based on current and same-date historical demand.</td>
+                      <td colspan="5">No equipment needs preparation based on forecasted demand.</td>
                     </tr>
                     <tr v-for="item in paginatedPossibleBorrowedEquipment" :key="`${item.name}-${item.count}`">
                       <td>{{ item.name }}</td>
-                      <td>
-                        <strong>{{ item.signal }}</strong>
-                        <small>{{ item.reason }}</small>
-                      </td>
+                      <td>{{ formatMetricNumber(item.predictedDemand, 1) }}</td>
                       <td>
                         <span class="reports-decision-pill" :class="`reports-decision-pill--${item.tone}`">{{ item.decision }}</span>
                       </td>
                       <td>{{ item.action }}</td>
+                      <td class="reports-equipment-table__action-cell">
+                        <button
+                          type="button"
+                          class="reports-row-icon-button"
+                          :aria-label="`View demand basis for ${item.name}`"
+                          title="View demand basis"
+                          @click="openPreparationDecisionModal(item)"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -357,6 +370,7 @@
           <section class="reports-panel reports-summary-panel">
             <h2>System Summary</h2>
             <p v-if="isSummarySectionLoading" class="reports-section-loading">Loading system summary...</p>
+            <p v-if="summarySectionError" class="reports-inline-message is-error">{{ summarySectionError }}</p>
             <dl>
               <div v-for="item in summaryItems" :key="item.label">
                 <dt>{{ item.label }}</dt>
@@ -562,6 +576,10 @@
         </div>
       </div>
     </section>
+    <EquipmentPreparationDecisionModal
+      :decision-item="selectedPreparationDecision"
+      @close="closePreparationDecisionModal"
+    />
     <DataRequestStatusFloater :items="reportsAnalyticsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
@@ -570,6 +588,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
+import EquipmentPreparationDecisionModal from './components/EquipmentPreparationDecisionModal.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -577,6 +596,7 @@ import { useAuthenticationStore } from '@/modules/authentication/store/authentic
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import {
   createEmptyForecastReport,
+  createEmptyEquipmentTrendPagination,
   createEmptyRiskReport,
   createEmptySummaryReport,
   createEmptyUtilizationReport,
@@ -608,6 +628,17 @@ import {
 } from './adminAnalyticsHelpers.js';
 
 const REPORTS_ACCORDION_PREFERENCE_KEY_PREFIX = 'techreserve_reports_analytics_accordions';
+const REPORTS_ANALYTICS_SECTION_CACHE_PREFIX = 'techreserve_reports_analytics_section_v1';
+const REPORTS_ANALYTICS_SECTION_CACHE_TTL_MS = 5 * 60 * 1000;
+const REPORTS_ANALYTICS_SECTION_KEYS = Object.freeze([
+  'forecast',
+  'readiness',
+  'optimization',
+  'utilization',
+  'equipmentTrends',
+  'summary',
+]);
+const DEFAULT_EQUIPMENT_TREND_PAGINATION = Object.freeze(createEmptyEquipmentTrendPagination());
 const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
   forecastValidation: false,
   riskValidation: false,
@@ -619,7 +650,10 @@ const isReportsLoading = ref(true);
 const sectionLoadingState = ref({
   forecast: false,
   readiness: false,
-  allocation: false,
+  optimization: false,
+  utilization: false,
+  equipmentTrends: false,
+  summary: false,
 });
 const isExporting = ref(false);
 const isTriggeringAnalytics = ref(false);
@@ -636,11 +670,23 @@ const selectedAnalyticsScenario = ref('clean_data');
 const equipmentTrendPageSize = 5;
 const topEquipmentCurrentPage = ref(1);
 const possibleBorrowedCurrentPage = ref(1);
+const selectedPreparationDecision = ref(null);
 const reportsError = ref('');
 const sectionErrors = ref({
   forecast: '',
   readiness: '',
-  allocation: '',
+  optimization: '',
+  utilization: '',
+  equipmentTrends: '',
+  summary: '',
+});
+const sectionCacheExpiresAt = ref({
+  forecast: null,
+  readiness: null,
+  optimization: null,
+  utilization: null,
+  equipmentTrends: null,
+  summary: null,
 });
 const analyticsToastMessage = ref('');
 const analyticsRunStatus = ref('');
@@ -648,13 +694,14 @@ const analyticsRunStatusType = ref('info');
 const modelArtifactMessage = ref('');
 const modelArtifactMessageType = ref('info');
 const pdfError = ref('');
-const isUtilizationRefreshing = ref(false);
 const reportSurfaceRef = ref(null);
 const forecastChartRef = ref(null);
 const riskChartRef = ref(null);
 const utilizationChartRef = ref(null);
 const chartRenderer = createReportsAnalyticsChartRenderer();
 let reportsLoadSequence = 0;
+let equipmentTrendsLoadSequence = 0;
+let isResettingEquipmentTrendPages = false;
 const forecastReport = ref(createEmptyForecastReport());
 const riskReport = ref(createEmptyRiskReport());
 const optimizationReport = ref([]);
@@ -913,31 +960,33 @@ const isForecastValidationOpen = computed(() => reportsAccordionPreferences.valu
 const isRiskValidationOpen = computed(() => reportsAccordionPreferences.value.riskValidation === true);
 const isForecastSectionLoading = computed(() => sectionLoadingState.value.forecast);
 const isRiskSectionLoading = computed(() => sectionLoadingState.value.readiness);
-const isAllocationSectionLoading = computed(() => sectionLoadingState.value.allocation);
-const isOptimizationSectionLoading = computed(() => isAllocationSectionLoading.value);
-const isEquipmentTrendsSectionLoading = computed(() => isAllocationSectionLoading.value);
-const isSummarySectionLoading = computed(() => isAllocationSectionLoading.value);
+const isOptimizationSectionLoading = computed(() => sectionLoadingState.value.optimization);
+const isUtilizationSectionLoading = computed(() => sectionLoadingState.value.utilization);
+const isEquipmentTrendsSectionLoading = computed(() => sectionLoadingState.value.equipmentTrends);
+const isSummarySectionLoading = computed(() => sectionLoadingState.value.summary);
 const forecastSectionError = computed(() => sectionErrors.value.forecast);
 const riskSectionError = computed(() => sectionErrors.value.readiness);
-const allocationSectionError = computed(() => sectionErrors.value.allocation);
+const optimizationSectionError = computed(() => sectionErrors.value.optimization);
+const utilizationSectionError = computed(() => sectionErrors.value.utilization);
+const equipmentTrendsSectionError = computed(() => sectionErrors.value.equipmentTrends);
+const summarySectionError = computed(() => sectionErrors.value.summary);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
+const equipmentTrendPagination = computed(() => utilizationReport.value.equipmentTrendPagination || DEFAULT_EQUIPMENT_TREND_PAGINATION);
+const topEquipmentPagination = computed(() => equipmentTrendPagination.value.topEquipment || DEFAULT_EQUIPMENT_TREND_PAGINATION.topEquipment);
+const preparationDecisionPagination = computed(() => (
+  equipmentTrendPagination.value.preparationDecisions || DEFAULT_EQUIPMENT_TREND_PAGINATION.preparationDecisions
+));
 const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
 const topFrequentlyUsedEquipment = computed(() => topEquipment.value);
-const topEquipmentTotalPages = computed(() => Math.max(1, Math.ceil(topFrequentlyUsedEquipment.value.length / equipmentTrendPageSize)));
-const paginatedTopFrequentlyUsedEquipment = computed(() => {
-  const startIndex = (topEquipmentCurrentPage.value - 1) * equipmentTrendPageSize;
-  return topFrequentlyUsedEquipment.value.slice(startIndex, startIndex + equipmentTrendPageSize);
-});
+const topEquipmentTotalPages = computed(() => Math.max(1, Number(topEquipmentPagination.value.totalPages || 1)));
+const paginatedTopFrequentlyUsedEquipment = computed(() => topFrequentlyUsedEquipment.value);
 const possibleBorrowedEquipment = computed(() => {
   const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
   return candidates.filter((item) => item?.name).map(buildPreparationDecisionItem);
 });
-const possibleBorrowedTotalPages = computed(() => Math.max(1, Math.ceil(possibleBorrowedEquipment.value.length / equipmentTrendPageSize)));
-const paginatedPossibleBorrowedEquipment = computed(() => {
-  const startIndex = (possibleBorrowedCurrentPage.value - 1) * equipmentTrendPageSize;
-  return possibleBorrowedEquipment.value.slice(startIndex, startIndex + equipmentTrendPageSize);
-});
+const possibleBorrowedTotalPages = computed(() => Math.max(1, Number(preparationDecisionPagination.value.totalPages || 1)));
+const paginatedPossibleBorrowedEquipment = computed(() => possibleBorrowedEquipment.value);
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
 const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'Not generated');
@@ -948,22 +997,48 @@ const summaryItems = computed(() => [
   { label: 'Completed This Period', value: formatMetricNumber(summaryReport.value?.completedThisPeriod || 0, 0) },
   { label: 'Generated At', value: reportGeneratedAt.value },
 ]);
+const summaryStatusRecord = computed(() => (
+  summaryReport.value?.generatedAt && summaryReport.value.generatedAt !== 'Not generated'
+    ? summaryReport.value
+    : null
+));
 const modelArtifactSets = computed(() => Array.isArray(modelArtifacts.value?.sets) ? modelArtifacts.value.sets : []);
 const reportsAnalyticsStatusItems = computed(() => [
   {
     key: 'forecast',
     label: 'Demand forecast',
     state: resolveReportSectionState(isForecastSectionLoading.value, forecastSectionError.value, forecastSeries.value),
+    expiresAt: sectionCacheExpiresAt.value.forecast,
   },
   {
     key: 'readiness',
     label: 'Risk readiness',
     state: resolveReportSectionState(isRiskSectionLoading.value, riskSectionError.value, riskBands.value),
+    expiresAt: sectionCacheExpiresAt.value.readiness,
   },
   {
-    key: 'allocation',
-    label: 'Allocation analytics',
-    state: resolveReportSectionState(isAllocationSectionLoading.value, allocationSectionError.value, optimizationMetrics.value),
+    key: 'optimization',
+    label: 'B-ILP optimization',
+    state: resolveReportSectionState(isOptimizationSectionLoading.value, optimizationSectionError.value, optimizationMetrics.value),
+    expiresAt: sectionCacheExpiresAt.value.optimization,
+  },
+  {
+    key: 'utilization',
+    label: 'Equipment utilization',
+    state: resolveReportSectionState(isUtilizationSectionLoading.value, utilizationSectionError.value, utilizationItems.value),
+    expiresAt: sectionCacheExpiresAt.value.utilization,
+  },
+  {
+    key: 'equipment-trends',
+    label: 'Equipment trends',
+    state: resolveReportSectionState(isEquipmentTrendsSectionLoading.value, equipmentTrendsSectionError.value, topFrequentlyUsedEquipment.value),
+    expiresAt: sectionCacheExpiresAt.value.equipmentTrends,
+  },
+  {
+    key: 'system-summary',
+    label: 'System summary',
+    state: resolveReportSectionState(isSummarySectionLoading.value, summarySectionError.value, summaryStatusRecord.value),
+    expiresAt: sectionCacheExpiresAt.value.summary,
   },
   {
     key: 'models',
@@ -985,10 +1060,11 @@ onBeforeUnmount(() => {
 });
 
 watch(selectedRangeKey, () => {
+  resetEquipmentTrendPages();
   loadReportsAnalytics();
 });
 
-watch(isUtilizationRefreshing, (isRefreshing) => {
+watch(isUtilizationSectionLoading, (isRefreshing) => {
   if (!isRefreshing) {
     renderUtilizationChartAfterUpdate();
   }
@@ -1030,7 +1106,15 @@ watch(possibleBorrowedTotalPages, (pageCount) => {
   }
 });
 
-async function loadReportsAnalytics() {
+watch([topEquipmentCurrentPage, possibleBorrowedCurrentPage], () => {
+  if (isResettingEquipmentTrendPages || isReportsLoading.value) {
+    return;
+  }
+
+  loadEquipmentTrendsPage();
+});
+
+async function loadReportsAnalytics(options = {}) {
   const loadSequence = ++reportsLoadSequence;
   isReportsLoading.value = true;
   setAllSectionLoading(true);
@@ -1039,11 +1123,15 @@ async function loadReportsAnalytics() {
   pdfError.value = '';
   reportsSourceLabel.value = `Loading FastAPI analytics for ${activeRangeLabel.value}...`;
   const requestedRange = activeRange.value;
+  const forceRefresh = options?.forceRefresh === true;
 
   const sectionRequests = [
-    loadAnalyticsSection(loadSequence, 'forecast', requestedRange),
-    loadAnalyticsSection(loadSequence, 'readiness', requestedRange),
-    loadAnalyticsSection(loadSequence, 'allocation', requestedRange),
+    loadAnalyticsSection(loadSequence, 'forecast', requestedRange, { forceRefresh }),
+    loadAnalyticsSection(loadSequence, 'readiness', requestedRange, { forceRefresh }),
+    loadAnalyticsSection(loadSequence, 'optimization', requestedRange, { forceRefresh }),
+    loadAnalyticsSection(loadSequence, 'utilization', requestedRange, { forceRefresh }),
+    loadAnalyticsSection(loadSequence, 'equipment-trends', requestedRange, { forceRefresh }),
+    loadAnalyticsSection(loadSequence, 'summary', requestedRange, { forceRefresh }),
   ];
 
   await Promise.allSettled(sectionRequests);
@@ -1054,38 +1142,78 @@ async function loadReportsAnalytics() {
 
   isReportsLoading.value = false;
   if (Object.values(sectionErrors.value).some(Boolean)) {
-    reportsSourceLabel.value = 'Some analytics sections could not refresh; keeping their last completed result.';
+    reportsSourceLabel.value = 'Some analytics sections could not refresh; showing only cached or completed data where available.';
   } else {
     reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
   }
 }
 
-async function loadAnalyticsSection(loadSequence, section, range) {
+async function loadEquipmentTrendsPage(options = {}) {
+  sectionLoadingState.value = {
+    ...sectionLoadingState.value,
+    equipmentTrends: true,
+  };
+  sectionErrors.value = {
+    ...sectionErrors.value,
+    equipmentTrends: '',
+  };
+
+  await loadAnalyticsSection(reportsLoadSequence, 'equipment-trends', activeRange.value, options);
+}
+
+async function loadAnalyticsSection(loadSequence, section, range, options = {}) {
+  const sectionKey = normalizeReportsSectionKey(section);
+  const requestOptions = resolveReportsSectionRequestOptions(sectionKey);
+  const equipmentTrendsRequestSequence = sectionKey === 'equipmentTrends'
+    ? ++equipmentTrendsLoadSequence
+    : 0;
+
+  if (options?.forceRefresh === true) {
+    clearReportsSectionCache(sectionKey, range, requestOptions);
+    sectionCacheExpiresAt.value = {
+      ...sectionCacheExpiresAt.value,
+      [sectionKey]: null,
+    };
+  } else if (!applyCachedAnalyticsSection(sectionKey, range, requestOptions)) {
+    clearAnalyticsSection(sectionKey);
+  }
+
   try {
-    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeSectionResults(section, range);
+    const analyticsResponse = await adminAnalyticsApi.getAnalyticsRangeSectionResults(section, range, requestOptions);
     if (loadSequence !== reportsLoadSequence) {
       return;
     }
+    if (sectionKey === 'equipmentTrends' && equipmentTrendsRequestSequence !== equipmentTrendsLoadSequence) {
+      return;
+    }
 
-    applyAnalyticsSection(section, analyticsResponse);
+    applyAnalyticsSection(sectionKey, analyticsResponse);
+    const expiresAt = writeReportsSectionCache(sectionKey, range, analyticsResponse, requestOptions);
+    sectionCacheExpiresAt.value = {
+      ...sectionCacheExpiresAt.value,
+      [sectionKey]: expiresAt,
+    };
   } catch (error) {
     if (loadSequence !== reportsLoadSequence) {
+      return;
+    }
+    if (sectionKey === 'equipmentTrends' && equipmentTrendsRequestSequence !== equipmentTrendsLoadSequence) {
       return;
     }
 
     sectionErrors.value = {
       ...sectionErrors.value,
-      [section]: resolveReportsError(error),
+      [sectionKey]: resolveReportsError(error),
     };
   } finally {
-    if (loadSequence === reportsLoadSequence) {
+    if (
+      loadSequence === reportsLoadSequence
+      && (sectionKey !== 'equipmentTrends' || equipmentTrendsRequestSequence === equipmentTrendsLoadSequence)
+    ) {
       sectionLoadingState.value = {
         ...sectionLoadingState.value,
-        [section]: false,
+        [sectionKey]: false,
       };
-      if (section === 'allocation') {
-        isUtilizationRefreshing.value = false;
-      }
     }
   }
 }
@@ -1101,16 +1229,77 @@ function applyAnalyticsSection(section, analyticsResponse) {
     return;
   }
 
-  if (section === 'allocation') {
+  if (['optimization', 'utilization', 'equipmentTrends', 'summary'].includes(section)) {
     const allocationAnalytics = normalizeAllocationSectionResponse(analyticsResponse);
-    optimizationReport.value = allocationAnalytics.optimizationMetrics;
+    if (section === 'optimization') {
+      optimizationReport.value = allocationAnalytics.optimizationMetrics;
+      return;
+    }
+
+    if (section === 'utilization') {
+      utilizationReport.value = {
+        ...utilizationReport.value,
+        items: allocationAnalytics.utilizationByCategory,
+        comparisonItems: allocationAnalytics.utilizationComparisonByCategory,
+      };
+      return;
+    }
+
+    if (section === 'equipmentTrends') {
+      utilizationReport.value = {
+        ...utilizationReport.value,
+        topEquipment: allocationAnalytics.topEquipment,
+        possibleBorrowedEquipment: allocationAnalytics.possibleBorrowedEquipment,
+        equipmentTrendPagination: allocationAnalytics.equipmentTrendPagination,
+      };
+      syncEquipmentTrendPageRefs(allocationAnalytics.equipmentTrendPagination);
+      return;
+    }
+
+    if (section === 'summary') {
+      summaryReport.value = allocationAnalytics.summary;
+      return;
+    }
+  }
+}
+
+function clearAnalyticsSection(section) {
+  if (section === 'forecast') {
+    forecastReport.value = createEmptyForecastReport();
+    return;
+  }
+
+  if (section === 'readiness') {
+    riskReport.value = createEmptyRiskReport();
+    return;
+  }
+
+  if (section === 'optimization') {
+    optimizationReport.value = [];
+    return;
+  }
+
+  if (section === 'utilization') {
     utilizationReport.value = {
-      items: allocationAnalytics.utilizationByCategory,
-      comparisonItems: allocationAnalytics.utilizationComparisonByCategory,
-      topEquipment: allocationAnalytics.topEquipment,
-      possibleBorrowedEquipment: allocationAnalytics.possibleBorrowedEquipment,
+      ...utilizationReport.value,
+      items: [],
+      comparisonItems: [],
     };
-    summaryReport.value = allocationAnalytics.summary;
+    return;
+  }
+
+  if (section === 'equipmentTrends') {
+    utilizationReport.value = {
+      ...utilizationReport.value,
+      topEquipment: [],
+      possibleBorrowedEquipment: [],
+      equipmentTrendPagination: createEmptyEquipmentTrendPagination(),
+    };
+    return;
+  }
+
+  if (section === 'summary') {
+    summaryReport.value = createEmptySummaryReport();
   }
 }
 
@@ -1118,9 +1307,180 @@ function setAllSectionLoading(isLoading) {
   sectionLoadingState.value = {
     forecast: isLoading,
     readiness: isLoading,
-    allocation: isLoading,
+    optimization: isLoading,
+    utilization: isLoading,
+    equipmentTrends: isLoading,
+    summary: isLoading,
   };
-  isUtilizationRefreshing.value = isLoading;
+}
+
+function normalizeReportsSectionKey(section) {
+  const normalized = String(section || '').trim().toLowerCase().replace(/-/g, '_');
+  if (normalized === 'equipment_trends') return 'equipmentTrends';
+  if (normalized === 'readiness' || normalized === 'risk' || normalized === 'random_forest') return 'readiness';
+  if (normalized === 'optimization' || normalized === 'bilp' || normalized === 'binary_linear_programming') return 'optimization';
+  if (normalized === 'utilization') return 'utilization';
+  if (normalized === 'summary') return 'summary';
+  return 'forecast';
+}
+
+function resolveReportsSectionRequestOptions(sectionKey) {
+  if (sectionKey !== 'equipmentTrends') {
+    return {};
+  }
+
+  return {
+    topEquipmentPage: topEquipmentCurrentPage.value,
+    preparationDecisionPage: possibleBorrowedCurrentPage.value,
+    equipmentTrendPageSize,
+  };
+}
+
+function syncEquipmentTrendPageRefs(pagination) {
+  const topPage = Number(pagination?.topEquipment?.page || topEquipmentCurrentPage.value);
+  const preparationPage = Number(pagination?.preparationDecisions?.page || possibleBorrowedCurrentPage.value);
+  isResettingEquipmentTrendPages = true;
+
+  if (Number.isFinite(topPage) && topPage > 0) {
+    topEquipmentCurrentPage.value = topPage;
+  }
+
+  if (Number.isFinite(preparationPage) && preparationPage > 0) {
+    possibleBorrowedCurrentPage.value = preparationPage;
+  }
+
+  nextTick(() => {
+    isResettingEquipmentTrendPages = false;
+  });
+}
+
+function resetEquipmentTrendPages() {
+  isResettingEquipmentTrendPages = true;
+  topEquipmentCurrentPage.value = 1;
+  possibleBorrowedCurrentPage.value = 1;
+  nextTick(() => {
+    isResettingEquipmentTrendPages = false;
+  });
+}
+
+function applyCachedAnalyticsSection(sectionKey, range, cacheOptions = {}) {
+  const cachedSection = readReportsSectionCache(sectionKey, range, cacheOptions);
+  if (!cachedSection) {
+    sectionCacheExpiresAt.value = {
+      ...sectionCacheExpiresAt.value,
+      [sectionKey]: null,
+    };
+    return false;
+  }
+
+  try {
+    applyAnalyticsSection(sectionKey, cachedSection.payload);
+    sectionCacheExpiresAt.value = {
+      ...sectionCacheExpiresAt.value,
+      [sectionKey]: cachedSection.expiresAt,
+    };
+    return true;
+  } catch (error) {
+    clearReportsSectionCache(sectionKey, range, cacheOptions);
+    sectionCacheExpiresAt.value = {
+      ...sectionCacheExpiresAt.value,
+      [sectionKey]: null,
+    };
+    return false;
+  }
+}
+
+function readReportsSectionCache(sectionKey, range, cacheOptions = {}) {
+  try {
+    const storedValue = sessionStorage.getItem(resolveReportsSectionCacheKey(sectionKey, range, cacheOptions));
+    if (!storedValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(storedValue);
+    const expiresAt = Number(parsedValue?.expiresAt || 0);
+    if (!parsedValue?.payload || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      clearReportsSectionCache(sectionKey, range, cacheOptions);
+      return null;
+    }
+
+    return {
+      payload: parsedValue.payload,
+      expiresAt,
+    };
+  } catch (error) {
+    clearReportsSectionCache(sectionKey, range, cacheOptions);
+    return null;
+  }
+}
+
+function writeReportsSectionCache(sectionKey, range, payload, cacheOptions = {}) {
+  const expiresAt = Date.now() + REPORTS_ANALYTICS_SECTION_CACHE_TTL_MS;
+  try {
+    sessionStorage.setItem(resolveReportsSectionCacheKey(sectionKey, range, cacheOptions), JSON.stringify({
+      expiresAt,
+      payload,
+    }));
+  } catch (error) {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+
+  return expiresAt;
+}
+
+function clearReportsSectionCache(sectionKey, range, cacheOptions = {}) {
+  try {
+    sessionStorage.removeItem(resolveReportsSectionCacheKey(sectionKey, range, cacheOptions));
+  } catch (error) {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+}
+
+function clearReportsSectionCacheForRange(range) {
+  const cachePrefix = resolveReportsSectionCachePrefix(range);
+  try {
+    Object.keys(sessionStorage)
+      .filter((cacheKey) => cacheKey.startsWith(cachePrefix))
+      .forEach((cacheKey) => sessionStorage.removeItem(cacheKey));
+  } catch (error) {
+    REPORTS_ANALYTICS_SECTION_KEYS.forEach((sectionKey) => {
+      clearReportsSectionCache(sectionKey, range);
+    });
+  }
+  clearSectionCacheExpiresAt();
+}
+
+function clearSectionCacheExpiresAt() {
+  sectionCacheExpiresAt.value = Object.fromEntries(
+    REPORTS_ANALYTICS_SECTION_KEYS.map((sectionKey) => [sectionKey, null]),
+  );
+}
+
+function resolveReportsSectionCachePrefix(range) {
+  const userKey = resolveReportsPreferenceUserKey(authStore.activeAccount);
+  return [
+    REPORTS_ANALYTICS_SECTION_CACHE_PREFIX,
+    userKey,
+    range?.startDateIso || '',
+    range?.endDateIso || '',
+    range?.days || '',
+  ].join(':');
+}
+
+function resolveReportsSectionCacheKey(sectionKey, range, cacheOptions = {}) {
+  const optionKey = sectionKey === 'equipmentTrends'
+    ? [
+      `top-${cacheOptions.topEquipmentPage || 1}`,
+      `prep-${cacheOptions.preparationDecisionPage || 1}`,
+      `size-${cacheOptions.equipmentTrendPageSize || equipmentTrendPageSize}`,
+    ].join(':')
+    : 'default';
+
+  return [
+    resolveReportsSectionCachePrefix(range),
+    sectionKey,
+    optionKey,
+  ].join(':');
 }
 
 function resolveReportSectionState(isLoading, errorMessage, records) {
@@ -1139,7 +1499,10 @@ function clearSectionErrors() {
   sectionErrors.value = {
     forecast: '',
     readiness: '',
-    allocation: '',
+    optimization: '',
+    utilization: '',
+    equipmentTrends: '',
+    summary: '',
   };
 }
 
@@ -1160,7 +1523,9 @@ async function handleTriggerAnalyticsRun() {
       selectedAnalyticsScenario.value,
       activeRange.value,
     );
-    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    const storedAnalytics = normalizeStoredAnalyticsResponse(analyticsResponse);
+    clearReportsSectionCacheForRange(activeRange.value);
+    applyStoredAnalyticsSections(storedAnalytics);
     reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
     analyticsToastMessage.value = 'Analytics run completed successfully.';
     analyticsRunStatus.value = 'Analytics run completed successfully.';
@@ -1182,7 +1547,8 @@ async function handleTriggerAnalyticsRun() {
 }
 
 function handleRefreshReports() {
-  loadReportsAnalytics();
+  clearReportsSectionCacheForRange(activeRange.value);
+  loadReportsAnalytics({ forceRefresh: true });
 }
 
 async function openModelSheet() {
@@ -1243,7 +1609,7 @@ async function handleCreateTestModelSet() {
     modelArtifactMessageType.value = 'success';
     analyticsToastMessage.value = 'Analytics test set created and activated.';
     await loadModelArtifacts();
-    await loadReportsAnalytics();
+    await loadReportsAnalytics({ forceRefresh: true });
   } catch (error) {
     modelArtifactMessage.value = resolveReportsError(error);
     modelArtifactMessageType.value = 'error';
@@ -1264,7 +1630,9 @@ async function handleRefreshDailyAnalytics() {
 
   try {
     const analyticsResponse = await adminAnalyticsApi.refreshDailyAnalytics(activeRange.value);
-    applyStoredAnalyticsSections(normalizeStoredAnalyticsResponse(analyticsResponse));
+    const storedAnalytics = normalizeStoredAnalyticsResponse(analyticsResponse);
+    clearReportsSectionCacheForRange(activeRange.value);
+    applyStoredAnalyticsSections(storedAnalytics);
     reportsSourceLabel.value = `Using refreshed FastAPI analytics for ${activeRangeLabel.value}.`;
     modelArtifactMessage.value = 'Today analytics refreshed.';
     modelArtifactMessageType.value = 'success';
@@ -1295,7 +1663,7 @@ async function handleActivateModelSet(setName) {
     modelArtifactMessageType.value = 'success';
     analyticsToastMessage.value = `Active Analytics set switched to ${setName}.`;
     await loadModelArtifacts();
-    await loadReportsAnalytics();
+    await loadReportsAnalytics({ forceRefresh: true });
   } catch (error) {
     modelArtifactMessage.value = resolveReportsError(error);
     modelArtifactMessageType.value = 'error';
@@ -1320,7 +1688,7 @@ async function handleActivateModelArtifact(setName, artifact) {
     modelArtifactMessageType.value = 'success';
     analyticsToastMessage.value = `${formatArtifactLabel(artifact)} Analytics switched to ${setName}.`;
     await loadModelArtifacts();
-    await loadReportsAnalytics();
+    await loadReportsAnalytics({ forceRefresh: true });
   } catch (error) {
     modelArtifactMessage.value = resolveReportsError(error);
     modelArtifactMessageType.value = 'error';
@@ -1347,7 +1715,7 @@ async function handleRenameModelSet(setName) {
     modelArtifactMessageType.value = 'success';
     modelSetRenameDrafts.value[setName] = '';
     await loadModelArtifacts();
-    await loadReportsAnalytics();
+    await loadReportsAnalytics({ forceRefresh: true });
   } catch (error) {
     modelArtifactMessage.value = resolveReportsError(error);
     modelArtifactMessageType.value = 'error';
@@ -1375,7 +1743,7 @@ async function handleDeleteModelSet(setName) {
     modelArtifactMessage.value = `Deleted ${setName}.`;
     modelArtifactMessageType.value = 'success';
     await loadModelArtifacts();
-    await loadReportsAnalytics();
+    await loadReportsAnalytics({ forceRefresh: true });
   } catch (error) {
     modelArtifactMessage.value = resolveReportsError(error);
     modelArtifactMessageType.value = 'error';
@@ -1393,6 +1761,7 @@ function applyStoredAnalyticsSections(storedAnalytics) {
     comparisonItems: storedAnalytics.utilizationComparisonByCategory,
     topEquipment: storedAnalytics.topEquipment,
     possibleBorrowedEquipment: storedAnalytics.possibleBorrowedEquipment,
+    equipmentTrendPagination: storedAnalytics.equipmentTrendPagination,
   };
   summaryReport.value = storedAnalytics.summary;
 }
@@ -1406,7 +1775,12 @@ function normalizeEquipmentTrendItems(items) {
     .map((item) => ({
       name: item?.name || item?.equipment || item?.equipmentName || item?.equipment_name || '',
       count: Number(item?.count ?? item?.usageCount ?? item?.usage_count ?? item?.timesUsed ?? item?.times_used ?? 0),
+      currentUsage: Number(item?.currentUsage ?? item?.current_usage ?? item?.count ?? 0),
       previousYearCount: Number(item?.previousYearCount ?? item?.previous_year_count ?? item?.historicalCount ?? item?.historical_count ?? 0),
+      predictedDemand: Number(item?.predictedDemand ?? item?.predicted_demand ?? item?.forecastDemand ?? item?.forecast_demand ?? item?.count ?? 0),
+      predictionGap: Number(item?.predictionGap ?? item?.prediction_gap ?? 0),
+      totalQuantity: Number(item?.totalQuantity ?? item?.total_quantity ?? 0),
+      score: Number(item?.score ?? item?.forecastScore ?? item?.forecast_score ?? 0),
       reason: item?.reason || item?.note || item?.why || '',
       decision: item?.decision || '',
       action: item?.action || '',
@@ -1415,25 +1789,43 @@ function normalizeEquipmentTrendItems(items) {
 }
 
 function buildPreparationDecisionItem(item) {
-  const currentCount = Number(item?.count || 0);
+  const currentCount = Number(item?.currentUsage ?? item?.count ?? 0);
   const previousYearCount = Number(item?.previousYearCount || extractSameDateUsageCount(item.reason) || 0);
-  const seasonalPressure = previousYearCount > currentCount;
-  const decision = item.decision || (seasonalPressure ? 'Prepare extra stock' : 'Keep prepared');
-  const action = item.action || (seasonalPressure
-    ? `Reserve a buffer for about ${formatMetricNumber(previousYearCount - currentCount, 0)} more expected uses.`
+  const predictedDemand = Number.isFinite(Number(item?.predictedDemand))
+    ? Number(item.predictedDemand)
+    : currentCount;
+  const predictionGap = Number.isFinite(Number(item?.predictionGap))
+    ? Number(item.predictionGap)
+    : Math.max(0, predictedDemand - currentCount);
+  const forecastPressure = predictedDemand > currentCount;
+  const decision = item.decision || (forecastPressure ? 'Prepare for forecast' : 'Keep prepared');
+  const action = item.action || (forecastPressure
+    ? `Reserve a buffer for about ${formatMetricNumber(Math.max(1, Math.round(predictionGap)), 0)} forecasted uses.`
     : 'Monitor availability and avoid lending all units early.');
+  const signal = `Predicted: ${formatMetricNumber(predictedDemand, 1)} | Current: ${formatMetricNumber(currentCount, 0)} | Past same dates: ${formatMetricNumber(previousYearCount, 0)}`;
 
   return {
     ...item,
+    currentUsage: currentCount,
     previousYearCount,
-    signal: previousYearCount > 0
-      ? `Current: ${formatMetricNumber(currentCount, 0)} | Same dates last year: ${formatMetricNumber(previousYearCount, 0)}`
-      : `Current: ${formatMetricNumber(currentCount, 0)} uses`,
+    predictedDemand,
+    predictionGap,
+    totalQuantity: Number(item?.totalQuantity || 0),
+    score: Number(item?.score || predictedDemand),
+    signal,
     decision,
     action,
-    reason: item.reason || (seasonalPressure ? 'Historical same-date demand is higher than current usage.' : 'Current demand is already active in this range.'),
-    tone: seasonalPressure ? 'urgent' : 'steady',
+    reason: item.reason || (forecastPressure ? 'Forecasted demand is higher than current usage.' : 'Current demand is already active in this range.'),
+    tone: forecastPressure ? 'urgent' : 'steady',
   };
+}
+
+function openPreparationDecisionModal(item) {
+  selectedPreparationDecision.value = item;
+}
+
+function closePreparationDecisionModal() {
+  selectedPreparationDecision.value = null;
 }
 
 function extractSameDateUsageCount(value) {

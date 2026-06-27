@@ -451,7 +451,7 @@
                     <span>Showing {{ venueListDisplayStart }} to {{ venueListDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
                     <div class="manage-facilities-venue-directory-pagination">
                       <button type="button" :disabled="venueListCurrentPage === 1" @click="venueListCurrentPage -= 1">Previous</button>
-                      <span>{{ venueListCurrentPage }}</span>
+                      <span>Page {{ venueListCurrentPage }} of {{ venueListTotalPages }}</span>
                       <button type="button" :disabled="venueListCurrentPage === venueListTotalPages" @click="venueListCurrentPage += 1">Next</button>
                       <label>
                         <select v-model.number="venueListPageSize">
@@ -483,12 +483,27 @@
 
           <div class="manage-facilities-venue-content">
             <FacilityVenueListComponent
-              :venue-floor-groups="venueFloorGroups"
+              :venue-floor-groups="paginatedVenueFloorGroups"
               :availability-filter="availabilityFilter"
               @view-venue="handleViewVenue"
               @edit-venue="handleEditVenue"
               @delete-venue="handleDeleteVenue"
             />
+            <div class="manage-facilities-venue-directory-footer">
+              <span>Showing {{ venueListDisplayStart }} to {{ venueListDisplayEnd }} of {{ venueDirectoryRecords.length }} venues</span>
+              <div class="manage-facilities-venue-directory-pagination">
+                <button type="button" :disabled="venueListCurrentPage === 1" @click="venueListCurrentPage -= 1">Previous</button>
+                <span>Page {{ venueListCurrentPage }} of {{ venueListTotalPages }}</span>
+                <button type="button" :disabled="venueListCurrentPage === venueListTotalPages" @click="venueListCurrentPage += 1">Next</button>
+                <label>
+                  <select v-model.number="venueListPageSize">
+                    <option :value="4">4 per page</option>
+                    <option :value="8">8 per page</option>
+                    <option :value="12">12 per page</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -677,7 +692,7 @@
       </div>
 
       <FacilityEquipmentGridComponent
-        :equipment-records="filteredEquipmentRecords"
+        :equipment-records="paginatedEquipmentRecords"
         :availability-filter="availabilityFilter"
         :selected-equipment-identifier="selectedEquipmentCard?.equipmentIdentifier || null"
         :view-mode="equipmentViewMode"
@@ -686,6 +701,21 @@
         @view-equipment="handleViewEquipment"
         @select-equipment="handleSelectEquipment"
       />
+      <div class="manage-facilities-venue-directory-footer manage-facilities-equipment-pagination-footer">
+        <span>Showing {{ equipmentDisplayStart }} to {{ equipmentDisplayEnd }} of {{ filteredEquipmentRecords.length }} equipment records</span>
+        <div class="manage-facilities-venue-directory-pagination">
+          <button type="button" :disabled="equipmentCurrentPage === 1" @click="equipmentCurrentPage -= 1">Previous</button>
+          <span>Page {{ equipmentCurrentPage }} of {{ equipmentTotalPages }}</span>
+          <button type="button" :disabled="equipmentCurrentPage === equipmentTotalPages" @click="equipmentCurrentPage += 1">Next</button>
+          <label>
+            <select v-model.number="equipmentPageSize">
+              <option :value="6">6 per page</option>
+              <option :value="12">12 per page</option>
+              <option :value="24">24 per page</option>
+            </select>
+          </label>
+        </div>
+      </div>
     </section>
 
     <div class="manage-facilities-page-footer">
@@ -1497,6 +1527,8 @@ const venueBuildingFilter = ref('all');
 const venueCapacityFilter = ref('all');
 const venueListCurrentPage = ref(1);
 const venueListPageSize = ref(4);
+const equipmentCurrentPage = ref(1);
+const equipmentPageSize = ref(12);
 const selectedVenueCalendarDate = ref(getTodayDateInputValue());
 const venueMonthCursor = ref(selectedVenueCalendarDate.value.slice(0, 7));
 const venueCalendarViewMode = ref('weekly');
@@ -1670,8 +1702,28 @@ const filteredEquipmentRecords = computed(() => filterAndSortEquipment(
   sortValue.value,
 ));
 
+const equipmentTotalPages = computed(() => Math.max(1, Math.ceil(filteredEquipmentRecords.value.length / equipmentPageSize.value)));
+const paginatedEquipmentRecords = computed(() => {
+  const startIndex = (equipmentCurrentPage.value - 1) * equipmentPageSize.value;
+  return filteredEquipmentRecords.value.slice(startIndex, startIndex + equipmentPageSize.value);
+});
+const equipmentDisplayStart = computed(() => (
+  filteredEquipmentRecords.value.length === 0
+    ? 0
+    : ((equipmentCurrentPage.value - 1) * equipmentPageSize.value) + 1
+));
+const equipmentDisplayEnd = computed(() => Math.min(
+  equipmentCurrentPage.value * equipmentPageSize.value,
+  filteredEquipmentRecords.value.length,
+));
+
 const venueFloorGroups = computed(() => buildVenueFloorGroups(
   filteredVenueRecords.value,
+  floorOrder,
+  selectedVenueCalendarDate.value,
+));
+const paginatedVenueFloorGroups = computed(() => buildVenueFloorGroups(
+  paginatedVenueDirectoryRecords.value,
   floorOrder,
   selectedVenueCalendarDate.value,
 ));
@@ -1784,12 +1836,11 @@ const venueMatrixRows = computed(() => venueDirectoryRecords.value.map((venueRec
 })));
 
 const venueListTotalPages = computed(() => Math.max(1, Math.ceil(venueDirectoryRecords.value.length / venueListPageSize.value)));
-const paginatedVenueListRecords = computed(() => {
+const paginatedVenueDirectoryRecords = computed(() => {
   const startIndex = (venueListCurrentPage.value - 1) * venueListPageSize.value;
-  return venueDirectoryRecords.value
-    .map((venueRecord) => buildVenueDirectoryCardRecord(venueRecord))
-    .slice(startIndex, startIndex + venueListPageSize.value);
+  return venueDirectoryRecords.value.slice(startIndex, startIndex + venueListPageSize.value);
 });
+const paginatedVenueListRecords = computed(() => paginatedVenueDirectoryRecords.value.map((venueRecord) => buildVenueDirectoryCardRecord(venueRecord)));
 const venueListDisplayStart = computed(() => (
   venueDirectoryRecords.value.length === 0
     ? 0
@@ -2487,9 +2538,23 @@ watch([showingFilterValue, venueCapacityFilter, sortValue], () => {
   venueListCurrentPage.value = 1;
 });
 
+watch([searchQuery, showingFilterValue, availabilityFilter, sortValue], () => {
+  equipmentCurrentPage.value = 1;
+});
+
+watch(searchQuery, () => {
+  venueListCurrentPage.value = 1;
+});
+
 watch([venueListPageSize, venueDirectoryRecords], () => {
   if (venueListCurrentPage.value > venueListTotalPages.value) {
     venueListCurrentPage.value = venueListTotalPages.value;
+  }
+});
+
+watch([equipmentPageSize, filteredEquipmentRecords], () => {
+  if (equipmentCurrentPage.value > equipmentTotalPages.value) {
+    equipmentCurrentPage.value = equipmentTotalPages.value;
   }
 });
 

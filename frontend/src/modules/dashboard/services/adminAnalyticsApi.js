@@ -77,27 +77,22 @@ const adminAnalyticsApi = {
     return unwrapResponse(response);
   },
 
-  async getAnalyticsRangeSectionResults(section, range) {
+  async getAnalyticsRangeSectionResults(section, range, options = {}) {
     const authToken = getStoredAuthToken();
-    try {
-      const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
-        headers: buildAuthorizationHeaders(authToken),
-        params: {
-          historyDays: range?.days || 30,
-          startDate: range?.startDateIso,
-          endDate: range?.endDateIso,
-          _: Date.now(),
-        },
-      });
+    const response = await axios.get(apiUrl(`/api/v1/analytics/range-results/${encodeURIComponent(section)}`), {
+      headers: buildAuthorizationHeaders(authToken),
+      params: {
+        historyDays: range?.days || 30,
+        startDate: range?.startDateIso,
+        endDate: range?.endDateIso,
+        ...Object.fromEntries(
+          Object.entries(options || {}).filter(([, value]) => value !== null && value !== undefined && value !== '')
+        ),
+        _: Date.now(),
+      },
+    });
 
-      return unwrapResponse(response);
-    } catch (error) {
-      if (![404, 405].includes(Number(error?.response?.status))) {
-        throw error;
-      }
-
-      return this.getAnalyticsRangeResults(range);
-    }
+    return unwrapResponse(response);
   },
 
   async triggerAnalyticsRun(scenario, range) {

@@ -9,6 +9,7 @@ export function createEmptyReport() {
     utilizationComparisonByCategory: emptyUtilization.comparisonItems,
     topEquipment: emptyUtilization.topEquipment,
     possibleBorrowedEquipment: emptyUtilization.possibleBorrowedEquipment,
+    equipmentTrendPagination: emptyUtilization.equipmentTrendPagination,
     summary: createEmptySummaryReport(),
   };
 }
@@ -57,6 +58,25 @@ export function createEmptyUtilizationReport() {
     comparisonItems: [],
     topEquipment: [],
     possibleBorrowedEquipment: [],
+    equipmentTrendPagination: createEmptyEquipmentTrendPagination(),
+  };
+}
+
+export function createEmptyEquipmentTrendPagination() {
+  return {
+    topEquipment: createEmptyPaginationState(),
+    preparationDecisions: createEmptyPaginationState(),
+  };
+}
+
+function createEmptyPaginationState() {
+  return {
+    page: 1,
+    pageSize: 5,
+    totalItems: 0,
+    availableItems: 0,
+    totalPages: 1,
+    maxPages: 5,
   };
 }
 
@@ -94,6 +114,7 @@ export function normalizeStoredAnalyticsResponse(response) {
   normalized.utilizationComparisonByCategory = allocationAnalytics.utilizationComparisonByCategory;
   normalized.topEquipment = allocationAnalytics.topEquipment;
   normalized.possibleBorrowedEquipment = allocationAnalytics.possibleBorrowedEquipment;
+  normalized.equipmentTrendPagination = allocationAnalytics.equipmentTrendPagination;
   normalized.summary = allocationAnalytics.summary;
 
   return normalized;
@@ -242,7 +263,33 @@ function normalizeAllocationPayload(allocationPayload, response) {
     possibleBorrowedEquipment: allocationPayload.possibleBorrowedEquipment
       || allocationPayload.possible_borrowed_equipment
       || [],
+    equipmentTrendPagination: normalizeEquipmentTrendPagination(
+      allocationPayload.equipmentTrendPagination || allocationPayload.equipment_trend_pagination || {},
+    ),
     summary: normalizeAllocationSummary(allocationPayload, response),
+  };
+}
+
+function normalizeEquipmentTrendPagination(paginationPayload) {
+  return {
+    topEquipment: normalizePaginationState(
+      paginationPayload.topEquipment || paginationPayload.top_equipment || {},
+    ),
+    preparationDecisions: normalizePaginationState(
+      paginationPayload.preparationDecisions || paginationPayload.preparation_decisions || {},
+    ),
+  };
+}
+
+function normalizePaginationState(paginationState) {
+  const pageSize = Number(paginationState.pageSize || paginationState.page_size || 5);
+  return {
+    page: Number(paginationState.page || 1),
+    pageSize: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 5,
+    totalItems: Number(paginationState.totalItems || paginationState.total_items || 0),
+    availableItems: Number(paginationState.availableItems || paginationState.available_items || 0),
+    totalPages: Math.max(1, Number(paginationState.totalPages || paginationState.total_pages || 1)),
+    maxPages: Math.max(1, Number(paginationState.maxPages || paginationState.max_pages || 5)),
   };
 }
 

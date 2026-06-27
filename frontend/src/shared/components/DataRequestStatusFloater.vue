@@ -1,10 +1,27 @@
 <template>
   <aside class="data-request-status-floater" aria-label="Page data status">
     <div class="data-request-status-floater__header">
-      <strong>Data Status</strong>
+      <button
+        type="button"
+        class="data-request-status-floater__toggle"
+        :aria-expanded="isExpanded"
+        @click="isExpanded = !isExpanded"
+      >
+        <strong>Data Status</strong>
+        <span>{{ isExpanded ? 'Hide' : 'Show' }}</span>
+      </button>
       <span>{{ activeSummary }}</span>
     </div>
-    <div class="data-request-status-floater__list">
+    <div v-if="!isExpanded" class="data-request-status-floater__compact" aria-label="Compact data status counts">
+      <template v-for="(countItem, index) in compactCounts" :key="countItem.state">
+        <span class="data-request-status-floater__compact-item">
+          <span class="data-request-status-floater__dot" :class="`is-${countItem.state}`"></span>
+          {{ countItem.count }}
+        </span>
+        <span v-if="index < compactCounts.length - 1" class="data-request-status-floater__compact-separator">|</span>
+      </template>
+    </div>
+    <div v-else class="data-request-status-floater__list">
       <div
         v-for="item in normalizedItems"
         :key="item.key"
@@ -22,7 +39,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   items: {
@@ -30,6 +47,8 @@ const props = defineProps({
     default: () => [],
   },
 });
+
+const isExpanded = ref(typeof window === 'undefined' ? true : window.innerWidth > 640);
 
 const stateLabels = {
   idle: 'Idle',
@@ -67,6 +86,25 @@ const activeSummary = computed(() => {
   }
 
   return 'Idle';
+});
+
+const compactCounts = computed(() => {
+  const counts = {
+    loading: 0,
+    'cached-loading': 0,
+    error: 0,
+    fresh: 0,
+    cached: 0,
+    idle: 0,
+  };
+
+  normalizedItems.value.forEach((item) => {
+    counts[item.state] = (counts[item.state] || 0) + 1;
+  });
+
+  return Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .map(([state, count]) => ({ state, count }));
 });
 
 function resolveCacheNote(item) {
@@ -116,22 +154,60 @@ function resolveCacheNote(item) {
   border-bottom: 1px solid #edf3ef;
 }
 
+.data-request-status-floater__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
 .data-request-status-floater__header strong {
   font-size: 0.8rem;
   font-weight: 900;
 }
 
-.data-request-status-floater__header span {
+.data-request-status-floater__header span,
+.data-request-status-floater__toggle span {
   color: #047857;
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
+.data-request-status-floater__toggle span {
+  color: #64746d;
+}
+
 .data-request-status-floater__list {
   display: grid;
   gap: 0.35rem;
   padding: 0.65rem;
+}
+
+.data-request-status-floater__compact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  color: #143328;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.data-request-status-floater__compact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.data-request-status-floater__compact-separator {
+  color: #a5b4ac;
+  font-weight: 800;
 }
 
 .data-request-status-floater__item {
@@ -187,5 +263,18 @@ function resolveCacheNote(item) {
 
 .data-request-status-floater__dot.is-error {
   background: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .data-request-status-floater {
+    right: 12px;
+    bottom: 12px;
+    width: min(220px, calc(100vw - 24px));
+  }
+
+  .data-request-status-floater__list {
+    max-height: 220px;
+    overflow-y: auto;
+  }
 }
 </style>

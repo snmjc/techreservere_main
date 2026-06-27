@@ -343,12 +343,19 @@ class AnalyticsController
                 return $this->createErrorResponse('ValidationError', 'startDate and endDate are required.', 422);
             }
 
-            if (!in_array($sectionName, ['forecast', 'readiness', 'allocation'], true)) {
+            if (!in_array($sectionName, ['forecast', 'readiness', 'allocation', 'optimization', 'utilization', 'equipment-trends', 'equipment_trends', 'summary'], true)) {
                 return $this->createErrorResponse('ValidationError', 'Unsupported analytics section.', 422);
             }
 
             $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
-            $payload = $this->requestRangeAnalysis($analyticsServiceUrl, $historyDays, $startDate, $endDate, $sectionName);
+            $extraPayload = [];
+            foreach (['topEquipmentPage', 'preparationDecisionPage', 'equipmentTrendPageSize'] as $paginationKey) {
+                $paginationValue = $request->query->get($paginationKey);
+                if ($paginationValue !== null && $paginationValue !== '') {
+                    $extraPayload[$paginationKey] = max(1, (int) $paginationValue);
+                }
+            }
+            $payload = $this->requestRangeAnalysis($analyticsServiceUrl, $historyDays, $startDate, $endDate, $sectionName, $extraPayload);
 
             return $this->createCachedAnalyticsResponse([
                 'analyticsServiceResponse' => $payload,
@@ -398,15 +405,16 @@ class AnalyticsController
         int $historyDays,
         string $startDate,
         string $endDate,
-        ?string $section = null
+        ?string $section = null,
+        array $extraPayload = []
     ): array {
         $path = '/analytics/analyze-range' . ($section !== null ? '/' . rawurlencode($section) : '');
         $response = $this->httpClient->request('POST', $analyticsServiceUrl . $path, [
-            'json' => [
+            'json' => array_merge([
                 'historyDays' => $historyDays,
                 'startDate' => $startDate,
                 'endDate' => $endDate,
-            ],
+            ], $extraPayload),
             'timeout' => 60,
         ]);
 

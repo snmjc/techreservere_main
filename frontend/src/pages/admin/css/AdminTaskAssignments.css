@@ -431,8 +431,16 @@ button:disabled {
 }
 
 .admin-task-assignments-pagination {
+  align-items: center;
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-task-assignments-pagination-label {
+  color: #607668;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .admin-task-assignments-pagination button {
@@ -513,6 +521,10 @@ button:disabled {
 
 .admin-task-assignments-modal--narrow {
   width: min(560px, 100%);
+}
+
+.admin-task-assignments-modal--wide {
+  width: min(820px, 100%);
 }
 
 .admin-task-assignments-modal-header {
@@ -653,6 +665,68 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.admin-task-template-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-task-template-full,
+.admin-task-template-preview,
+.admin-task-template-variables {
+  grid-column: 1 / -1;
+}
+
+.admin-task-template-preview {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 0.75rem;
+}
+
+.admin-task-template-preview div,
+.admin-task-template-variables {
+  padding: 0.85rem;
+  background: #f7faf8;
+  border: 1px solid #dbe4df;
+  border-radius: 12px;
+}
+
+.admin-task-template-preview strong,
+.admin-task-template-variables strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #193d2c;
+}
+
+.admin-task-template-preview p,
+.admin-task-template-preview small,
+.admin-task-template-preview pre {
+  margin: 0;
+  color: #334155;
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-task-template-preview p {
+  font-weight: 850;
+}
+
+.admin-task-template-variables div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-task-template-variables span {
+  padding: 0.3rem 0.55rem;
+  color: #0f5132;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .admin-task-assignments-checkbox {
   display: flex !important;
   align-items: center;
@@ -728,7 +802,8 @@ button:disabled {
 
 @media (max-width: 760px) {
   .admin-task-sms-test-mode,
-  .admin-task-sms-template-grid {
+  .admin-task-sms-template-grid,
+  .admin-task-template-preview {
     grid-template-columns: 1fr;
   }
 

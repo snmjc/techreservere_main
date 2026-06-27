@@ -77,6 +77,9 @@ class AnalyticsRunner:
         history_days: int,
         start_date: str,
         end_date: str,
+        top_equipment_page: int | None = None,
+        preparation_decision_page: int | None = None,
+        equipment_trend_page_size: int | None = None,
     ) -> dict[str, Any]:
         result_type = self._normalize_section_name(section)
         config = self._build_run_config(
@@ -85,6 +88,12 @@ class AnalyticsRunner:
             start_date=start_date,
             end_date=end_date,
         )
+        if top_equipment_page is not None or preparation_decision_page is not None or equipment_trend_page_size is not None:
+            config["equipmentTrends"] = {
+                "topEquipmentPage": max(1, int(top_equipment_page or 1)),
+                "preparationDecisionPage": max(1, int(preparation_decision_page or 1)),
+                "pageSize": max(1, int(equipment_trend_page_size or 5)),
+            }
         cache_key = self._range_section_cache_key(result_type, config)
         cached_payload = self._get_cached_range_section(cache_key)
         if cached_payload is not None:
@@ -266,6 +275,7 @@ class AnalyticsRunner:
                 str(config.get("forecast", {}).get("historyDays", "")),
                 str(config.get("allocation", {}).get("historyDays", "")),
                 json_dumps(config.get(result_type, {})),
+                json_dumps(config.get("equipmentTrends", {})),
                 json_dumps(self.artifact_store.active_artifacts()),
             ]
         )

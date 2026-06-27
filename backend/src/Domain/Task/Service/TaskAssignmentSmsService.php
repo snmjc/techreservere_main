@@ -17,7 +17,8 @@ class TaskAssignmentSmsService
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
-        private readonly SmsMessageLogService $smsMessageLogService
+        private readonly SmsMessageLogService $smsMessageLogService,
+        private readonly TaskAssignmentTemplateService $taskAssignmentTemplateService
     ) {
     }
 
@@ -158,57 +159,11 @@ class TaskAssignmentSmsService
 
     private function buildMessageBody(array $task): string
     {
-        $staffName = trim((string)($task['assignedStaffName'] ?? ''));
-        $greeting = $staffName !== '' ? sprintf('hi! %s.', $staffName) : 'hi!';
-        $taskLabel = trim((string)($task['taskTitle'] ?? '')) ?: trim((string)($task['taskType'] ?? 'Assigned task')) ?: 'Assigned task';
-        $reservationCode = trim((string)($task['reservationCode'] ?? ''));
-        $reservationLabel = $reservationCode !== ''
-            ? $reservationCode
-            : (trim((string)($task['reservationLabel'] ?? '')) ?: 'Reservation');
-        $description = trim((string)($task['taskDescription'] ?? ''));
-        $description = $description !== '' ? $description : 'No description provided.';
-        $dueDateTime = $this->formatDueDateTime($task['dueDateTimestamp'] ?? null, $task['eventDateTime'] ?? null, $task['endDateTime'] ?? null);
-        $dueDateTime = $dueDateTime !== '' ? $dueDateTime : 'the scheduled date';
-
-        return sprintf(
-            "%s\n\nYou have task on %s, %s: %s.\n%s\n\nIf you can't please do contact the Facilities Office for changing of staff",
-            $greeting,
-            $dueDateTime,
-            $taskLabel,
-            $reservationLabel,
-            $description
+        $messageBody = $this->taskAssignmentTemplateService->renderSmsMessage(
+            $this->taskAssignmentTemplateService->buildTaskContext($task)
         );
-    }
 
-    private function formatDueDateTime(?string $dueDateTimestamp, ?string $startTimestamp, ?string $endTimestamp): string
-    {
-        $preferredTimestamp = $dueDateTimestamp ?: $startTimestamp;
-        if ($preferredTimestamp === null || $preferredTimestamp === '') {
-            return '';
-        }
-
-        try {
-            $startDateTime = new \DateTimeImmutable($preferredTimestamp, new \DateTimeZone('Asia/Manila'));
-        } catch (\Throwable) {
-            return '';
-        }
-
-        $formattedStart = $startDateTime->setTimezone(new \DateTimeZone('Asia/Manila'))->format('M j, Y g:i A');
-
-        if ($endTimestamp === null || $endTimestamp === '') {
-            return $formattedStart;
-        }
-
-        try {
-            $endDateTime = new \DateTimeImmutable($endTimestamp, new \DateTimeZone('Asia/Manila'));
-        } catch (\Throwable) {
-            return $formattedStart;
-        }
-
-        $endDateTime = $endDateTime->setTimezone(new \DateTimeZone('Asia/Manila'));
-        $formattedEnd = $endDateTime->format('M j, Y g:i A');
-
-        return $formattedStart === $formattedEnd ? $formattedStart : $formattedStart . ' - ' . $formattedEnd;
+        return $messageBody !== '' ? $messageBody : self::DEFAULT_TEST_MESSAGE;
     }
 
     private function normalizePhoneNumber(?string $phoneNumber): ?string

@@ -21,6 +21,9 @@ class RunRequest(BaseModel):
     historyDays: int | None = None
     startDate: str | None = None
     endDate: str | None = None
+    topEquipmentPage: int | None = None
+    preparationDecisionPage: int | None = None
+    equipmentTrendPageSize: int | None = None
 
 
 class TrainModelsRequest(BaseModel):
@@ -202,6 +205,9 @@ def analyze_range_section(section: str, request: RunRequest) -> dict:
                 history_days=request.historyDays or 30,
                 start_date=request.startDate,
                 end_date=request.endDate,
+                top_equipment_page=request.topEquipmentPage,
+                preparation_decision_page=request.preparationDecisionPage,
+                equipment_trend_page_size=request.equipmentTrendPageSize,
             )
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

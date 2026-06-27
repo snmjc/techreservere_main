@@ -765,6 +765,12 @@
   font-weight: 700;
 }
 
+.reports-equipment-table__action-heading,
+.reports-equipment-table__action-cell {
+  width: 54px;
+  text-align: right;
+}
+
 .reports-equipment-table td small {
   display: block;
   margin-top: 0.22rem;
@@ -801,6 +807,35 @@
   color: #94a3b8;
   cursor: not-allowed;
   background: #f8fafc;
+}
+
+.reports-row-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #0f5132;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.reports-row-icon-button:hover {
+  color: #ffffff;
+  background: #0d9a56;
+  border-color: #0d9a56;
+}
+
+.reports-row-icon-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .reports-decision-pill {
