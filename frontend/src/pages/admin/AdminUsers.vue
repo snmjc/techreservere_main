@@ -153,6 +153,7 @@
           </div>
         </div>
       </div>
+      <DataRequestStatusFloater :items="adminUsersStatusItems" />
     </div>
   </AdminSidebarLayoutComponent>
 </template>
@@ -161,6 +162,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
 
@@ -168,6 +170,7 @@ const authStore = useAuthenticationStore();
 
 const activeTab = ref('pending');
 const loading = ref(false);
+const usersDataState = ref('idle');
 const isProcessing = ref(false);
 const pendingUsers = ref([]);
 const approvedUsers = ref([]);
@@ -208,6 +211,13 @@ const navigationItems = computed(() => {
 onMounted(() => {
   fetchPendingUsers();
 });
+const adminUsersStatusItems = computed(() => [
+  {
+    key: 'pending-users',
+    label: 'Pending Users',
+    state: usersDataState.value,
+  },
+]);
 
 watch(pendingTotalPages, (pageCount) => {
   if (pendingCurrentPage.value > pageCount) pendingCurrentPage.value = pageCount;
@@ -228,6 +238,7 @@ function paginateList(records, currentPage, pageSize) {
 
 async function fetchPendingUsers() {
   loading.value = true;
+  usersDataState.value = pendingUsers.value.length > 0 ? 'cached-loading' : 'loading';
   try {
     const token = authStore.authToken;
     const response = await fetch(apiUrl('/api/v1/users/pending'), {
@@ -239,11 +250,14 @@ async function fetchPendingUsers() {
     if (response.ok) {
       const data = await response.json();
       pendingUsers.value = data.users || [];
+      usersDataState.value = 'fresh';
     } else {
       console.error('Failed to fetch pending users');
+      usersDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
     }
   } catch (error) {
     console.error('Error fetching pending users:', error);
+    usersDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
   } finally {
     loading.value = false;
   }

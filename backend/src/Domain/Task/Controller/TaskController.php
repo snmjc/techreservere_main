@@ -24,7 +24,19 @@ class TaskController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function listTasks(): JsonResponse
     {
-        return $this->serviceResultResponse($this->taskWorkflowService->listTasks());
+        try {
+            return $this->serviceResultResponse($this->taskWorkflowService->listTasks());
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Task List - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse('TaskListFailed', 'Unable to load task assignments at this time.', 500);
+        }
     }
 
     #[Route('', name: 'task_create', methods: ['POST'])]

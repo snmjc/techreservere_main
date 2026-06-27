@@ -86,6 +86,7 @@
           <button type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Next</button>
         </div>
       </div>
+      <DataRequestStatusFloater :items="notificationStatusItems" />
     </div>
   </AdminSidebarLayoutComponent>
 </template>
@@ -93,6 +94,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import NotificationIconReservation from '@/components/icons/NotificationIconReservation.vue';
 import NotificationIconEquipment from '@/components/icons/NotificationIconEquipment.vue';
 import NotificationIconSystem from '@/components/icons/NotificationIconSystem.vue';
@@ -115,10 +117,29 @@ const notificationStore = useNotificationStore();
 
 const notifications = computed(() => notificationStore.notifications || []);
 const unreadCount = computed(() => notificationStore.unreadCount || 0);
+const notificationStatusItems = computed(() => [
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    state: resolveNotificationState(),
+  },
+]);
 
 onMounted(() => {
   notificationStore.fetchNotifications(true).catch(() => {});
 });
+
+function resolveNotificationState() {
+  if (notificationStore.isLoading && notifications.value.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (notificationStore.isLoading) {
+    return 'loading';
+  }
+
+  return notifications.value.length > 0 ? 'fresh' : 'idle';
+}
 
 const filteredNotifications = computed(() => {
   let filtered = [...notifications.value];

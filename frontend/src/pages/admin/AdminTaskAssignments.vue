@@ -95,7 +95,7 @@
 
         <p v-if="loadError" class="admin-task-assignments-error">{{ loadError }}</p>
 
-        <div v-if="isLoading" class="admin-task-assignments-state">
+        <div v-if="isLoading && tasks.length === 0" class="admin-task-assignments-state">
           Loading task assignments...
         </div>
 
@@ -462,17 +462,22 @@
         </footer>
       </section>
     </div>
+
+    <DataRequestStatusFloater :items="taskAssignmentStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { apiUrl } from '@/shared/utils/apiBase.js';
-import { buildAuthorizationHeaders } from '@/shared/utils/authToken.js';
+import { buildAuthorizationHeaders, getStoredAuthToken } from '@/shared/utils/authToken.js';
+
+const TASK_ASSIGNMENTS_CACHE_KEY = 'techreserve_task_assignments_cache';
 
 const authStore = useAuthenticationStore();
 const isLoading = ref(false);
@@ -486,9 +491,12 @@ const taskSubmissionFeedback = reactive({
   message: '',
   tone: 'success',
 });
-const tasks = ref([]);
+const tasks = ref(readTaskAssignmentsCache());
 const reservationOptions = ref([]);
 const staffOptions = ref([]);
+const tasksDataState = ref(tasks.value.length > 0 ? 'cached' : 'idle');
+const reservationsDataState = ref('idle');
+const accountsDataState = ref('idle');
 const showTaskModal = ref(false);
 const showSmsTestModal = ref(false);
 const taskModalMode = ref('create');
@@ -556,6 +564,11 @@ const currentAdminEmail = computed(() => {
 });
 
 const canVerifySubmit = computed(() => deleteForm.confirmedAdminEmail.trim() !== '' && deleteForm.confirmedAdminPassword.trim() !== '');
+const taskAssignmentStatusItems = computed(() => [
+  { key: 'tasks', label: 'Tasks', state: tasksDataState.value },
+  { key: 'reservations', label: 'Reservation Options', state: reservationsDataState.value },
+  { key: 'accounts', label: 'Staff Options', state: accountsDataState.value },
+]);
 
 const summaryCards = computed(() => {
   const totalAssignments = tasks.value.length;
@@ -675,6 +688,9 @@ onMounted(() => {
 async function loadPageData() {
   isLoading.value = true;
   loadError.value = '';
+  tasksDataState.value = tasks.value.length > 0 ? 'cached-loading' : 'loading';
+  reservationsDataState.value = reservationOptions.value.length > 0 ? 'cached-loading' : 'loading';
+  accountsDataState.value = staffOptions.value.length > 0 ? 'cached-loading' : 'loading';
   const [tasksResult, reservationsResult, accountsResult] = await Promise.all([
     requestJson('/api/v1/tasks'),
     requestJson('/api/v1/reservations'),
@@ -683,17 +699,26 @@ async function loadPageData() {
 
   if (!tasksResult.success) {
     loadError.value = tasksResult.error || 'Unable to load task assignments.';
-    tasks.value = [];
+    tasksDataState.value = tasks.value.length > 0 ? 'cached' : 'error';
   } else {
     tasks.value = tasksResult.data.tasks || [];
+    writeTaskAssignmentsCache(tasks.value);
+    tasksDataState.value = 'fresh';
   }
 
-  reservationOptions.value = reservationsResult.success
-    ? normalizeReservations(reservationsResult.data.reservations || [])
-    : [];
-  staffOptions.value = accountsResult.success
-    ? normalizeStaff(accountsResult.data.accounts || [])
-    : [];
+  if (reservationsResult.success) {
+    reservationOptions.value = normalizeReservations(reservationsResult.data.reservations || []);
+    reservationsDataState.value = 'fresh';
+  } else {
+    reservationsDataState.value = reservationOptions.value.length > 0 ? 'cached' : 'error';
+  }
+
+  if (accountsResult.success) {
+    staffOptions.value = normalizeStaff(accountsResult.data.accounts || []);
+    accountsDataState.value = 'fresh';
+  } else {
+    accountsDataState.value = staffOptions.value.length > 0 ? 'cached' : 'error';
+  }
 
   if (!loadError.value && (!reservationsResult.success || !accountsResult.success)) {
     showTaskToast(reservationsResult.error || accountsResult.error || 'Some task form options could not be loaded.');
@@ -951,10 +976,37 @@ async function requestJson(path, options = {}) {
 }
 
 function buildHeaders(includeJson = false) {
+  const authToken = authStore.authToken || getStoredAuthToken();
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
-    ...buildAuthorizationHeaders(authStore.authToken),
+    ...buildAuthorizationHeaders(authToken),
   };
+}
+
+function readTaskAssignmentsCache() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(TASK_ASSIGNMENTS_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTaskAssignmentsCache(records) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(TASK_ASSIGNMENTS_CACHE_KEY, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Cache writes are best-effort only.
+  }
 }
 
 function normalizeReservations(reservations) {

@@ -181,6 +181,8 @@
         </section>
       </div>
     </section>
+
+    <DataRequestStatusFloater :items="dashboardStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -188,6 +190,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Dashboard.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -201,12 +204,15 @@ import {
   resolveAdminAnalyticsDateRange,
 } from './adminAnalyticsHelpers.js';
 
+const DASHBOARD_OVERVIEW_CACHE_KEY = 'techreserve_dashboard_overview_cache';
+
 const router = useRouter();
 
 const selectedRangeKey = ref('14d');
 const isDashboardLoading = ref(true);
 const dashboardError = ref('');
-const dashboardOverview = ref(createEmptyOverview());
+const dashboardOverview = ref(readDashboardOverviewCache());
+const dashboardDataState = ref(hasDashboardOverviewData(dashboardOverview.value) ? 'cached' : 'idle');
 const resourceChartRef = ref(null);
 const chartRenderer = createDashboardChartRenderer();
 
@@ -304,6 +310,13 @@ const groupedStats = computed(() => {
 const facilityStatus = computed(() => dashboardOverview.value.facilityStatus || []);
 const readinessAlerts = computed(() => dashboardOverview.value.readinessAlerts || []);
 const systemActivityOverview = computed(() => dashboardOverview.value.systemActivity || []);
+const dashboardStatusItems = computed(() => [
+  {
+    key: 'dashboard-overview',
+    label: 'Dashboard Overview',
+    state: dashboardDataState.value,
+  },
+]);
 
 onMounted(() => {
   loadDashboardOverview();
@@ -328,13 +341,24 @@ watch(
 async function loadDashboardOverview() {
   isDashboardLoading.value = true;
   dashboardError.value = '';
+  dashboardDataState.value = hasDashboardOverviewData(dashboardOverview.value) ? 'cached-loading' : 'loading';
 
   try {
-    dashboardOverview.value = createEmptyOverview();
+    if (!hasDashboardOverviewData(dashboardOverview.value)) {
+      dashboardOverview.value = createEmptyOverview();
+    }
     dashboardOverview.value = await adminAnalyticsApi.getDashboardOverview(activeRange.value);
+    writeDashboardOverviewCache(dashboardOverview.value);
+    dashboardDataState.value = 'fresh';
+    if (dashboardOverview.value?.warning) {
+      dashboardError.value = dashboardOverview.value.warning;
+    }
   } catch (error) {
-    dashboardOverview.value = createEmptyOverview();
+    if (!hasDashboardOverviewData(dashboardOverview.value)) {
+      dashboardOverview.value = createEmptyOverview();
+    }
     dashboardError.value = resolveDashboardError(error);
+    dashboardDataState.value = hasDashboardOverviewData(dashboardOverview.value) ? 'cached' : 'error';
   } finally {
     isDashboardLoading.value = false;
     await renderResourceChartAfterUpdate();
@@ -385,6 +409,39 @@ function createEmptyOverview() {
     readinessAlerts: [],
     systemActivity: [],
   };
+}
+
+function readDashboardOverviewCache() {
+  if (typeof window === 'undefined') {
+    return createEmptyOverview();
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(DASHBOARD_OVERVIEW_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : null;
+    return parsedValue && typeof parsedValue === 'object' ? parsedValue : createEmptyOverview();
+  } catch {
+    return createEmptyOverview();
+  }
+}
+
+function writeDashboardOverviewCache(overview) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(DASHBOARD_OVERVIEW_CACHE_KEY, JSON.stringify(overview || createEmptyOverview()));
+  } catch {
+    // Cache writes are best-effort only.
+  }
+}
+
+function hasDashboardOverviewData(overview) {
+  const summary = overview?.summary || {};
+  return Object.values(summary).some((value) => Number(value || 0) > 0)
+    || (Array.isArray(overview?.resourceUtilization) && overview.resourceUtilization.length > 0)
+    || (Array.isArray(overview?.facilityStatus) && overview.facilityStatus.length > 0);
 }
 
 function metricValue(value) {

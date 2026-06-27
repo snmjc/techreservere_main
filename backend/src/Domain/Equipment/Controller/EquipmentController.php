@@ -32,17 +32,29 @@ class EquipmentController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function listAllEquipment(Request $request): JsonResponse
     {
-        $resolvedRole = $request->attributes->get('resolvedRole', '');
-        $equipmentDTOs = $resolvedRole === RoleConstants::ROLE_BORROWER
-            ? $this->equipmentManagementService->getAvailableEquipment()
-            : $this->equipmentManagementService->getAllEquipment();
+        try {
+            $resolvedRole = $request->attributes->get('resolvedRole', '');
+            $equipmentDTOs = $resolvedRole === RoleConstants::ROLE_BORROWER
+                ? $this->equipmentManagementService->getAvailableEquipment()
+                : $this->equipmentManagementService->getAllEquipment();
 
-        return $this->createSuccessResponse([
-            'equipment' => array_map(
-                static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
-                $equipmentDTOs
-            ),
-        ]);
+            return $this->createSuccessResponse([
+                'equipment' => array_map(
+                    static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
+                    $equipmentDTOs
+                ),
+            ]);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Equipment List - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse('EquipmentListFailed', 'Unable to load equipment records at this time.', 500);
+        }
     }
 
     #[Route('/{equipmentIdentifier}', name: 'equipment_get_by_id', methods: ['GET'])]

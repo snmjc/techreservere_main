@@ -264,6 +264,7 @@
           </footer>
         </section>
       </div>
+      <DataRequestStatusFloater :items="equipmentStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -271,6 +272,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -279,11 +281,13 @@ import {
   validateEquipmentForm,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
 
+const EQUIPMENT_PAGE_CACHE_KEY = 'techreserve_equipment_page_cache';
 const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
 
-const equipmentList = ref([]);
+const equipmentList = ref(readEquipmentCache());
 const isLoading = ref(false);
 const pageError = ref('');
+const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const sortOrder = ref('asc');
@@ -301,6 +305,13 @@ const isDeleting = ref(false);
 const deleteError = ref('');
 
 const form = ref(createEmptyForm());
+const equipmentStatusItems = computed(() => [
+  {
+    key: 'equipment',
+    label: 'Equipment Records',
+    state: equipmentDataState.value,
+  },
+]);
 
 const filteredEquipment = computed(() => {
   const normalizedQuery = searchQuery.value.toLowerCase();
@@ -367,13 +378,38 @@ async function fetchEquipment() {
   try {
     isLoading.value = true;
     pageError.value = '';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached-loading' : 'loading';
     const response = await equipmentApi.listEquipment();
     equipmentList.value = response?.data?.equipment || [];
+    writeEquipmentCache(equipmentList.value);
+    equipmentDataState.value = 'fresh';
   } catch (error) {
-    equipmentList.value = [];
     pageError.value = error?.response?.data?.errorMessage || 'Failed to load equipment records.';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached' : 'error';
   } finally {
     isLoading.value = false;
+  }
+}
+
+function readEquipmentCache() {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(EQUIPMENT_PAGE_CACHE_KEY);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeEquipmentCache(records) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(EQUIPMENT_PAGE_CACHE_KEY, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Best-effort cache only.
   }
 }
 

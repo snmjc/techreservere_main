@@ -104,6 +104,7 @@
     <div class="logs-page-footer">
       &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
     </div>
+    <DataRequestStatusFloater :items="activeReservationsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -111,6 +112,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -154,6 +156,13 @@ const activeLogs = computed(() =>
     sortDate: getDateSortValue(record.requestScheduleStart || record.activityTime),
   }))
 );
+const activeReservationsStatusItems = computed(() => [
+  {
+    key: 'active',
+    label: 'Active reservations',
+    state: resolveLocalListState(activeLogs.value),
+  },
+]);
 
 const filteredLogs = computed(() => {
   let logs = [...activeLogs.value];
@@ -253,5 +262,11 @@ function getDateSortValue(value) {
 
 function navigateBackToMyReservations() {
   router.push({ name: ROUTE_NAMES.borrowerMyReservations });
+}
+
+function resolveLocalListState(records) {
+  if (loading.value && records.length > 0) return 'cached-loading';
+  if (loading.value) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

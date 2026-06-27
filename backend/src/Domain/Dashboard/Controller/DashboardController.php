@@ -40,10 +40,25 @@ class DashboardController extends AbstractController
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER])]
     public function getDashboardOverview(Request $request): JsonResponse
     {
-        [$startDate, $endDate] = $this->resolveDateRange($request, 14);
-        $overviewData = $this->dashboardAggregationService->getAdminDashboardOverview($startDate, $endDate);
+        try {
+            [$startDate, $endDate] = $this->resolveDateRange($request, 14);
+            $overviewData = $this->dashboardAggregationService->getAdminDashboardOverview($startDate, $endDate);
 
-        return $this->createSuccessResponse($overviewData);
+            return $this->createSuccessResponse($overviewData);
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Dashboard Overview - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createSuccessResponse([
+                ...$this->createEmptyOverview(),
+                'warning' => 'Dashboard overview is temporarily using empty fallback data because aggregation failed.',
+            ]);
+        }
     }
 
     // ===== AI GENERATED: getBorrowerDashboardSummary =====
@@ -87,5 +102,30 @@ class DashboardController extends AbstractController
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function createEmptyOverview(): array
+    {
+        return [
+            'summary' => [
+                'totalAccounts' => 0,
+                'pendingReservations' => 0,
+                'approvedReservations' => 0,
+                'activeEquipmentCount' => 0,
+                'maintenanceEquipmentCount' => 0,
+                'activeFacilityCount' => 0,
+                'overdueEquipmentCount' => 0,
+            ],
+            'resourceUtilization' => [],
+            'groupedStats' => [
+                'equipmentUtilizationRate' => 0,
+                'activeUsers' => 0,
+                'facilityUtilizationRate' => 0,
+                'averageLeadTimeHours' => 0,
+            ],
+            'facilityStatus' => [],
+            'readinessAlerts' => [],
+            'systemActivity' => [],
+        ];
     }
 }

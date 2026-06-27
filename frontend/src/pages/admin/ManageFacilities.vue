@@ -136,8 +136,8 @@
       </div>
 
       <div v-if="activeFacilityTab === 'venue'">
-        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
-        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <div v-if="loading && venuesList.length === 0" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError && venuesList.length === 0" class="manage-facilities-modal-error">{{ venueError }}</p>
         <section v-else class="manage-facilities-venue-shell">
           <div class="manage-facilities-venue-surface">
             <div class="manage-facilities-venue-surface-toolbar">
@@ -470,8 +470,8 @@
       </div>
 
       <div v-else-if="activeFacilityTab === 'all'">
-        <div v-if="loading" class="manage-facilities-loading">Loading venue operations...</div>
-        <p v-else-if="venueError" class="manage-facilities-modal-error">{{ venueError }}</p>
+        <div v-if="loading && venuesList.length === 0" class="manage-facilities-loading">Loading venue operations...</div>
+        <p v-else-if="venueError && venuesList.length === 0" class="manage-facilities-modal-error">{{ venueError }}</p>
         <div v-else class="manage-facilities-venue-layout">
           <aside class="manage-facilities-venue-sidebar">
             <VenueAvailabilityCalendarComponent
@@ -650,8 +650,8 @@
       </div>
     </section>
 
-    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading" class="manage-facilities-loading">Loading equipment...</div>
-    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError" class="manage-facilities-modal-error">{{ equipmentError }}</p>
+    <div v-if="activeFacilityTab === 'equipment' && equipmentLoading && equipmentList.length === 0" class="manage-facilities-loading">Loading equipment...</div>
+    <p v-else-if="activeFacilityTab === 'equipment' && equipmentError && equipmentList.length === 0" class="manage-facilities-modal-error">{{ equipmentError }}</p>
     <section v-else-if="activeFacilityTab === 'equipment'" class="manage-facilities-equipment-section">
       <div class="manage-facilities-dispatch-summary">
         <div class="manage-facilities-dispatch-summary-card">
@@ -1417,6 +1417,8 @@
         </div>
       </section>
     </div>
+
+    <DataRequestStatusFloater :items="facilityStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -1425,6 +1427,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import * as XLSX from 'xlsx';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import '@/pages/borrower/css/Logs.css';
 import './css/ManageFacilities.css';
@@ -1456,6 +1459,9 @@ import {
   resolveEquipmentPhotoStyle,
 } from '@/modules/facility/utils/equipmentPresentation.js';
 
+const MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY = 'techreserve_manage_facilities_equipment_cache';
+const MANAGE_FACILITIES_VENUE_CACHE_KEY = 'techreserve_manage_facilities_venue_cache';
+
 const authStore = useAuthenticationStore();
 const route = useRoute();
 const router = useRouter();
@@ -1476,13 +1482,16 @@ const viewVenueRecord = ref(null);
 const viewVenueLoading = ref(false);
 const viewVenueError = ref('');
 
-const venuesList = ref([]);
+const venuesList = ref(readSessionCache(MANAGE_FACILITIES_VENUE_CACHE_KEY));
 const reservedVenueMap = ref({});
-const equipmentList = ref([]);
+const equipmentList = ref(readSessionCache(MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY));
 const loading = ref(false);
 const venueError = ref('');
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
+const venueDataState = ref(venuesList.value.length > 0 ? 'cached' : 'idle');
+const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
+const classScheduleDataState = ref('idle');
 const equipmentViewMode = ref('card');
 const venueBuildingFilter = ref('all');
 const venueCapacityFilter = ref('all');
@@ -1506,6 +1515,23 @@ const classScheduleLoading = ref(false);
 const classScheduleError = ref('');
 const selectedClassroomDate = ref(getTodayDateInputValue());
 const classroomMonthCursor = ref(selectedClassroomDate.value.slice(0, 7));
+const facilityStatusItems = computed(() => [
+  {
+    key: 'venues',
+    label: 'Venues',
+    state: venueDataState.value,
+  },
+  {
+    key: 'equipment',
+    label: 'Equipment',
+    state: equipmentDataState.value,
+  },
+  {
+    key: 'class-schedules',
+    label: 'Class Schedules',
+    state: classScheduleDataState.value,
+  },
+]);
 const classroomBoardView = ref('Weekly View');
 const showClassScheduleActionMenu = ref(false);
 const showClassScheduleModal = ref(false);
@@ -2165,6 +2191,7 @@ async function fetchVenues() {
   try {
     loading.value = true;
     venueError.value = '';
+    venueDataState.value = venuesList.value.length > 0 ? 'cached-loading' : 'loading';
     const response = await listVenuesWithFallback({
       selectedDate: selectedVenueCalendarDate.value,
     });
@@ -2172,8 +2199,10 @@ async function fetchVenues() {
     venuesList.value = Array.isArray(venuePayload)
       ? venuePayload.map(normalizeVenueRecord).filter(Boolean).filter((venueRecord) => !isVenueFloorPlaceholderRecord(venueRecord))
       : [];
+    writeSessionCache(MANAGE_FACILITIES_VENUE_CACHE_KEY, venuesList.value);
+    venueDataState.value = 'fresh';
   } catch (error) {
-    venuesList.value = [];
+    venueDataState.value = venuesList.value.length > 0 ? 'cached' : 'error';
     venueError.value = error?.response?.data?.errorMessage || 'Failed to load venue records.';
   } finally {
     loading.value = false;
@@ -2196,10 +2225,13 @@ async function fetchEquipment() {
   try {
     equipmentLoading.value = true;
     equipmentError.value = '';
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached-loading' : 'loading';
     const response = await equipmentApi.listEquipment();
     equipmentList.value = response?.data?.equipment || [];
+    writeSessionCache(MANAGE_FACILITIES_EQUIPMENT_CACHE_KEY, equipmentList.value);
+    equipmentDataState.value = 'fresh';
   } catch (error) {
-    equipmentList.value = [];
+    equipmentDataState.value = equipmentList.value.length > 0 ? 'cached' : 'error';
     equipmentError.value = error?.response?.data?.errorMessage || 'Failed to load equipment.';
   } finally {
     equipmentLoading.value = false;
@@ -2247,18 +2279,47 @@ async function fetchClassSchedules() {
   try {
     classScheduleLoading.value = true;
     classScheduleError.value = '';
+    classScheduleDataState.value = classScheduleList.value.length > 0 ? 'cached-loading' : 'loading';
     const { dateFrom, dateTo } = getScheduleQueryWindow(selectedClassroomDate.value);
     const response = await classScheduleApi.listScheduleBlocks({ dateFrom, dateTo });
     const schedulePayload = response?.data?.scheduleBlocks || response?.scheduleBlocks || [];
     classScheduleList.value = Array.isArray(schedulePayload)
       ? schedulePayload.map((scheduleRecord) => normalizeClassScheduleRecord(scheduleRecord))
       : [];
+    classScheduleDataState.value = 'fresh';
     syncSelectedClassSchedule();
   } catch (error) {
     classScheduleList.value = [];
     classScheduleError.value = error?.response?.data?.errorMessage || 'Failed to load classroom schedules.';
+    classScheduleDataState.value = 'error';
   } finally {
     classScheduleLoading.value = false;
+  }
+}
+
+function readSessionCache(cacheKey) {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const cachedValue = window.sessionStorage.getItem(cacheKey);
+    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSessionCache(cacheKey, records) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(cacheKey, JSON.stringify(Array.isArray(records) ? records : []));
+  } catch {
+    // Cache writes are best-effort only.
   }
 }
 

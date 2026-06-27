@@ -268,6 +268,7 @@
       <div class="admin-past-records-page-footer">
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
+      <DataRequestStatusFloater :items="pastRecordsStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -275,6 +276,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/PastRecords.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -396,6 +398,13 @@ const resolvedPageSize = computed(() => (
     ? Math.max(filteredRecordList.value.length, 1)
     : Number(showingFilterValue.value)
 ));
+const pastRecordsStatusItems = computed(() => [
+  {
+    key: 'past-reservations',
+    label: 'Past Reservations',
+    state: resolveReservationListState(pastRecordsList.value),
+  },
+]);
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRecordList.value.length / resolvedPageSize.value)));
 const paginatedRecordList = computed(() => {
   const startIndex = (currentPage.value - 1) * resolvedPageSize.value;
@@ -564,5 +573,17 @@ function buildInitials(fullName) {
   }
 
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (requestStore.isLoadingReservations) {
+    return 'loading';
+  }
+
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

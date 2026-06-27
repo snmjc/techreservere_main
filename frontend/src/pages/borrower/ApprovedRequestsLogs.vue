@@ -114,6 +114,7 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
     </section>
+    <DataRequestStatusFloater :items="approvedLogsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -121,6 +122,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -156,6 +158,13 @@ const approvedLogs = computed(() =>
     status: normalizeApprovedStatus(record.requestStatus),
   }))
 );
+const approvedLogsStatusItems = computed(() => [
+  {
+    key: 'approved-logs',
+    label: 'Approved logs',
+    state: resolveLocalListState(approvedLogs.value),
+  },
+]);
 
 const statusOptions = computed(() => [...new Set(approvedLogs.value.map((log) => log.status).filter(Boolean))]);
 
@@ -200,5 +209,11 @@ function handleViewLog(log) {
 
 function normalizeApprovedStatus(status) {
   return status || 'Approved';
+}
+
+function resolveLocalListState(records) {
+  if (isLoading.value && records.length > 0) return 'cached-loading';
+  if (isLoading.value) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

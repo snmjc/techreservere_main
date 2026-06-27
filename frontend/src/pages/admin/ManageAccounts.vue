@@ -548,6 +548,7 @@
         :accounts="normalizedAccounts"
         @created="handleEmployeeRequestCreated"
       />
+      <DataRequestStatusFloater :items="manageAccountsStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -556,6 +557,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ManageAccounts.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -665,6 +667,13 @@ const manageAccountsPageStart = computed(() => {
 });
 
 const manageAccountsPageEnd = computed(() => Math.min(manageAccountsCurrentPage.value * manageAccountsPageSize, filteredAccounts.value.length));
+const manageAccountsStatusItems = computed(() => [
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    state: resolveManageAccountsDataState(),
+  },
+]);
 
 watch([searchQueryText, showingFilterValue, sortMode, userRoleFilter], () => {
   manageAccountsCurrentPage.value = 1;
@@ -675,6 +684,22 @@ watch(manageAccountsTotalPages, (pageCount) => {
     manageAccountsCurrentPage.value = pageCount;
   }
 });
+
+function resolveManageAccountsDataState() {
+  if (isLoading.value && normalizedAccounts.value.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (isLoading.value || isActiveAccountTabLoading.value) {
+    return 'loading';
+  }
+
+  if (loadErrorMessage.value) {
+    return normalizedAccounts.value.length > 0 ? 'cached' : 'error';
+  }
+
+  return normalizedAccounts.value.length > 0 ? 'fresh' : 'idle';
+}
 
 function openAddEmployeeRequestModal() {
   createAccountModals.value?.openForTab('employee');

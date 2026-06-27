@@ -140,16 +140,19 @@
         </div>
       </div>
     </div>
+    <DataRequestStatusFloater :items="approvalStatusItems" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { pendingUserService } from '@/services/pendingUserApi';
 import { emailService } from '@/services/emailService';
 
 const pendingUsers = ref([]);
 const isLoading = ref(false);
+const approvalDataState = ref('idle');
 const actionLoading = ref(false);
 const activeFilter = ref('pending');
 const showRejectForm = ref(false);
@@ -184,6 +187,13 @@ const paginatedUsers = computed(() => {
 const pendingCount = computed(() => pendingUsers.value.filter(u => u.status === 'pending').length);
 const approvedCount = computed(() => pendingUsers.value.filter(u => u.status === 'approved').length);
 const rejectedCount = computed(() => pendingUsers.value.filter(u => u.status === 'rejected').length);
+const approvalStatusItems = computed(() => [
+  {
+    key: 'approval-users',
+    label: 'Approval Requests',
+    state: approvalDataState.value,
+  },
+]);
 
 watch(activeFilter, () => {
   currentPage.value = 1;
@@ -197,15 +207,19 @@ watch(totalPages, (pageCount) => {
 
 const fetchPendingUsers = async () => {
   isLoading.value = true;
+  approvalDataState.value = pendingUsers.value.length > 0 ? 'cached-loading' : 'loading';
   try {
     const result = await pendingUserService.getPendingUsers();
     if (result.success) {
       pendingUsers.value = result.data;
+      approvalDataState.value = 'fresh';
     } else {
       console.error('Error fetching users:', result.error);
+      approvalDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
     }
   } catch (error) {
     console.error('Error:', error);
+    approvalDataState.value = pendingUsers.value.length > 0 ? 'cached' : 'error';
   } finally {
     isLoading.value = false;
   }

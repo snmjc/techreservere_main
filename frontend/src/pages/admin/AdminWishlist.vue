@@ -670,6 +670,7 @@
         :accounts="normalizedAccounts"
         @created="handleAccountCreated"
       />
+      <DataRequestStatusFloater :items="wishlistStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
 </template>
@@ -679,6 +680,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useAuth } from '@clerk/vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/AdminWishlist.css';
@@ -771,6 +773,13 @@ const wishlistPageStart = computed(() => (
   filteredWishlistAccounts.value.length === 0 ? 0 : ((wishlistCurrentPage.value - 1) * wishlistPageSize) + 1
 ));
 const wishlistPageEnd = computed(() => Math.min(wishlistCurrentPage.value * wishlistPageSize, filteredWishlistAccounts.value.length));
+const wishlistStatusItems = computed(() => [
+  {
+    key: 'wishlist',
+    label: 'Wishlist Accounts',
+    state: resolveWishlistDataState(),
+  },
+]);
 
 const {
   isProcessing,
@@ -827,6 +836,22 @@ watch(wishlistTotalPages, (pageCount) => {
     wishlistCurrentPage.value = pageCount;
   }
 });
+
+function resolveWishlistDataState() {
+  if (isLoading.value && normalizedAccounts.value.length > 0) {
+    return 'cached-loading';
+  }
+
+  if (isLoading.value || isActiveWishlistTabLoading.value) {
+    return 'loading';
+  }
+
+  if (loadErrorMessage.value) {
+    return normalizedAccounts.value.length > 0 ? 'cached' : 'error';
+  }
+
+  return normalizedAccounts.value.length > 0 ? 'fresh' : 'idle';
+}
 
 function handleTabChange(tabName) {
   activeTab.value = tabName;

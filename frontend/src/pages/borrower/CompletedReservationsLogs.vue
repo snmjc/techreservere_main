@@ -108,12 +108,14 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
     </section>
+    <DataRequestStatusFloater :items="completedLogsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Logs.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -149,6 +151,13 @@ const completedLogs = computed(() =>
       status: record.recordStatus || 'Completed',
     }))
 );
+const completedLogsStatusItems = computed(() => [
+  {
+    key: 'completed-logs',
+    label: 'Completed logs',
+    state: resolveLocalListState(completedLogs.value),
+  },
+]);
 
 const statusOptions = computed(() => [...new Set(completedLogs.value.map((log) => log.status).filter(Boolean))]);
 
@@ -179,5 +188,11 @@ watch(totalPages, (pageCount) => {
 
 function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+}
+
+function resolveLocalListState(records) {
+  if (isLoading.value && records.length > 0) return 'cached-loading';
+  if (isLoading.value) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>

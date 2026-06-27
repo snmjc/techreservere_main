@@ -127,6 +127,8 @@
 
       <p class="my-reservations-page-footer">2026 TechReserve Reservation Management</p>
     </section>
+
+    <DataRequestStatusFloater :items="myReservationsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
@@ -134,6 +136,7 @@
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/MyReservations.css';
 import { borrowerNavigationItems } from '@/shared/constants/borrowerNavigationItems.js';
@@ -183,6 +186,14 @@ const reservationStats = computed(() => [
   },
 ]);
 
+const myReservationsStatusItems = computed(() => [
+  {
+    key: 'reservations',
+    label: 'Reservation summary',
+    state: resolveReservationSummaryState(),
+  },
+]);
+
 onMounted(async () => {
   try {
     if (!authStore.isAuthenticated) {
@@ -218,5 +229,16 @@ function navigateToCompletedReservationsLogs() {
 
 function navigateToPastRecords() {
   router.push({ name: 'borrowerPastRecordsPage' });
+}
+
+function resolveReservationSummaryState() {
+  const total = pendingRequestsCount.value
+    + approvedRequestsCount.value
+    + activeReservationsCount.value
+    + completedReservationsCount.value;
+
+  if (requestStore.isLoadingReservations && total > 0) return 'cached-loading';
+  if (requestStore.isLoadingReservations) return 'loading';
+  return total > 0 ? 'fresh' : 'idle';
 }
 </script>

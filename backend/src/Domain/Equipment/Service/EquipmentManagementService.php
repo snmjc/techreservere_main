@@ -570,6 +570,10 @@ class EquipmentManagementService
             }
 
             $eventDateTime = $reservation->getEventDateTime();
+            if ($eventDateTime === null) {
+                continue;
+            }
+
             $endDateTime = $reservation->getEndDateTime() ?? $eventDateTime;
             if ($eventDateTime > $todayEnd || $endDateTime < $todayStart) {
                 continue;

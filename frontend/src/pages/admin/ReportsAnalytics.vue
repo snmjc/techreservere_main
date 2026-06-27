@@ -552,12 +552,14 @@
         </div>
       </div>
     </section>
+    <DataRequestStatusFloater :items="reportsAnalyticsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -924,6 +926,28 @@ const summaryItems = computed(() => [
   { label: 'Generated At', value: reportGeneratedAt.value },
 ]);
 const modelArtifactSets = computed(() => Array.isArray(modelArtifacts.value?.sets) ? modelArtifacts.value.sets : []);
+const reportsAnalyticsStatusItems = computed(() => [
+  {
+    key: 'forecast',
+    label: 'Demand forecast',
+    state: resolveReportSectionState(isForecastSectionLoading.value, forecastSectionError.value, forecastSeries.value),
+  },
+  {
+    key: 'readiness',
+    label: 'Risk readiness',
+    state: resolveReportSectionState(isRiskSectionLoading.value, riskSectionError.value, riskBands.value),
+  },
+  {
+    key: 'allocation',
+    label: 'Allocation analytics',
+    state: resolveReportSectionState(isAllocationSectionLoading.value, allocationSectionError.value, optimizationMetrics.value),
+  },
+  {
+    key: 'models',
+    label: 'Analytics models',
+    state: resolveReportSectionState(isModelArtifactsLoading.value, modelArtifactMessageType.value === 'error' ? modelArtifactMessage.value : '', modelArtifactSets.value),
+  },
+]);
 
 watch(reportsAccordionPreferenceStorageKey, () => {
   reportsAccordionPreferences.value = loadReportsAccordionPreferences();
@@ -1062,6 +1086,18 @@ function setAllSectionLoading(isLoading) {
     allocation: isLoading,
   };
   isUtilizationRefreshing.value = isLoading;
+}
+
+function resolveReportSectionState(isLoading, errorMessage, records) {
+  const hasData = Array.isArray(records)
+    ? records.length > 0
+    : Boolean(records && Object.keys(records).length > 0);
+
+  if (errorMessage && !hasData) return 'error';
+  if (isLoading && hasData) return 'cached-loading';
+  if (isLoading) return 'loading';
+  if (errorMessage) return 'cached';
+  return hasData ? 'fresh' : 'idle';
 }
 
 function clearSectionErrors() {

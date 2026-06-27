@@ -248,12 +248,14 @@
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
     </section>
+    <DataRequestStatusFloater :items="pastRecordsStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
+import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import '@/shared/components/adminSidebarLayout.css';
@@ -273,6 +275,13 @@ const selectedRecord = ref(null);
 const userFullName = computed(() => authStore.userFullName || 'USER');
 const loading = computed(() => requestStore.isLoadingReservations);
 const pastRecordsList = computed(() => requestStore.pastRecordsList || []);
+const pastRecordsStatusItems = computed(() => [
+  {
+    key: 'past-records',
+    label: 'Past records',
+    state: resolveReservationListState(pastRecordsList.value),
+  },
+]);
 
 onMounted(async () => {
   try {
@@ -503,5 +512,11 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function resolveReservationListState(records) {
+  if (requestStore.isLoadingReservations && records.length > 0) return 'cached-loading';
+  if (requestStore.isLoadingReservations) return 'loading';
+  return records.length > 0 ? 'fresh' : 'idle';
 }
 </script>
