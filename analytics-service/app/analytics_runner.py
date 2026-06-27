@@ -8,6 +8,7 @@ from psycopg import Connection
 from app.allocation_snapshot import AllocationSnapshotBuilder
 from app.analytics_utils import json_dumps
 from app.forecast_snapshot import ForecastSnapshotBuilder
+from app.model_artifacts import ModelArtifactStore
 from app.readiness_snapshot import ReadinessSnapshotBuilder
 from app.scenario_preparer import ScenarioPreparer
 
@@ -39,6 +40,7 @@ class AnalyticsRunner:
         self.forecast_builder = ForecastSnapshotBuilder()
         self.readiness_builder = ReadinessSnapshotBuilder()
         self.allocation_builder = AllocationSnapshotBuilder()
+        self.artifact_store = ModelArtifactStore()
         self.scenario_preparer = ScenarioPreparer()
         self._range_section_cache: dict[str, tuple[datetime, dict[str, Any]]] = {}
         self._range_section_cache_ttl = timedelta(minutes=3)
@@ -263,6 +265,8 @@ class AnalyticsRunner:
                 str(date_range.get("endDate", "")),
                 str(config.get("forecast", {}).get("historyDays", "")),
                 str(config.get("allocation", {}).get("historyDays", "")),
+                json_dumps(config.get(result_type, {})),
+                json_dumps(self.artifact_store.active_artifacts()),
             ]
         )
 

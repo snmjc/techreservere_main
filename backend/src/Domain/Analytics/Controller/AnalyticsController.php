@@ -152,9 +152,9 @@ class AnalyticsController
                 : null;
             error_log(sprintf('Analytics trigger completed with forecast points: %s', $seededCount === null ? 'n/a' : (string) $seededCount));
 
-            return $this->createSuccessResponse([
+            return $this->createCachedAnalyticsResponse([
                 'analyticsServiceResponse' => $payload,
-            ]);
+            ], $request);
         } catch (\Throwable $exception) {
             return $this->createErrorResponse('AnalyticsTriggerFailed', $exception->getMessage(), 502);
         }
@@ -350,9 +350,9 @@ class AnalyticsController
             $analyticsServiceUrl = rtrim((string) ($_ENV['ANALYTICS_SERVICE_URL'] ?? getenv('ANALYTICS_SERVICE_URL') ?: 'http://analytics-service:9000'), '/');
             $payload = $this->requestRangeAnalysis($analyticsServiceUrl, $historyDays, $startDate, $endDate, $sectionName);
 
-            return $this->createSuccessResponse([
+            return $this->createCachedAnalyticsResponse([
                 'analyticsServiceResponse' => $payload,
-            ]);
+            ], $request);
         } catch (\Throwable $exception) {
             return $this->createErrorResponse('AnalyticsRangeSectionFetchFailed', $exception->getMessage(), 502);
         }
@@ -428,6 +428,20 @@ class AnalyticsController
         $response = $this->httpClient->request($method, $analyticsServiceUrl . $path, $options);
 
         return $response->toArray(false);
+    }
+
+    private function createCachedAnalyticsResponse(array $data, Request $request): JsonResponse
+    {
+        $response = $this->createSuccessResponse($data);
+        $responseContent = (string) $response->getContent();
+
+        $response->setEtag(sha1($responseContent));
+        $response->headers->set('Cache-Control', 'private, max-age=60, stale-while-revalidate=120');
+        $response->headers->set('Vary', 'Authorization, Accept-Encoding');
+        $response->headers->remove('Pragma');
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     private function defaultConfiguration(): array
