@@ -210,13 +210,19 @@
             <p>Efficiency indicators derived from request throughput and inventory usage.</p>
             <div class="reports-optimization-list">
               <article v-for="metric in optimizationMetrics" :key="metric.label">
-                <span :class="`reports-metric-icon reports-metric-icon--${metric.tone}`">{{ metric.icon }}</span>
+                <span
+                  class="reports-metric-icon"
+                  :class="`reports-metric-icon--${resolveMetricDirection(metric.value)}`"
+                  :aria-label="resolveMetricDirectionLabel(metric.value)"
+                >
+                  {{ resolveMetricDirectionIcon(metric.value) }}
+                </span>
                 <div>
                   <strong>{{ metric.label }}</strong>
                   <small>{{ metric.note }}</small>
                   <small class="reports-decision-note">{{ resolveOptimizationDecision(metric) }}</small>
                 </div>
-                <em :class="{ negative: Number(metric.value || 0) < 0 }">{{ formatMetricDelta(metric.value, 1) }}</em>
+                <em :class="`reports-metric-value reports-metric-value--${resolveMetricDirection(metric.value)}`">{{ formatMetricDelta(metric.value, 1) }}</em>
               </article>
             </div>
             <div class="reports-accordion">
@@ -1402,6 +1408,35 @@ function formatBenchmarkMethod(value) {
       return 'naive';
     default:
       return 'the benchmark';
+  }
+}
+
+function resolveMetricDirection(value) {
+  const number = Number(value || 0);
+  if (number > 0) return 'up';
+  if (number < 0) return 'down';
+  return 'flat';
+}
+
+function resolveMetricDirectionIcon(value) {
+  switch (resolveMetricDirection(value)) {
+    case 'up':
+      return '↑';
+    case 'down':
+      return '↓';
+    default:
+      return '→';
+  }
+}
+
+function resolveMetricDirectionLabel(value) {
+  switch (resolveMetricDirection(value)) {
+    case 'up':
+      return 'Metric is trending up';
+    case 'down':
+      return 'Metric is trending down';
+    default:
+      return 'Metric is unchanged';
   }
 }
 

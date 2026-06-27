@@ -605,16 +605,24 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  color: #047857;
-  background: #dff7eb;
   border-radius: 50%;
-  font-size: 0.62rem;
+  font-size: 1rem;
   font-weight: 950;
 }
 
-.reports-metric-icon--alert {
+.reports-metric-icon--up {
+  color: #047857;
+  background: #dff7eb;
+}
+
+.reports-metric-icon--down {
   color: #dc2626;
   background: #fee2e2;
+}
+
+.reports-metric-icon--flat {
+  color: #64748b;
+  background: #e8eef4;
 }
 
 .reports-optimization-list strong {
@@ -631,10 +639,21 @@
 }
 
 .reports-optimization-list em {
-  color: #16a34a;
   font-size: 1rem;
   font-style: normal;
   font-weight: 950;
+}
+
+.reports-metric-value--up {
+  color: #16a34a;
+}
+
+.reports-metric-value--down {
+  color: #dc2626;
+}
+
+.reports-metric-value--flat {
+  color: #64748b;
 }
 
 .reports-bottom-grid {
