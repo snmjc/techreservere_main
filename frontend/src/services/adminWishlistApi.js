@@ -87,6 +87,10 @@ export const adminWishlistApi = {
     return sendWishlistRequest('/api/v1/users/wishlist', { token });
   },
 
+  async getWishlistAccountsByType(token, accountType) {
+    return sendWishlistRequest(`/api/v1/users/wishlist/${encodeURIComponent(accountType)}`, { token });
+  },
+
   async sendInvite(accountIdentifier, token, payload = {}) {
     return sendWishlistRequest(`/api/v1/users/${accountIdentifier}/approve`, { method: 'POST', token, payload });
   },

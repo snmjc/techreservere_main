@@ -128,6 +128,22 @@ class UserRegistrationWorkflowService
         ]);
     }
 
+    public function listWishlistUsersByType(string $accountType): array
+    {
+        $normalizedType = strtolower(trim($accountType));
+        if (!in_array($normalizedType, ['admin', 'user', 'employee'], true)) {
+            return $this->error('WishlistAccountTypeInvalid', 'Unsupported wishlist account type.', 422);
+        }
+
+        $users = $this->wishlistAccountReadService->getWishlistAccountsByType($normalizedType);
+
+        return $this->success([
+            'accountType' => $normalizedType,
+            'count' => count($users),
+            'users' => $users,
+        ]);
+    }
+
     public function createWishlistAdminAccount(array $requestBody, array $authenticatedIdentity, string $authorizationHeader): array
     {
         return $this->wishlistAdminAccountService->create(

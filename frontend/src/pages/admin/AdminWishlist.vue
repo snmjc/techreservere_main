@@ -667,7 +667,7 @@
 
       <AdminWishlistCreateAccountModals
         ref="createAccountModals"
-        :accounts="normalizedAccounts"
+        :accounts="allNormalizedAccounts"
         @created="handleAccountCreated"
       />
       <DataRequestStatusFloater :items="wishlistStatusItems" />
@@ -682,6 +682,7 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import AdminWishlistCreateAccountModals from './components/AdminWishlistCreateAccountModals.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import { useAdminWishlistActions } from './composables/useAdminWishlistActions.js';
+import { useWishlistTabResource } from './services/wishlistTabResource.js';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/AdminWishlist.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
@@ -704,8 +705,6 @@ import {
   normalizeWishlistAccount,
 } from './wishlist/adminWishlistHelpers.js';
 
-const WISHLIST_ACCOUNTS_CACHE_KEY = 'techreserve_wishlist_accounts_cache';
-
 const authStore = useAuthenticationStore();
 const { getToken } = useAuth();
 
@@ -717,34 +716,57 @@ const userRoleFilter = ref('all');
 const wishlistPagesByTab = reactive({
   admin: 1,
   user: 1,
-});
-const wishlistTabLoadingState = reactive({
-  admin: false,
-  user: false,
+  employee: 1,
 });
 const wishlistPageSize = 10;
 const createAccountModals = ref(null);
 const editListMode = ref(false);
-const isLoading = ref(false);
 const toastMessage = ref('');
-const loadErrorMessage = ref('');
-const wishlistAccounts = ref(readCachedWishlistAccounts());
 const previewAccount = ref(null);
 const previewDocumentUrl = ref('');
 const previewIsLoading = ref(false);
 const previewErrorMessage = ref('');
 
-const normalizedAccounts = computed(() => getUniqueRequestAccounts(wishlistAccounts.value.map(normalizeWishlistAccount)));
 const currentAdminEmail = computed(() => {
   const account = authStore.accountData || authStore.clerkAccountData || {};
   return String(account.emailAddress || account.email || '').trim();
 });
+const wishlistCacheScope = computed(() => {
+  const account = authStore.accountData || authStore.clerkAccountData || {};
+  const tokenScope = normalizeAuthToken(authStore.authToken) || getStoredAuthToken() || '';
+  return String(
+    account.accountIdentifier
+      || account.emailAddress
+      || account.email
+      || currentAdminEmail.value
+      || tokenScope.slice(-32)
+      || 'anonymous',
+  ).trim();
+});
+const wishlistTabResources = {
+  admin: createWishlistTabResource('admin', 'Admin Requests'),
+  user: createWishlistTabResource('user', 'User Requests'),
+  employee: createWishlistTabResource('employee', 'Employee Requests'),
+};
+const activeWishlistResource = computed(() => wishlistTabResources[activeTab.value] || wishlistTabResources.user);
+const wishlistAccountsByTab = computed(() => ({
+  admin: normalizeTabAccounts(wishlistTabResources.admin.data.value),
+  user: normalizeTabAccounts(wishlistTabResources.user.data.value),
+  employee: normalizeTabAccounts(wishlistTabResources.employee.data.value),
+}));
+const normalizedAccounts = computed(() => wishlistAccountsByTab.value[activeTab.value] || []);
+const allNormalizedAccounts = computed(() => [
+  ...wishlistAccountsByTab.value.admin,
+  ...wishlistAccountsByTab.value.user,
+  ...wishlistAccountsByTab.value.employee,
+]);
+const loadErrorMessage = computed(() => activeWishlistResource.value.error.value);
 
 const wishlistTabs = computed(() => {
-  const accounts = normalizedAccounts.value;
   return [
-    { label: 'Admin', value: 'admin', count: accounts.filter((account) => account.accountType === 'Admin').length },
-    { label: 'User', value: 'user', count: accounts.filter((account) => account.accountType === 'User').length },
+    { label: 'Admin', value: 'admin', count: wishlistAccountsByTab.value.admin.length },
+    { label: 'User', value: 'user', count: wishlistAccountsByTab.value.user.length },
+    { label: 'Employee', value: 'employee', count: wishlistAccountsByTab.value.employee.length },
   ];
 });
 
@@ -757,7 +779,7 @@ const filteredWishlistAccounts = computed(() => {
     userRoleFilter: userRoleFilter.value,
   });
 });
-const isActiveWishlistTabLoading = computed(() => wishlistTabLoadingState[activeTab.value] === true);
+const isActiveWishlistTabLoading = computed(() => activeWishlistResource.value.isLoading.value);
 const wishlistTotalPages = computed(() => Math.max(1, Math.ceil(filteredWishlistAccounts.value.length / wishlistPageSize)));
 const wishlistCurrentPage = computed({
   get: () => wishlistPagesByTab[activeTab.value] || 1,
@@ -774,11 +796,9 @@ const wishlistPageStart = computed(() => (
 ));
 const wishlistPageEnd = computed(() => Math.min(wishlistCurrentPage.value * wishlistPageSize, filteredWishlistAccounts.value.length));
 const wishlistStatusItems = computed(() => [
-  {
-    key: 'wishlist',
-    label: 'Wishlist Accounts',
-    state: resolveWishlistDataState(),
-  },
+  wishlistTabResources.admin.statusItem.value,
+  wishlistTabResources.user.statusItem.value,
+  wishlistTabResources.employee.statusItem.value,
 ]);
 
 const {
@@ -837,76 +857,56 @@ watch(wishlistTotalPages, (pageCount) => {
   }
 });
 
-function resolveWishlistDataState() {
-  if (isLoading.value && normalizedAccounts.value.length > 0) {
-    return 'cached-loading';
-  }
-
-  if (isLoading.value || isActiveWishlistTabLoading.value) {
-    return 'loading';
-  }
-
-  if (loadErrorMessage.value) {
-    return normalizedAccounts.value.length > 0 ? 'cached' : 'error';
-  }
-
-  return normalizedAccounts.value.length > 0 ? 'fresh' : 'idle';
-}
-
 function handleTabChange(tabName) {
   activeTab.value = tabName;
   searchText.value = '';
   statusFilter.value = 'all';
   userRoleFilter.value = 'all';
+
+  if (activeWishlistResource.value.state.value === 'idle') {
+    loadActiveWishlistTab();
+  }
 }
 
 async function loadWishlistAccounts() {
-  isLoading.value = true;
-  setAllWishlistTabsLoading(true);
-  loadErrorMessage.value = '';
+  const results = await Promise.allSettled(Object.values(wishlistTabResources).map((resource) => resource.load()));
+  const failedCount = results.filter((result) => result.status === 'rejected').length
+    + Object.values(wishlistTabResources).filter((resource) => resource.state.value === 'error').length;
+  if (failedCount > 0) {
+    showToast('Some wishlist tabs failed to load. Check Data Status for details.');
+  }
+}
+
+async function loadActiveWishlistTab() {
+  await activeWishlistResource.value.load();
+}
+
+function createWishlistTabResource(tabKey, label) {
+  return useWishlistTabResource({
+    tabKey,
+    label,
+    cacheScope: wishlistCacheScope,
+    fetchAccounts: fetchWishlistAccountsByTab,
+  });
+}
+
+async function fetchWishlistAccountsByTab(tabKey) {
   const authToken = await ensureWishlistToken();
-  const result = await adminWishlistApi.getWishlistAccounts(authToken);
-  if (result.success) {
-    wishlistAccounts.value = result.data.users || result.data || [];
-    writeCachedWishlistAccounts(wishlistAccounts.value);
-  } else {
-    wishlistAccounts.value = [];
-    loadErrorMessage.value = result.error || 'Unable to load request accounts from the backend.';
-    showToast(loadErrorMessage.value);
+  const result = await adminWishlistApi.getWishlistAccountsByType(authToken, tabKey);
+  if (!result.success) {
+    throw new Error(result.error || 'Unable to load request accounts from the backend.');
   }
-  isLoading.value = false;
-  setAllWishlistTabsLoading(false);
+
+  const users = result.data?.users ?? result.data;
+  if (!Array.isArray(users)) {
+    throw new Error('Wishlist API returned an invalid account list.');
+  }
+
+  return users;
 }
 
-function readCachedWishlistAccounts() {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  try {
-    const cachedValue = window.sessionStorage.getItem(WISHLIST_ACCOUNTS_CACHE_KEY);
-    const parsedValue = cachedValue ? JSON.parse(cachedValue) : [];
-    return Array.isArray(parsedValue) ? parsedValue : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeCachedWishlistAccounts(accounts) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    window.sessionStorage.setItem(WISHLIST_ACCOUNTS_CACHE_KEY, JSON.stringify(Array.isArray(accounts) ? accounts : []));
-  } catch {
-    // Cache writes are best-effort only.
-  }
-}
-
-function setAllWishlistTabsLoading(isTabLoading) {
-  wishlistTabLoadingState.admin = isTabLoading;
-  wishlistTabLoadingState.user = isTabLoading;
+function normalizeTabAccounts(accounts) {
+  return getUniqueRequestAccounts(accounts.map(normalizeWishlistAccount));
 }
 
 async function ensureWishlistToken() {
