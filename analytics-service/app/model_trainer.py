@@ -280,7 +280,7 @@ class AnalyticsModelTrainer:
             seasonal_order=(1, 0, 1, 7),
             enforce_stationarity=False,
             enforce_invertibility=False,
-        ).fit(disp=False)
+        ).fit(method="powell", disp=False, maxiter=120)
 
     def _forecast_validation_metrics(
         self,
