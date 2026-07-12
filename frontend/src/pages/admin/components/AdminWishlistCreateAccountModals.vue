@@ -264,7 +264,9 @@
 import { computed, reactive, ref } from 'vue';
 import { adminWishlistApi } from '@/services/adminWishlistApi.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
-import '../css/AdminWishlist.css';
+import '../css/AdminWishlistList.css';
+import '../css/AdminWishlistModals.css';
+import '../css/AdminWishlistForms.css';
 import {
   buildAdminAccountPayload,
   buildEmployeeAccountPayload,

@@ -1,0 +1,548 @@
+.manage-facilities-venue-layout {
+  display: grid;
+  grid-template-columns: minmax(330px, 440px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.manage-facilities-venue-shell {
+  display: grid;
+}
+
+.manage-facilities-venue-surface {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(180deg, #f7fbf8 0%, #ffffff 100%);
+  border: 1px solid #dbe7df;
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
+}
+
+.manage-facilities-venue-overview-strip {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.manage-facilities-venue-date-banner--dashboard {
+  height: 100%;
+}
+
+.manage-facilities-venue-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.manage-facilities-venue-stat-card {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  background: #ffffff;
+  border: 1px solid #dce7df;
+  border-radius: 18px;
+}
+
+.manage-facilities-venue-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.manage-facilities-venue-stat-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.manage-facilities-venue-stat-card strong {
+  display: block;
+  color: #173322;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.manage-facilities-venue-stat-card p {
+  margin: 0.18rem 0 0;
+  color: #66776b;
+  font-size: 0.78rem;
+}
+
+.manage-facilities-venue-stat-card--available .manage-facilities-venue-stat-icon {
+  color: #108045;
+  background: #e9f8ef;
+}
+
+.manage-facilities-venue-stat-card--reserved .manage-facilities-venue-stat-icon {
+  color: #b46d0f;
+  background: #fff4de;
+}
+
+.manage-facilities-venue-stat-card--maintenance .manage-facilities-venue-stat-icon {
+  color: #d63b34;
+  background: #ffebe8;
+}
+
+.manage-facilities-venue-stat-card--peak .manage-facilities-venue-stat-icon {
+  color: #1d77f2;
+  background: #eaf4ff;
+}
+
+.manage-facilities-venue-dashboard {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  -moz-column-gap: 1.75rem;
+  column-gap: 1.75rem;
+  row-gap: 1.5rem;
+  align-items: start;
+}
+
+.manage-facilities-venue-summary-list,
+.manage-facilities-venue-filter-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.manage-facilities-venue-summary-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.manage-facilities-venue-summary-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+}
+
+.manage-facilities-venue-summary-dot--available {
+  background: #12a150;
+}
+
+.manage-facilities-venue-summary-dot--reserved {
+  background: #f59e0b;
+}
+
+.manage-facilities-venue-summary-dot--maintenance {
+  background: #ef4444;
+}
+
+.manage-facilities-venue-summary-dot--peak {
+  background: #3b82f6;
+}
+
+.manage-facilities-venue-summary-row strong {
+  display: block;
+  color: #173322;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.manage-facilities-venue-summary-row p {
+  margin: 0.18rem 0 0;
+  color: #66776b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.manage-facilities-venue-filter-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.manage-facilities-venue-filter-field span {
+  color: #5d7367;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-filter-field select {
+  min-height: 40px;
+  padding: 0 0.8rem;
+  color: #173322;
+  background: #ffffff;
+  border: 1px solid #dbe5df;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.manage-facilities-venue-board--matrix {
+  padding: 0;
+  overflow: hidden;
+}
+
+.manage-facilities-venue-matrix {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(128px, 1fr));
+  background: #ffffff;
+}
+
+.manage-facilities-venue-matrix-day-header,
+.manage-facilities-venue-matrix-cell {
+  min-width: 0;
+  border-right: 1px solid #e7eee9;
+  border-bottom: 1px solid #e7eee9;
+}
+
+.manage-facilities-venue-matrix-day-header {
+  display: grid;
+  gap: 0.16rem;
+  place-items: center;
+  padding: 0.9rem 0.65rem;
+  text-align: center;
+}
+
+.manage-facilities-venue-matrix-day-header--selected {
+  background: linear-gradient(180deg, #eefaf2 0%, #f9fdfb 100%);
+}
+
+.manage-facilities-venue-matrix-day-header span,
+.manage-facilities-venue-matrix-day-header small {
+  color: #6f8275;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-matrix-day-header strong {
+  color: #173322;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.manage-facilities-venue-matrix-cell {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  background: #ffffff;
+}
+
+.manage-facilities-venue-matrix-cell--available {
+  background: rgba(244, 252, 247, 0.74);
+}
+
+.manage-facilities-venue-matrix-cell--reserved {
+  background: rgba(255, 250, 240, 0.78);
+}
+
+.manage-facilities-venue-matrix-cell--maintenance {
+  background: rgba(255, 244, 243, 0.76);
+}
+
+.manage-facilities-venue-block {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.manage-facilities-venue-block:focus-visible {
+  outline: 2px solid rgba(19, 130, 70, 0.35);
+  outline-offset: 2px;
+}
+
+.manage-facilities-venue-block span {
+  color: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-block strong {
+  color: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.manage-facilities-venue-block p {
+  margin: 0;
+  color: inherit;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  opacity: 0.88;
+}
+
+.manage-facilities-venue-block--available {
+  color: #118146;
+  background: #edf9f1;
+  border-color: #cfe7d7;
+}
+
+.manage-facilities-venue-block--reserved {
+  color: #8c6218;
+  background: #fff4de;
+  border-color: #f2ddae;
+}
+
+.manage-facilities-venue-block--maintenance {
+  color: #c53c32;
+  background: #ffefed;
+  border-color: #f0c0ba;
+}
+
+.manage-facilities-section-heading--directory {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.manage-facilities-venue-directory-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.manage-facilities-venue-card-section--directory {
+  margin-top: 1rem;
+}
+
+.manage-facilities-venue-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(208px, 1fr));
+  gap: 0.8rem;
+}
+
+.manage-facilities-venue-directory-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #dde7e0;
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.manage-facilities-venue-directory-media {
+  height: 112px;
+  background: linear-gradient(135deg, #edf7f0 0%, #dceee1 100%);
+}
+
+.manage-facilities-venue-directory-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.manage-facilities-venue-directory-copy {
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr auto;
+  gap: 0.62rem;
+  padding: 0.8rem;
+}
+
+.manage-facilities-venue-directory-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.manage-facilities-venue-directory-topline h4 {
+  margin: 0;
+  color: #173322;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.manage-facilities-venue-directory-topline p,
+.manage-facilities-venue-directory-copy p {
+  margin: 0.22rem 0 0;
+  color: #66776b;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.manage-facilities-venue-directory-copy > p {
+  margin-top: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.manage-facilities-venue-directory-topline p span {
+  margin: 0 0.25rem;
+  color: #a8b8ad;
+}
+
+.manage-facilities-venue-directory-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.58rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.manage-facilities-venue-directory-status--available {
+  color: #127b45;
+  background: #ddf6e6;
+}
+
+.manage-facilities-venue-directory-status--reserved {
+  color: #9b6808;
+  background: #fff0d1;
+}
+
+.manage-facilities-venue-directory-status--maintenance {
+  color: #c43d33;
+  background: #ffe9e7;
+}
+
+.manage-facilities-venue-directory-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.manage-facilities-venue-directory-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.62rem;
+  color: #29473a;
+  background: #eef5f0;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.manage-facilities-venue-directory-utilization {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.manage-facilities-venue-directory-utilization-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #173322;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-directory-progress {
+  height: 8px;
+  overflow: hidden;
+  background: #e7eeea;
+  border-radius: 999px;
+}
+
+.manage-facilities-venue-directory-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #169153 0%, #0d7142 100%);
+}
+
+.manage-facilities-venue-directory-actions-row {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.manage-facilities-venue-directory-actions-row button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  color: #173322;
+  background: #ffffff;
+  border: 1px solid #d7e3db;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.manage-facilities-venue-directory-delete {
+  color: #c53c32 !important;
+}
+
+.manage-facilities-venue-directory-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  color: #66776b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-directory-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.manage-facilities-venue-directory-pagination button,
+.manage-facilities-venue-directory-pagination select {
+  min-height: 36px;
+  padding: 0 0.8rem;
+  color: #173322;
+  background: #ffffff;
+  border: 1px solid #d7e3db;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-directory-pagination button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.manage-facilities-equipment-pagination-footer {
+  margin-top: 1rem;
+}
+
+.manage-facilities-venue-surface-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.manage-facilities-venue-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.manage-facilities-venue-icon-button,
+.manage-facilities-venue-today-button,
+.manage-facilities-venue-view-select select {
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid #d8e3dc;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #173322;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}

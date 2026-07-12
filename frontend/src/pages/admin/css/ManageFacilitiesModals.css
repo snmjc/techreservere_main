@@ -1,0 +1,750 @@
+/* ========================================= */
+/* FOOTER                                    */
+/* ========================================= */
+
+.manage-facilities-page-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--manage-facilities-ink-500);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ========================================= */
+/* DELETE CONFIRMATION MODAL                 */
+/* ========================================= */
+
+.manage-facilities-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.manage-facilities-delete-modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 20px;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+}
+
+.manage-facilities-modal-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #6b7280;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.manage-facilities-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.manage-facilities-modal-heading {
+  padding-right: 2.4rem;
+  margin-bottom: 1rem;
+}
+
+.manage-facilities-modal-heading--centered {
+  padding-right: 0;
+  text-align: center;
+}
+
+.manage-facilities-modal-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
+.manage-facilities-modal-heading p {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+  font-size: 0.86rem;
+}
+
+.manage-facilities-delete-summary {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.manage-facilities-delete-summary p {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  color: #374151;
+  font-size: 0.84rem;
+}
+
+.manage-facilities-delete-summary strong {
+  color: #6b7280;
+}
+
+.manage-facilities-delete-summary span {
+  color: #111827;
+  text-align: right;
+  font-weight: 700;
+}
+
+.manage-facilities-confirm-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  color: #374151;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.manage-facilities-confirm-field input {
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.manage-facilities-confirm-field input:focus {
+  outline: none;
+  border-color: #1a6e3a;
+  box-shadow: 0 0 0 3px rgba(26, 110, 58, 0.12);
+}
+
+.manage-facilities-modal-error {
+  margin: 0.2rem 0 0.9rem;
+  color: #b91c1c;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.manage-facilities-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
+}
+
+.manage-facilities-cancel-button,
+.manage-facilities-delete-confirm-button {
+  min-height: 42px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.manage-facilities-cancel-button {
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+}
+
+.manage-facilities-delete-confirm-button {
+  color: #ffffff;
+  background: #dc2626;
+  border: 1px solid #dc2626;
+}
+
+.manage-facilities-delete-confirm-button--neutral {
+  background: #1a6e3a;
+  border-color: #1a6e3a;
+}
+
+.manage-facilities-delete-confirm-button:disabled,
+.manage-facilities-cancel-button:disabled,
+.manage-facilities-modal-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.manage-facilities-equipment-details-modal {
+  position: relative;
+  width: min(900px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 20px;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+}
+
+.manage-facilities-venue-details-modal {
+  width: min(640px, 100%);
+}
+
+.manage-facilities-equipment-details-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.manage-facilities-equipment-photo-card {
+  padding: 0.75rem;
+  background: #f7faf8;
+  border: 1px solid #e7eeea;
+  border-radius: 14px;
+}
+
+.manage-facilities-equipment-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.manage-facilities-equipment-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.manage-facilities-equipment-details-grid div {
+  padding: 0.85rem 0.95rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.manage-facilities-equipment-details-grid dt {
+  margin-bottom: 0.35rem;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-equipment-details-grid dd {
+  margin: 0;
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.manage-facilities-equipment-details-grid__full {
+  grid-column: 1 / -1;
+}
+
+.manage-facilities-venue-dialog {
+  padding-top: 1.6rem;
+}
+
+.manage-facilities-venue-details-sheet {
+  display: grid;
+  gap: 1rem;
+}
+
+.manage-facilities-venue-photo-banner {
+  overflow: hidden;
+  border: 1px solid #dbe9df;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(226, 245, 235, 0.95), rgba(245, 251, 247, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.manage-facilities-venue-photo-banner .manage-facilities-equipment-photo {
+  max-height: 148px;
+  min-height: 148px;
+}
+
+.manage-facilities-venue-overview-grid,
+.manage-facilities-venue-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.manage-facilities-venue-detail-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  min-height: 96px;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, #fbfdfc 0%, #f5faf7 100%);
+  border: 1px solid #dde9e1;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.manage-facilities-venue-detail-row--full {
+  align-items: stretch;
+  min-height: 0;
+}
+
+.manage-facilities-venue-detail-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #345f47;
+  background: linear-gradient(180deg, #eff9f3 0%, #e4f4eb 100%);
+  border: 1px solid #d8ebdf;
+  border-radius: 12px;
+}
+
+.manage-facilities-venue-detail-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.manage-facilities-venue-detail-row p {
+  margin: 0 0 0.18rem;
+  color: #6b7280;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-detail-row strong {
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.manage-facilities-venue-detail-copy {
+  display: block;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.manage-facilities-venue-description-card {
+  grid-template-columns: 40px minmax(0, 1fr);
+  padding-block: 1rem;
+}
+
+.manage-facilities-venue-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-status-badge--available {
+  color: #087443;
+  background: #dff6e8;
+}
+
+.manage-facilities-venue-status-badge--unavailable {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.manage-facilities-venue-delete-dialog {
+  width: min(560px, 100%);
+}
+
+.manage-facilities-venue-delete-alert {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.manage-facilities-venue-delete-alert-icon {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  color: #ef4444;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  font-size: 2.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.manage-facilities-venue-delete-summary-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e7eeea;
+  border-radius: 14px;
+}
+
+.manage-facilities-venue-delete-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.manage-facilities-venue-delete-summary-grid span {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-delete-summary-grid strong {
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-reservation-modal {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding: 1.6rem;
+}
+
+.manage-facilities-venue-reservation-modal__heading {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.manage-facilities-venue-reservation-modal__heading-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: #2563eb;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+}
+
+.manage-facilities-venue-reservation-modal__heading-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.manage-facilities-venue-reservation-modal__loading {
+  padding: 1.2rem;
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.manage-facilities-venue-reservation-modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.manage-facilities-venue-reservation-modal__card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.manage-facilities-venue-reservation-modal__status-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--approved {
+  color: #067647;
+  background: #dcfce7;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--pending {
+  color: #9a6700;
+  background: #fef3c7;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--inactive {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.manage-facilities-venue-reservation-modal__status-badge--neutral {
+  color: #1f2937;
+  background: #e5e7eb;
+}
+
+.manage-facilities-venue-reservation-modal__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.manage-facilities-venue-reservation-modal__overview-grid,
+.manage-facilities-venue-reservation-modal__schedule-grid,
+.manage-facilities-venue-reservation-modal__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.manage-facilities-venue-reservation-modal__info-item,
+.manage-facilities-venue-reservation-modal__remarks-card {
+  padding: 0.95rem 1rem;
+  background: linear-gradient(180deg, #fbfdfc 0%, #f5faf7 100%);
+  border: 1px solid #dde9e1;
+  border-radius: 14px;
+}
+
+.manage-facilities-venue-reservation-modal__info-item span,
+.manage-facilities-venue-reservation-modal__remarks-card span,
+.manage-facilities-venue-reservation-modal__section-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manage-facilities-venue-reservation-modal__info-item strong {
+  color: #111827;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.manage-facilities-venue-reservation-modal__remarks-card p {
+  margin: 0;
+  color: #111827;
+  font-size: 0.94rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.manage-facilities-venue-reservation-modal__schedule-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem 1rem;
+  background: linear-gradient(180deg, #fcfefd 0%, #f6fbf8 100%);
+  border: 1px solid #dce9e1;
+  border-radius: 16px;
+}
+
+.manage-facilities-venue-reservation-modal__duration-pill {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  color: #067647;
+  background: #ecfdf3;
+  border: 1px solid #c7ead6;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* ========================================= */
+/* RESPONSIVE                                */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .manage-facilities-hero,
+  .manage-facilities-tabs-row,
+  .manage-facilities-section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-facilities-summary-grid,
+  .manage-facilities-venue-layout,
+  .manage-facilities-dispatch-summary,
+  .classroom-schedule-layout,
+  .manage-facilities-venue-calendar-layout,
+  .manage-facilities-venue-overview-strip,
+  .manage-facilities-venue-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-hero-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .manage-facilities-edit-button,
+  .manage-facilities-add-button {
+    flex: 1 1 220px;
+  }
+
+  .manage-facilities-legend {
+    width: 100%;
+  }
+
+  .manage-facilities-page-heading {
+    font-size: 1.25rem;
+  }
+
+  .manage-facilities-modal-overlay {
+    padding: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .manage-facilities-equipment-details-layout,
+  .manage-facilities-equipment-details-grid,
+  .classroom-schedule-form-grid,
+  .classroom-schedule-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-schedule-import-types,
+  .classroom-schedule-import-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-schedule-detail-hero,
+  .classroom-schedule-board-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .classroom-schedule-board-toolbar-group {
+    flex-wrap: wrap;
+  }
+
+  .manage-facilities-venue-overview-grid,
+  .manage-facilities-venue-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-venue-reservation-modal__overview,
+  .manage-facilities-venue-reservation-modal__overview-grid,
+  .manage-facilities-venue-reservation-modal__schedule-grid,
+  .manage-facilities-venue-reservation-modal__meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-venue-delete-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-schedule-board-card {
+    overflow-x: auto;
+  }
+
+  .classroom-schedule-board-grid {
+    min-width: 920px;
+  }
+
+  .manage-facilities-venue-week-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-venue-toolbar-actions,
+  .manage-facilities-venue-surface-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manage-facilities-venue-stat-grid,
+  .manage-facilities-venue-directory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manage-facilities-venue-matrix {
+    min-width: 1020px;
+  }
+
+  .manage-facilities-venue-board--matrix {
+    overflow-x: auto;
+  }
+
+  .manage-facilities-section-heading--directory,
+  .manage-facilities-venue-directory-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manage-facilities-search-sort-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-view-toggle {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 560px) {
+  .manage-facilities-workspace,
+  .manage-facilities-equipment-section,
+  .manage-facilities-hero {
+    padding: 1rem;
+    border-radius: 22px;
+  }
+
+  .manage-facilities-tab-cluster {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .manage-facilities-tab-button,
+  .manage-facilities-showing-select,
+  .manage-facilities-sort-select {
+    width: 100%;
+  }
+
+  .manage-facilities-search-group {
+    flex-basis: 100%;
+  }
+
+  .manage-facilities-view-toggle {
+    width: 100%;
+  }
+
+  .manage-facilities-view-toggle-button {
+    flex: 1;
+  }
+
+  .manage-facilities-venue-stat-grid,
+  .manage-facilities-venue-directory-grid {
+    grid-template-columns: 1fr;
+  }
+}

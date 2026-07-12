@@ -1,0 +1,687 @@
+/* ========================================= */
+/* CLASSROOM SCHEDULES                       */
+/* ========================================= */
+
+.classroom-schedule-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.classroom-schedule-section-heading {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.classroom-schedule-section-heading h3 {
+  margin: 0;
+  color: #14281d;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-section-heading p {
+  margin: 0;
+  color: #617366;
+  font-size: 0.92rem;
+}
+
+.classroom-schedule-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.classroom-schedule-sidebar {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.classroom-schedule-date-card,
+.classroom-schedule-mini-calendar,
+.classroom-schedule-selected-card,
+.classroom-schedule-legend-card,
+.classroom-schedule-board-card {
+  background: #ffffff;
+  border: 1px solid var(--manage-facilities-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(17, 34, 23, 0.05);
+}
+
+.classroom-schedule-date-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: center;
+}
+
+.classroom-schedule-date-badge {
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #d7e7dd;
+  text-align: center;
+}
+
+.classroom-schedule-date-badge span {
+  display: block;
+  padding: 0.3rem 0;
+  color: #ffffff;
+  background: #0f7d43;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.classroom-schedule-date-badge strong {
+  display: block;
+  padding: 0.55rem 0;
+  color: #153123;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-date-card h3,
+.classroom-schedule-selected-card h4,
+.classroom-schedule-legend-card h4 {
+  margin: 0;
+  color: #14281d;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-date-card p,
+.classroom-schedule-selected-card p,
+.classroom-schedule-import-note {
+  margin: 0.28rem 0 0;
+  color: #607165;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.classroom-schedule-import-note--status {
+  color: #315244;
+  font-weight: 600;
+}
+
+.classroom-schedule-mini-calendar,
+.classroom-schedule-selected-card,
+.classroom-schedule-legend-card {
+  padding: 1rem;
+}
+
+.classroom-schedule-mini-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.classroom-schedule-mini-calendar__header button {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d7e3db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #234231;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.classroom-schedule-mini-calendar__header button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.classroom-schedule-mini-calendar__header button::before {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-mini-calendar__header button:first-of-type::before {
+  content: '<';
+}
+
+.classroom-schedule-mini-calendar__header button:last-of-type::before {
+  content: '>';
+}
+
+.classroom-schedule-mini-calendar__header strong {
+  color: #173322;
+  font-size: 0.95rem;
+}
+
+.classroom-schedule-mini-calendar__weekdays,
+.classroom-schedule-mini-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.classroom-schedule-mini-calendar__weekdays {
+  margin-bottom: 0.55rem;
+}
+
+.classroom-schedule-mini-calendar__weekdays span {
+  text-align: center;
+  color: #6f8274;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-mini-calendar__day {
+  min-height: 38px;
+  border: 1px solid #e1e9e4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #223428;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classroom-schedule-mini-calendar__day.is-outside {
+  color: #9aa8a0;
+}
+
+.classroom-schedule-mini-calendar__day.is-selected {
+  color: #ffffff;
+  background: #0f7d43;
+  border-color: #0f7d43;
+}
+
+.classroom-schedule-mini-calendar__day.has-schedules:not(.is-selected) {
+  border-color: #8bc5a0;
+  background: #eef8f1;
+}
+
+.classroom-schedule-selected-card strong {
+  display: block;
+  margin-top: 0.65rem;
+  color: #14281d;
+  font-size: 0.95rem;
+}
+
+.classroom-schedule-selected-meta {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.7rem;
+}
+
+.classroom-schedule-selected-meta span {
+  color: #496052;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.classroom-schedule-empty-copy {
+  margin-top: 0.7rem !important;
+}
+
+.classroom-schedule-sidebar-button {
+  min-height: 38px;
+  margin-top: 0.85rem;
+  padding: 0 0.95rem;
+  color: #ffffff;
+  background: #0f7d43;
+  border: 1px solid #0f7d43;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classroom-schedule-legend-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.classroom-schedule-legend-list span {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #31493a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.classroom-schedule-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.classroom-schedule-legend-dot--class {
+  background: #16a34a;
+}
+
+.classroom-schedule-legend-dot--reserved {
+  background: #ef4444;
+}
+
+.classroom-schedule-legend-dot--equipment {
+  background: #3b82f6;
+}
+
+.classroom-schedule-legend-dot--pending {
+  background: #f59e0b;
+}
+
+.classroom-schedule-legend-dot--maintenance {
+  background: #8b5cf6;
+}
+
+.classroom-schedule-board-card {
+  padding: 0.9rem;
+}
+
+.classroom-schedule-board-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
+}
+
+.classroom-schedule-board-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.classroom-schedule-board-toolbar-group--end {
+  position: relative;
+}
+
+.classroom-schedule-board-icon-button,
+.classroom-schedule-board-today {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border: 1px solid #dde6e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #203528;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.classroom-schedule-board-icon-button {
+  width: 34px;
+  padding: 0;
+  font-size: 0;
+}
+
+.classroom-schedule-board-icon-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.classroom-schedule-board-icon-button:not(.classroom-schedule-board-icon-button--search)::before {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-board-toolbar > .classroom-schedule-board-icon-button:nth-of-type(2)::before {
+  content: '<';
+}
+
+.classroom-schedule-board-toolbar > .classroom-schedule-board-icon-button:nth-of-type(4)::before {
+  content: '>';
+}
+
+.classroom-schedule-board-spacer {
+  flex: 1;
+}
+
+.classroom-schedule-board-view-select {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 2.2rem 0 0.8rem;
+  color: #203528;
+  background: #ffffff;
+  border: 1px solid #dde6e1;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.classroom-schedule-add-button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 0.9rem !important;
+  border-radius: 9px !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 8px 18px rgba(15, 128, 68, 0.16);
+}
+
+.classroom-schedule-add-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.classroom-schedule-action-menu {
+  position: relative;
+}
+
+.classroom-schedule-action-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 3;
+  min-width: 180px;
+  display: grid;
+  padding: 0.45rem;
+  background: #ffffff;
+  border: 1px solid #dbe5df;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+}
+
+.classroom-schedule-action-menu__panel button {
+  min-height: 38px;
+  padding: 0 0.75rem;
+  color: #193122;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classroom-schedule-action-menu__panel button:hover {
+  background: #f3faf5;
+}
+
+.classroom-schedule-board-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e0e8e3;
+  border-radius: 18px;
+}
+
+.classroom-schedule-board-grid__header,
+.classroom-schedule-board-day-header,
+.classroom-schedule-board-time-column,
+.classroom-schedule-board-day-column {
+  background: #ffffff;
+}
+
+.classroom-schedule-board-day-header {
+  display: grid;
+  gap: 0.08rem;
+  min-height: 56px;
+  padding: 0.7rem 0.55rem;
+  border-left: 1px solid #edf2ee;
+  border-bottom: 1px solid #edf2ee;
+  text-align: center;
+}
+
+.classroom-schedule-board-day-header span {
+  color: #7a8b7f;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.classroom-schedule-board-day-header strong {
+  color: #203528;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.classroom-schedule-board-day-header.is-selected {
+  background: #f3faf5;
+}
+
+.classroom-schedule-board-time-column {
+  display: grid;
+  grid-template-rows: repeat(12, 60px);
+  border-right: 1px solid #edf2ee;
+}
+
+.classroom-schedule-board-time-column span {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.32rem;
+  color: #819185;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-bottom: 1px solid #edf2ee;
+}
+
+.classroom-schedule-board-day-column {
+  position: relative;
+  min-height: 720px;
+  border-left: 1px solid #edf2ee;
+  background-image: linear-gradient(to bottom, #edf2ee 1px, transparent 1px);
+  background-size: 100% 60px;
+}
+
+.classroom-schedule-event {
+  position: absolute;
+  left: 0.38rem;
+  right: 0.38rem;
+  z-index: 1;
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.38rem 0.45rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.classroom-schedule-event strong,
+.classroom-schedule-event span,
+.classroom-schedule-event small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classroom-schedule-event strong {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.classroom-schedule-event span,
+.classroom-schedule-event small {
+  font-size: 0.58rem;
+  line-height: 1.22;
+}
+
+.classroom-schedule-event small:first-child {
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.classroom-schedule-event--class {
+  color: #117243;
+  background: linear-gradient(180deg, #f3fcf6 0%, #ebf8f0 100%);
+  border-color: #92d2a8;
+}
+
+.classroom-schedule-event--reserved {
+  color: #cf3e34;
+  background: linear-gradient(180deg, #fff4f3 0%, #fff0ee 100%);
+  border-color: #f2b2ab;
+}
+
+.classroom-schedule-event--equipment {
+  color: #3e78ea;
+  background: linear-gradient(180deg, #f3f8ff 0%, #edf5ff 100%);
+  border-color: #b4ccff;
+}
+
+.classroom-schedule-event--pending {
+  color: #d67a1c;
+  background: linear-gradient(180deg, #fff8ef 0%, #fff5e8 100%);
+  border-color: #f1c07e;
+}
+
+.classroom-schedule-event--maintenance {
+  color: #8a63d9;
+  background: linear-gradient(180deg, #f7f4ff 0%, #f2efff 100%);
+  border-color: #d4c3ff;
+}
+
+.classroom-schedule-modal,
+.classroom-schedule-detail-modal,
+.classroom-schedule-import-modal {
+  width: min(760px, 100%);
+}
+
+.classroom-schedule-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.classroom-schedule-form--compact {
+  gap: 0.9rem;
+}
+
+.classroom-schedule-form-section-title {
+  color: #173322;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.classroom-schedule-form-grid label,
+.classroom-schedule-form-notes,
+.classroom-schedule-form-days {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.classroom-schedule-form-grid span,
+.classroom-schedule-form-notes span,
+.classroom-schedule-form-days > span {
+  color: #425448;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-form-grid input,
+.classroom-schedule-form-grid select,
+.classroom-schedule-form-notes textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  color: #15291d;
+  background: #ffffff;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.classroom-schedule-form-notes textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.classroom-schedule-form-duration {
+  margin: -0.2rem 0 0;
+  color: #5f7264;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-form-days__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.classroom-schedule-form-days__grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #31493a;
+  font-size: 0.8rem;
+}
+
+.classroom-schedule-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.classroom-schedule-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.classroom-schedule-detail-hero h3 {
+  margin: 0;
+  color: #15291d;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.classroom-schedule-detail-hero p {
+  margin: 0.3rem 0 0;
+  color: #607165;
+  font-size: 0.88rem;
+}
+
+.classroom-schedule-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.classroom-schedule-detail-grid div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 0.95rem;
+  background: #f8fbf9;
+  border: 1px solid #e3ebe6;
+  border-radius: 12px;
+}
+
+.classroom-schedule-detail-grid span {
+  color: #6d7f72;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.classroom-schedule-detail-grid strong {
+  color: #15291d;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
