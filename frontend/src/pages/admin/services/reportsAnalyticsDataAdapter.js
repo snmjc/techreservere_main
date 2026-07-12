@@ -16,6 +16,11 @@ export function createEmptyReport() {
 
 export function createEmptyForecastReport() {
   return {
+    modelName: '',
+    forecastMethod: '',
+    status: '',
+    usesPriorYearHistory: false,
+    historicalWeight: 0,
     actualSeries: [],
     forecastSeries: [],
     historySeries: [],
@@ -192,6 +197,15 @@ function normalizeForecastPayload(forecastPayload) {
   const accuracyMetrics = forecastPayload.accuracyMetrics || forecastPayload.accuracy_metrics || {};
 
   return {
+    modelName: forecastPayload.modelName || forecastPayload.model_name || '',
+    forecastMethod: forecastPayload.forecastMethod || forecastPayload.forecast_method || '',
+    status: forecastPayload.status || '',
+    usesPriorYearHistory: Boolean(
+      forecastPayload.usesPriorYearHistory ?? forecastPayload.uses_prior_year_history ?? false
+    ),
+    historicalWeight: Number(
+      forecastPayload.historicalWeight ?? forecastPayload.historical_weight ?? 0
+    ),
     actualSeries: (forecastPayload.actualSeries || forecastPayload.actual_series || []).map(normalizeSeriesPoint),
     forecastSeries: (forecastPayload.forecastSeries || forecastPayload.forecast_series || []).map(normalizeSeriesPoint),
     historySeries: (forecastPayload.historySeries || forecastPayload.history_series || []).map(normalizeSeriesPoint),

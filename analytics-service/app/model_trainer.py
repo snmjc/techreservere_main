@@ -48,16 +48,16 @@ class AnalyticsModelTrainer:
     def _train_forecast(self, connection: Connection, trained_at: datetime, model_set: str) -> dict[str, Any]:
         rows = connection.execute(
             """
-            SELECT DATE(submission_timestamp) AS demand_date,
+            SELECT DATE(event_date_time) AS demand_date,
                    COUNT(*)::int AS demand_count
               FROM reservations
-             WHERE submission_timestamp IS NOT NULL
-             GROUP BY DATE(submission_timestamp)
+             WHERE event_date_time IS NOT NULL
+             GROUP BY DATE(event_date_time)
              ORDER BY demand_date
             """
         ).fetchall()
         if not rows:
-            return self._skipped(FORECAST_ARTIFACT, "No reservation submission history is available.")
+            return self._skipped(FORECAST_ARTIFACT, "No scheduled reservation usage history is available.")
 
         counts_by_date = {row["demand_date"]: int(row["demand_count"]) for row in rows}
         start_date = min(counts_by_date)
@@ -205,7 +205,7 @@ class AnalyticsModelTrainer:
             SELECT COALESCE(priority_level, 'Normal') AS priority_level,
                    COUNT(*)::int AS request_count
               FROM reservations
-             WHERE submission_timestamp >= %s
+             WHERE event_date_time >= %s
                AND LOWER(COALESCE(current_status, '')) NOT IN ('cancelled', 'rejected')
              GROUP BY COALESCE(priority_level, 'Normal')
             """,

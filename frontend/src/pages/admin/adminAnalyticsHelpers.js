@@ -1,7 +1,7 @@
 export const ADMIN_ANALYTICS_RANGE_PRESETS = [
   { key: '30d', label: 'Last 30 Days', days: 30 },
   { key: '14d', label: 'Last 14 Days', days: 14 },
-  { key: '7d', label: 'Last 7 days', days: 7 },
+  { key: '7d', label: 'Last 7 Days', days: 7 },
 ];
 
 export function resolveAdminAnalyticsDateRange(presetKey, now = new Date()) {
