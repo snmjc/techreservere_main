@@ -72,9 +72,8 @@ class DashboardAggregationService
         $totalAccounts = $this->accountReadService->countDashboardAccounts();
         $equipment = $this->equipmentRepository->findAllEquipment();
         $venues = $this->venueRepository->findAllVenues();
-        $submissionReservations = $this->reservationRepository->findBySubmissionDateRange($range['start'], $range['end']);
         $eventReservations = $this->reservationRepository->findByEventDateRange($range['start'], $range['end']);
-        $relevantReservations = $this->mergeReservationsByIdentifier($submissionReservations, $eventReservations);
+        $relevantReservations = $eventReservations;
         $allReservations = $this->reservationRepository->findAllReservations();
         $releaseReturnsInRange = $this->releaseReturnRepository->findByProcessedDateRange($range['start'], $range['end']);
         $allReleaseReturns = $this->releaseReturnRepository->findAllReleaseReturns();
@@ -82,7 +81,7 @@ class DashboardAggregationService
 
         [$totalEquipmentUnits, $availableEquipmentUnits] = $this->summarizeEquipmentInventory($equipment);
         $maintenanceEquipmentCount = $this->countMaintenanceEquipment($equipment);
-        $demandByDay = $this->buildDailyDemandMap($submissionReservations, $range['start'], $range['end']);
+        $demandByDay = $this->buildDailyDemandMapByEventDate($eventReservations, $range['start'], $range['end']);
         $equipmentUsageByDay = $this->buildDailyEquipmentUsageMap($eventReservations, $range['start'], $range['end']);
         $resourceUtilization = $this->buildResourceUtilizationSeries($range['start'], $range['end'], $demandByDay, $equipmentUsageByDay, $totalEquipmentUnits);
 
@@ -170,15 +169,12 @@ class DashboardAggregationService
             'end' => $range['end']->modify('-1 year'),
         ];
         $equipment = $this->equipmentRepository->findAllEquipment();
-        $submissionReservations = $this->reservationRepository->findBySubmissionDateRange($range['start'], $range['end']);
         $eventReservations = $this->reservationRepository->findByEventDateRange($range['start'], $range['end']);
-        $relevantReservations = $this->mergeReservationsByIdentifier($submissionReservations, $eventReservations);
-        $previousSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousRange['start'], $previousRange['end']);
+        $relevantReservations = $eventReservations;
         $previousEventReservations = $this->reservationRepository->findByEventDateRange($previousRange['start'], $previousRange['end']);
-        $previousYearSubmissionReservations = $this->reservationRepository->findBySubmissionDateRange($previousYearRange['start'], $previousYearRange['end']);
         $previousYearEventReservations = $this->reservationRepository->findByEventDateRange($previousYearRange['start'], $previousYearRange['end']);
-        $previousRelevantReservations = $this->mergeReservationsByIdentifier($previousSubmissionReservations, $previousEventReservations);
-        $previousYearRelevantReservations = $this->mergeReservationsByIdentifier($previousYearSubmissionReservations, $previousYearEventReservations);
+        $previousRelevantReservations = $previousEventReservations;
+        $previousYearRelevantReservations = $previousYearEventReservations;
         $releaseReturnsInRange = $this->releaseReturnRepository->findByProcessedDateRange($range['start'], $range['end']);
         $previousReleaseReturns = $this->releaseReturnRepository->findByProcessedDateRange($previousRange['start'], $previousRange['end']);
         $overdueReservations = $this->buildOverdueReservationMap(
@@ -328,14 +324,15 @@ class DashboardAggregationService
     }
 
     /**
-     * @param ReservationEntity[] $submissionReservations
+     * @param ReservationEntity[] $eventReservations
+     * @param ReservationEntity[] $previousYearEventReservations
      */
-    private function buildForecastData(array $submissionReservations, array $previousSubmissionReservations, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    private function buildForecastData(array $eventReservations, array $previousYearEventReservations, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
     {
-        $currentDailyDemandMap = $this->buildDailyDemandMapByEventDate($submissionReservations, $startDate, $endDate);
+        $currentDailyDemandMap = $this->buildDailyDemandMapByEventDate($eventReservations, $startDate, $endDate);
         $previousYearStart = $startDate->modify('-1 year');
         $previousYearEnd = $endDate->modify('-1 year');
-        $previousDailyDemandMap = $this->buildDailyDemandMapByEventDate($previousSubmissionReservations, $previousYearStart, $previousYearEnd);
+        $previousDailyDemandMap = $this->buildDailyDemandMapByEventDate($previousYearEventReservations, $previousYearStart, $previousYearEnd);
         $currentLabels = array_keys($currentDailyDemandMap);
         $currentValues = array_values($currentDailyDemandMap);
         $previousValues = array_values($previousDailyDemandMap);
@@ -395,32 +392,6 @@ class DashboardAggregationService
             }
 
             $dateKey = $eventDateTime->format('Y-m-d');
-            if (array_key_exists($dateKey, $series)) {
-                $series[$dateKey] += $this->sumRequestedEquipmentQuantity($reservation->getRequestedEquipmentList());
-            }
-        }
-
-        return $series;
-    }
-
-    /**
-     * @param ReservationEntity[] $reservations
-     * @return array<string, int>
-     */
-    private function buildDailyDemandMap(array $reservations, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
-    {
-        $series = [];
-        foreach ($this->buildDateLabels($startDate, $endDate) as $dateKey) {
-            $series[$dateKey] = 0;
-        }
-
-        foreach ($reservations as $reservation) {
-            $submissionTimestamp = $reservation->getSubmissionTimestamp();
-            if ($submissionTimestamp === null) {
-                continue;
-            }
-
-            $dateKey = $submissionTimestamp->format('Y-m-d');
             if (array_key_exists($dateKey, $series)) {
                 $series[$dateKey] += $this->sumRequestedEquipmentQuantity($reservation->getRequestedEquipmentList());
             }

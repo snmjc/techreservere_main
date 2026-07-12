@@ -1,0 +1,270 @@
+/* ========================================= */
+/* VENUE LIST                                */
+/* ========================================= */
+
+.facility-venue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.facility-venue-floor-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.facility-venue-floor-label {
+  display: none;
+}
+
+.facility-venue-chips-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 280px));
+  justify-content: start;
+  gap: 0.8rem;
+}
+
+.facility-venue-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 280px;
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 2px solid #16a34a;
+  background-color: #ffffff;
+  box-shadow: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  cursor: default;
+}
+
+.facility-venue-card-photo {
+  display: block;
+  width: 100%;
+  height: 112px;
+  margin-bottom: 0.55rem;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f3f4f6;
+}
+
+.facility-venue-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.facility-venue-card--available {
+  border-color: #16a34a;
+}
+
+.facility-venue-card--available:hover {
+  border-color: #15803d;
+}
+
+.facility-venue-card--unavailable {
+  border-color: #16a34a;
+}
+
+.facility-venue-card--unavailable:hover {
+  border-color: #15803d;
+}
+
+.facility-venue-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
+}
+
+.facility-venue-card-name {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1f2937;
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.facility-venue-card-status {
+  display: inline-flex;
+  margin-top: 0.2rem;
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
+}
+
+.facility-venue-card--available .facility-venue-card-status {
+  color: #16a34a;
+}
+
+.facility-venue-card--unavailable .facility-venue-card-status {
+  color: #dc2626;
+}
+
+.facility-venue-card-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.facility-venue-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.15s ease;
+}
+
+.facility-venue-card-action:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.facility-venue-card-action--delete:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.facility-venue-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+}
+
+.facility-venue-card-detail {
+  font-size: 0.72rem;
+  color: #374151;
+}
+
+.facility-venue-card-detail strong {
+  color: inherit;
+}
+
+.facility-venue-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.facility-venue-chip--available {
+  background-color: #16a34a;
+}
+
+.facility-venue-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.facility-venue-empty-state {
+  text-align: center;
+  padding: 2.4rem 1rem;
+  color: var(--manage-facilities-ink-500);
+  font-size: 0.88rem;
+  background: #f6faf7;
+  border: 1px dashed #cfdcd4;
+  border-radius: 18px;
+}
+
+/* ========================================= */
+/* EQUIPMENT GRID                            */
+/* ========================================= */
+
+.facility-equipment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.facility-equipment-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.facility-equipment-chip--available {
+  background-color: #16a34a;
+}
+
+.facility-equipment-chip--unavailable {
+  background-color: #dc2626;
+}
+
+.facility-equipment-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #999999;
+  font-style: italic;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.manage-facilities-dispatch-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.manage-facilities-dispatch-summary-card,
+.manage-facilities-dispatch-summary-list {
+  padding: 1rem 1.1rem;
+  background: #ffffff;
+  border: 1px solid var(--manage-facilities-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(17, 34, 23, 0.05);
+}
+
+.manage-facilities-dispatch-summary-list h3 {
+  margin: 0 0 0.65rem;
+  color: var(--manage-facilities-ink-900);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.manage-facilities-dispatch-summary-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manage-facilities-dispatch-summary-list li {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.7rem 0.75rem;
+  background: var(--manage-facilities-surface-alt);
+  border: 1px solid var(--manage-facilities-border);
+  border-radius: 12px;
+}
+
+.manage-facilities-dispatch-summary-list li strong {
+  color: var(--manage-facilities-ink-900);
+  font-size: 0.82rem;
+}
+
+.manage-facilities-dispatch-summary-list li span {
+  color: var(--manage-facilities-ink-700);
+  font-size: 0.77rem;
+  line-height: 1.45;
+}

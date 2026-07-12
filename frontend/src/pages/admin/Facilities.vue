@@ -416,7 +416,13 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import './css/Facilities.css';
-import './css/ManageFacilities.css';
+import './css/ManageFacilitiesPage.css';
+import './css/ManageFacilitiesVenueBoard.css';
+import './css/ManageFacilitiesVenueCalendar.css';
+import './css/ManageFacilitiesGrids.css';
+import './css/ManageFacilitiesClassSchedule.css';
+import './css/ManageFacilitiesScheduleImport.css';
+import './css/ManageFacilitiesModals.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
 import FacilityEquipmentGridComponent from '@/modules/facility/components/FacilityEquipmentGridComponent.vue';

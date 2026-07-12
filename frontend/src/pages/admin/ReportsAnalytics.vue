@@ -78,7 +78,7 @@
         <section class="reports-panel reports-forecast-panel">
           <div class="reports-panel-heading">
             <div>
-              <h2>Demand Forecasting (SARIMA)</h2>
+              <h2>Demand Forecasting ({{ forecastModelDisplayName }})</h2>
               <p>Forecasted equipment demand based on recent reservation volume.</p>
             </div>
           </div>
@@ -133,9 +133,29 @@
               @toggle="handlePreferenceAccordionToggle('forecastValidation', $event)"
             >
               <summary>
-                <span>SARIMA Accuracy Validation</span>
+                <span>{{ forecastAccuracyModelLabel }} Accuracy Validation</span>
                 <small>{{ isForecastValidationOpen ? 'Hide metrics' : 'Show metrics' }}</small>
               </summary>
+              <div class="reports-validation-section-heading">
+                <strong>Today</strong>
+                <small>{{ forecastTodayLabel }}</small>
+              </div>
+              <div class="reports-validation-grid">
+                <article
+                  v-for="metric in forecastTodayValidationCards"
+                  :key="metric.label"
+                  class="reports-validation-card"
+                  :class="{ 'is-good': metric.good, 'is-bad': metric.bad }"
+                >
+                  <span>{{ metric.label }}</span>
+                  <strong>{{ metric.value }}</strong>
+                  <small>{{ metric.note }}</small>
+                </article>
+              </div>
+              <div class="reports-validation-section-heading">
+                <strong>Selected date range summary</strong>
+                <small>{{ forecastAccuracyDateLabel }}</small>
+              </div>
               <div class="reports-validation-grid">
                 <article
                   v-for="metric in forecastValidationCards"
@@ -299,17 +319,18 @@
                 <h3>Top Frequently Used Equipment</h3>
                 <table class="reports-equipment-table">
                   <thead>
-                    <tr><th>Equipment</th><th>Times Used</th></tr>
+                    <tr><th>Equipment</th><th>Today</th><th>Selected Range Total</th></tr>
                   </thead>
                   <tbody>
                     <tr v-if="isEquipmentTrendsSectionLoading && topFrequentlyUsedEquipment.length === 0">
-                      <td colspan="2">Loading frequent equipment trends...</td>
+                      <td colspan="3">Loading frequent equipment trends...</td>
                     </tr>
                     <tr v-else-if="topFrequentlyUsedEquipment.length === 0">
-                      <td colspan="2">No equipment requests were recorded in the selected range.</td>
+                      <td colspan="3">No equipment requests were recorded in the selected range.</td>
                     </tr>
                     <tr v-for="item in paginatedTopFrequentlyUsedEquipment" :key="item.name">
                       <td>{{ item.name }}</td>
+                      <td>{{ formatMetricNumber(item.todayCount, 0) }}</td>
                       <td>{{ formatMetricNumber(item.count, 0) }}</td>
                     </tr>
                   </tbody>
@@ -628,7 +649,7 @@ import {
 } from './adminAnalyticsHelpers.js';
 
 const REPORTS_ACCORDION_PREFERENCE_KEY_PREFIX = 'techreserve_reports_analytics_accordions';
-const REPORTS_ANALYTICS_SECTION_CACHE_PREFIX = 'techreserve_reports_analytics_section_v1';
+const REPORTS_ANALYTICS_SECTION_CACHE_PREFIX = 'techreserve_reports_analytics_section_v3';
 const REPORTS_ANALYTICS_SECTION_CACHE_TTL_MS = 5 * 60 * 1000;
 const REPORTS_ANALYTICS_SECTION_KEYS = Object.freeze([
   'forecast',
@@ -638,7 +659,6 @@ const REPORTS_ANALYTICS_SECTION_KEYS = Object.freeze([
   'equipmentTrends',
   'summary',
 ]);
-const DEFAULT_EQUIPMENT_TREND_PAGINATION = Object.freeze(createEmptyEquipmentTrendPagination());
 const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
   forecastValidation: false,
   riskValidation: false,
@@ -668,6 +688,7 @@ const isRenamingModelSet = ref('');
 const isDeletingModelSet = ref('');
 const selectedAnalyticsScenario = ref('clean_data');
 const equipmentTrendPageSize = 5;
+const equipmentTrendCacheItemLimit = 25;
 const topEquipmentCurrentPage = ref(1);
 const possibleBorrowedCurrentPage = ref(1);
 const selectedPreparationDecision = ref(null);
@@ -701,7 +722,6 @@ const utilizationChartRef = ref(null);
 const chartRenderer = createReportsAnalyticsChartRenderer();
 let reportsLoadSequence = 0;
 let equipmentTrendsLoadSequence = 0;
-let isResettingEquipmentTrendPages = false;
 const forecastReport = ref(createEmptyForecastReport());
 const riskReport = ref(createEmptyRiskReport());
 const optimizationReport = ref([]);
@@ -726,6 +746,8 @@ const analyticsScenarios = [
   { key: 'low_last_low_this', title: 'Low demand last year, low this sem', description: 'Quiet baseline across both periods.' },
   { key: 'low_last_high_this', title: 'Low demand last year, high this sem', description: 'Recovery pattern with a current-term spike.' },
   { key: 'mixed', title: 'Mixed', description: 'Volatile pattern with realistic peaks, dips, and steady months.' },
+  { key: 'scenario_a', title: 'Scenario A: Diverse demand', description: 'Aims to validate balanced analytics using varied activities, equipment, and staggered bookings across 2025 and 2026.' },
+  { key: 'scenario_b', title: 'Scenario B: Concentrated exam demand', description: 'Aims to expose equipment bottlenecks and readiness risks through overlapping exam bookings across 2025 and 2026.' },
 ];
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
@@ -767,6 +789,13 @@ const modelCards = [
 ];
 
 const forecastData = computed(() => forecastReport.value || {});
+const isForecastFallback = computed(() => String(forecastData.value.forecastMethod || '').includes('fallback'));
+const forecastModelDisplayName = computed(() => (
+  isForecastFallback.value ? 'Seasonal History Fallback' : 'SARIMA + Prior-Year History'
+));
+const forecastAccuracyModelLabel = computed(() => (
+  isForecastFallback.value ? 'Seasonal fallback' : 'SARIMA'
+));
 const forecastSeries = computed(() => (forecastData.value.actualSeries || []).map((item) => ({
   ...item,
   label: formatShortDate(item.date || item.label),
@@ -801,6 +830,48 @@ const forecastMidpointSeries = computed(() => forecastDisplaySeries.value.labels
 const peakDateLabel = computed(() => formatLongDate(forecastData.value.peakDate));
 const forecastNarrative = computed(() => buildForecastNarrative(forecastData.value, forecastSeries.value, forecastProjectionSeries.value));
 const forecastAccuracy = computed(() => forecastData.value?.accuracyMetrics || {});
+const forecastTodayIso = computed(() => formatLocalDateIso(new Date()));
+const forecastTodayLabel = computed(() => formatLongDate(forecastTodayIso.value));
+const forecastTodayActual = computed(() => findForecastSeriesValue(forecastData.value.actualSeries, forecastTodayIso.value));
+const forecastTodayPrediction = computed(() => findForecastSeriesValue(forecastData.value.forecastSeries, forecastTodayIso.value));
+const forecastTodayValidationCards = computed(() => {
+  const actual = forecastTodayActual.value;
+  const prediction = forecastTodayPrediction.value;
+  const hasActual = Number.isFinite(actual);
+  const hasPrediction = Number.isFinite(prediction);
+  const absoluteError = hasActual && hasPrediction ? Math.abs(actual - prediction) : null;
+  const errorPercent = hasActual && hasPrediction && actual !== 0
+    ? (absoluteError / Math.abs(actual)) * 100
+    : null;
+  const accuracyPercent = Number.isFinite(errorPercent) ? Math.max(0, 100 - errorPercent) : null;
+
+  return [
+    {
+      label: 'Actual demand today',
+      value: hasActual ? `${formatMetricNumber(actual, 0)} requests` : 'Not in selected range',
+      note: hasActual ? 'Recorded reservation demand for today.' : 'Include today in the date filter to compare actual demand.',
+    },
+    {
+      label: 'Forecast demand today',
+      value: hasPrediction ? `${formatMetricNumber(prediction, 1)} requests` : 'Not available',
+      note: hasPrediction ? `${forecastAccuracyModelLabel.value} prediction for today.` : 'No forecast point is available for today.',
+    },
+    {
+      label: 'Absolute error today',
+      value: Number.isFinite(absoluteError) ? `${formatMetricNumber(absoluteError, 1)} requests` : 'Not computable',
+      note: 'Absolute difference between today’s actual and forecast demand.',
+    },
+    {
+      label: 'Forecast accuracy today',
+      value: formatOptionalPercent(accuracyPercent, 2, false, 'Not computable'),
+      note: actual === 0
+        ? 'Not computable because today has zero actual demand.'
+        : 'Calculated as 100% minus today’s absolute percentage error.',
+      good: Number.isFinite(errorPercent) && errorPercent <= 20,
+      bad: Number.isFinite(errorPercent) && errorPercent > 20,
+    },
+  ];
+});
 const forecastAccuracyDateLabel = computed(() => {
   const startDate = formatShortDate(forecastAccuracy.value.evaluationStartDate);
   const endDate = formatShortDate(forecastAccuracy.value.evaluationEndDate);
@@ -823,7 +894,7 @@ const forecastValidationCards = computed(() => {
   const improvement = Number(forecastAccuracy.value.forecastImprovementPercent);
   return [
     {
-      label: 'SARIMA MAPE',
+      label: `${forecastAccuracyModelLabel.value} MAPE`,
       value: formatOptionalPercent(mape, 2, false, 'Not computable'),
       note: `${status === 'good' ? 'Good: average forecast error is within the 20% target.' : status === 'needs_review' ? 'Needs review: average forecast error is above the 20% target.' : 'Not computable because MAPE needs non-zero actual demand.'} ${forecastAccuracyEvaluationNote.value}`,
       good: status === 'good',
@@ -832,7 +903,7 @@ const forecastValidationCards = computed(() => {
     {
       label: 'Naive MAPE',
       value: formatOptionalPercent(forecastAccuracy.value.naiveMape, 2, false, 'Not computable'),
-      note: `Simple benchmark for ${forecastAccuracyDateLabel.value}: predicts each day using the previous actual demand. SARIMA should beat this to justify the model.`,
+      note: `Simple benchmark for ${forecastAccuracyDateLabel.value}: predicts each day using the previous actual demand. ${forecastAccuracyModelLabel.value} should beat this to justify the forecast.`,
       good: false,
       bad: false,
     },
@@ -844,9 +915,9 @@ const forecastValidationCards = computed(() => {
       bad: false,
     },
     {
-      label: 'SARIMA Improvement',
+      label: `${forecastAccuracyModelLabel.value} Improvement`,
       value: formatOptionalPercent(forecastAccuracy.value.forecastImprovementPercent, 2, true, 'Not computable'),
-      note: `${Number.isFinite(improvement) && improvement > 0 ? 'SARIMA is outperforming the benchmark.' : Number.isFinite(improvement) && improvement < 0 ? 'SARIMA is worse than the benchmark for this range.' : 'No improvement score because one of the MAPE values is not computable.'} Compared with ${formatBenchmarkMethod(forecastAccuracy.value.benchmarkMethod)} over ${forecastAccuracyDateLabel.value}.`,
+      note: `${Number.isFinite(improvement) && improvement > 0 ? `${forecastAccuracyModelLabel.value} is outperforming the benchmark.` : Number.isFinite(improvement) && improvement < 0 ? `${forecastAccuracyModelLabel.value} is worse than the benchmark for this range.` : 'No improvement score because one of the MAPE values is not computable.'} Compared with ${formatBenchmarkMethod(forecastAccuracy.value.benchmarkMethod)} over ${forecastAccuracyDateLabel.value}.`,
       good: Number.isFinite(improvement) && improvement > 0,
       bad: Number.isFinite(improvement) && improvement < 0,
     },
@@ -972,21 +1043,22 @@ const equipmentTrendsSectionError = computed(() => sectionErrors.value.equipment
 const summarySectionError = computed(() => sectionErrors.value.summary);
 const utilizationItems = computed(() => utilizationReport.value.items || []);
 const utilizationComparisonItems = computed(() => utilizationReport.value.comparisonItems || []);
-const equipmentTrendPagination = computed(() => utilizationReport.value.equipmentTrendPagination || DEFAULT_EQUIPMENT_TREND_PAGINATION);
-const topEquipmentPagination = computed(() => equipmentTrendPagination.value.topEquipment || DEFAULT_EQUIPMENT_TREND_PAGINATION.topEquipment);
-const preparationDecisionPagination = computed(() => (
-  equipmentTrendPagination.value.preparationDecisions || DEFAULT_EQUIPMENT_TREND_PAGINATION.preparationDecisions
-));
 const topEquipment = computed(() => normalizeEquipmentTrendItems(utilizationReport.value.topEquipment || []));
 const topFrequentlyUsedEquipment = computed(() => topEquipment.value);
-const topEquipmentTotalPages = computed(() => Math.max(1, Number(topEquipmentPagination.value.totalPages || 1)));
-const paginatedTopFrequentlyUsedEquipment = computed(() => topFrequentlyUsedEquipment.value);
+const topEquipmentTotalPages = computed(() => Math.max(1, Math.ceil(topFrequentlyUsedEquipment.value.length / equipmentTrendPageSize)));
+const paginatedTopFrequentlyUsedEquipment = computed(() => paginateEquipmentTrendItems(
+  topFrequentlyUsedEquipment.value,
+  topEquipmentCurrentPage.value,
+));
 const possibleBorrowedEquipment = computed(() => {
   const candidates = normalizeEquipmentTrendItems(utilizationReport.value.possibleBorrowedEquipment || []);
   return candidates.filter((item) => item?.name).map(buildPreparationDecisionItem);
 });
-const possibleBorrowedTotalPages = computed(() => Math.max(1, Number(preparationDecisionPagination.value.totalPages || 1)));
-const paginatedPossibleBorrowedEquipment = computed(() => possibleBorrowedEquipment.value);
+const possibleBorrowedTotalPages = computed(() => Math.max(1, Math.ceil(possibleBorrowedEquipment.value.length / equipmentTrendPageSize)));
+const paginatedPossibleBorrowedEquipment = computed(() => paginateEquipmentTrendItems(
+  possibleBorrowedEquipment.value,
+  possibleBorrowedCurrentPage.value,
+));
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
 const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'Not generated');
@@ -1106,14 +1178,6 @@ watch(possibleBorrowedTotalPages, (pageCount) => {
   }
 });
 
-watch([topEquipmentCurrentPage, possibleBorrowedCurrentPage], () => {
-  if (isResettingEquipmentTrendPages || isReportsLoading.value) {
-    return;
-  }
-
-  loadEquipmentTrendsPage();
-});
-
 async function loadReportsAnalytics(options = {}) {
   const loadSequence = ++reportsLoadSequence;
   isReportsLoading.value = true;
@@ -1146,19 +1210,6 @@ async function loadReportsAnalytics(options = {}) {
   } else {
     reportsSourceLabel.value = `Using FastAPI analytics for ${activeRangeLabel.value}.`;
   }
-}
-
-async function loadEquipmentTrendsPage(options = {}) {
-  sectionLoadingState.value = {
-    ...sectionLoadingState.value,
-    equipmentTrends: true,
-  };
-  sectionErrors.value = {
-    ...sectionErrors.value,
-    equipmentTrends: '',
-  };
-
-  await loadAnalyticsSection(reportsLoadSequence, 'equipment-trends', activeRange.value, options);
 }
 
 async function loadAnalyticsSection(loadSequence, section, range, options = {}) {
@@ -1330,16 +1381,15 @@ function resolveReportsSectionRequestOptions(sectionKey) {
   }
 
   return {
-    topEquipmentPage: topEquipmentCurrentPage.value,
-    preparationDecisionPage: possibleBorrowedCurrentPage.value,
-    equipmentTrendPageSize,
+    topEquipmentPage: 1,
+    preparationDecisionPage: 1,
+    equipmentTrendPageSize: equipmentTrendCacheItemLimit,
   };
 }
 
 function syncEquipmentTrendPageRefs(pagination) {
   const topPage = Number(pagination?.topEquipment?.page || topEquipmentCurrentPage.value);
   const preparationPage = Number(pagination?.preparationDecisions?.page || possibleBorrowedCurrentPage.value);
-  isResettingEquipmentTrendPages = true;
 
   if (Number.isFinite(topPage) && topPage > 0) {
     topEquipmentCurrentPage.value = topPage;
@@ -1348,19 +1398,11 @@ function syncEquipmentTrendPageRefs(pagination) {
   if (Number.isFinite(preparationPage) && preparationPage > 0) {
     possibleBorrowedCurrentPage.value = preparationPage;
   }
-
-  nextTick(() => {
-    isResettingEquipmentTrendPages = false;
-  });
 }
 
 function resetEquipmentTrendPages() {
-  isResettingEquipmentTrendPages = true;
   topEquipmentCurrentPage.value = 1;
   possibleBorrowedCurrentPage.value = 1;
-  nextTick(() => {
-    isResettingEquipmentTrendPages = false;
-  });
 }
 
 function applyCachedAnalyticsSection(sectionKey, range, cacheOptions = {}) {
@@ -1469,11 +1511,7 @@ function resolveReportsSectionCachePrefix(range) {
 
 function resolveReportsSectionCacheKey(sectionKey, range, cacheOptions = {}) {
   const optionKey = sectionKey === 'equipmentTrends'
-    ? [
-      `top-${cacheOptions.topEquipmentPage || 1}`,
-      `prep-${cacheOptions.preparationDecisionPage || 1}`,
-      `size-${cacheOptions.equipmentTrendPageSize || equipmentTrendPageSize}`,
-    ].join(':')
+    ? `all-${cacheOptions.equipmentTrendPageSize || equipmentTrendCacheItemLimit}`
     : 'default';
 
   return [
@@ -1775,6 +1813,7 @@ function normalizeEquipmentTrendItems(items) {
     .map((item) => ({
       name: item?.name || item?.equipment || item?.equipmentName || item?.equipment_name || '',
       count: Number(item?.count ?? item?.usageCount ?? item?.usage_count ?? item?.timesUsed ?? item?.times_used ?? 0),
+      todayCount: Number(item?.todayCount ?? item?.today_count ?? 0),
       currentUsage: Number(item?.currentUsage ?? item?.current_usage ?? item?.count ?? 0),
       previousYearCount: Number(item?.previousYearCount ?? item?.previous_year_count ?? item?.historicalCount ?? item?.historical_count ?? 0),
       predictedDemand: Number(item?.predictedDemand ?? item?.predicted_demand ?? item?.forecastDemand ?? item?.forecast_demand ?? item?.count ?? 0),
@@ -1786,6 +1825,32 @@ function normalizeEquipmentTrendItems(items) {
       action: item?.action || '',
     }))
     .filter((item) => item.name);
+}
+
+function paginateEquipmentTrendItems(items, page) {
+  const startIndex = (Math.max(1, Number(page) || 1) - 1) * equipmentTrendPageSize;
+  return items.slice(startIndex, startIndex + equipmentTrendPageSize);
+}
+
+function findForecastSeriesValue(items, dateIso) {
+  if (!Array.isArray(items)) {
+    return null;
+  }
+
+  const item = items.find((entry) => String(entry?.date || entry?.label || '').slice(0, 10) === dateIso);
+  if (!item || item.value === null || item.value === undefined || item.value === '') {
+    return null;
+  }
+
+  const value = Number(item.value);
+  return Number.isFinite(value) ? value : null;
+}
+
+function formatLocalDateIso(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function buildPreparationDecisionItem(item) {

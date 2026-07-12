@@ -22,12 +22,12 @@ class ForecastSnapshotBuilder:
         end_date = date.fromisoformat(configured_range["endDate"]) if configured_range.get("endDate") else date.today()
         rows = connection.execute(
             """
-            SELECT DATE(submission_timestamp) AS demand_date,
+            SELECT DATE(event_date_time) AS demand_date,
                    COUNT(*)::int AS demand_count
              FROM reservations
-             WHERE submission_timestamp >= %s
-               AND submission_timestamp < %s
-             GROUP BY DATE(submission_timestamp)
+             WHERE event_date_time >= %s
+               AND event_date_time < %s
+             GROUP BY DATE(event_date_time)
              ORDER BY demand_date
             """,
             (start_date, end_date + timedelta(days=1)),
@@ -49,16 +49,26 @@ class ForecastSnapshotBuilder:
         trained_artifact = self.artifact_store.load(FORECAST_ARTIFACT)
         if trained_artifact is not None and trained_artifact.get("model") is None:
             trained_artifact = None
-        forecast_series = (
-            self._build_trained_forecast_series(series, forecast_days, trained_artifact)
-            if trained_artifact is not None
-            else self._build_forecast_series(series, forecast_days)
-        )
         history_series = self._build_history_series(
             connection,
             start_date,
             end_date,
             forecast_days,
+        )
+        base_forecast_series = (
+            self._build_trained_forecast_series(series, forecast_days, trained_artifact)
+            if trained_artifact is not None
+            else self._build_forecast_series(series, forecast_days)
+        )
+        historical_weight = min(
+            1.0,
+            max(0.0, float(config.get("forecast", {}).get("historicalWeight", 0.8))),
+        )
+        uses_prior_year_history = any(float(item.get("value", 0)) > 0 for item in history_series)
+        forecast_series = self._blend_forecast_with_history(
+            base_forecast_series,
+            history_series,
+            historical_weight if uses_prior_year_history else 0.0,
         )
         future_forecast_series = forecast_series[-forecast_days:] if forecast_days > 0 else []
         forecast_peak = max(future_forecast_series, key=lambda item: item["value"], default=None)
@@ -70,8 +80,19 @@ class ForecastSnapshotBuilder:
         accuracy_metrics = self._build_accuracy_metrics(series, forecast_series)
 
         return {
-            "modelName": self._artifact_model_name(trained_artifact, "sarima"),
-            "status": "trained_weekly" if trained_artifact is not None else "placeholder_ready",
+            "modelName": self._artifact_model_name(trained_artifact, "seasonal_history_fallback"),
+            "forecastMethod": (
+                "trained_model_with_prior_year_history"
+                if trained_artifact is not None and uses_prior_year_history
+                else "trained_model"
+                if trained_artifact is not None
+                else "seasonal_history_fallback"
+                if uses_prior_year_history
+                else "smoothed_demand_fallback"
+            ),
+            "status": "trained_weekly" if trained_artifact is not None else "fallback_ready",
+            "usesPriorYearHistory": uses_prior_year_history,
+            "historicalWeight": historical_weight if uses_prior_year_history else 0.0,
             "actualSeries": series,
             "forecastSeries": forecast_series,
             "historySeries": history_series,
@@ -92,9 +113,40 @@ class ForecastSnapshotBuilder:
             "notes": (
                 "Weekly trained .pkl forecast artifact is active."
                 if trained_artifact is not None
-                else "FastAPI storage path is live. Weekly training will replace this placeholder output."
+                else "No trained artifact is active; the fallback blends same-date prior-year demand with current demand patterns."
             ),
         }
+
+    def _blend_forecast_with_history(
+        self,
+        forecast_series: list[dict[str, Any]],
+        history_series: list[dict[str, Any]],
+        historical_weight: float,
+    ) -> list[dict[str, Any]]:
+        if historical_weight <= 0 or not forecast_series:
+            return forecast_series
+
+        history_by_date = {
+            str(item.get("date", "")): float(item.get("value", 0))
+            for item in history_series
+            if item.get("date")
+        }
+        current_weight = 1.0 - historical_weight
+
+        return [
+            {
+                **item,
+                "value": round(
+                    max(
+                        0.0,
+                        (float(item.get("value", 0)) * current_weight)
+                        + (history_by_date.get(str(item.get("date", "")), 0.0) * historical_weight),
+                    ),
+                    2,
+                ),
+            }
+            for item in forecast_series
+        ]
 
     def _build_trained_forecast_series(
         self,
@@ -274,12 +326,12 @@ class ForecastSnapshotBuilder:
         history_end = max(history_dates)
         rows = connection.execute(
             """
-            SELECT DATE(submission_timestamp) AS demand_date,
+            SELECT DATE(event_date_time) AS demand_date,
                    COUNT(*)::int AS demand_count
               FROM reservations
-             WHERE submission_timestamp >= %s
-               AND submission_timestamp < %s
-             GROUP BY DATE(submission_timestamp)
+             WHERE event_date_time >= %s
+               AND event_date_time < %s
+             GROUP BY DATE(event_date_time)
              ORDER BY demand_date
             """,
             (history_start, history_end + timedelta(days=1)),

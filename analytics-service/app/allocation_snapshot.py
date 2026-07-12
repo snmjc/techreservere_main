@@ -32,11 +32,12 @@ class AllocationSnapshotBuilder:
         allocation_plan = self._build_allocation_plan(pending_rows, equipment_rows, trained_artifact)
 
         current_usage_map = self._build_equipment_usage_map(connection, start_date, end_date)
+        today_usage_map = self._build_equipment_usage_map(connection, date.today(), date.today())
         previous_year_usage_map = self._build_equipment_usage_map(connection, previous_year_start, previous_year_end)
         utilization_by_category = self._build_utilization_by_category(equipment_rows, current_usage_map, trained_artifact)
         utilization_comparison_by_category = self._build_utilization_by_category(equipment_rows, previous_year_usage_map)
         equipment_trend_config = self._resolve_equipment_trend_config(config)
-        all_top_equipment = self._build_top_equipment(equipment_rows, current_usage_map)
+        all_top_equipment = self._build_top_equipment(equipment_rows, current_usage_map, today_usage_map)
         all_possible_borrowed_equipment = self._build_possible_borrowed_equipment(
             equipment_rows,
             current_usage_map,
@@ -102,7 +103,7 @@ class AllocationSnapshotBuilder:
                    submission_timestamp
               FROM reservations
              WHERE LOWER(COALESCE(current_status, '')) IN ('pending', 'pending review')
-             ORDER BY submission_timestamp ASC, event_date_time ASC
+             ORDER BY event_date_time ASC, submission_timestamp ASC
             """
         ).fetchall()
 
@@ -139,8 +140,8 @@ class AllocationSnapshotBuilder:
             pending_rows,
             key=lambda request: (
                 -float(priority_weights.get(str(request["priority_level"] or "Normal").lower(), 1.0)),
-                request["submission_timestamp"],
                 request["event_date_time"],
+                request["submission_timestamp"],
             ),
         )
         ordered_equipment_rows = sorted(
@@ -487,12 +488,13 @@ class AllocationSnapshotBuilder:
 
     def _resolve_equipment_trend_config(self, config: dict[str, Any]) -> dict[str, int]:
         trend_config = config.get("equipmentTrends", {}) if isinstance(config.get("equipmentTrends"), dict) else {}
-        page_size = max(1, min(5, int(trend_config.get("pageSize") or 5)))
+        item_limit = 25
+        page_size = max(1, min(item_limit, int(trend_config.get("pageSize") or 5)))
         return {
             "topEquipmentPage": max(1, int(trend_config.get("topEquipmentPage") or 1)),
             "preparationDecisionPage": max(1, int(trend_config.get("preparationDecisionPage") or 1)),
             "pageSize": page_size,
-            "maxPages": 5,
+            "maxPages": max(1, item_limit // page_size),
         }
 
     def _paginate_items(self, items: list[dict[str, Any]], page: int, page_size: int, max_pages: int) -> dict[str, Any]:
@@ -514,11 +516,18 @@ class AllocationSnapshotBuilder:
             },
         }
 
-    def _build_top_equipment(self, equipment_rows: list[Any], usage_map: dict[str, int]) -> list[dict[str, Any]]:
+    def _build_top_equipment(
+        self,
+        equipment_rows: list[Any],
+        usage_map: dict[str, int],
+        today_usage_map: dict[str, int] | None = None,
+    ) -> list[dict[str, Any]]:
         items = []
+        today_usage = today_usage_map or {}
         for row in equipment_rows:
             equipment_name = str(row["equipment_name"] or "")
-            usage_count = usage_map.get(equipment_name.lower(), 0)
+            equipment_key = equipment_name.lower()
+            usage_count = usage_map.get(equipment_key, 0)
             if usage_count <= 0:
                 continue
             total_quantity = max(1, int(row["total_quantity"] or 1))
@@ -526,6 +535,7 @@ class AllocationSnapshotBuilder:
                 {
                     "name": equipment_name,
                     "count": usage_count,
+                    "todayCount": today_usage.get(equipment_key, 0),
                     "rate": round(min(100.0, (usage_count / total_quantity) * 100), 1),
                 }
             )

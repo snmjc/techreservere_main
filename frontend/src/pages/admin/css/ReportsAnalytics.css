@@ -398,6 +398,26 @@
   line-height: 1.35;
 }
 
+.reports-validation-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.reports-validation-section-heading strong {
+  color: #132238;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.reports-validation-section-heading small {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .reports-rf-metrics-grid small,
 .reports-risk-probability-grid small {
   color: #64748b;
