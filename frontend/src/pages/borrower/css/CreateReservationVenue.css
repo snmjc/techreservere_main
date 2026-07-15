@@ -6,6 +6,44 @@
   border-bottom: 1px solid #e2e9e4;
 }
 
+.borrower-selection-guide {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  color: #173122;
+  background: linear-gradient(135deg, #eef8f1 0%, #f7fbf8 100%);
+  border: 1px solid #d9e7de;
+  border-radius: 16px;
+}
+
+.borrower-selection-guide strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.borrower-selection-guide p {
+  margin: 0;
+  color: #4f655a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.borrower-selection-guide__dismiss {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  color: #355043;
+  background: #fff;
+  border: 1px solid #d0ddd4;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .borrower-step-tabs button {
   position: relative;
   padding: 0 0 0.8rem;
@@ -328,6 +366,41 @@
   scrollbar-gutter: stable;
 }
 
+.reservation-equipment-package-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.reservation-equipment-package-list__label {
+  margin: 0;
+  color: #567063;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.reservation-equipment-package-list__item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.72rem 0.8rem;
+  color: #173122;
+  text-align: left;
+  background: #eef8f1;
+  border: 1px solid #d7e8dd;
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.reservation-equipment-package-list__item strong {
+  font-size: 0.76rem;
+}
+
+.reservation-equipment-package-list__item span {
+  color: #5f7568;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 .reservation-equipment-selected-item {
   display: grid;
   gap: 0.15rem;
@@ -362,6 +435,10 @@
 }
 
 @media (max-width: 760px) {
+  .borrower-selection-guide {
+    flex-direction: column;
+  }
+
   .borrower-step-tabs {
     gap: 0.8rem;
     padding: 0.9rem 1rem 0;

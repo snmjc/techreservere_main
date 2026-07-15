@@ -56,4 +56,9 @@ export const adminNavigationItems = [
     label: 'Reports & Analytics',
     iconSvg: `<svg ${iconAttributes}><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/><path d="M19 7v5h-5"/></svg>`,
   },
+  {
+    routeName: 'adminSupportCenterPage',
+    label: 'Support Center',
+    iconSvg: `<svg ${iconAttributes}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg>`,
+  },
 ];

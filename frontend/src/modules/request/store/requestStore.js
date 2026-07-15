@@ -20,6 +20,7 @@ export const useRequestStore = defineStore('requestStore', () => {
   const activeReservationsList = ref([]);
   const pastRecordsList = ref([]);
   const isLoadingReservations = ref(false);
+  const autoRefreshTimerId = ref(0);
 
   const pendingCount = computed(() => pendingRequestsList.value.length);
   const approvedCount = computed(() => approvedRequestsList.value.length);
@@ -284,6 +285,27 @@ export const useRequestStore = defineStore('requestStore', () => {
     }
   }
 
+  function startAutoRefresh(intervalMs = 45000) {
+    stopAutoRefresh();
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    autoRefreshTimerId.value = window.setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      fetchReservations({ clearOnError: false }).catch(() => {});
+    }, intervalMs);
+  }
+
+  function stopAutoRefresh() {
+    if (autoRefreshTimerId.value && typeof window !== 'undefined') {
+      window.clearInterval(autoRefreshTimerId.value);
+    }
+    autoRefreshTimerId.value = 0;
+  }
+
   return {
     pendingRequestsList,
     approvedRequestsList,
@@ -305,5 +327,7 @@ export const useRequestStore = defineStore('requestStore', () => {
     fetchDashboardData,
     fetchReservations,
     addNewReservation,
+    startAutoRefresh,
+    stopAutoRefresh,
   };
 });

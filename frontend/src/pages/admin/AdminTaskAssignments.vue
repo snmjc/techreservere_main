@@ -268,12 +268,15 @@
 
           <label>
             <span>Assigned Staff</span>
-            <select v-model="taskForm.assignedToAccountId">
-              <option value="">Select staff</option>
-              <option v-for="staff in staffOptions" :key="staff.value" :value="staff.value">
-                {{ staff.label }}
-              </option>
-            </select>
+            <button
+              type="button"
+              class="admin-task-assignments-staff-trigger"
+              @click="openStaffSelectionModal"
+            >
+              <span>{{ selectedStaffOption ? selectedStaffOption.fullName : 'Select staff' }}</span>
+              <small v-if="selectedStaffOption">{{ [selectedStaffOption.staffIdNumber, selectedStaffOption.position].filter(Boolean).join(' · ') }}</small>
+              <small v-else>Open staff directory</small>
+            </button>
           </label>
 
           <label>
@@ -532,6 +535,88 @@
       </section>
     </div>
 
+    <div v-if="showStaffSelectionModal" class="admin-task-assignments-modal-overlay" @click.self="closeStaffSelectionModal">
+      <section class="admin-task-assignments-modal admin-task-assignments-modal--staff-picker">
+        <header class="admin-task-assignments-modal-header">
+          <div>
+            <h2>Select Staff</h2>
+            <p>Choose the staff member who will handle this task assignment.</p>
+          </div>
+          <button type="button" aria-label="Close" @click="closeStaffSelectionModal">x</button>
+        </header>
+
+        <div class="admin-task-assignments-staff-toolbar">
+          <label class="admin-task-assignments-search">
+            <span class="sr-only">Search staff</span>
+            <input
+              v-model.trim="staffSelectionQuery"
+              type="search"
+              placeholder="Search by name or ID..."
+            />
+          </label>
+
+          <label>
+            <span class="sr-only">Filter staff by role</span>
+            <select v-model="staffSelectionRoleFilter">
+              <option value="all">All Staff</option>
+              <option v-for="option in staffRoleFilterOptions" :key="option" :value="option">{{ option }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="admin-task-assignments-staff-table-wrap">
+          <table class="admin-task-assignments-staff-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Staff ID</th>
+                <th>Position</th>
+                <th>Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="staff in paginatedStaffSelectionOptions"
+                :key="staff.value"
+                :class="{ 'is-selected': pendingSelectedStaffId === staff.value }"
+                @click="pendingSelectedStaffId = staff.value"
+              >
+                <td><strong>{{ staff.fullName }}</strong></td>
+                <td>{{ staff.staffIdNumber || 'N/A' }}</td>
+                <td>{{ staff.position || 'Staff' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="admin-task-assignments-staff-row-action"
+                    :class="{ 'is-selected': pendingSelectedStaffId === staff.value }"
+                    @click.stop="pendingSelectedStaffId = staff.value"
+                  >
+                    {{ pendingSelectedStaffId === staff.value ? 'Selected' : 'Choose' }}
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="paginatedStaffSelectionOptions.length === 0">
+                <td colspan="4" class="admin-task-assignments-staff-empty">No staff matched your search.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="admin-task-assignments-staff-footer">
+          <p>Showing {{ staffSelectionStart }} to {{ staffSelectionEnd }} of {{ filteredStaffSelectionOptions.length }} staff</p>
+          <div class="admin-task-assignments-pagination">
+            <button type="button" :disabled="staffSelectionPage === 1" @click="staffSelectionPage -= 1">Prev</button>
+            <span class="admin-task-assignments-pagination-label">Page {{ staffSelectionPage }} of {{ staffSelectionTotalPages }}</span>
+            <button type="button" :disabled="staffSelectionPage === staffSelectionTotalPages" @click="staffSelectionPage += 1">Next</button>
+          </div>
+          <div class="admin-task-assignments-modal-actions">
+            <button type="button" class="admin-task-assignments-secondary" @click="closeStaffSelectionModal">Cancel</button>
+            <button type="button" class="admin-task-assignments-primary" :disabled="!pendingSelectedStaffId" @click="applySelectedStaff">Select</button>
+          </div>
+        </footer>
+      </section>
+    </div>
+
     <DataRequestStatusFloater :items="taskAssignmentStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
@@ -602,6 +687,11 @@ const taskModalMode = ref('create');
 const editingTask = ref(null);
 const viewTask = ref(null);
 const verifyTask = ref(null);
+const showStaffSelectionModal = ref(false);
+const staffSelectionQuery = ref('');
+const staffSelectionRoleFilter = ref('all');
+const staffSelectionPage = ref(1);
+const pendingSelectedStaffId = ref('');
 
 const searchQuery = ref('');
 const statusFilter = ref('all');
@@ -749,6 +839,42 @@ const staffFilterOptions = computed(() => tasks.value
   .filter((staff, index, list) => list.findIndex((entry) => entry.value === staff.value) === index)
   .sort((first, second) => first.label.localeCompare(second.label)));
 
+const selectedStaffOption = computed(() => (
+  staffOptions.value.find((staff) => staff.value === String(taskForm.assignedToAccountId || '')) || null
+));
+
+const staffRoleFilterOptions = computed(() => [...new Set(
+  staffOptions.value.map((staff) => staff.position).filter(Boolean)
+)].sort((first, second) => first.localeCompare(second)));
+
+const filteredStaffSelectionOptions = computed(() => {
+  const normalizedQuery = staffSelectionQuery.value.trim().toLowerCase();
+
+  return staffOptions.value.filter((staff) => {
+    if (staffSelectionRoleFilter.value !== 'all' && staff.position !== staffSelectionRoleFilter.value) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    return [
+      staff.fullName,
+      staff.staffIdNumber,
+      staff.position,
+    ].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery);
+  });
+});
+
+const staffSelectionTotalPages = computed(() => Math.max(1, Math.ceil(filteredStaffSelectionOptions.value.length / 8)));
+const paginatedStaffSelectionOptions = computed(() => {
+  const startIndex = (staffSelectionPage.value - 1) * 8;
+  return filteredStaffSelectionOptions.value.slice(startIndex, startIndex + 8);
+});
+const staffSelectionStart = computed(() => filteredStaffSelectionOptions.value.length === 0 ? 0 : ((staffSelectionPage.value - 1) * 8) + 1);
+const staffSelectionEnd = computed(() => Math.min(staffSelectionPage.value * 8, filteredStaffSelectionOptions.value.length));
+
 const filteredTasks = computed(() => {
   const filteredList = tasks.value.filter((task) => {
     const query = searchQuery.value.trim().toLowerCase();
@@ -810,6 +936,16 @@ watch([searchQuery, statusFilter, personnelFilter, sortFilter, dateFilterStart, 
 watch(totalPages, (pageCount) => {
   if (currentPage.value > pageCount) {
     currentPage.value = pageCount;
+  }
+});
+
+watch([staffSelectionQuery, staffSelectionRoleFilter], () => {
+  staffSelectionPage.value = 1;
+});
+
+watch(staffSelectionTotalPages, (pageCount) => {
+  if (staffSelectionPage.value > pageCount) {
+    staffSelectionPage.value = pageCount;
   }
 });
 
@@ -912,6 +1048,14 @@ function openUpdateModal(task) {
   showTaskModal.value = true;
 }
 
+function openStaffSelectionModal() {
+  pendingSelectedStaffId.value = String(taskForm.assignedToAccountId || '');
+  staffSelectionQuery.value = '';
+  staffSelectionRoleFilter.value = 'all';
+  staffSelectionPage.value = 1;
+  showStaffSelectionModal.value = true;
+}
+
 function openVerifyModal(task) {
   if (!canVerifyTask(task)) {
     return;
@@ -931,6 +1075,15 @@ function closeTaskModal() {
   editingTask.value = null;
   resetTaskForm();
   modalError.value = '';
+}
+
+function closeStaffSelectionModal() {
+  showStaffSelectionModal.value = false;
+}
+
+function applySelectedStaff() {
+  taskForm.assignedToAccountId = pendingSelectedStaffId.value;
+  showStaffSelectionModal.value = false;
 }
 
 function closeSmsTestModal() {
@@ -1267,6 +1420,9 @@ function normalizeStaff(accounts) {
     .filter((account) => resolveAccountType(account) === 'Employee')
     .map((account) => ({
       value: String(account.accountIdentifier || account.account_identifier),
+      fullName: `${account.firstName || account.first_name || ''} ${account.lastName || account.last_name || ''}`.trim(),
+      staffIdNumber: resolveStaffIdNumber(account),
+      position: account.roleLabel || account.department || 'Staff',
       label: [
         `${account.firstName || account.first_name || ''} ${account.lastName || account.last_name || ''}`.trim(),
         resolveStaffIdNumber(account),
@@ -1473,6 +1629,8 @@ function resetTaskForm() {
   taskForm.emergencyOverride = false;
   taskForm.confirmedAdminEmail = '';
   taskForm.confirmedAdminPassword = '';
+  pendingSelectedStaffId.value = '';
+  showStaffSelectionModal.value = false;
   resetTaskSubmissionFeedback();
 }
 

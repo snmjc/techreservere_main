@@ -12,6 +12,14 @@
         </div>
       </header>
 
+      <section v-if="showFacilitiesGuide" class="borrower-facilities__guide">
+        <div>
+          <strong>Getting started</strong>
+          <p>Use the venue calendar for reservation activity, then switch to equipment to review current inventory. This page refreshes automatically while you keep it open.</p>
+        </div>
+        <button type="button" class="borrower-facilities__guide-dismiss" @click="dismissFacilitiesGuide">Hide</button>
+      </section>
+
       <section class="borrower-facilities__surface">
         <div class="borrower-facilities__surface-toolbar">
           <div class="borrower-facilities__segment-control">
@@ -596,7 +604,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -654,8 +662,10 @@ const viewEquipmentError = ref('');
 const equipmentList = ref([]);
 const equipmentLoading = ref(false);
 const equipmentError = ref('');
+const showFacilitiesGuide = ref(readFacilitiesGuidePreference());
 
 let activeWeekRequestSequence = 0;
+let facilitiesRefreshTimerId = 0;
 
 const selectedDateObject = computed(() => parseDateValue(selectedVenueDate.value) || new Date());
 const selectedMonthShortLabel = computed(() => new Intl.DateTimeFormat('en-US', { month: 'short' }).format(selectedDateObject.value).toUpperCase());
@@ -822,7 +832,14 @@ watch(equipmentTotalPages, (nextPageCount) => {
   }
 });
 
-fetchEquipment();
+onMounted(() => {
+  fetchEquipment();
+  startFacilitiesAutoRefresh();
+});
+
+onBeforeUnmount(() => {
+  stopFacilitiesAutoRefresh();
+});
 
 async function fetchVenuesForVisibleWeek() {
   const currentRequestSequence = activeWeekRequestSequence + 1;
@@ -950,6 +967,44 @@ function closeEquipmentDetails() {
   viewEquipmentRecord.value = null;
   viewEquipmentError.value = '';
   viewEquipmentLoading.value = false;
+}
+
+function readFacilitiesGuidePreference() {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  return window.localStorage.getItem('techreserve:onboarding:view-facilities') !== 'hidden';
+}
+
+function dismissFacilitiesGuide() {
+  showFacilitiesGuide.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('techreserve:onboarding:view-facilities', 'hidden');
+  }
+}
+
+function startFacilitiesAutoRefresh() {
+  stopFacilitiesAutoRefresh();
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  facilitiesRefreshTimerId = window.setInterval(() => {
+    if (document.hidden) {
+      return;
+    }
+
+    fetchVenuesForVisibleWeek().catch(() => {});
+    fetchEquipment().catch(() => {});
+  }, 45000);
+}
+
+function stopFacilitiesAutoRefresh() {
+  if (facilitiesRefreshTimerId && typeof window !== 'undefined') {
+    window.clearInterval(facilitiesRefreshTimerId);
+  }
+  facilitiesRefreshTimerId = 0;
 }
 
 function normalizeVenueRecord(venue) {

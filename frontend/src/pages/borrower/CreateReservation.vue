@@ -11,6 +11,14 @@
       <div class="borrower-reservation-surface">
         <BorrowerReservationStepper :current-step="1" />
 
+        <section v-if="showOnboardingGuide" class="borrower-reservation-guide">
+          <div>
+            <strong>Quick guide</strong>
+            <p>Start with your schedule and participant count. If you choose both venue and equipment, the next step will guide you through venue selection first, then equipment before review.</p>
+          </div>
+          <button type="button" class="borrower-reservation-guide__dismiss" @click="dismissOnboardingGuide">Hide</button>
+        </section>
+
         <section class="borrower-reservation-card">
           <div class="borrower-reservation-panel">
             <h2>Reservation Details</h2>
@@ -195,7 +203,7 @@
               Cancel
             </button>
             <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="handleNextPage">
-              {{ isStepLoading ? 'Loading...' : 'Next: Select Venue / Equipment' }}
+              {{ isStepLoading ? 'Loading...' : nextButtonLabel }}
             </button>
           </footer>
         </section>
@@ -249,6 +257,7 @@ const startPickerRef = ref(null);
 const endPickerRef = ref(null);
 const openTimePicker = ref('');
 const isStepLoading = ref(false);
+const showOnboardingGuide = ref(readOnboardingGuidePreference());
 const validationErrors = reactive({
   requestDate: '',
   participantCount: '',
@@ -289,6 +298,17 @@ const bookingWindowHelpText = computed(() => {
   return termLabel
     ? `Booking window for ${termLabel}: ${formattedStart} to ${formattedEnd}.`
     : `Booking window: ${formattedStart} to ${formattedEnd}.`;
+});
+const nextButtonLabel = computed(() => {
+  if (formState.value.reservationType === 'Equipment') {
+    return 'Next: Select Equipment';
+  }
+
+  if (formState.value.reservationType === 'Both') {
+    return 'Next: Select Venue and Equipment';
+  }
+
+  return 'Next: Select Venue';
 });
 const allTimeSlotOptions = computed(() => buildTimeSlotOptions(BUSINESS_START_MINUTES, BUSINESS_END_MINUTES));
 const startTimeOptions = computed(() => allTimeSlotOptions.value);
@@ -338,6 +358,21 @@ function getTodayISODate() {
 function getCurrentYearEndISODate() {
   const today = new Date();
   return `${today.getFullYear()}-12-31`;
+}
+
+function readOnboardingGuidePreference() {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  return window.localStorage.getItem('techreserve:onboarding:create-reservation') !== 'hidden';
+}
+
+function dismissOnboardingGuide() {
+  showOnboardingGuide.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('techreserve:onboarding:create-reservation', 'hidden');
+  }
 }
 
 async function loadBookingWindow() {

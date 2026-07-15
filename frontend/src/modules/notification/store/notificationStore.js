@@ -25,6 +25,7 @@ export const useNotificationStore = defineStore('notificationStore', () => {
   const notifications = ref([]);
   const isLoading = ref(false);
   const hasLoaded = ref(false);
+  const refreshTimerId = ref(0);
 
   const unreadCount = computed(() => notifications.value.filter((notification) => !notification.isRead).length);
 
@@ -79,6 +80,27 @@ export const useNotificationStore = defineStore('notificationStore', () => {
     }
   }
 
+  function startAutoRefresh(intervalMs = 30000) {
+    stopAutoRefresh();
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    refreshTimerId.value = window.setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      fetchNotifications(true).catch(() => {});
+    }, intervalMs);
+  }
+
+  function stopAutoRefresh() {
+    if (refreshTimerId.value && typeof window !== 'undefined') {
+      window.clearInterval(refreshTimerId.value);
+    }
+    refreshTimerId.value = 0;
+  }
+
   return {
     notifications,
     isLoading,
@@ -86,5 +108,7 @@ export const useNotificationStore = defineStore('notificationStore', () => {
     fetchNotifications,
     markAsRead,
     markAllAsRead,
+    startAutoRefresh,
+    stopAutoRefresh,
   };
 });

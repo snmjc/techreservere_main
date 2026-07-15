@@ -2,6 +2,7 @@
 
 namespace App\Domain\Task\Service;
 
+use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Shared\Exceptions\DomainValidationException;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -9,7 +10,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class TaskAssignmentSmsService
 {
     private const TEXTBEE_API_BASE = 'https://api.textbee.dev/api/v1';
-    private const DEFAULT_TEST_MESSAGE = "hi! <Assigned Staff>.\n\n"
+    private const BRAND_NAME = 'TechReserve';
+    private const DEFAULT_TEST_MESSAGE = "TechReserve: hi! <Assigned Staff>.\n\n"
         . "You have task on <Due Date>, <Task Name>: <Reservation Code>.\n"
         . "<Reservation Purpose>\n\n"
         . "If you can't please do contact the Facilities Office for changing of staff";
@@ -18,7 +20,8 @@ class TaskAssignmentSmsService
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
         private readonly SmsMessageLogService $smsMessageLogService,
-        private readonly TaskAssignmentTemplateService $taskAssignmentTemplateService
+        private readonly TaskAssignmentTemplateService $taskAssignmentTemplateService,
+        private readonly NotificationDispatchService $notificationDispatchService
     ) {
     }
 
@@ -38,6 +41,8 @@ class TaskAssignmentSmsService
         if (!$shouldSend) {
             return null;
         }
+
+        $this->sendInAppAssignmentNotification($currentAssignedTo, $currentTask);
 
         $messageBody = $this->buildMessageBody($currentTask);
         $rawPhoneNumber = trim((string)($currentTask['assignedStaffPhone'] ?? ''));
@@ -163,7 +168,9 @@ class TaskAssignmentSmsService
             $this->taskAssignmentTemplateService->buildTaskContext($task)
         );
 
-        return $messageBody !== '' ? $messageBody : self::DEFAULT_TEST_MESSAGE;
+        $messageBody = $messageBody !== '' ? $messageBody : self::DEFAULT_TEST_MESSAGE;
+
+        return $this->ensureBrandSignature($messageBody);
     }
 
     private function normalizePhoneNumber(?string $phoneNumber): ?string
@@ -244,6 +251,55 @@ class TaskAssignmentSmsService
 
             throw $exception;
         }
+    }
+
+    private function sendInAppAssignmentNotification(int $recipientAccountId, array $task): void
+    {
+        try {
+            $this->notificationDispatchService->sendNotification(
+                $recipientAccountId,
+                self::BRAND_NAME . ' Task Assignment',
+                $this->buildNotificationMessage($task),
+                'maintenance'
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->error('Task assignment in-app notification failed.', [
+                'taskIdentifier' => $task['taskIdentifier'] ?? null,
+                'assignedToAccountId' => $recipientAccountId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function buildNotificationMessage(array $task): string
+    {
+        $taskName = trim((string)($task['taskTitle'] ?? $task['taskType'] ?? 'Assigned task'));
+        $reservationCode = trim((string)($task['reservationCode'] ?? ''));
+        $schedule = $this->taskAssignmentTemplateService->buildTaskContext($task)['dueDate'] ?? 'the scheduled date';
+        $venueName = trim((string)($task['venueName'] ?? $task['facilityName'] ?? ''));
+
+        $parts = [
+            sprintf('You have been assigned to %s.', $taskName !== '' ? $taskName : 'a new task'),
+            $reservationCode !== '' ? sprintf('Reservation: %s.', $reservationCode) : null,
+            $venueName !== '' ? sprintf('Venue: %s.', $venueName) : null,
+            $schedule !== '' ? sprintf('Schedule: %s.', $schedule) : null,
+        ];
+
+        return implode(' ', array_values(array_filter($parts)));
+    }
+
+    private function ensureBrandSignature(string $messageBody): string
+    {
+        $trimmedMessage = trim($messageBody);
+        if ($trimmedMessage === '') {
+            return self::DEFAULT_TEST_MESSAGE;
+        }
+
+        if (stripos($trimmedMessage, self::BRAND_NAME) === 0) {
+            return $trimmedMessage;
+        }
+
+        return self::BRAND_NAME . ': ' . $trimmedMessage;
     }
 
     private function recordSuccessSafely(

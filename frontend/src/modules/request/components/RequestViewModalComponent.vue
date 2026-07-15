@@ -26,6 +26,11 @@
 
         <div class="request-view-modal-grid">
           <div class="request-view-modal-panel">
+            <span class="request-view-modal-label">Date of Request</span>
+            <strong class="request-view-modal-emphasis">{{ formatRequestDate(requestRecord.requestedDate) }}</strong>
+          </div>
+
+          <div class="request-view-modal-panel">
             <span class="request-view-modal-label">Start Date and Time</span>
             <strong class="request-view-modal-emphasis">{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</strong>
           </div>
@@ -156,7 +161,7 @@
 </template>
 
 <script setup>
-import { formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
+import { formatDisplayDate, formatDisplayDateTime } from '@/shared/utils/dateTimeDisplay.js';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -211,5 +216,9 @@ function handleRejectClick() {
 
 function formatDateTime(value) {
   return formatDisplayDateTime(value);
+}
+
+function formatRequestDate(value) {
+  return formatDisplayDate(value);
 }
 </script>

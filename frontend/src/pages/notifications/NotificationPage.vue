@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import NotificationIconReservation from '@/components/icons/NotificationIconReservation.vue';
@@ -127,6 +127,11 @@ const notificationStatusItems = computed(() => [
 
 onMounted(() => {
   notificationStore.fetchNotifications(true).catch(() => {});
+  notificationStore.startAutoRefresh(30000);
+});
+
+onBeforeUnmount(() => {
+  notificationStore.stopAutoRefresh();
 });
 
 function resolveNotificationState() {

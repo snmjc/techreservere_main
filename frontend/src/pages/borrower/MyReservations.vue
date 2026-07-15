@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
@@ -202,9 +202,14 @@ onMounted(async () => {
     }
 
     await requestStore.fetchReservations();
+    requestStore.startAutoRefresh(45000);
   } catch (error) {
     console.error('Error fetching reservations:', error);
   }
+});
+
+onBeforeUnmount(() => {
+  requestStore.stopAutoRefresh();
 });
 
 function navigateToCreateReservation() {
