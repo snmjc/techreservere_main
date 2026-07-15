@@ -11,6 +11,14 @@
       <div class="borrower-reservation-surface">
         <BorrowerReservationStepper :current-step="2" />
 
+        <section v-if="showSelectionGuide" class="borrower-selection-guide">
+          <div>
+            <strong>Selection tips</strong>
+            <p>Pick the best-fit room first. If your reservation needs both a venue and equipment, the next action will move you to equipment selection before additional information.</p>
+          </div>
+          <button type="button" class="borrower-selection-guide__dismiss" @click="dismissSelectionGuide">Hide</button>
+        </section>
+
         <section class="borrower-reservation-card">
           <div class="borrower-step-tabs" v-if="showVenueSection && showEquipmentSection">
             <button type="button" :class="{ 'is-active': activeTab === 'venue' }" @click="activeTab = 'venue'">Venues</button>
@@ -239,6 +247,19 @@
 
               <aside class="reservation-equipment-sidebar">
                 <h3>Selected Equipment ({{ selectedEquipmentItems.length }})</h3>
+                <div v-if="selectedVenueRecord && suggestedEquipmentPackages.length" class="reservation-equipment-package-list">
+                  <p class="reservation-equipment-package-list__label">Suggested for {{ selectedVenueRecord.venueName }}</p>
+                  <button
+                    v-for="packageSuggestion in suggestedEquipmentPackages"
+                    :key="`${packageSuggestion.equipmentIdentifier}-${packageSuggestion.suggestedQuantity}`"
+                    type="button"
+                    class="reservation-equipment-package-list__item"
+                    @click="applySuggestedEquipmentPackage(packageSuggestion)"
+                  >
+                    <strong>{{ packageSuggestion.equipmentName }}</strong>
+                    <span>{{ packageSuggestion.suggestedQuantity }} suggested</span>
+                  </button>
+                </div>
                 <div v-if="selectedEquipmentItems.length" class="reservation-equipment-selected-list">
                   <article v-for="item in selectedEquipmentItems" :key="item.equipmentIdentifier" class="reservation-equipment-selected-item">
                     <strong>{{ item.equipmentName }}</strong>
@@ -255,7 +276,7 @@
               Previous
             </button>
             <button class="borrower-reservation-button borrower-reservation-button--primary" type="button" :disabled="isStepLoading" @click="navigateToNextPage">
-              {{ isStepLoading ? 'Loading...' : 'Next: Additional Information' }}
+              {{ isStepLoading ? 'Loading...' : nextButtonLabel }}
             </button>
           </footer>
         </section>
@@ -265,7 +286,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import BorrowerReservationStepper from '@/modules/reservation/components/BorrowerReservationStepper.vue';
@@ -298,10 +319,12 @@ const selectedEquipmentItems = ref(buildInitialEquipmentSelection());
 const equipmentQuantityErrors = ref({});
 const selectionWarning = ref('');
 const isStepLoading = ref(false);
+const showSelectionGuide = ref(readSelectionGuidePreference());
 const venuePage = ref(1);
 const equipmentPage = ref(1);
 const venuePageSize = 6;
 const equipmentPageSize = 6;
+let availabilityRefreshTimerId = 0;
 
 onMounted(async () => {
   if (!reservationFormStore.hasReservationDetails()) {
@@ -309,12 +332,21 @@ onMounted(async () => {
     return;
   }
 
+  await refreshAvailabilityData();
+  startAvailabilityAutoRefresh();
+});
+
+onBeforeUnmount(() => {
+  stopAvailabilityAutoRefresh();
+});
+
+async function refreshAvailabilityData() {
   await loadAllData({
     selectedDate: reservationFormStore.activityDate,
     startTime: reservationFormStore.activityTimeFrom,
     endTime: reservationFormStore.activityTimeTo,
   });
-});
+}
 
 const showVenueSection = computed(() => ['Venue', 'Both'].includes(reservationFormStore.reservationType));
 const showEquipmentSection = computed(() => ['Equipment', 'Both'].includes(reservationFormStore.reservationType));
@@ -416,6 +448,35 @@ watch(
 );
 
 const equipmentCategoryOptions = computed(() => [...new Set(equipmentRecords.value.map((item) => item.equipmentCategory))]);
+const suggestedEquipmentPackages = computed(() => {
+  if (!selectedVenueRecord.value) {
+    return [];
+  }
+
+  const venueName = String(selectedVenueRecord.value.venueName || '').toLowerCase();
+  const venueType = inferVenueType(selectedVenueRecord.value).toLowerCase();
+  const recommendedKeywords = [];
+
+  if (venueType.includes('audio visual') || venueName.includes('audio') || venueName.includes('av')) {
+    recommendedKeywords.push('projector', 'microphone', 'speaker', 'television');
+  } else if (venueType.includes('sports') || venueName.includes('gym')) {
+    recommendedKeywords.push('speaker', 'microphone', 'extension');
+  } else {
+    recommendedKeywords.push('projector', 'microphone', 'extension', 'speaker');
+  }
+
+  return equipmentRecords.value
+    .filter((equipment) => recommendedKeywords.some((keyword) => normalizeSearchValue(equipment.equipmentName, equipment.equipmentCategory).includes(keyword)))
+    .filter((equipment) => Number(equipment.availableQuantity || 0) > 0)
+    .slice(0, 4)
+    .map((equipment) => ({
+      equipmentIdentifier: Number(equipment.equipmentIdentifier),
+      equipmentName: equipment.equipmentName,
+      equipmentCategory: equipment.equipmentCategory,
+      availableQuantity: Number(equipment.availableQuantity || 0),
+      suggestedQuantity: resolveSuggestedQuantity(equipment),
+    }));
+});
 
 const filteredEquipmentRecords = computed(() => {
   const query = equipmentSearchQuery.value.toLowerCase();
@@ -573,6 +634,12 @@ function navigateToNextPage() {
   }
 
   if (showEquipmentSection.value && !selectedEquipmentItems.value.length && reservationFormStore.reservationType !== 'Venue') {
+    if (reservationFormStore.reservationType === 'Both' && activeTab.value === 'venue') {
+      activeTab.value = 'equipment';
+      selectionWarning.value = 'Venue saved. Select equipment to continue to the next step.';
+      return;
+    }
+
     selectionWarning.value = 'Select at least one equipment item before moving to the next step.';
     return;
   }
@@ -603,6 +670,28 @@ function navigateToNextPage() {
   window.setTimeout(() => {
     router.push({ name: 'borrowerCreateReservationAdditionalPage' });
   }, 250);
+}
+
+const nextButtonLabel = computed(() => {
+  if (reservationFormStore.reservationType === 'Both' && activeTab.value === 'venue') {
+    return 'Next: Select Equipment';
+  }
+
+  return 'Next: Additional Information';
+});
+
+function applySuggestedEquipmentPackage(packageSuggestion) {
+  const matchingEquipment = equipmentRecords.value.find(
+    (equipment) => Number(equipment.equipmentIdentifier) === Number(packageSuggestion.equipmentIdentifier)
+  );
+
+  if (!matchingEquipment) {
+    return;
+  }
+
+  setEquipmentQuantity(matchingEquipment, packageSuggestion.suggestedQuantity);
+  activeTab.value = 'equipment';
+  selectionWarning.value = `Suggested equipment added for ${selectedVenueRecord.value?.venueName || 'the selected venue'}.`;
 }
 
 function inferVenueType(venue) {
@@ -698,5 +787,61 @@ function syncSelectedEquipmentItems(records) {
       };
     })
     .filter((item) => item.selectedQuantity > 0);
+}
+
+function normalizeSearchValue(...values) {
+  return values.join(' ').toLowerCase();
+}
+
+function resolveSuggestedQuantity(equipment) {
+  const participantEstimate = Math.max(participantCount.value, 1);
+  const categoryName = String(equipment?.equipmentCategory || '').toLowerCase();
+  const equipmentName = String(equipment?.equipmentName || '').toLowerCase();
+
+  if (categoryName.includes('microphone') || equipmentName.includes('microphone')) {
+    return Math.min(2, Math.max(Number(equipment.availableQuantity || 0), 1));
+  }
+
+  if (categoryName.includes('speaker') || equipmentName.includes('speaker')) {
+    return Math.min(participantEstimate > 80 ? 2 : 1, Math.max(Number(equipment.availableQuantity || 0), 1));
+  }
+
+  return 1;
+}
+
+function readSelectionGuidePreference() {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  return window.localStorage.getItem('techreserve:onboarding:selection-step') !== 'hidden';
+}
+
+function dismissSelectionGuide() {
+  showSelectionGuide.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('techreserve:onboarding:selection-step', 'hidden');
+  }
+}
+
+function startAvailabilityAutoRefresh() {
+  stopAvailabilityAutoRefresh();
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  availabilityRefreshTimerId = window.setInterval(() => {
+    if (document.hidden) {
+      return;
+    }
+    refreshAvailabilityData().catch(() => {});
+  }, 30000);
+}
+
+function stopAvailabilityAutoRefresh() {
+  if (availabilityRefreshTimerId && typeof window !== 'undefined') {
+    window.clearInterval(availabilityRefreshTimerId);
+  }
+  availabilityRefreshTimerId = 0;
 }
 </script>

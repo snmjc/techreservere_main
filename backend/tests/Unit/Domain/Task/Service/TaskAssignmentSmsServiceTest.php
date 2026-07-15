@@ -4,6 +4,8 @@ namespace App\Tests\Unit\Domain\Task\Service;
 
 use App\Domain\Task\Service\TaskAssignmentSmsService;
 use App\Domain\Task\Service\SmsMessageLogService;
+use App\Domain\Task\Service\TaskAssignmentTemplateService;
+use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Shared\Exceptions\DomainValidationException;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -15,12 +17,16 @@ class TaskAssignmentSmsServiceTest extends TestCase
     private mixed $originalApiKey;
     private mixed $originalDeviceId;
     private SmsMessageLogService $smsMessageLogService;
+    private TaskAssignmentTemplateService $taskAssignmentTemplateService;
+    private NotificationDispatchService $notificationDispatchService;
 
     protected function setUp(): void
     {
         $this->originalApiKey = $_ENV['API_KEY'] ?? null;
         $this->originalDeviceId = $_ENV['DEVICE_ID'] ?? null;
         $this->smsMessageLogService = $this->createMock(SmsMessageLogService::class);
+        $this->taskAssignmentTemplateService = new TaskAssignmentTemplateService();
+        $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
     }
 
     protected function tearDown(): void
@@ -34,7 +40,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service = new TaskAssignmentSmsService(
             $this->createMock(HttpClientInterface::class),
             $this->createMock(LoggerInterface::class),
-            $this->smsMessageLogService
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
         );
         $method = new \ReflectionMethod($service, 'buildMessageBody');
 
@@ -49,8 +57,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
         ]);
 
         $this->assertSame(
-            "hi! Alex Santos.\n\n"
-            . "You have task on Jun 30, 2026 10:00 AM - Jun 30, 2026 11:00 AM, Academic Preparation: TR-2026-010.\n"
+            "TechReserve: hi! Alex Santos.\n\n"
+            . "You have task on Jun 30, 2026 10:00 AM, Academic Preparation: TR-2026-010.\n"
             . "Prepare the requested equipment.\n\n"
             . "If you can't please do contact the Facilities Office for changing of staff",
             $message
@@ -74,10 +82,20 @@ class TaskAssignmentSmsServiceTest extends TestCase
             ->with(
                 'task_assignment',
                 ['+639171234567'],
-                $this->stringContains('hi! Alex Santos.'),
+                $this->stringContains('TechReserve: hi! Alex Santos.'),
                 $this->callback(static fn (array $payload): bool => ($payload['data']['_id'] ?? null) === 'sms_1234567890'),
                 44,
                 12
+            );
+
+        $this->notificationDispatchService
+            ->expects($this->once())
+            ->method('sendNotification')
+            ->with(
+                12,
+                'TechReserve Task Assignment',
+                $this->stringContains('Academic Preparation'),
+                'maintenance'
             );
 
         $httpClient = $this->createMock(HttpClientInterface::class);
@@ -90,7 +108,7 @@ class TaskAssignmentSmsServiceTest extends TestCase
                 $this->callback(static function (array $options): bool {
                     return ($options['headers']['x-api-key'] ?? null) === 'test-api-key'
                         && ($options['json']['recipients'] ?? null) === ['+639171234567']
-                        && str_contains((string)($options['json']['message'] ?? ''), 'hi! Alex Santos.');
+                        && str_contains((string)($options['json']['message'] ?? ''), 'TechReserve: hi! Alex Santos.');
                 })
             )
             ->willReturn($response);
@@ -98,7 +116,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service = new TaskAssignmentSmsService(
             $httpClient,
             $this->createMock(LoggerInterface::class),
-            $this->smsMessageLogService
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
         );
 
         $warning = $service->notifyOnAssignmentChange(null, [
@@ -142,7 +162,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service = new TaskAssignmentSmsService(
             $httpClient,
             $this->createMock(LoggerInterface::class),
-            $this->smsMessageLogService
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
         );
 
         $delivery = $service->sendTestSms('09171234567', 'Custom test message');
@@ -156,7 +178,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service = new TaskAssignmentSmsService(
             $this->createMock(HttpClientInterface::class),
             $this->createMock(LoggerInterface::class),
-            $this->smsMessageLogService
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
         );
 
         $this->expectException(DomainValidationException::class);
@@ -182,7 +206,7 @@ class TaskAssignmentSmsServiceTest extends TestCase
                 'https://api.textbee.dev/api/v1/gateway/devices/test-device/send-sms',
                 $this->callback(static function (array $options): bool {
                     return ($options['json']['message'] ?? null) ===
-                        "hi! <Assigned Staff>.\n\n"
+                        "TechReserve: hi! <Assigned Staff>.\n\n"
                         . "You have task on <Due Date>, <Task Name>: <Reservation Code>.\n"
                         . "<Reservation Purpose>\n\n"
                         . "If you can't please do contact the Facilities Office for changing of staff";
@@ -193,7 +217,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service = new TaskAssignmentSmsService(
             $httpClient,
             $this->createMock(LoggerInterface::class),
-            $this->smsMessageLogService
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
         );
 
         $delivery = $service->sendTestSms('09171234567', '');

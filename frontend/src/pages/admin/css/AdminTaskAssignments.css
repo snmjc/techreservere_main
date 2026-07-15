@@ -54,6 +54,11 @@
   line-height: 1;
 }
 
+.admin-task-assignments-modal--staff-picker .admin-task-assignments-modal-header h2 {
+  font-size: clamp(1.45rem, 1.8vw, 1.85rem);
+  font-weight: 800;
+}
+
 .admin-task-assignments-header-copy > p:last-child,
 .admin-task-assignments-modal-header p,
 .admin-task-assignments-state {
@@ -512,7 +517,7 @@ button:disabled {
   width: min(720px, 100%);
   max-height: calc(100vh - 2rem);
   overflow: auto;
-  padding: 1.25rem;
+  padding: 1rem;
   background: #ffffff;
   border: 1px solid #d8e3dd;
   border-radius: 18px;
@@ -527,12 +532,16 @@ button:disabled {
   width: min(820px, 100%);
 }
 
+.admin-task-assignments-modal--staff-picker {
+  width: min(680px, 100%);
+}
+
 .admin-task-assignments-modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .admin-task-assignments-modal-header button {
@@ -592,6 +601,36 @@ button:disabled {
 .admin-task-assignments-security-grid input {
   min-width: 0;
   box-sizing: border-box;
+}
+
+.admin-task-assignments-staff-trigger {
+  width: 100%;
+  min-height: 50px;
+  padding: 0.62rem 0.74rem;
+  color: #12271d;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #d6e2da;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-task-assignments-staff-trigger span,
+.admin-task-assignments-staff-trigger small {
+  display: block;
+}
+
+.admin-task-assignments-staff-trigger span {
+  color: #123224;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-staff-trigger small {
+  margin-top: 0.18rem;
+  color: #688072;
+  font-size: 0.68rem;
 }
 
 .admin-task-sms-test-form {
@@ -667,6 +706,108 @@ button:disabled {
 
 .admin-task-template-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-task-assignments-staff-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+  align-items: end;
+}
+
+.admin-task-assignments-staff-toolbar label {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.admin-task-assignments-staff-toolbar input,
+.admin-task-assignments-staff-toolbar select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0.52rem 0.68rem;
+  color: #12271d;
+  background: #ffffff;
+  border: 1px solid #d6e2da;
+  border-radius: 12px;
+}
+
+.admin-task-assignments-staff-table-wrap {
+  overflow: auto;
+  border: 1px solid #dbe6df;
+  border-radius: 14px;
+}
+
+.admin-task-assignments-staff-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-task-assignments-staff-table thead th {
+  padding: 0.65rem 0.65rem;
+  color: #294638;
+  background: #f2f7f4;
+  border-bottom: 1px solid #dbe6df;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-task-assignments-staff-table tbody td {
+  padding: 0.62rem 0.65rem;
+  color: #12271d;
+  background: #ffffff;
+  border-bottom: 1px solid #e6ede8;
+  font-size: 0.74rem;
+}
+
+.admin-task-assignments-staff-table tbody tr {
+  cursor: pointer;
+}
+
+.admin-task-assignments-staff-table tbody tr.is-selected td {
+  background: #eef8f1;
+}
+
+.admin-task-assignments-staff-row-action {
+  min-height: 30px;
+  padding: 0 0.68rem;
+  color: #11864d;
+  background: #ffffff;
+  border: 1px solid #b7dfc6;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-task-assignments-staff-row-action.is-selected {
+  color: #ffffff;
+  background: linear-gradient(135deg, #109451, #0c7b43);
+  border-color: #0c7b43;
+}
+
+.admin-task-assignments-staff-empty {
+  color: #6b7f74;
+  text-align: center;
+}
+
+.admin-task-assignments-staff-footer {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+}
+
+.admin-task-assignments-staff-footer > p {
+  margin: 0;
+  color: #607668;
+  font-size: 0.74rem;
+  font-weight: 700;
 }
 
 .admin-task-template-full,
@@ -804,6 +945,10 @@ button:disabled {
   .admin-task-sms-test-mode,
   .admin-task-sms-template-grid,
   .admin-task-template-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-task-assignments-staff-toolbar {
     grid-template-columns: 1fr;
   }
 

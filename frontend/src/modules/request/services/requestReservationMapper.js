@@ -99,7 +99,7 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     typeOfActivity: reservation?.typeOfActivity || reservation?.activityCategory || reservation?.activityType || 'N/A',
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
-    requestedDate: reservation?.submissionTimestamp || 'N/A',
+    requestedDate: reservation?.submissionTimestamp || reservation?.requestDate || reservation?.createdTimestamp || 'N/A',
     neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityTime: requestScheduleStart || 'N/A',
     activityEndTime: requestScheduleEnd || requestScheduleStart || 'N/A',

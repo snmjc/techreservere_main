@@ -46,6 +46,44 @@
   line-height: 1.6;
 }
 
+.borrower-facilities__guide {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  color: #173122;
+  background: linear-gradient(135deg, #eef8f1 0%, #f7fbf8 100%);
+  border: 1px solid #d9e7de;
+  border-radius: 16px;
+}
+
+.borrower-facilities__guide strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.borrower-facilities__guide p {
+  margin: 0;
+  color: #4f655a;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.borrower-facilities__guide-dismiss {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  color: #355043;
+  background: #fff;
+  border: 1px solid #d0ddd4;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .borrower-facilities__surface {
   display: grid;
   gap: 1.25rem;

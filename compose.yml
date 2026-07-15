@@ -7,7 +7,7 @@ services:
     env_file:
       - .env.dev
     ports:
-      - "${POSTGRES_EXTERNAL_PORT:-55432}:5432"
+      - "${POSTGRES_EXTERNAL_PORT:5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

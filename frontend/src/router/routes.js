@@ -325,6 +325,16 @@ export const routeDefinitions = [
       ),
     },
   },
+  {
+    path: '/admin/support',
+    name: 'adminSupportCenterPage',
+    component: () => import('@/pages/support/SupportCenterPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
+    },
+  },
   // Borrower/Requester routes
   {
     path: '/borrower/my-reservations',
@@ -440,6 +450,16 @@ export const routeDefinitions = [
     },
   },
   {
+    path: '/borrower/support',
+    name: 'borrowerSupportCenterPage',
+    component: () => import('@/pages/support/SupportCenterPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_BORROWER'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
+    },
+  },
+  {
     path: '/borrower/view-reservation-list',
     name: ROUTE_NAMES.borrowerViewReservationList,
     component: () => import('@/pages/borrower/ViewReservationList.vue'),
@@ -492,10 +512,20 @@ export const routeDefinitions = [
   {
     path: '/notifications',
     name: 'notificationPage',
-    component: () => import('@/pages/notifications/NotificationPage.vue'),
+    component: () => import('@/pages/notifications/NotificationsRedirect.vue'),
     meta: {
       requiresAuth: true,
       allowedRoles: ['ROLE_BORROWER', 'ROLE_ADMIN'],
+      rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
+    },
+  },
+  {
+    path: '/admin/notifications',
+    name: 'adminNotificationsPage',
+    component: () => import('@/pages/notifications/NotificationPage.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ROLE_ADMIN'],
       rbac: rbacAny(permission(RBAC_CAPABILITY.NOTIFICATIONS, RBAC_ACTION.READ)),
     },
   },

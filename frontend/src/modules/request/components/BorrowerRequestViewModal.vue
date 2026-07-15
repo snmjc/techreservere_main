@@ -15,7 +15,7 @@
           <h3>Request Details</h3>
           <dl>
             <div><dt>Type</dt><dd>{{ requestRecord.requestType }}</dd></div>
-            <div><dt>Submitted</dt><dd>{{ formatDateTime(requestRecord.requestedDate) }}</dd></div>
+            <div><dt>Date of Request</dt><dd>{{ formatRequestDate(requestRecord.requestedDate) }}</dd></div>
             <div><dt>Start Date and Time</dt><dd>{{ formatDateTime(requestRecord.requestScheduleStart || requestRecord.activityTime) }}</dd></div>
             <div><dt>End Date and Time</dt><dd>{{ formatDateTime(requestRecord.requestScheduleEnd || requestRecord.activityEndTime) }}</dd></div>
             <div><dt>Activity</dt><dd>{{ requestRecord.activityNameTitle }}</dd></div>
@@ -107,6 +107,19 @@ function formatDateTime(value) {
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+  }).format(parsed);
+}
+
+function formatRequestDate(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   }).format(parsed);
 }
 </script>

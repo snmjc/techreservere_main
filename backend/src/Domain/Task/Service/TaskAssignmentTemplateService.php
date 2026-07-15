@@ -11,7 +11,7 @@ class TaskAssignmentTemplateService
         'taskTitle' => '{activityType} Preparation',
         'taskDescription' => '{purposeDescription}',
         'taskType' => 'Preparation',
-        'smsMessage' => "hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
+        'smsMessage' => "TechReserve: hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
     ];
 
     private const VARIABLES = [
