@@ -7,11 +7,13 @@ use App\Shared\Exceptions\DomainValidationException;
 
 class TaskAssignmentTemplateService
 {
+    private const HARD_CODED_SMS_MESSAGE = "TechReserve: hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff";
+
     private const DEFAULT_TEMPLATE = [
         'taskTitle' => '{activityType} Preparation',
         'taskDescription' => '{purposeDescription}',
         'taskType' => 'Preparation',
-        'smsMessage' => "TechReserve: hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
+        'smsMessage' => self::HARD_CODED_SMS_MESSAGE,
     ];
 
     private const VARIABLES = [
@@ -39,6 +41,7 @@ class TaskAssignmentTemplateService
 
         return [
             ...$template,
+            'smsMessage' => self::HARD_CODED_SMS_MESSAGE,
             'variables' => self::VARIABLES,
         ];
     }
@@ -49,7 +52,7 @@ class TaskAssignmentTemplateService
             'taskTitle' => $this->normalizeTemplateText($body['taskTitle'] ?? self::DEFAULT_TEMPLATE['taskTitle']),
             'taskDescription' => $this->normalizeTemplateText($body['taskDescription'] ?? self::DEFAULT_TEMPLATE['taskDescription']),
             'taskType' => $this->normalizeTemplateText($body['taskType'] ?? self::DEFAULT_TEMPLATE['taskType']),
-            'smsMessage' => $this->normalizeTemplateText($body['smsMessage'] ?? self::DEFAULT_TEMPLATE['smsMessage']),
+            'smsMessage' => self::HARD_CODED_SMS_MESSAGE,
             'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
 
@@ -154,7 +157,7 @@ class TaskAssignmentTemplateService
 
     public function renderSmsMessage(array $variables): string
     {
-        return trim($this->renderTemplate($this->loadTemplate()['smsMessage'], $variables));
+        return trim($this->renderTemplate(self::HARD_CODED_SMS_MESSAGE, $variables));
     }
 
     private function loadTemplate(): array
@@ -173,6 +176,7 @@ class TaskAssignmentTemplateService
         return [
             ...self::DEFAULT_TEMPLATE,
             ...array_intersect_key($template, array_flip(['taskTitle', 'taskDescription', 'taskType', 'smsMessage', 'updatedAt'])),
+            'smsMessage' => self::HARD_CODED_SMS_MESSAGE,
         ];
     }
 

@@ -256,14 +256,31 @@
             </select>
           </label>
 
-          <label>
+          <label class="admin-task-assignments-reservation-field">
             <span>Reservation</span>
-            <select v-model="taskForm.reservationIdentifier">
-              <option value="">Select reservation</option>
-              <option v-for="reservation in reservationOptions" :key="reservation.value" :value="reservation.value">
-                {{ reservation.label }}
-              </option>
-            </select>
+            <input
+              v-model.trim="reservationSelectionQuery"
+              type="search"
+              placeholder="Search reservation, organization, or date..."
+              autocomplete="off"
+            />
+            <div class="admin-task-assignments-reservation-list" role="listbox" aria-label="Reservation options">
+              <button
+                v-for="reservation in filteredReservationOptions"
+                :key="reservation.value"
+                type="button"
+                class="admin-task-assignments-reservation-option"
+                :class="{ 'is-selected': reservation.value === taskForm.reservationIdentifier }"
+                @click="taskForm.reservationIdentifier = reservation.value"
+              >
+                <strong>{{ reservation.code }}</strong>
+                <span>{{ reservation.organizationName || 'No organization name' }}</span>
+                <small>{{ reservation.scheduleLabel || 'No schedule recorded' }}</small>
+              </button>
+              <p v-if="filteredReservationOptions.length === 0" class="admin-task-assignments-reservation-empty">
+                No reservations match your search.
+              </p>
+            </div>
           </label>
 
           <label>
@@ -459,8 +476,8 @@
 
           <label class="admin-task-template-full">
             <span>SMS Format</span>
-            <textarea v-model="taskTemplateForm.smsMessage" rows="8" maxlength="1000"></textarea>
-            <small>{{ taskTemplateForm.smsMessage.length }}/1000 characters</small>
+            <textarea v-model="taskTemplateForm.smsMessage" rows="8" maxlength="1000" readonly></textarea>
+            <small>SMS content is hardcoded for delivery consistency.</small>
           </label>
 
           <section class="admin-task-template-preview">
@@ -654,7 +671,7 @@ const DEFAULT_TASK_ASSIGNMENT_TEMPLATE = Object.freeze({
   taskTitle: '{activityType} Preparation',
   taskDescription: '{purposeDescription}',
   taskType: 'Preparation',
-  smsMessage: "hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
+  smsMessage: "TechReserve: hi! {assignedStaff}.\n\nYou have task on {dueDate}, {taskName}: {reservationCode}.\n{reservationPurpose}\n\nIf you can't please do contact the Facilities Office for changing of staff",
   variables: DEFAULT_TASK_TEMPLATE_VARIABLES,
 });
 
@@ -688,6 +705,7 @@ const editingTask = ref(null);
 const viewTask = ref(null);
 const verifyTask = ref(null);
 const showStaffSelectionModal = ref(false);
+const reservationSelectionQuery = ref('');
 const staffSelectionQuery = ref('');
 const staffSelectionRoleFilter = ref('all');
 const staffSelectionPage = ref(1);
@@ -842,6 +860,23 @@ const staffFilterOptions = computed(() => tasks.value
 const selectedStaffOption = computed(() => (
   staffOptions.value.find((staff) => staff.value === String(taskForm.assignedToAccountId || '')) || null
 ));
+
+const filteredReservationOptions = computed(() => {
+  const normalizedQuery = reservationSelectionQuery.value.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return reservationOptions.value;
+  }
+
+  return reservationOptions.value.filter((reservation) => (
+    [
+      reservation.code,
+      reservation.organizationName,
+      reservation.scheduleLabel,
+      reservation.label,
+    ].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)
+  ));
+});
 
 const staffRoleFilterOptions = computed(() => [...new Set(
   staffOptions.value.map((staff) => staff.position).filter(Boolean)
@@ -1008,6 +1043,7 @@ function openCreateModal() {
   resetTaskForm();
   taskModalMode.value = 'create';
   editingTask.value = null;
+  reservationSelectionQuery.value = '';
   showTaskModal.value = true;
 }
 
@@ -1015,11 +1051,11 @@ function openSmsTestModal() {
   smsTestError.value = '';
   smsTestForm.phoneNumber = '';
   smsTestForm.messageMode = 'template';
-  smsTestForm.assignedStaff = '';
-  smsTestForm.dueDate = '';
-  smsTestForm.taskName = '';
-  smsTestForm.reservationCode = '';
-  smsTestForm.reservationPurpose = '';
+  smsTestForm.assignedStaff = 'Assigned Staff';
+  smsTestForm.dueDate = 'Jul 16, 2026 03:00 PM';
+  smsTestForm.taskName = 'Reservation Preparation';
+  smsTestForm.reservationCode = 'TR-2026-001';
+  smsTestForm.reservationPurpose = 'Prepare the requested venue and equipment.';
   smsTestForm.customMessage = '';
   showSmsTestModal.value = true;
 }
@@ -1045,6 +1081,7 @@ function openUpdateModal(task) {
   taskForm.assignedToAccountId = task.assignedToAccountId ? String(task.assignedToAccountId) : '';
   taskForm.dueDateTimestamp = toDateTimeLocal(task.dueDateTimestamp);
   taskForm.taskStatus = task.taskStatus || 'Pending';
+  reservationSelectionQuery.value = '';
   showTaskModal.value = true;
 }
 
@@ -1154,20 +1191,7 @@ async function submitSmsTest() {
     return;
   }
 
-  if (smsTestForm.messageMode === 'template') {
-    const missingFields = [
-      ['Assigned staff', smsTestForm.assignedStaff],
-      ['Due date', smsTestForm.dueDate],
-      ['Task name', smsTestForm.taskName],
-      ['Reservation code', smsTestForm.reservationCode],
-      ['Reservation purpose', smsTestForm.reservationPurpose],
-    ].filter(([, value]) => value.trim() === '').map(([label]) => label);
-
-    if (missingFields.length > 0) {
-      smsTestError.value = `Please fill in: ${missingFields.join(', ')}.`;
-      return;
-    }
-  } else if (smsTestForm.customMessage.trim() === '') {
+  if (smsTestForm.messageMode !== 'template' && smsTestForm.customMessage.trim() === '') {
     smsTestError.value = 'Custom message is required.';
     return;
   }
@@ -1407,6 +1431,9 @@ function writeTaskAssignmentsCache(records) {
 function normalizeReservations(reservations) {
   return reservations.map((reservation) => ({
     value: String(reservation.reservationIdentifier || reservation.reservation_identifier),
+    code: reservation.reservationCode || reservation.reservation_code || `#${reservation.reservationIdentifier || reservation.reservation_identifier}`,
+    organizationName: reservation.organizationName || reservation.organization_name || '',
+    scheduleLabel: reservation.eventDateTime ? formatDateTime(reservation.eventDateTime) : '',
     label: [
       reservation.reservationCode || reservation.reservation_code || `#${reservation.reservationIdentifier || reservation.reservation_identifier}`,
       reservation.organizationName || reservation.organization_name,
@@ -1629,6 +1656,7 @@ function resetTaskForm() {
   taskForm.emergencyOverride = false;
   taskForm.confirmedAdminEmail = '';
   taskForm.confirmedAdminPassword = '';
+  reservationSelectionQuery.value = '';
   pendingSelectedStaffId.value = '';
   showStaffSelectionModal.value = false;
   resetTaskSubmissionFeedback();
