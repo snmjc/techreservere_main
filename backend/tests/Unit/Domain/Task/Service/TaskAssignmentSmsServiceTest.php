@@ -18,6 +18,10 @@ class TaskAssignmentSmsServiceTest extends TestCase
     private mixed $originalDeviceId;
     private mixed $originalTextBeeApiKey;
     private mixed $originalTextBeeDeviceId;
+    private mixed $originalApiKeyServer;
+    private mixed $originalDeviceIdServer;
+    private mixed $originalTextBeeApiKeyServer;
+    private mixed $originalTextBeeDeviceIdServer;
     private SmsMessageLogService $smsMessageLogService;
     private TaskAssignmentTemplateService $taskAssignmentTemplateService;
     private NotificationDispatchService $notificationDispatchService;
@@ -28,6 +32,10 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $this->originalDeviceId = $_ENV['DEVICE_ID'] ?? null;
         $this->originalTextBeeApiKey = $_ENV['TEXTBEE_API_KEY'] ?? null;
         $this->originalTextBeeDeviceId = $_ENV['TEXTBEE_DEVICE_ID'] ?? null;
+        $this->originalApiKeyServer = $_SERVER['API_KEY'] ?? null;
+        $this->originalDeviceIdServer = $_SERVER['DEVICE_ID'] ?? null;
+        $this->originalTextBeeApiKeyServer = $_SERVER['TEXTBEE_API_KEY'] ?? null;
+        $this->originalTextBeeDeviceIdServer = $_SERVER['TEXTBEE_DEVICE_ID'] ?? null;
         $this->smsMessageLogService = $this->createMock(SmsMessageLogService::class);
         $this->taskAssignmentTemplateService = new TaskAssignmentTemplateService();
         $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
@@ -39,6 +47,10 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $this->restoreEnvironmentValue('DEVICE_ID', $this->originalDeviceId);
         $this->restoreEnvironmentValue('TEXTBEE_API_KEY', $this->originalTextBeeApiKey);
         $this->restoreEnvironmentValue('TEXTBEE_DEVICE_ID', $this->originalTextBeeDeviceId);
+        $this->restoreServerValue('API_KEY', $this->originalApiKeyServer);
+        $this->restoreServerValue('DEVICE_ID', $this->originalDeviceIdServer);
+        $this->restoreServerValue('TEXTBEE_API_KEY', $this->originalTextBeeApiKeyServer);
+        $this->restoreServerValue('TEXTBEE_DEVICE_ID', $this->originalTextBeeDeviceIdServer);
     }
 
     public function testMessageMatchesFacilitiesOfficeAssignmentFormat(): void
@@ -318,6 +330,42 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $service->sendTestSms('09171234567', 'Custom test message');
     }
 
+    public function testManualTestSmsAcceptsServerEnvironmentVariablesWhenEnvArrayIsEmpty(): void
+    {
+        unset($_ENV['API_KEY'], $_ENV['DEVICE_ID'], $_ENV['TEXTBEE_API_KEY'], $_ENV['TEXTBEE_DEVICE_ID']);
+        $_SERVER['TEXTBEE_API_KEY'] = 'server-api-key';
+        $_SERVER['TEXTBEE_DEVICE_ID'] = 'server-device';
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.textbee.dev/api/v1/gateway/devices/server-device/send-sms',
+                $this->callback(static function (array $options): bool {
+                    return ($options['headers']['x-api-key'] ?? null) === 'server-api-key';
+                })
+            )
+            ->willReturn($response);
+
+        $service = new TaskAssignmentSmsService(
+            $httpClient,
+            $this->createMock(LoggerInterface::class),
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
+        );
+
+        $delivery = $service->sendTestSms('09171234567', 'Custom test message');
+
+        $this->assertSame('+639171234567', $delivery['recipient']);
+    }
+
     private function restoreEnvironmentValue(string $name, mixed $value): void
     {
         if ($value === null) {
@@ -326,5 +374,15 @@ class TaskAssignmentSmsServiceTest extends TestCase
         }
 
         $_ENV[$name] = $value;
+    }
+
+    private function restoreServerValue(string $name, mixed $value): void
+    {
+        if ($value === null) {
+            unset($_SERVER[$name]);
+            return;
+        }
+
+        $_SERVER[$name] = $value;
     }
 }

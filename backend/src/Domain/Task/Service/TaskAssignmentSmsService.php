@@ -373,24 +373,30 @@ class TaskAssignmentSmsService
 
     private function textBeeApiKey(): string
     {
-        return trim((string)(
-            $_ENV['TEXTBEE_API_KEY']
-            ?? $_SERVER['TEXTBEE_API_KEY']
-            ?? $_ENV['API_KEY']
-            ?? $_SERVER['API_KEY']
-            ?? ''
-        ));
+        return $this->readEnvironmentValue(['TEXTBEE_API_KEY', 'API_KEY']);
     }
 
     private function textBeeDeviceId(): string
     {
-        return trim((string)(
-            $_ENV['TEXTBEE_DEVICE_ID']
-            ?? $_SERVER['TEXTBEE_DEVICE_ID']
-            ?? $_ENV['DEVICE_ID']
-            ?? $_SERVER['DEVICE_ID']
-            ?? ''
-        ));
+        return $this->readEnvironmentValue(['TEXTBEE_DEVICE_ID', 'DEVICE_ID']);
+    }
+
+    /**
+     * Production containers may expose env vars through getenv() even when $_ENV is empty.
+     *
+     * @param list<string> $names
+     */
+    private function readEnvironmentValue(array $names): string
+    {
+        foreach ($names as $name) {
+            $value = $_ENV[$name] ?? $_SERVER[$name] ?? getenv($name);
+            $normalizedValue = trim((string)($value === false ? '' : $value));
+            if ($normalizedValue !== '') {
+                return $normalizedValue;
+            }
+        }
+
+        return '';
     }
 
     private function decodeResponsePayload(ResponseInterface $response): array
