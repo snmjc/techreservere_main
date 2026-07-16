@@ -48,9 +48,13 @@ export function normalizeEquipmentForm(form) {
     equipmentName: String(form?.equipmentName || '').trim(),
     equipmentCategory: String(form?.equipmentCategory || '').trim(),
     equipmentBrand: String(form?.equipmentBrand || '').trim(),
+    equipmentModel: String(form?.equipmentModel || '').trim(),
     availableQuantity: Number(form?.availableQuantity ?? 0),
     operationalStatus: String(form?.operationalStatus || '').trim(),
     description: String(form?.description || '').trim(),
+    remarks: String(form?.remarks || '').trim(),
+    specifications: normalizeEquipmentSpecifications(form?.specifications),
+    units: normalizeEquipmentUnits(form?.units),
     barcode: String(form?.barcode || '').trim(),
     assetId: normalizedAssetId,
     serialNumber: normalizedAssetId,
@@ -113,4 +117,37 @@ function normalizePhotoPosition(value) {
   }
 
   return Math.max(0, Math.min(100, Math.round(numericValue)));
+}
+
+function normalizeEquipmentSpecifications(specifications) {
+  if (!Array.isArray(specifications)) {
+    return [];
+  }
+
+  return specifications
+    .map((item) => ({
+      key: String(item?.key || '').trim(),
+      value: String(item?.value || '').trim(),
+    }))
+    .filter((item) => item.key !== '' || item.value !== '');
+}
+
+function normalizeEquipmentUnits(units) {
+  if (!Array.isArray(units)) {
+    return [];
+  }
+
+  return units.map((unit, index) => ({
+    equipmentUnitIdentifierCode: String(unit?.equipmentUnitIdentifierCode || unit?.unitCode || `UNIT-${index + 1}`).trim(),
+    barcode: String(unit?.barcode || '').trim(),
+    assetTag: String(unit?.assetTag || '').trim(),
+    serialNumber: String(unit?.serialNumber || '').trim(),
+    conditionStatus: String(unit?.conditionStatus || 'Good').trim(),
+    availabilityStatus: String(unit?.availabilityStatus || 'Available').trim(),
+    storageLocation: String(unit?.storageLocation || '').trim(),
+    dateAcquired: String(unit?.dateAcquired || '').trim(),
+    warrantyDetails: String(unit?.warrantyDetails || '').trim(),
+    remarks: String(unit?.remarks || '').trim(),
+    maintenanceState: String(unit?.maintenanceState || 'Operational').trim(),
+  }));
 }

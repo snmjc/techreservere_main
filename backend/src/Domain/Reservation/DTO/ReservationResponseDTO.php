@@ -28,11 +28,18 @@ class ReservationResponseDTO
     public string $purposeDescription;
     public string $activityType;
     public ?string $borrowerRemarks;
+    public ?string $adminRemarks;
+    public ?string $approvalRemarks;
+    public ?string $denialReason;
+    public ?string $cancellationReason;
+    public ?string $completionRemarks;
+    public ?string $manualOverrideReason;
     public string $currentStatus;
     public ?string $priorityLevel;
     public ?string $rejectionReason;
     public ?array $supportingDocuments;
     public string $submissionTimestamp;
+    public array $remarkEvents;
 
     public function __construct(
         int $reservationIdentifier,
@@ -49,11 +56,18 @@ class ReservationResponseDTO
         string $purposeDescription,
         string $activityType,
         ?string $borrowerRemarks,
+        ?string $adminRemarks,
+        ?string $approvalRemarks,
+        ?string $denialReason,
+        ?string $cancellationReason,
+        ?string $completionRemarks,
+        ?string $manualOverrideReason,
         string $currentStatus,
         ?string $priorityLevel,
         ?string $rejectionReason,
         ?array $supportingDocuments,
         string $submissionTimestamp,
+        array $remarkEvents = [],
         string $borrowerFirstName = '',
         string $borrowerLastName = '',
         string $borrowerFullName = '',
@@ -79,11 +93,18 @@ class ReservationResponseDTO
         $this->purposeDescription = $purposeDescription;
         $this->activityType = $activityType;
         $this->borrowerRemarks = $borrowerRemarks;
+        $this->adminRemarks = $adminRemarks;
+        $this->approvalRemarks = $approvalRemarks;
+        $this->denialReason = $denialReason;
+        $this->cancellationReason = $cancellationReason;
+        $this->completionRemarks = $completionRemarks;
+        $this->manualOverrideReason = $manualOverrideReason;
         $this->currentStatus = $currentStatus;
         $this->priorityLevel = $priorityLevel;
         $this->rejectionReason = $rejectionReason;
         $this->supportingDocuments = $supportingDocuments;
         $this->submissionTimestamp = $submissionTimestamp;
+        $this->remarkEvents = $remarkEvents;
     }
 
     public function toResponseArray(): array
@@ -108,11 +129,18 @@ class ReservationResponseDTO
             'purposeDescription' => $this->purposeDescription,
             'activityType' => $this->activityType,
             'borrowerRemarks' => $this->borrowerRemarks,
+            'adminRemarks' => $this->adminRemarks,
+            'approvalRemarks' => $this->approvalRemarks,
+            'denialReason' => $this->denialReason,
+            'cancellationReason' => $this->cancellationReason,
+            'completionRemarks' => $this->completionRemarks,
+            'manualOverrideReason' => $this->manualOverrideReason,
             'currentStatus' => $this->currentStatus,
             'priorityLevel' => $this->priorityLevel,
             'rejectionReason' => $this->rejectionReason,
             'supportingDocuments' => $this->supportingDocuments,
             'submissionTimestamp' => $this->submissionTimestamp,
+            'remarkEvents' => $this->remarkEvents,
         ];
     }
 }

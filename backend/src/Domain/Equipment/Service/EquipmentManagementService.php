@@ -33,7 +33,8 @@ class EquipmentManagementService
         private readonly EquipmentRepository $equipmentRepository,
         private readonly EquipmentAssetIdValidator $equipmentAssetIdValidator,
         private readonly ReservationRepository $reservationRepository,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly EquipmentInventoryUnitService $equipmentInventoryUnitService
     ) {
     }
 
@@ -45,8 +46,12 @@ class EquipmentManagementService
         $equipmentEntity = new EquipmentEntity();
         $this->hydrateEquipmentEntity($equipmentEntity, $normalizedPayload);
         $this->persistEquipment($equipmentEntity);
+        $equipmentIdentifier = (int) $equipmentEntity->getEquipmentIdentifier();
+        $this->equipmentInventoryUnitService->updateParentMetadata($equipmentIdentifier, $normalizedPayload);
+        $this->saveEquipmentUnits($equipmentIdentifier, $normalizedPayload, $requestDTO);
 
-        return $this->transformEntityToDTO($equipmentEntity);
+        $reloadedEntity = $this->equipmentRepository->find($equipmentIdentifier) ?? $equipmentEntity;
+        return $this->transformEntityToDTO($reloadedEntity);
     }
 
     public function updateEquipment(int $equipmentIdentifier, EquipmentCreateRequestDTO $requestDTO): EquipmentResponseDTO
@@ -63,8 +68,11 @@ class EquipmentManagementService
         );
         $this->hydrateEquipmentEntity($entity, $normalizedPayload);
         $this->persistEquipment($entity);
+        $this->equipmentInventoryUnitService->updateParentMetadata($equipmentIdentifier, $normalizedPayload);
+        $this->saveEquipmentUnits($equipmentIdentifier, $normalizedPayload, $requestDTO);
 
-        return $this->transformEntityToDTO($entity);
+        $reloadedEntity = $this->equipmentRepository->find($equipmentIdentifier) ?? $entity;
+        return $this->transformEntityToDTO($reloadedEntity);
     }
 
     /** @return EquipmentResponseDTO[] */
@@ -73,9 +81,16 @@ class EquipmentManagementService
         $this->ensureEquipmentSchemaReady();
         $entities = $this->equipmentRepository->findAllEquipment();
         $dispatchSummary = $this->buildTodayDispatchSummary();
+        [$countsByEquipment, $unitsByEquipment, $metadataByEquipment] = $this->loadInventoryEnhancements($entities);
 
         return array_map(
-            fn (EquipmentEntity $entity): EquipmentResponseDTO => $this->transformEntityToDTO($entity, $dispatchSummary),
+            fn (EquipmentEntity $entity): EquipmentResponseDTO => $this->transformEntityToDTO(
+                $entity,
+                $dispatchSummary,
+                $countsByEquipment[(int) $entity->getEquipmentIdentifier()] ?? null,
+                $unitsByEquipment[(int) $entity->getEquipmentIdentifier()] ?? [],
+                $metadataByEquipment[(int) $entity->getEquipmentIdentifier()] ?? null
+            ),
             $entities
         );
     }
@@ -86,9 +101,16 @@ class EquipmentManagementService
         $this->ensureEquipmentSchemaReady();
         $entities = $this->equipmentRepository->findAvailableEquipment();
         $dispatchSummary = $this->buildTodayDispatchSummary();
+        [$countsByEquipment, $unitsByEquipment, $metadataByEquipment] = $this->loadInventoryEnhancements($entities);
 
         return array_map(
-            fn (EquipmentEntity $entity): EquipmentResponseDTO => $this->transformEntityToDTO($entity, $dispatchSummary),
+            fn (EquipmentEntity $entity): EquipmentResponseDTO => $this->transformEntityToDTO(
+                $entity,
+                $dispatchSummary,
+                $countsByEquipment[(int) $entity->getEquipmentIdentifier()] ?? null,
+                $unitsByEquipment[(int) $entity->getEquipmentIdentifier()] ?? [],
+                $metadataByEquipment[(int) $entity->getEquipmentIdentifier()] ?? null
+            ),
             $entities
         );
     }
@@ -101,7 +123,28 @@ class EquipmentManagementService
             throw new DomainNotFoundException('Equipment not found: ' . $equipmentIdentifier);
         }
 
-        return $this->transformEntityToDTO($entity, $this->buildTodayDispatchSummary());
+        try {
+            $derivedCounts = $this->equipmentInventoryUnitService->fetchDerivedCountsByEquipmentIds([$equipmentIdentifier])[$equipmentIdentifier] ?? null;
+            $unitRecords = $this->equipmentInventoryUnitService->fetchUnitsByEquipmentIds([$equipmentIdentifier])[$equipmentIdentifier] ?? [];
+            $parentMetadata = $this->equipmentInventoryUnitService->fetchParentMetadataByEquipmentIds([$equipmentIdentifier])[$equipmentIdentifier] ?? null;
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Equipment detail enhancement fallback [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+            $derivedCounts = null;
+            $unitRecords = [];
+            $parentMetadata = null;
+        }
+
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->buildTodayDispatchSummary(),
+            $derivedCounts,
+            $unitRecords,
+            $parentMetadata
+        );
     }
 
     public function deleteEquipment(int $equipmentIdentifier): void
@@ -115,23 +158,50 @@ class EquipmentManagementService
         $this->equipmentRepository->removeEquipment($entity);
     }
 
-    private function transformEntityToDTO(EquipmentEntity $entity, array $dispatchSummary = []): EquipmentResponseDTO
+    private function transformEntityToDTO(
+        EquipmentEntity $entity,
+        array $dispatchSummary = [],
+        ?array $derivedCounts = null,
+        array $unitRecords = [],
+        ?array $parentMetadata = null
+    ): EquipmentResponseDTO
     {
         $todaySummary = $dispatchSummary[$entity->getEquipmentIdentifier() ?? 0] ?? ['quantity' => 0, 'reservations' => 0];
+        $derivedCounts ??= [
+            'total' => $entity->getTotalQuantity(),
+            'available' => $entity->getAvailableQuantity(),
+            'reserved' => 0,
+            'borrowed' => 0,
+            'underMaintenance' => 0,
+            'unavailable' => max(0, $entity->getTotalQuantity() - $entity->getAvailableQuantity()),
+        ];
+        $parentMetadata ??= [
+            'equipmentModel' => null,
+            'remarks' => null,
+            'specifications' => null,
+        ];
 
         return new EquipmentResponseDTO(
             equipmentIdentifier: (int) $entity->getEquipmentIdentifier(),
             equipmentName: $entity->getEquipmentName(),
             equipmentCategory: $entity->getEquipmentCategory(),
             equipmentBrand: $entity->getEquipmentBrand(),
-            totalQuantity: $entity->getTotalQuantity(),
-            availableQuantity: $entity->getAvailableQuantity(),
+            equipmentModel: $parentMetadata['equipmentModel'] ?? null,
+            totalQuantity: (int) ($derivedCounts['total'] ?? $entity->getTotalQuantity()),
+            availableQuantity: (int) ($derivedCounts['available'] ?? $entity->getAvailableQuantity()),
+            reservedQuantity: (int) ($derivedCounts['reserved'] ?? 0),
+            borrowedQuantity: (int) ($derivedCounts['borrowed'] ?? 0),
+            underMaintenanceQuantity: (int) ($derivedCounts['underMaintenance'] ?? 0),
+            unavailableQuantity: (int) ($derivedCounts['unavailable'] ?? 0),
             operationalStatus: $entity->getOperationalStatus(),
             equipmentState: $entity->getEquipmentState(),
             description: $entity->getDescription(),
+            remarks: $parentMetadata['remarks'] ?? null,
+            specifications: $parentMetadata['specifications'] ?? null,
             imageUrl: $entity->getImageUrl(),
             barcode: $entity->getBarcode(),
             assetId: $entity->getAssetId(),
+            units: $unitRecords,
             photoData: $entity->getPhotoData(),
             photoDisplayMode: $entity->getPhotoDisplayMode(),
             photoPositionX: $entity->getPhotoPositionX(),
@@ -149,6 +219,8 @@ class EquipmentManagementService
         $equipmentCategory = trim($requestDTO->equipmentCategory);
         $equipmentBrand = trim($requestDTO->equipmentBrand);
         $description = trim((string) ($requestDTO->description ?? ''));
+        $remarks = trim((string) ($requestDTO->remarks ?? ''));
+        $equipmentModel = trim((string) ($requestDTO->equipmentModel ?? ''));
         $imageUrl = trim((string) ($requestDTO->imageUrl ?? ''));
         $barcode = trim($requestDTO->barcode);
         $assetId = strtoupper(trim($requestDTO->assetId));
@@ -217,10 +289,13 @@ class EquipmentManagementService
             'equipmentName' => $equipmentName,
             'equipmentCategory' => $equipmentCategory,
             'equipmentBrand' => $equipmentBrand,
+            'equipmentModel' => $equipmentModel === '' ? null : $equipmentModel,
             'availableQuantity' => $availableQuantity,
             'operationalStatus' => $this->normalizeOperationalStatus($operationalStatus),
             'equipmentState' => $this->resolveEquipmentState($operationalStatus),
             'description' => $description,
+            'remarks' => $remarks === '' ? null : $remarks,
+            'specifications' => is_array($requestDTO->specifications) ? $requestDTO->specifications : null,
             'imageUrl' => $imageUrl === '' ? null : $imageUrl,
             'barcode' => $barcode,
             'assetId' => $assetId,
@@ -248,7 +323,12 @@ class EquipmentManagementService
             equipmentBrand: $requestDTO->equipmentBrand,
             availableQuantity: $requestDTO->availableQuantity,
             operationalStatus: $requestDTO->operationalStatus,
+            equipmentModel: $requestDTO->equipmentModel,
             description: $requestDTO->description,
+            remarks: $requestDTO->remarks,
+            specifications: $requestDTO->specifications,
+            units: $requestDTO->units,
+            actionReason: $requestDTO->actionReason,
             imageUrl: $requestDTO->imageUrl,
             barcode: $barcode === '' ? $existingEquipment->getBarcode() : $barcode,
             assetId: $assetId === '' ? $existingEquipment->getAssetId() : $assetId,
@@ -313,6 +393,16 @@ class EquipmentManagementService
             return;
         }
 
+        try {
+            $this->equipmentInventoryUnitService->ensureSchemaReady();
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Equipment schema enhancement fallback [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+        }
+
         $columns = $this->connection->fetchAllAssociative(
             "SELECT column_name
              FROM information_schema.columns
@@ -343,6 +433,62 @@ class EquipmentManagementService
         }
 
         $this->equipmentSchemaEnsured = true;
+    }
+
+    private function loadInventoryEnhancements(array $entities): array
+    {
+        $equipmentIdentifiers = array_map(static fn (EquipmentEntity $entity): int => (int) $entity->getEquipmentIdentifier(), $entities);
+
+        try {
+            return [
+                $this->equipmentInventoryUnitService->fetchDerivedCountsByEquipmentIds($equipmentIdentifiers),
+                $this->equipmentInventoryUnitService->fetchUnitsByEquipmentIds($equipmentIdentifiers),
+                $this->equipmentInventoryUnitService->fetchParentMetadataByEquipmentIds($equipmentIdentifiers),
+            ];
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Equipment enhancement fallback [%s]: %s',
+                $exception::class,
+                $exception->getMessage()
+            ));
+
+            return [[], [], []];
+        }
+    }
+
+    private function saveEquipmentUnits(int $equipmentIdentifier, array $normalizedPayload, EquipmentCreateRequestDTO $requestDTO): void
+    {
+        $unitRecords = is_array($requestDTO->units) ? $requestDTO->units : [];
+
+        if ($unitRecords === []) {
+            $unitRecords = [];
+            for ($index = 0; $index < max(1, (int) $normalizedPayload['availableQuantity']); $index++) {
+                $unitRecords[] = [
+                    'barcode' => $index === 0 ? $normalizedPayload['barcode'] : null,
+                    'assetTag' => $index === 0 ? $normalizedPayload['assetId'] : null,
+                    'serialNumber' => $index === 0 ? $normalizedPayload['assetId'] : null,
+                    'conditionStatus' => 'Good',
+                    'availabilityStatus' => $normalizedPayload['operationalStatus'],
+                    'remarks' => $normalizedPayload['remarks'] ?? null,
+                    'specifications' => $normalizedPayload['specifications'] ?? null,
+                    'maintenanceState' => $normalizedPayload['equipmentState'],
+                ];
+            }
+        }
+
+        try {
+            $this->equipmentInventoryUnitService->saveUnitsForEquipment(
+                $equipmentIdentifier,
+                (string) ($normalizedPayload['equipmentCategory'] ?? ''),
+                $unitRecords,
+                [
+                    'availabilityStatus' => $normalizedPayload['operationalStatus'] ?? 'Available',
+                    'remarks' => $normalizedPayload['remarks'] ?? null,
+                ]
+            );
+        } catch (\InvalidArgumentException $exception) {
+            throw new DomainValidationException($exception->getMessage());
+        }
     }
 
     private function generateMissingInventoryIdentifiers(string $equipmentCategory, string $assetId, string $barcode): array

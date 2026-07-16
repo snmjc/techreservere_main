@@ -42,7 +42,7 @@
             class="admin-ops-sort-button approved-requests-sort-button"
             :class="{ 'admin-ops-sort-button--ascending': sortDirection === 'asc' }"
             :aria-label="`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`"
-            :title="sortDirection === 'asc' ? 'Soonest schedule first' : 'Latest schedule first'"
+            :title="sortDirection === 'asc' ? 'Oldest requests first' : 'Newest requests first'"
             type="button"
             @click="toggleSortDirection"
           >
@@ -50,7 +50,7 @@
               <line x1="12" y1="5" x2="12" y2="19"/>
               <polyline points="19 12 12 19 5 12"/>
             </svg>
-            <span>{{ sortDirection === 'asc' ? 'Soonest First' : 'Latest First' }}</span>
+            <span>{{ sortDirection === 'asc' ? 'Oldest First' : 'Newest First' }}</span>
           </button>
         </div>
       </div>
@@ -490,7 +490,7 @@ const requestStore = useRequestStore();
 const router = useRouter();
 const searchQueryText = ref('');
 const showingFilterValue = ref('all');
-const sortDirection = ref('asc');
+const sortDirection = ref('desc');
 const approvedRequestsCurrentPage = ref(1);
 const approvedRequestsPageSize = 8;
 const selectedRequestRecord = ref(null);

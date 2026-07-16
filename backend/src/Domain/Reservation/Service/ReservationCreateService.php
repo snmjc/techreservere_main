@@ -39,7 +39,8 @@ class ReservationCreateService
         private readonly NotificationDispatchService $notificationDispatchService,
         private readonly AccountRepository $accountRepository,
         private readonly VenueRepository $venueRepository,
-        private readonly EquipmentRepository $equipmentRepository
+        private readonly EquipmentRepository $equipmentRepository,
+        private readonly ReservationMetadataService $reservationMetadataService
     ) {
         $this->reservationRepository = $reservationRepository;
     }
@@ -57,6 +58,7 @@ class ReservationCreateService
     public function createReservation(int $borrowerAccountId, ReservationCreateRequestDTO $requestDTO): ReservationResponseDTO
     {
         $this->ensureReservationSchemaReady();
+        $this->reservationMetadataService->ensureSchemaReady();
         $today = AppClock::now()->setTime(0, 0);
         $activityTitle = trim($requestDTO->organizationName);
         $activityType = trim($requestDTO->activityType);
@@ -191,11 +193,18 @@ class ReservationCreateService
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
             borrowerRemarks: $entity->getBorrowerRemarks(),
+            adminRemarks: null,
+            approvalRemarks: null,
+            denialReason: null,
+            cancellationReason: null,
+            completionRemarks: null,
+            manualOverrideReason: null,
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
             supportingDocuments: $entity->getSupportingDocuments(),
-            submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM)
+            submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM),
+            remarkEvents: []
         );
     }
 
@@ -228,11 +237,18 @@ class ReservationCreateService
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
             borrowerRemarks: $entity->getBorrowerRemarks(),
+            adminRemarks: null,
+            approvalRemarks: null,
+            denialReason: null,
+            cancellationReason: null,
+            completionRemarks: null,
+            manualOverrideReason: null,
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
             supportingDocuments: $entity->getSupportingDocuments(),
-            submissionTimestamp: $submissionTimestamp->format(\DateTime::ATOM)
+            submissionTimestamp: $submissionTimestamp->format(\DateTime::ATOM),
+            remarkEvents: []
         );
     }
 
