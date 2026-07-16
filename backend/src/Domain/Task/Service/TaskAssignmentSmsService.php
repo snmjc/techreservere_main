@@ -6,6 +6,7 @@ use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Shared\Exceptions\DomainValidationException;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class TaskAssignmentSmsService
 {
@@ -98,7 +99,10 @@ class TaskAssignmentSmsService
                 'error' => $exception->getMessage(),
             ]);
 
-            return 'Task assignment saved, but the SMS notification could not be delivered.';
+            return sprintf(
+                'Task assignment saved, but the SMS notification could not be delivered. %s',
+                $this->buildUserFacingFailureReason($exception)
+            );
         }
     }
 
@@ -150,7 +154,10 @@ class TaskAssignmentSmsService
                 'error' => $exception->getMessage(),
             ]);
 
-            throw new DomainValidationException('The TextBee test SMS could not be delivered.');
+            throw new DomainValidationException(sprintf(
+                'The TextBee test SMS could not be delivered. %s',
+                $this->buildUserFacingFailureReason($exception)
+            ));
         }
 
         return [
@@ -204,6 +211,8 @@ class TaskAssignmentSmsService
         ?int $assignedToAccountId = null
     ): array
     {
+        $responsePayload = null;
+
         try {
             $response = $this->httpClient->request(
                 'POST',
@@ -216,6 +225,7 @@ class TaskAssignmentSmsService
                     'headers' => [
                         'x-api-key' => $this->textBeeApiKey(),
                         'Accept' => 'application/json',
+                        'Content-Type' => 'application/json',
                     ],
                     'json' => [
                         'recipients' => [$destinationPhoneNumber],
@@ -223,11 +233,9 @@ class TaskAssignmentSmsService
                     ],
                 ],
             );
-            $responseContent = $response->getContent();
-            $responsePayload = json_decode($responseContent, true);
-            if (!is_array($responsePayload)) {
-                $responsePayload = ['rawResponse' => $responseContent];
-            }
+
+            $responsePayload = $this->decodeResponsePayload($response);
+            $this->assertSuccessfulProviderResponse($response, $responsePayload);
 
             $this->recordSuccessSafely(
                 $source,
@@ -245,6 +253,7 @@ class TaskAssignmentSmsService
                 [$destinationPhoneNumber],
                 $message,
                 $exception->getMessage(),
+                $responsePayload,
                 $taskIdentifier,
                 $assignedToAccountId
             );
@@ -333,6 +342,7 @@ class TaskAssignmentSmsService
         array $recipients,
         string $message,
         string $errorMessage,
+        ?array $responsePayload = null,
         ?int $taskIdentifier = null,
         ?int $assignedToAccountId = null
     ): void {
@@ -342,7 +352,7 @@ class TaskAssignmentSmsService
                 $recipients,
                 $message,
                 $errorMessage,
-                null,
+                $responsePayload,
                 $taskIdentifier,
                 $assignedToAccountId
             );
@@ -363,11 +373,83 @@ class TaskAssignmentSmsService
 
     private function textBeeApiKey(): string
     {
-        return trim((string)($_ENV['API_KEY'] ?? $_SERVER['API_KEY'] ?? ''));
+        return trim((string)(
+            $_ENV['TEXTBEE_API_KEY']
+            ?? $_SERVER['TEXTBEE_API_KEY']
+            ?? $_ENV['API_KEY']
+            ?? $_SERVER['API_KEY']
+            ?? ''
+        ));
     }
 
     private function textBeeDeviceId(): string
     {
-        return trim((string)($_ENV['DEVICE_ID'] ?? $_SERVER['DEVICE_ID'] ?? ''));
+        return trim((string)(
+            $_ENV['TEXTBEE_DEVICE_ID']
+            ?? $_SERVER['TEXTBEE_DEVICE_ID']
+            ?? $_ENV['DEVICE_ID']
+            ?? $_SERVER['DEVICE_ID']
+            ?? ''
+        ));
+    }
+
+    private function decodeResponsePayload(ResponseInterface $response): array
+    {
+        $responseContent = $response->getContent(false);
+        $responsePayload = json_decode($responseContent, true);
+
+        if (is_array($responsePayload)) {
+            return $responsePayload;
+        }
+
+        return ['rawResponse' => $responseContent];
+    }
+
+    private function assertSuccessfulProviderResponse(ResponseInterface $response, array $responsePayload): void
+    {
+        $statusCode = $response->getStatusCode();
+        if ($statusCode >= 400) {
+            throw new \RuntimeException($this->extractProviderErrorMessage($responsePayload, $statusCode));
+        }
+
+        $providerStatus = strtoupper(trim((string)($responsePayload['data']['status'] ?? $responsePayload['status'] ?? '')));
+        if (in_array($providerStatus, ['FAILED', 'REJECTED', 'ERROR'], true)) {
+            throw new \RuntimeException($this->extractProviderErrorMessage($responsePayload, $statusCode));
+        }
+    }
+
+    private function extractProviderErrorMessage(array $responsePayload, ?int $statusCode = null): string
+    {
+        $candidates = [
+            $responsePayload['message'] ?? null,
+            $responsePayload['error'] ?? null,
+            $responsePayload['details'] ?? null,
+            is_array($responsePayload['data'] ?? null) ? ($responsePayload['data']['message'] ?? null) : null,
+            is_array($responsePayload['data'] ?? null) ? ($responsePayload['data']['error'] ?? null) : null,
+            is_array($responsePayload['data'] ?? null) ? ($responsePayload['data']['details'] ?? null) : null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalizedCandidate = trim((string)($candidate ?? ''));
+            if ($normalizedCandidate !== '') {
+                return $normalizedCandidate;
+            }
+        }
+
+        if ($statusCode !== null) {
+            return sprintf('TextBee returned HTTP %d without a readable error message.', $statusCode);
+        }
+
+        return 'TextBee did not return a readable error message.';
+    }
+
+    private function buildUserFacingFailureReason(\Throwable $exception): string
+    {
+        $message = trim($exception->getMessage());
+        if ($message === '') {
+            return 'Please verify the TextBee device is active, has SMS permission, and can send messages from the connected phone.';
+        }
+
+        return $message;
     }
 }

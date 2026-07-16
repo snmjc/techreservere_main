@@ -32,6 +32,10 @@ services:
       APP_DEBUG: "1"
       POSTGRES_HOST: database
       ANALYTICS_SERVICE_URL: "http://analytics-service:9000"
+      TEXTBEE_API_KEY: "${TEXTBEE_API_KEY:-}"
+      TEXTBEE_DEVICE_ID: "${TEXTBEE_DEVICE_ID:-}"
+      API_KEY: "${API_KEY:-}"
+      DEVICE_ID: "${DEVICE_ID:-}"
       MAILER_DSN: "${MAILER_DSN:-null://null}"
       MESSENGER_TRANSPORT_DSN: "${MESSENGER_TRANSPORT_DSN:-sync://}"
       RUN_MIGRATIONS_ON_BOOT: "${RUN_MIGRATIONS_ON_BOOT:-1}"

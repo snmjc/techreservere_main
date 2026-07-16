@@ -16,6 +16,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
 {
     private mixed $originalApiKey;
     private mixed $originalDeviceId;
+    private mixed $originalTextBeeApiKey;
+    private mixed $originalTextBeeDeviceId;
     private SmsMessageLogService $smsMessageLogService;
     private TaskAssignmentTemplateService $taskAssignmentTemplateService;
     private NotificationDispatchService $notificationDispatchService;
@@ -24,6 +26,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
     {
         $this->originalApiKey = $_ENV['API_KEY'] ?? null;
         $this->originalDeviceId = $_ENV['DEVICE_ID'] ?? null;
+        $this->originalTextBeeApiKey = $_ENV['TEXTBEE_API_KEY'] ?? null;
+        $this->originalTextBeeDeviceId = $_ENV['TEXTBEE_DEVICE_ID'] ?? null;
         $this->smsMessageLogService = $this->createMock(SmsMessageLogService::class);
         $this->taskAssignmentTemplateService = new TaskAssignmentTemplateService();
         $this->notificationDispatchService = $this->createMock(NotificationDispatchService::class);
@@ -33,6 +37,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
     {
         $this->restoreEnvironmentValue('API_KEY', $this->originalApiKey);
         $this->restoreEnvironmentValue('DEVICE_ID', $this->originalDeviceId);
+        $this->restoreEnvironmentValue('TEXTBEE_API_KEY', $this->originalTextBeeApiKey);
+        $this->restoreEnvironmentValue('TEXTBEE_DEVICE_ID', $this->originalTextBeeDeviceId);
     }
 
     public function testMessageMatchesFacilitiesOfficeAssignmentFormat(): void
@@ -74,7 +80,9 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $response
             ->expects($this->once())
             ->method('getContent')
+            ->with(false)
             ->willReturn('{"data":{"_id":"sms_1234567890","message":"Assignment message","recipients":["+639171234567"],"status":"PENDING","createdAt":"2023-09-15T14:23:45Z"}}');
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
 
         $this->smsMessageLogService
             ->expects($this->once())
@@ -143,7 +151,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $_ENV['DEVICE_ID'] = 'test-device';
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->expects($this->once())->method('getContent')->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->createMock(HttpClientInterface::class);
         $httpClient
@@ -195,7 +204,8 @@ class TaskAssignmentSmsServiceTest extends TestCase
         $_ENV['DEVICE_ID'] = 'test-device';
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->expects($this->once())->method('getContent')->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->createMock(HttpClientInterface::class);
         $httpClient
@@ -226,6 +236,86 @@ class TaskAssignmentSmsServiceTest extends TestCase
 
         $this->assertStringContainsString('<Assigned Staff>', $delivery['message']);
         $this->assertStringContainsString('<Reservation Purpose>', $delivery['message']);
+    }
+
+    public function testManualTestSmsAcceptsNamespacedTextBeeEnvironmentVariables(): void
+    {
+        unset($_ENV['API_KEY'], $_ENV['DEVICE_ID']);
+        $_ENV['TEXTBEE_API_KEY'] = 'namespaced-api-key';
+        $_ENV['TEXTBEE_DEVICE_ID'] = 'namespaced-device';
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn('{"success":true}');
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                'https://api.textbee.dev/api/v1/gateway/devices/namespaced-device/send-sms',
+                $this->callback(static function (array $options): bool {
+                    return ($options['headers']['x-api-key'] ?? null) === 'namespaced-api-key';
+                })
+            )
+            ->willReturn($response);
+
+        $service = new TaskAssignmentSmsService(
+            $httpClient,
+            $this->createMock(LoggerInterface::class),
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
+        );
+
+        $delivery = $service->sendTestSms('09171234567', 'Custom test message');
+
+        $this->assertSame('+639171234567', $delivery['recipient']);
+    }
+
+    public function testManualTestSmsReturnsProviderFailureReason(): void
+    {
+        $_ENV['API_KEY'] = 'test-api-key';
+        $_ENV['DEVICE_ID'] = 'test-device';
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->once())->method('getContent')->with(false)->willReturn(
+            '{"message":"Device is offline","data":{"status":"FAILED"}}'
+        );
+        $response->expects($this->once())->method('getStatusCode')->willReturn(200);
+
+        $this->smsMessageLogService
+            ->expects($this->once())
+            ->method('recordFailure')
+            ->with(
+                'manual_test',
+                ['+639171234567'],
+                'Custom test message',
+                'Device is offline',
+                $this->callback(static fn (array $payload): bool => ($payload['message'] ?? null) === 'Device is offline'),
+                null,
+                null
+            );
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->willReturn($response);
+
+        $service = new TaskAssignmentSmsService(
+            $httpClient,
+            $this->createMock(LoggerInterface::class),
+            $this->smsMessageLogService,
+            $this->taskAssignmentTemplateService,
+            $this->notificationDispatchService
+        );
+
+        $this->expectException(DomainValidationException::class);
+        $this->expectExceptionMessage('Device is offline');
+
+        $service->sendTestSms('09171234567', 'Custom test message');
     }
 
     private function restoreEnvironmentValue(string $name, mixed $value): void
