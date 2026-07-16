@@ -258,29 +258,17 @@
 
           <label class="admin-task-assignments-reservation-field">
             <span>Reservation</span>
-            <input
-              v-model.trim="reservationSelectionQuery"
-              type="search"
-              placeholder="Search reservation, organization, or date..."
-              autocomplete="off"
-            />
-            <div class="admin-task-assignments-reservation-list" role="listbox" aria-label="Reservation options">
-              <button
-                v-for="reservation in filteredReservationOptions"
-                :key="reservation.value"
-                type="button"
-                class="admin-task-assignments-reservation-option"
-                :class="{ 'is-selected': reservation.value === taskForm.reservationIdentifier }"
-                @click="taskForm.reservationIdentifier = reservation.value"
-              >
-                <strong>{{ reservation.code }}</strong>
-                <span>{{ reservation.organizationName || 'No organization name' }}</span>
-                <small>{{ reservation.scheduleLabel || 'No schedule recorded' }}</small>
-              </button>
-              <p v-if="filteredReservationOptions.length === 0" class="admin-task-assignments-reservation-empty">
-                No reservations match your search.
-              </p>
-            </div>
+            <button
+              type="button"
+              class="admin-task-assignments-reservation-trigger"
+              @click="openReservationSelectionModal"
+            >
+              <span>{{ selectedReservationOption ? selectedReservationOption.code : 'Select reservation' }}</span>
+              <small v-if="selectedReservationOption">
+                {{ [selectedReservationOption.organizationName, selectedReservationOption.scheduleLabel].filter(Boolean).join(' · ') }}
+              </small>
+              <small v-else>Open reservation directory</small>
+            </button>
           </label>
 
           <label>
@@ -339,6 +327,113 @@
             </button>
           </footer>
         </form>
+      </section>
+    </div>
+
+    <div v-if="showReservationSelectionModal" class="admin-task-assignments-modal-overlay" @click.self="closeReservationSelectionModal">
+      <section class="admin-task-assignments-reservation-modal-shell">
+        <section class="admin-task-assignments-modal admin-task-assignments-modal--reservation-picker">
+          <header class="admin-task-assignments-modal-header">
+            <div>
+              <h2>Select Reservation</h2>
+              <p>Choose the reservation record to link with this task assignment.</p>
+            </div>
+            <button type="button" aria-label="Close" @click="closeReservationSelectionModal">x</button>
+          </header>
+
+          <label class="admin-task-assignments-search admin-task-assignments-reservation-search">
+            <span class="sr-only">Search reservations</span>
+            <input
+              v-model.trim="reservationSelectionQuery"
+              type="search"
+              placeholder="Search reservation, organization, or date..."
+              autocomplete="off"
+            />
+          </label>
+
+          <div class="admin-task-assignments-reservation-list" role="listbox" aria-label="Reservation options">
+            <button
+              v-for="reservation in paginatedReservationSelectionOptions"
+              :key="reservation.value"
+              type="button"
+              class="admin-task-assignments-reservation-option"
+              :class="{ 'is-selected': pendingSelectedReservationId === reservation.value }"
+              @click="pendingSelectedReservationId = reservation.value"
+            >
+              <div>
+                <strong>{{ reservation.code }}</strong>
+                <span>{{ reservation.organizationName || 'No organization name' }}</span>
+                <small>{{ reservation.scheduleLabel || 'No schedule recorded' }}</small>
+              </div>
+              <i aria-hidden="true">›</i>
+            </button>
+            <p v-if="paginatedReservationSelectionOptions.length === 0" class="admin-task-assignments-reservation-empty">
+              No reservations match your search.
+            </p>
+          </div>
+
+          <footer class="admin-task-assignments-reservation-footer">
+            <p>Showing {{ reservationSelectionStart }} to {{ reservationSelectionEnd }} of {{ filteredReservationOptions.length }} results</p>
+            <div class="admin-task-assignments-pagination">
+              <button type="button" :disabled="reservationSelectionPage === 1" @click="reservationSelectionPage -= 1">Prev</button>
+              <button
+                v-for="pageNumber in visibleReservationSelectionPageNumbers"
+                :key="pageNumber"
+                type="button"
+                :class="{ 'is-active': pageNumber === reservationSelectionPage }"
+                @click="reservationSelectionPage = pageNumber"
+              >
+                {{ pageNumber }}
+              </button>
+              <button type="button" :disabled="reservationSelectionPage === reservationSelectionTotalPages" @click="reservationSelectionPage += 1">Next</button>
+            </div>
+          </footer>
+        </section>
+
+        <section class="admin-task-assignments-modal admin-task-assignments-modal--reservation-details">
+          <header class="admin-task-assignments-modal-header">
+            <div>
+              <h2>Reservation Details</h2>
+              <p>Review the linked request before applying it to the task assignment.</p>
+            </div>
+            <button type="button" aria-label="Close" @click="closeReservationSelectionModal">x</button>
+          </header>
+
+          <div v-if="reservationSelectionPreviewOption" class="admin-task-assignments-reservation-details">
+            <p><strong>Reservation No.</strong><span>{{ reservationSelectionPreviewOption.code }}</span></p>
+            <p><strong>Organization</strong><span>{{ reservationSelectionPreviewOption.organizationName || 'N/A' }}</span></p>
+            <p><strong>Borrower</strong><span>{{ reservationSelectionPreviewOption.borrowerName || 'N/A' }}</span></p>
+            <p><strong>Date</strong><span>{{ reservationSelectionPreviewOption.eventDateLabel || 'N/A' }}</span></p>
+            <p><strong>Time</strong><span>{{ reservationSelectionPreviewOption.timeRangeLabel || 'N/A' }}</span></p>
+            <p><strong>Venue</strong><span>{{ reservationSelectionPreviewOption.venueName || 'N/A' }}</span></p>
+            <div class="admin-task-assignments-reservation-details-list">
+              <strong>Equipment</strong>
+              <ul v-if="reservationSelectionPreviewOption.equipmentList.length > 0">
+                <li v-for="equipment in reservationSelectionPreviewOption.equipmentList" :key="equipment">{{ equipment }}</li>
+              </ul>
+              <span v-else>No equipment listed</span>
+            </div>
+            <p><strong>Participants</strong><span>{{ reservationSelectionPreviewOption.requestedQuantityLabel }}</span></p>
+            <p><strong>Status</strong><span class="admin-task-reservation-status-pill">{{ reservationSelectionPreviewOption.statusLabel }}</span></p>
+            <p><strong>Remarks</strong><span>{{ reservationSelectionPreviewOption.remarks || 'No remarks provided.' }}</span></p>
+          </div>
+
+          <div v-else class="admin-task-assignments-state">
+            Select a reservation from the list to review its details.
+          </div>
+
+          <footer class="admin-task-assignments-modal-actions">
+            <button type="button" class="admin-task-assignments-secondary" @click="pendingSelectedReservationId = ''">Back</button>
+            <button
+              type="button"
+              class="admin-task-assignments-primary"
+              :disabled="!reservationSelectionPreviewOption"
+              @click="applySelectedReservation"
+            >
+              Select Reservation
+            </button>
+          </footer>
+        </section>
       </section>
     </div>
 
@@ -700,15 +795,18 @@ const taskTemplateDataState = ref('idle');
 const showTaskModal = ref(false);
 const showSmsTestModal = ref(false);
 const showTaskTemplateModal = ref(false);
+const showReservationSelectionModal = ref(false);
 const taskModalMode = ref('create');
 const editingTask = ref(null);
 const viewTask = ref(null);
 const verifyTask = ref(null);
 const showStaffSelectionModal = ref(false);
 const reservationSelectionQuery = ref('');
+const reservationSelectionPage = ref(1);
 const staffSelectionQuery = ref('');
 const staffSelectionRoleFilter = ref('all');
 const staffSelectionPage = ref(1);
+const pendingSelectedReservationId = ref('');
 const pendingSelectedStaffId = ref('');
 
 const searchQuery = ref('');
@@ -860,6 +958,9 @@ const staffFilterOptions = computed(() => tasks.value
 const selectedStaffOption = computed(() => (
   staffOptions.value.find((staff) => staff.value === String(taskForm.assignedToAccountId || '')) || null
 ));
+const selectedReservationOption = computed(() => (
+  reservationOptions.value.find((reservation) => reservation.value === String(taskForm.reservationIdentifier || '')) || null
+));
 
 const filteredReservationOptions = computed(() => {
   const normalizedQuery = reservationSelectionQuery.value.trim().toLowerCase();
@@ -876,6 +977,28 @@ const filteredReservationOptions = computed(() => {
       reservation.label,
     ].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)
   ));
+});
+const reservationSelectionTotalPages = computed(() => Math.max(1, Math.ceil(filteredReservationOptions.value.length / 5)));
+const paginatedReservationSelectionOptions = computed(() => {
+  const startIndex = (reservationSelectionPage.value - 1) * 5;
+  return filteredReservationOptions.value.slice(startIndex, startIndex + 5);
+});
+const reservationSelectionStart = computed(() => filteredReservationOptions.value.length === 0 ? 0 : ((reservationSelectionPage.value - 1) * 5) + 1);
+const reservationSelectionEnd = computed(() => Math.min(reservationSelectionPage.value * 5, filteredReservationOptions.value.length));
+const reservationSelectionPreviewOption = computed(() => (
+  reservationOptions.value.find((reservation) => reservation.value === String(pendingSelectedReservationId.value || '')) || null
+));
+const visibleReservationSelectionPageNumbers = computed(() => {
+  const pageCount = reservationSelectionTotalPages.value;
+  const current = reservationSelectionPage.value;
+  const startPage = Math.max(1, current - 2);
+  const endPage = Math.min(pageCount, startPage + 4);
+  const adjustedStart = Math.max(1, endPage - 4);
+  const pages = [];
+  for (let pageNumber = adjustedStart; pageNumber <= endPage; pageNumber += 1) {
+    pages.push(pageNumber);
+  }
+  return pages;
 });
 
 const staffRoleFilterOptions = computed(() => [...new Set(
@@ -974,6 +1097,16 @@ watch(totalPages, (pageCount) => {
   }
 });
 
+watch(reservationSelectionQuery, () => {
+  reservationSelectionPage.value = 1;
+});
+
+watch(reservationSelectionTotalPages, (pageCount) => {
+  if (reservationSelectionPage.value > pageCount) {
+    reservationSelectionPage.value = pageCount;
+  }
+});
+
 watch([staffSelectionQuery, staffSelectionRoleFilter], () => {
   staffSelectionPage.value = 1;
 });
@@ -1044,6 +1177,7 @@ function openCreateModal() {
   taskModalMode.value = 'create';
   editingTask.value = null;
   reservationSelectionQuery.value = '';
+  pendingSelectedReservationId.value = '';
   showTaskModal.value = true;
 }
 
@@ -1082,7 +1216,15 @@ function openUpdateModal(task) {
   taskForm.dueDateTimestamp = toDateTimeLocal(task.dueDateTimestamp);
   taskForm.taskStatus = task.taskStatus || 'Pending';
   reservationSelectionQuery.value = '';
+  pendingSelectedReservationId.value = taskForm.reservationIdentifier;
   showTaskModal.value = true;
+}
+
+function openReservationSelectionModal() {
+  reservationSelectionQuery.value = '';
+  reservationSelectionPage.value = 1;
+  pendingSelectedReservationId.value = String(taskForm.reservationIdentifier || filteredReservationOptions.value[0]?.value || '');
+  showReservationSelectionModal.value = true;
 }
 
 function openStaffSelectionModal() {
@@ -1110,12 +1252,27 @@ function closeViewModal() {
 function closeTaskModal() {
   showTaskModal.value = false;
   editingTask.value = null;
+  showReservationSelectionModal.value = false;
   resetTaskForm();
   modalError.value = '';
 }
 
+function closeReservationSelectionModal() {
+  showReservationSelectionModal.value = false;
+  pendingSelectedReservationId.value = String(taskForm.reservationIdentifier || '');
+}
+
 function closeStaffSelectionModal() {
   showStaffSelectionModal.value = false;
+}
+
+function applySelectedReservation() {
+  if (!pendingSelectedReservationId.value) {
+    return;
+  }
+
+  taskForm.reservationIdentifier = pendingSelectedReservationId.value;
+  showReservationSelectionModal.value = false;
 }
 
 function applySelectedStaff() {
@@ -1434,6 +1591,14 @@ function normalizeReservations(reservations) {
     code: reservation.reservationCode || reservation.reservation_code || `#${reservation.reservationIdentifier || reservation.reservation_identifier}`,
     organizationName: reservation.organizationName || reservation.organization_name || '',
     scheduleLabel: reservation.eventDateTime ? formatDateTime(reservation.eventDateTime) : '',
+    borrowerName: reservation.borrowerFullName || reservation.borrower_full_name || 'N/A',
+    eventDateLabel: formatReservationEventDate(reservation.eventDateTime),
+    timeRangeLabel: reservation.activityTimeRange || buildReservationTimeRange(reservation.eventDateTime, reservation.endDateTime),
+    venueName: reservation.venueName || reservation.venue_name || 'N/A',
+    equipmentList: normalizeReservationEquipmentList(reservation.requestedEquipmentList || reservation.requested_equipment_list),
+    requestedQuantityLabel: String(reservation.requestedQuantity ?? reservation.requested_quantity ?? 0),
+    statusLabel: reservation.currentStatus || reservation.current_status || 'Unknown',
+    remarks: reservation.borrowerRemarks || reservation.borrower_remarks || reservation.purposeDescription || reservation.purpose_description || '',
     label: [
       reservation.reservationCode || reservation.reservation_code || `#${reservation.reservationIdentifier || reservation.reservation_identifier}`,
       reservation.organizationName || reservation.organization_name,
@@ -1473,6 +1638,52 @@ function resolveAccountType(account) {
   const department = String(account.department || '').toLowerCase();
   if (role.includes('STAFF') || department.includes('staff') || department.includes('maintenance') || department.includes('support')) return 'Employee';
   return account.accountType || account.account_type || '';
+}
+
+function normalizeReservationEquipmentList(equipmentList) {
+  if (!Array.isArray(equipmentList)) {
+    return [];
+  }
+
+  return equipmentList.map((equipment) => {
+    const itemName = typeof equipment === 'string'
+      ? equipment
+      : equipment?.name || equipment?.equipmentName || equipment?.equipment_name || 'Equipment';
+    const quantity = Number(equipment?.quantity ?? equipment?.selectedQuantity ?? equipment?.selected_quantity ?? 1) || 1;
+    return quantity > 1 ? `${itemName} (${quantity})` : String(itemName);
+  });
+}
+
+function formatReservationEventDate(value) {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'N/A';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
+}
+
+function buildReservationTimeRange(startValue, endValue) {
+  const startLabel = formatReservationClockTime(startValue);
+  const endLabel = formatReservationClockTime(endValue);
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  return startLabel || endLabel || 'N/A';
+}
+
+function formatReservationClockTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function formatStaffLabel(task) {
@@ -1657,7 +1868,10 @@ function resetTaskForm() {
   taskForm.confirmedAdminEmail = '';
   taskForm.confirmedAdminPassword = '';
   reservationSelectionQuery.value = '';
+  reservationSelectionPage.value = 1;
+  pendingSelectedReservationId.value = '';
   pendingSelectedStaffId.value = '';
+  showReservationSelectionModal.value = false;
   showStaffSelectionModal.value = false;
   resetTaskSubmissionFeedback();
 }

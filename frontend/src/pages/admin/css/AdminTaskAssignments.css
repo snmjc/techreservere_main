@@ -536,6 +536,14 @@ button:disabled {
   width: min(680px, 100%);
 }
 
+.admin-task-assignments-modal--reservation-picker {
+  width: min(580px, 100%);
+}
+
+.admin-task-assignments-modal--reservation-details {
+  width: min(500px, 100%);
+}
+
 .admin-task-assignments-modal-header {
   display: flex;
   align-items: flex-start;
@@ -590,6 +598,49 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.admin-task-assignments-reservation-trigger {
+  width: 100%;
+  min-height: 50px;
+  padding: 0.62rem 0.74rem;
+  color: #12271d;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #d6e2da;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-task-assignments-reservation-trigger span,
+.admin-task-assignments-reservation-trigger small {
+  display: block;
+}
+
+.admin-task-assignments-reservation-trigger span {
+  color: #123224;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.admin-task-assignments-reservation-trigger small {
+  margin-top: 0.18rem;
+  color: #688072;
+  font-size: 0.68rem;
+}
+
+.admin-task-assignments-reservation-modal-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.9fr);
+  gap: 1rem;
+  width: min(1080px, 100%);
+  align-items: start;
+}
+
+.admin-task-assignments-reservation-search {
+  display: block;
+  margin-bottom: 0.8rem;
+}
+
 .admin-task-assignments-form textarea {
   width: 100%;
   min-height: 88px;
@@ -640,7 +691,7 @@ button:disabled {
 .admin-task-assignments-reservation-list {
   display: grid;
   gap: 0.45rem;
-  max-height: 220px;
+  max-height: 440px;
   padding: 0.45rem;
   overflow: auto;
   background: #f7faf8;
@@ -649,6 +700,9 @@ button:disabled {
 }
 
 .admin-task-assignments-reservation-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   padding: 0.72rem 0.8rem;
   color: #12271d;
@@ -686,6 +740,13 @@ button:disabled {
   font-size: 0.68rem;
 }
 
+.admin-task-assignments-reservation-option i {
+  color: #6c8577;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .admin-task-assignments-reservation-option.is-selected {
   background: #eef8f1;
   border-color: #77c18f;
@@ -699,6 +760,68 @@ button:disabled {
   text-align: center;
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.admin-task-assignments-reservation-footer {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+.admin-task-assignments-reservation-footer > p {
+  margin: 0;
+  color: #607668;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.admin-task-assignments-reservation-details {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid #e3ebe6;
+}
+
+.admin-task-assignments-reservation-details > p,
+.admin-task-assignments-reservation-details-list {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #edf2ee;
+}
+
+.admin-task-assignments-reservation-details strong,
+.admin-task-assignments-reservation-details-list > strong {
+  color: #566c60;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.admin-task-assignments-reservation-details span,
+.admin-task-assignments-reservation-details-list span,
+.admin-task-assignments-reservation-details-list li {
+  color: #173022;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.admin-task-assignments-reservation-details-list ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.admin-task-reservation-status-pill {
+  display: inline-flex;
+  justify-content: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0.15rem 0.65rem;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  font-weight: 800;
 }
 
 .admin-task-sms-test-form {
@@ -1016,6 +1139,10 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .admin-task-assignments-reservation-modal-shell {
+    grid-template-columns: 1fr;
+  }
+
   .admin-task-assignments-staff-toolbar {
     grid-template-columns: 1fr;
   }
@@ -1079,6 +1206,12 @@ button:disabled {
 
   .admin-task-assignments-table {
     min-width: 640px;
+  }
+
+  .admin-task-assignments-reservation-details > p,
+  .admin-task-assignments-reservation-details-list {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 
   .admin-task-assignments-pagination {
