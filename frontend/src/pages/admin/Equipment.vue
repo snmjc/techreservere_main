@@ -28,6 +28,15 @@
         </label>
 
         <label class="equipment-page__filter">
+          <span class="equipment-page__label">Category</span>
+          <input
+            v-model.trim="categoryFilter"
+            type="text"
+            placeholder="e.g. Audio Visual"
+          />
+        </label>
+
+        <label class="equipment-page__filter">
           <span class="equipment-page__label">Status</span>
           <select v-model="statusFilter">
             <option value="all">All</option>
@@ -36,6 +45,46 @@
             <option value="Under Maintenance">Under Maintenance</option>
             <option value="Retired">Retired</option>
           </select>
+        </label>
+
+        <label class="equipment-page__filter">
+          <span class="equipment-page__label">Condition</span>
+          <input
+            v-model.trim="conditionFilter"
+            type="text"
+            placeholder="e.g. Good"
+          />
+        </label>
+
+        <label class="equipment-page__filter">
+          <span class="equipment-page__label">Storage Location</span>
+          <input
+            v-model.trim="storageLocationFilter"
+            type="text"
+            placeholder="e.g. AV Room"
+          />
+        </label>
+
+        <label class="equipment-page__filter">
+          <span class="equipment-page__label">Acquired Range</span>
+          <select v-model="acquiredDatePreset">
+            <option value="all">All dates</option>
+            <option value="today">Today</option>
+            <option value="last-7-days">Last 7 days</option>
+            <option value="last-30-days">Last 30 days</option>
+            <option value="this-year">This year</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </label>
+
+        <label v-if="acquiredDatePreset === 'custom'" class="equipment-page__filter">
+          <span class="equipment-page__label">Acquired From</span>
+          <input v-model="acquiredStartDate" type="date" />
+        </label>
+
+        <label v-if="acquiredDatePreset === 'custom'" class="equipment-page__filter">
+          <span class="equipment-page__label">Acquired To</span>
+          <input v-model="acquiredEndDate" type="date" />
         </label>
 
         <label class="equipment-page__filter">
@@ -56,7 +105,14 @@
           {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </button>
         <button class="equipment-page__ghost-button" type="button" @click="exportInventory('csv')">CSV</button>
-        <button class="equipment-page__ghost-button" type="button" @click="exportInventory('excel')">Excel</button>
+        <button
+          class="equipment-page__ghost-button"
+          type="button"
+          :disabled="isExportingExcel"
+          @click="exportInventory('excel')"
+        >
+          {{ isExportingExcel ? 'Exporting...' : 'Excel' }}
+        </button>
         <button class="equipment-page__ghost-button" type="button" @click="exportInventory('pdf')">PDF</button>
         <button class="equipment-page__ghost-button" type="button" @click="exportInventory('print')">Print</button>
       </section>
@@ -81,6 +137,7 @@
       </section>
 
       <p v-if="pageError" class="equipment-page__feedback equipment-page__feedback--error">{{ pageError }}</p>
+      <p v-if="exportError" class="equipment-page__feedback equipment-page__feedback--error">{{ exportError }}</p>
 
       <div v-if="isLoading" class="equipment-page__state-card">Loading equipment records...</div>
       <div v-else-if="filteredEquipment.length === 0" class="equipment-page__state-card">
@@ -365,7 +422,6 @@ import {
 import {
   exportElementToPdf,
   exportRowsToCsv,
-  exportRowsToExcel,
   printElement,
 } from '@/shared/utils/adminExport.js';
 
@@ -374,14 +430,23 @@ const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Ret
 
 const equipmentList = ref(readEquipmentCache());
 const isLoading = ref(false);
+const isExportingExcel = ref(false);
 const pageError = ref('');
+const exportError = ref('');
 const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
 const searchQuery = ref('');
+const categoryFilter = ref('');
 const statusFilter = ref('all');
+const conditionFilter = ref('');
+const storageLocationFilter = ref('');
+const acquiredDatePreset = ref('all');
+const acquiredStartDate = ref('');
+const acquiredEndDate = ref('');
 const sortOrder = ref('asc');
 const equipmentCurrentPage = ref(1);
 const equipmentPageSize = 10;
 const inventorySurfaceRef = ref(null);
+let equipmentFetchTimer = null;
 
 const viewEquipment = ref(null);
 const formModalOpen = ref(false);
@@ -403,19 +468,7 @@ const equipmentStatusItems = computed(() => [
 ]);
 
 const filteredEquipment = computed(() => {
-  const normalizedQuery = searchQuery.value.toLowerCase();
-
-  const filtered = equipmentList.value.filter((equipment) => {
-    const matchesQuery = normalizedQuery === ''
-      || String(equipment.equipmentName || '').toLowerCase().includes(normalizedQuery)
-      || String(equipment.equipmentCategory || equipment.categoryName || '').toLowerCase().includes(normalizedQuery);
-
-    const matchesStatus = statusFilter.value === 'all' || equipment.equipmentState === statusFilter.value;
-
-    return matchesQuery && matchesStatus;
-  });
-
-  return [...filtered].sort((left, right) => {
+  return [...equipmentList.value].sort((left, right) => {
     if (sortOrder.value === 'recent') {
       return new Date(right.updatedTimestamp || right.createdTimestamp).getTime()
         - new Date(left.updatedTimestamp || left.createdTimestamp).getTime();
@@ -453,7 +506,13 @@ onMounted(() => {
   fetchEquipment();
 });
 
-watch([searchQuery, statusFilter, sortOrder], () => {
+watch([searchQuery, categoryFilter, statusFilter, conditionFilter, storageLocationFilter, acquiredDatePreset, acquiredStartDate, acquiredEndDate], () => {
+  equipmentCurrentPage.value = 1;
+  exportError.value = '';
+  scheduleEquipmentFetch();
+});
+
+watch(sortOrder, () => {
   equipmentCurrentPage.value = 1;
 });
 
@@ -463,12 +522,28 @@ watch(equipmentTotalPages, (pageCount) => {
   }
 });
 
+function scheduleEquipmentFetch() {
+  if (equipmentFetchTimer !== null && typeof window !== 'undefined') {
+    window.clearTimeout(equipmentFetchTimer);
+  }
+
+  if (typeof window === 'undefined') {
+    fetchEquipment();
+    return;
+  }
+
+  equipmentFetchTimer = window.setTimeout(() => {
+    equipmentFetchTimer = null;
+    fetchEquipment();
+  }, 250);
+}
+
 async function fetchEquipment() {
   try {
     isLoading.value = true;
     pageError.value = '';
     equipmentDataState.value = equipmentList.value.length > 0 ? 'cached-loading' : 'loading';
-    const response = await equipmentApi.listEquipment();
+    const response = await equipmentApi.listEquipment(buildEquipmentFilters());
     equipmentList.value = response?.data?.equipment || [];
     writeEquipmentCache(equipmentList.value);
     equipmentDataState.value = 'fresh';
@@ -675,6 +750,23 @@ function removeUnitRow(index) {
   }
 }
 
+function buildEquipmentFilters() {
+  return {
+    search: searchQuery.value,
+    category: categoryFilter.value,
+    status: normalizeFilterValue(statusFilter.value),
+    condition: conditionFilter.value,
+    storageLocation: storageLocationFilter.value,
+    acquiredStartDate: acquiredDatePreset.value === 'custom' ? acquiredStartDate.value : '',
+    acquiredEndDate: acquiredDatePreset.value === 'custom' ? acquiredEndDate.value : '',
+    datePreset: normalizeFilterValue(acquiredDatePreset.value),
+  };
+}
+
+function normalizeFilterValue(value) {
+  return value === 'all' ? '' : value;
+}
+
 function buildUnitRowsFromQuantity(quantity, barcode = '', assetId = '') {
   return Array.from({ length: Math.max(1, Number(quantity || 1)) }, (_, index) => ({
     equipmentUnitIdentifierCode: `UNIT-${index + 1}`,
@@ -688,6 +780,8 @@ function buildUnitRowsFromQuantity(quantity, barcode = '', assetId = '') {
 }
 
 async function exportInventory(format) {
+  exportError.value = '';
+
   const rows = filteredEquipment.value.map((equipment) => ({
     equipmentId: equipment.equipmentIdentifier,
     name: equipment.equipmentName,
@@ -711,7 +805,20 @@ async function exportInventory(format) {
   }
 
   if (format === 'excel') {
-    exportRowsToExcel('techreserve-inventory', rows, 'Inventory');
+    if (filteredEquipment.value.length === 0) {
+      exportError.value = 'No equipment records match the current filters.';
+      return;
+    }
+
+    try {
+      isExportingExcel.value = true;
+      const response = await equipmentApi.exportEquipmentExcel(buildEquipmentFilters());
+      downloadBlobResponse(response, `equipment_inventory_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      exportError.value = error?.response?.data?.errorMessage || 'Unable to export equipment inventory to Excel right now.';
+    } finally {
+      isExportingExcel.value = false;
+    }
     return;
   }
 
@@ -721,6 +828,34 @@ async function exportInventory(format) {
   }
 
   printElement(inventorySurfaceRef.value, 'TechReserve Inventory Export');
+}
+
+function downloadBlobResponse(response, fallbackFileName) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const blob = response?.data instanceof Blob
+    ? response.data
+    : new Blob([response?.data], { type: response?.headers?.['content-type'] || 'application/octet-stream' });
+  const fileName = extractFileNameFromDisposition(response?.headers?.['content-disposition']) || fallbackFileName;
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
+function extractFileNameFromDisposition(contentDisposition) {
+  if (!contentDisposition) {
+    return '';
+  }
+
+  const match = String(contentDisposition).match(/filename="([^"]+)"/i);
+  return match?.[1] || '';
 }
 </script>
 
