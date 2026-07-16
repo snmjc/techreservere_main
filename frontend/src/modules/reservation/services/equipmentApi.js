@@ -7,11 +7,12 @@ import {
 } from '@/shared/utils/authToken.js';
 
 const equipmentApi = {
-  async listEquipment() {
+  async listEquipment(filters = {}) {
     const authToken = await resolveAuthToken();
     try {
       const response = await axios.get(apiUrl('/api/v1/equipment'), {
-        headers: buildAuthorizationHeaders(authToken)
+        headers: buildAuthorizationHeaders(authToken),
+        params: filters,
       });
       return response.data;
     } catch (error) {
@@ -69,6 +70,29 @@ const equipmentApi = {
       return response.data;
     } catch (error) {
       console.error('Error deleting equipment:', error);
+      throw error;
+    }
+  },
+
+  async exportEquipmentExcel(filters = {}) {
+    const authToken = await resolveAuthToken();
+    try {
+      const response = await axios.get(apiUrl('/api/v1/equipment/export/excel'), {
+        headers: buildAuthorizationHeaders(authToken),
+        params: filters,
+        responseType: 'blob',
+      });
+      return response;
+    } catch (error) {
+      if (error?.response?.data instanceof Blob) {
+        try {
+          const errorPayload = JSON.parse(await error.response.data.text());
+          error.response.data = errorPayload;
+        } catch {
+          // Keep the original blob when the server did not return JSON.
+        }
+      }
+      console.error('Error exporting equipment excel:', error);
       throw error;
     }
   }

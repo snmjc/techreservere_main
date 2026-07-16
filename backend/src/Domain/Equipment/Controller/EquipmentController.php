@@ -2,9 +2,12 @@
 
 namespace App\Domain\Equipment\Controller;
 
+use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\AdminSecurityConfirmationService;
 use App\Domain\Account\Service\AuthenticatedAccountResolver;
+use App\Domain\AuditLog\Service\AuditLogRecordService;
 use App\Domain\Equipment\DTO\EquipmentCreateRequestDTO;
+use App\Domain\Equipment\Service\EquipmentExcelExportService;
 use App\Domain\Equipment\Service\EquipmentManagementService;
 use App\Shared\Exceptions\DomainNotFoundException;
 use App\Shared\Exceptions\DomainValidationException;
@@ -14,6 +17,7 @@ use App\Shared\Utils\RoleConstants;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/v1/equipment')]
@@ -24,7 +28,10 @@ class EquipmentController extends AbstractController
     public function __construct(
         private readonly EquipmentManagementService $equipmentManagementService,
         private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
-        private readonly AuthenticatedAccountResolver $authenticatedAccountResolver
+        private readonly AuthenticatedAccountResolver $authenticatedAccountResolver,
+        private readonly EquipmentExcelExportService $equipmentExcelExportService,
+        private readonly AuditLogRecordService $auditLogRecordService,
+        private readonly AccountRepository $accountRepository
     ) {
     }
 
@@ -41,7 +48,7 @@ class EquipmentController extends AbstractController
                 static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
                 $equipmentDTOs
             );
-            $equipmentRows = $this->applyEquipmentFilters($equipmentRows, $request);
+            $equipmentRows = $this->applyEquipmentFilters($equipmentRows, $this->extractEquipmentFilters($request));
 
             return $this->createSuccessResponse([
                 'equipment' => $equipmentRows,
@@ -62,6 +69,91 @@ class EquipmentController extends AbstractController
             ));
 
             return $this->createErrorResponse('EquipmentListFailed', 'Unable to load equipment records at this time.', 500);
+        }
+    }
+
+    #[Route('/export/excel', name: 'equipment_export_excel', methods: ['GET'])]
+    #[RequiresRoles([RoleConstants::ROLE_ADMIN])]
+    public function exportEquipmentExcel(Request $request): Response
+    {
+        try {
+            $filterPayload = $this->extractEquipmentFilters($request);
+            $equipmentRows = array_map(
+                static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
+                $this->equipmentManagementService->getAllEquipment()
+            );
+            $equipmentRows = $this->applyEquipmentFilters($equipmentRows, $filterPayload);
+
+            if ($equipmentRows === []) {
+                return $this->createErrorResponse(
+                    'EquipmentExportEmpty',
+                    'No equipment records match the current filters.',
+                    422
+                );
+            }
+
+            $accountIdentifier = $this->authenticatedAccountResolver->resolveAccountIdentifier($request);
+            $account = $this->accountRepository->find($accountIdentifier);
+            $actorName = $account === null
+                ? 'TechReserve Admin'
+                : trim(sprintf('%s %s', $account->getFirstName(), $account->getLastName()));
+            $actorName = $actorName !== '' ? $actorName : ($account?->getEmailAddress() ?? 'TechReserve Admin');
+            $actorRole = $account?->getRoleDesignation() ?? RoleConstants::ROLE_ADMIN;
+
+            $workbook = $this->equipmentExcelExportService->generateWorkbook(
+                $equipmentRows,
+                $filterPayload,
+                $actorName,
+                new \DateTimeImmutable('now')
+            );
+
+            $this->auditLogRecordService->recordAuditLog(
+                $accountIdentifier,
+                'Export Equipment Excel',
+                'Equipment',
+                null,
+                [
+                    'filters' => $filterPayload,
+                    'exportedRecordCount' => $workbook['exportedRowCount'],
+                ],
+                [
+                    'actorName' => $actorName,
+                    'actorRole' => $actorRole,
+                    'module' => 'Equipment Inventory',
+                    'targetDisplayLabel' => $workbook['fileName'],
+                    'reason' => sprintf(
+                        'Exported %d equipment record(s) using the active inventory filters.',
+                        (int) $workbook['exportedRowCount']
+                    ),
+                    'ipAddress' => $request->getClientIp(),
+                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
+                ]
+            );
+
+            $response = new Response($workbook['content'], 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => sprintf('attachment; filename="%s"', $workbook['fileName']),
+                'Content-Length' => (string) strlen($workbook['content']),
+            ]);
+
+            $response->headers->set('Access-Control-Allow-Origin', '*');
+            $response->headers->set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            $response->headers->set('Access-Control-Expose-Headers', 'Content-Disposition');
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+
+            return $response;
+        } catch (\Throwable $exception) {
+            error_log(sprintf(
+                'Equipment Export - Error [%s]: %s in %s:%d',
+                $exception::class,
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+
+            return $this->createErrorResponse('EquipmentExportFailed', 'Unable to export equipment records right now.', 500);
         }
     }
 
@@ -160,21 +252,68 @@ class EquipmentController extends AbstractController
         );
     }
 
-    private function applyEquipmentFilters(array $equipmentRows, Request $request): array
+    /**
+     * @return array{search: string, status: string, category: string, condition: string, storageLocation: string, acquiredStartDate: string, acquiredEndDate: string, datePreset: string, sort: string}
+     */
+    private function extractEquipmentFilters(Request $request): array
     {
-        $search = strtolower(trim((string) $request->query->get('search', '')));
-        $status = trim((string) $request->query->get('status', ''));
-        $category = strtolower(trim((string) $request->query->get('category', '')));
-        $sort = strtolower(trim((string) $request->query->get('sort', 'name')));
+        return [
+            'search' => strtolower(trim((string) $request->query->get('search', ''))),
+            'status' => trim((string) $request->query->get('status', '')),
+            'category' => strtolower(trim((string) $request->query->get('category', ''))),
+            'condition' => strtolower(trim((string) $request->query->get('condition', ''))),
+            'storageLocation' => strtolower(trim((string) $request->query->get('storageLocation', ''))),
+            'acquiredStartDate' => trim((string) $request->query->get('acquiredStartDate', '')),
+            'acquiredEndDate' => trim((string) $request->query->get('acquiredEndDate', '')),
+            'datePreset' => strtolower(trim((string) $request->query->get('datePreset', ''))),
+            'sort' => strtolower(trim((string) $request->query->get('sort', 'name'))),
+        ];
+    }
 
-        $filteredRows = array_values(array_filter($equipmentRows, static function (array $row) use ($search, $status, $category): bool {
+    /**
+     * @param array<int, array<string, mixed>> $equipmentRows
+     * @param array{search: string, status: string, category: string, condition: string, storageLocation: string, acquiredStartDate: string, acquiredEndDate: string, datePreset: string, sort: string} $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyEquipmentFilters(array $equipmentRows, array $filters): array
+    {
+        $search = $filters['search'];
+        $status = $filters['status'];
+        $category = $filters['category'];
+        $condition = $filters['condition'];
+        $storageLocation = $filters['storageLocation'];
+        $sort = $filters['sort'];
+        [$acquiredStartDate, $acquiredEndDate] = $this->resolveAcquiredDateRange(
+            $filters['datePreset'],
+            $filters['acquiredStartDate'],
+            $filters['acquiredEndDate']
+        );
+
+        $filteredRows = array_values(array_filter($equipmentRows, function (array $row) use (
+            $search,
+            $status,
+            $category,
+            $condition,
+            $storageLocation,
+            $acquiredStartDate,
+            $acquiredEndDate
+        ): bool {
             if ($search !== '') {
+                $unitText = implode(' ', array_merge(
+                    $this->collectUnitFieldValues($row, 'barcode'),
+                    $this->collectUnitFieldValues($row, 'assetTag'),
+                    $this->collectUnitFieldValues($row, 'serialNumber'),
+                    $this->collectUnitFieldValues($row, 'storageLocation')
+                ));
                 $haystack = strtolower(implode(' ', [
                     (string) ($row['equipmentName'] ?? ''),
                     (string) ($row['equipmentCategory'] ?? ''),
                     (string) ($row['equipmentBrand'] ?? ''),
                     (string) ($row['equipmentModel'] ?? ''),
                     (string) ($row['remarks'] ?? ''),
+                    (string) ($row['barcode'] ?? ''),
+                    (string) ($row['assetId'] ?? ''),
+                    $unitText,
                 ]));
                 if (!str_contains($haystack, $search)) {
                     return false;
@@ -186,6 +325,18 @@ class EquipmentController extends AbstractController
             }
 
             if ($category !== '' && strtolower((string) ($row['equipmentCategory'] ?? '')) !== $category) {
+                return false;
+            }
+
+            if ($condition !== '' && !$this->rowMatchesUnitField($row, 'conditionStatus', $condition)) {
+                return false;
+            }
+
+            if ($storageLocation !== '' && !$this->rowMatchesUnitField($row, 'storageLocation', $storageLocation)) {
+                return false;
+            }
+
+            if (($acquiredStartDate !== null || $acquiredEndDate !== null) && !$this->rowMatchesAcquiredDateRange($row, $acquiredStartDate, $acquiredEndDate)) {
                 return false;
             }
 
@@ -201,5 +352,97 @@ class EquipmentController extends AbstractController
         });
 
         return $filteredRows;
+    }
+
+    private function rowMatchesUnitField(array $row, string $fieldName, string $needle): bool
+    {
+        foreach ($this->collectUnitFieldValues($row, $fieldName) as $value) {
+            if ($value === $needle) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function collectUnitFieldValues(array $row, string $fieldName): array
+    {
+        $values = [];
+        foreach ((array) ($row['units'] ?? []) as $unit) {
+            if (!is_array($unit)) {
+                continue;
+            }
+
+            $value = strtolower(trim((string) ($unit[$fieldName] ?? '')));
+            if ($value !== '') {
+                $values[] = $value;
+            }
+        }
+
+        return array_values(array_unique($values));
+    }
+
+    private function rowMatchesAcquiredDateRange(array $row, ?\DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): bool
+    {
+        foreach ((array) ($row['units'] ?? []) as $unit) {
+            if (!is_array($unit)) {
+                continue;
+            }
+
+            $dateValue = trim((string) ($unit['dateAcquired'] ?? ''));
+            if ($dateValue === '') {
+                continue;
+            }
+
+            $acquiredAt = $this->parseDateValue($dateValue);
+            if ($acquiredAt === null) {
+                continue;
+            }
+
+            if ($startDate !== null && $acquiredAt < $startDate) {
+                continue;
+            }
+
+            if ($endDate !== null && $acquiredAt > $endDate) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array{0: ?\DateTimeImmutable, 1: ?\DateTimeImmutable}
+     */
+    private function resolveAcquiredDateRange(string $datePreset, string $startDate, string $endDate): array
+    {
+        $today = new \DateTimeImmutable('today');
+
+        return match ($datePreset) {
+            'today' => [$today, $today],
+            'last-7-days' => [$today->modify('-6 days'), $today],
+            'last-30-days' => [$today->modify('-29 days'), $today],
+            'this-year' => [new \DateTimeImmutable($today->format('Y-01-01')), new \DateTimeImmutable($today->format('Y-12-31'))],
+            default => [$this->parseDateValue($startDate), $this->parseDateValue($endDate)],
+        };
+    }
+
+    private function parseDateValue(string $value): ?\DateTimeImmutable
+    {
+        $normalizedValue = trim($value);
+        if ($normalizedValue === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable(substr($normalizedValue, 0, 10));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
