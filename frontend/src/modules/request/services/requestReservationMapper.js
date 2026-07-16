@@ -100,6 +100,7 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     facilityName: getReservationFacilityName(reservation, requestedEquipmentList),
     requesterDepartment: reservation?.organizationName || 'N/A',
     requestedDate: reservation?.submissionTimestamp || reservation?.requestDate || reservation?.createdTimestamp || 'N/A',
+    dateOfRequest: reservation?.submissionTimestamp || reservation?.requestDate || reservation?.createdTimestamp || 'N/A',
     neededDate: reservation?.endDateTime || reservation?.eventDateTime || 'N/A',
     activityTime: requestScheduleStart || 'N/A',
     activityEndTime: requestScheduleEnd || requestScheduleStart || 'N/A',
@@ -107,8 +108,15 @@ function mapReservationRecord(reservation, linkedTasks = []) {
     participantCount: reservation?.requestedQuantity || 0,
     requestStatus: reservation?.currentStatus || 'Unknown',
     borrowerRemarks: reservation?.borrowerRemarks || '',
-    cancellationReason: reservation?.rejectionReason || '',
-    remarks: reservation?.rejectionReason || buildReservationRemark(reservation),
+    adminRemarks: reservation?.adminRemarks || '',
+    approvalRemarks: reservation?.approvalRemarks || '',
+    denialReason: reservation?.denialReason || reservation?.rejectionReason || '',
+    cancellationReason: reservation?.cancellationReason || '',
+    completionRemarks: reservation?.completionRemarks || '',
+    manualOverrideReason: reservation?.manualOverrideReason || '',
+    remarkEvents: Array.isArray(reservation?.remarkEvents) ? reservation.remarkEvents : [],
+    currentRemarkType: resolveCurrentReservationRemarkType(reservation),
+    remarks: resolveCurrentReservationRemark(reservation),
     uploadedDocuments: mapUploadedDocuments(reservation?.supportingDocuments),
     reservationSummary,
     workflowTasks: linkedTasks,
@@ -148,16 +156,13 @@ function compareReservationRecords(leftRecord, rightRecord, bucketType, directio
 }
 
 function resolveReservationSortValue(record, bucketType) {
-  if (bucketType === 'approved' || bucketType === 'active') {
-    return resolveReservationDateValue(
-      record?.requestScheduleStart
-        || record?.activityTime
-        || record?.neededDate
-        || record?.requestedDate
-    );
-  }
-
-  return resolveReservationDateValue(record?.requestedDate || record?.requestScheduleStart || record?.activityTime);
+  return resolveReservationDateValue(
+    record?.requestedDate
+      || record?.dateOfRequest
+      || record?.requestScheduleStart
+      || record?.activityTime
+      || record?.neededDate
+  );
 }
 
 function resolveReservationDateValue(value) {
@@ -170,7 +175,7 @@ function resolveReservationIdentifier(record) {
 }
 
 function getDefaultSortDirection(bucketType) {
-  return bucketType === 'pending' ? 'desc' : 'asc';
+  return 'desc';
 }
 
 export function resolveReservationScheduleState(reservation) {
@@ -460,7 +465,68 @@ function buildReservationRemark(reservation) {
     return 'Reservation request was rejected during review.';
   }
 
+  if (status === 'Approved') {
+    return 'Reservation request was approved and queued for preparation.';
+  }
+
+  if (status === 'Completed') {
+    return 'Reservation was completed successfully.';
+  }
+
   return `Reservation is currently marked as ${status}.`;
+}
+
+function resolveCurrentReservationRemarkType(reservation) {
+  const status = String(reservation?.currentStatus || '').trim().toLowerCase();
+
+  if (status === 'rejected') {
+    return 'denialReason';
+  }
+
+  if (status === 'cancelled' || status === 'canceled') {
+    return 'cancellationReason';
+  }
+
+  if (status === 'completed' || status === 'returned') {
+    return 'completionRemarks';
+  }
+
+  if (status === 'approved') {
+    return 'approvalRemarks';
+  }
+
+  if (status === 'pending review' || status === 'pending' || status === 'submitted') {
+    return 'borrowerRemarks';
+  }
+
+  return 'adminRemarks';
+}
+
+function resolveCurrentReservationRemark(reservation) {
+  const remarkType = resolveCurrentReservationRemarkType(reservation);
+  const candidates = {
+    borrowerRemarks: reservation?.borrowerRemarks,
+    adminRemarks: reservation?.adminRemarks,
+    approvalRemarks: reservation?.approvalRemarks,
+    denialReason: reservation?.denialReason || reservation?.rejectionReason,
+    cancellationReason: reservation?.cancellationReason,
+    completionRemarks: reservation?.completionRemarks,
+    manualOverrideReason: reservation?.manualOverrideReason,
+  };
+
+  const primaryRemark = String(candidates[remarkType] || '').trim();
+  if (primaryRemark !== '') {
+    return primaryRemark;
+  }
+
+  for (const candidate of Object.values(candidates)) {
+    const normalizedCandidate = String(candidate || '').trim();
+    if (normalizedCandidate !== '') {
+      return normalizedCandidate;
+    }
+  }
+
+  return buildReservationRemark(reservation);
 }
 
 function formatReservationScheduleRange(startValue, endValue) {

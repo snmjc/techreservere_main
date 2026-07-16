@@ -2,8 +2,8 @@
 
 namespace App\Domain\Reservation\Controller;
 
-use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Account\Service\AdminSecurityConfirmationService;
+use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Reservation\Service\ReservationCreateService;
 use App\Domain\Reservation\Service\ReservationReviewService;
 use App\Shared\Exceptions\DomainNotFoundException;
@@ -22,25 +22,12 @@ class ReservationController extends AbstractController
 {
     use JsonResponseTrait;
 
-    private ReservationCreateService $reservationCreateService;
-    private ReservationReviewService $reservationReviewService;
-    private AdminSecurityConfirmationService $adminSecurityConfirmationService;
-
     public function __construct(
-        ReservationCreateService $reservationCreateService,
-        ReservationReviewService $reservationReviewService,
-        AdminSecurityConfirmationService $adminSecurityConfirmationService
-    )
-    {
-        $this->reservationCreateService = $reservationCreateService;
-        $this->reservationReviewService = $reservationReviewService;
-        $this->adminSecurityConfirmationService = $adminSecurityConfirmationService;
+        private readonly ReservationCreateService $reservationCreateService,
+        private readonly ReservationReviewService $reservationReviewService,
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
+    ) {
     }
-
-    // ===== AI GENERATED: createReservation =====
-    // Purpose: Borrower submits a new reservation request
-    // Inputs: Request body
-    // Returns: JsonResponse with created reservation
 
     #[Route('', name: 'reservation_create', methods: ['POST'])]
     #[RequiresRoles([RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
@@ -53,14 +40,11 @@ class ReservationController extends AbstractController
             $identity = $request->attributes->get('authenticatedIdentity', []);
             $requestBody = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
 
-            error_log('Reservation Creation - Identity: ' . json_encode($identity));
-            error_log('Reservation Creation - Request Body: ' . json_encode($requestBody));
-
             $createDTO = new ReservationCreateRequestDTO(
                 organizationName: $requestBody['organizationName'] ?? '',
                 venueIdentifier: $requestBody['venueIdentifier'] ?? null,
                 requestedEquipmentList: $requestBody['requestedEquipmentList'] ?? [],
-                requestedQuantity: (int)($requestBody['requestedQuantity'] ?? 0),
+                requestedQuantity: (int) ($requestBody['requestedQuantity'] ?? 0),
                 eventDateTime: $requestBody['eventDateTime'] ?? '',
                 endDateTime: $requestBody['endDateTime'] ?? '',
                 purposeDescription: $requestBody['purposeDescription'] ?? '',
@@ -69,14 +53,12 @@ class ReservationController extends AbstractController
                 supportingDocuments: $requestBody['supportingDocuments'] ?? null
             );
 
-            $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
+            $borrowerAccountId = (int) ($identity['accountIdentifier'] ?? 0);
             if ($borrowerAccountId <= 0) {
                 return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
             }
-            error_log('Reservation Creation - Borrower Account ID: ' . $borrowerAccountId);
 
             $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
-            error_log('Reservation Creation - Created Reservation ID: ' . $responseDTO->reservationIdentifier);
 
             return $this->createSuccessResponse([
                 'reservationIdentifier' => $responseDTO->reservationIdentifier,
@@ -100,14 +82,6 @@ class ReservationController extends AbstractController
         } catch (\Throwable $exception) {
             $context = $this->buildReservationCreateContext($identity, $requestBody);
             $this->logReservationCreateFailure($exception, $this->classifyReservationCreateFailureBucket($exception), $context);
-            error_log(sprintf(
-                'Reservation Creation - Error [%s]: %s in %s:%d',
-                $exception::class,
-                $exception->getMessage(),
-                $exception->getFile(),
-                $exception->getLine()
-            ));
-            error_log('Reservation Creation - Trace: ' . $exception->getTraceAsString());
             $appEnvironment = strtolower((string) ($_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? $_ENV['APP_RUNTIME_ENV'] ?? 'dev'));
             $errorMessage = $appEnvironment === 'prod'
                 ? 'Unable to submit reservation at this time.'
@@ -117,98 +91,41 @@ class ReservationController extends AbstractController
         }
     }
 
-    private function buildReservationCreateContext(array $identity, array $requestBody): array
-    {
-        $equipmentIdentifiers = [];
-        foreach (($requestBody['requestedEquipmentList'] ?? []) as $equipmentItem) {
-            $equipmentIdentifier = (int)($equipmentItem['equipmentIdentifier'] ?? 0);
-            if ($equipmentIdentifier > 0) {
-                $equipmentIdentifiers[] = $equipmentIdentifier;
-            }
-        }
-
-        $hasVenue = (int)($requestBody['venueIdentifier'] ?? 0) > 0;
-        $hasEquipment = $equipmentIdentifiers !== [];
-        $reservationType = $hasVenue && $hasEquipment
-            ? 'both'
-            : ($hasVenue ? 'venue' : ($hasEquipment ? 'equipment' : 'unknown'));
-
-        return [
-            'accountId' => (int)($identity['accountIdentifier'] ?? 0),
-            'reservationType' => $reservationType,
-            'venueIdentifier' => $hasVenue ? (int)$requestBody['venueIdentifier'] : null,
-            'equipmentIdentifiers' => $equipmentIdentifiers,
-            'requestedQuantity' => (int)($requestBody['requestedQuantity'] ?? 0),
-            'eventDateTime' => (string)($requestBody['eventDateTime'] ?? ''),
-            'endDateTime' => (string)($requestBody['endDateTime'] ?? ''),
-        ];
-    }
-
-    private function classifyReservationCreateFailureBucket(\Throwable $exception): string
-    {
-        if ($exception instanceof DomainValidationException) {
-            return 'validation';
-        }
-
-        if ($exception instanceof DomainOperationException) {
-            return 'persistence';
-        }
-
-        return 'unexpected';
-    }
-
-    private function logReservationCreateFailure(\Throwable $exception, string $failureBucket, array $context): void
-    {
-        error_log(sprintf(
-            'Reservation Creation - Failure Bucket: %s | Context: %s | Error [%s]: %s',
-            $failureBucket,
-            json_encode($context),
-            $exception::class,
-            $exception->getMessage()
-        ));
-    }
-
-    // ===== AI GENERATED: listReservations =====
-    // Purpose: List reservations (Admin: all, Borrower: own only)
-    // Inputs: Request
-    // Returns: JsonResponse
-
     #[Route('', name: 'reservation_list', methods: ['GET'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function listReservations(Request $request): JsonResponse
     {
         try {
-        $resolvedRole = $request->attributes->get('resolvedRole', '');
-        $identity = $request->attributes->get('authenticatedIdentity', []);
+            $resolvedRole = $request->attributes->get('resolvedRole', '');
+            $identity = $request->attributes->get('authenticatedIdentity', []);
 
-        error_log('Reservation List - Resolved Role: ' . $resolvedRole);
-        error_log('Reservation List - Identity: ' . json_encode($identity));
-
-        if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
-            $dtos = $this->reservationReviewService->getAllReservations();
-        } elseif ($resolvedRole === RoleConstants::ROLE_BORROWER) {
-            $borrowerAccountId = (int)($identity['accountIdentifier'] ?? 0);
-            if ($borrowerAccountId <= 0) {
-                return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+            if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
+                $dtos = $this->reservationReviewService->getAllReservations();
+            } elseif ($resolvedRole === RoleConstants::ROLE_BORROWER) {
+                $borrowerAccountId = (int) ($identity['accountIdentifier'] ?? 0);
+                if ($borrowerAccountId <= 0) {
+                    return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in borrower.', 401);
+                }
+                $dtos = $this->reservationReviewService->getReservationsByBorrower($borrowerAccountId);
+            } else {
+                return $this->createErrorResponse('AuthorizationDenied', 'Insufficient permissions for this resource.', 403);
             }
-            error_log('Reservation List - Borrower Account ID: ' . $borrowerAccountId);
-            $dtos = $this->reservationReviewService->getReservationsByBorrower($borrowerAccountId);
-        } else {
-            return $this->createErrorResponse('AuthorizationDenied', 'Insufficient permissions for this resource.', 403);
-        }
 
-        error_log('Reservation List - Total Reservations Found: ' . count($dtos));
+            $responseList = $this->applyReservationFilters(
+                array_map(static fn ($dto) => $dto->toResponseArray(), $dtos),
+                $request
+            );
 
-        $responseList = array_map(fn($dto) => $dto->toResponseArray(), $dtos); // DTO → array map
-        return $this->createSuccessResponse(['reservations' => $responseList]);
+            return $this->createSuccessResponse([
+                'reservations' => $responseList,
+                'summary' => [
+                    'total' => count($responseList),
+                    'pending' => count(array_filter($responseList, static fn (array $row): bool => str_contains(strtolower((string) ($row['currentStatus'] ?? '')), 'pending'))),
+                    'approved' => count(array_filter($responseList, static fn (array $row): bool => strtolower((string) ($row['currentStatus'] ?? '')) === 'approved')),
+                    'cancelled' => count(array_filter($responseList, static fn (array $row): bool => strtolower((string) ($row['currentStatus'] ?? '')) === 'cancelled')),
+                ],
+            ]);
         } catch (\Throwable $exception) {
-            error_log(sprintf(
-                'Reservation List - Error [%s]: %s in %s:%d',
-                $exception::class,
-                $exception->getMessage(),
-                $exception->getFile(),
-                $exception->getLine()
-            ));
             return $this->createErrorResponse('ReservationListFailed', 'Unable to load reservations at this time.', 500);
         }
     }
@@ -219,7 +136,7 @@ class ReservationController extends AbstractController
     {
         $resolvedRole = $request->attributes->get('resolvedRole', '');
         $identity = $request->attributes->get('authenticatedIdentity', []);
-        $accountIdentifier = (int)($identity['accountIdentifier'] ?? 0);
+        $accountIdentifier = (int) ($identity['accountIdentifier'] ?? 0);
 
         if ($accountIdentifier <= 0) {
             return $this->createErrorResponse('AuthenticationRequired', 'Unable to identify the signed-in user.', 401);
@@ -235,11 +152,6 @@ class ReservationController extends AbstractController
         }
     }
 
-    // ===== AI GENERATED: updateReservationStatus =====
-    // Purpose: Admin updates reservation status (Approve/Reject/Request Revision)
-    // Inputs: reservationIdentifier (int), Request body
-    // Returns: JsonResponse
-
     #[Route('/{reservationIdentifier}/status', name: 'reservation_update_status', methods: ['PUT'])]
     #[RequiresRoles([RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_BORROWER, RoleConstants::ROLE_DEVELOPER])]
     public function updateReservationStatus(int $reservationIdentifier, Request $request): JsonResponse
@@ -248,11 +160,11 @@ class ReservationController extends AbstractController
             $requestBody = json_decode($request->getContent(), true) ?? [];
             $newStatus = $requestBody['currentStatus'] ?? '';
             $rejectionReason = $requestBody['rejectionReason'] ?? null;
-            $resolvedRole = (string)$request->attributes->get('resolvedRole', '');
+            $resolvedRole = (string) $request->attributes->get('resolvedRole', '');
             $identity = $request->attributes->get('authenticatedIdentity', []);
-            $accountIdentifier = (int)($identity['accountIdentifier'] ?? 0);
-            $confirmedAdminEmail = (string)($requestBody['confirmedAdminEmail'] ?? '');
-            $confirmedAdminPassword = (string)($requestBody['confirmedAdminPassword'] ?? '');
+            $accountIdentifier = (int) ($identity['accountIdentifier'] ?? 0);
+            $confirmedAdminEmail = (string) ($requestBody['confirmedAdminEmail'] ?? '');
+            $confirmedAdminPassword = (string) ($requestBody['confirmedAdminPassword'] ?? '');
 
             if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
                 if ($newStatus === 'Approved') {
@@ -295,5 +207,103 @@ class ReservationController extends AbstractController
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('ReservationStatusUpdateDenied', $exception->getMessage(), 422);
         }
+    }
+
+    private function buildReservationCreateContext(array $identity, array $requestBody): array
+    {
+        $equipmentIdentifiers = [];
+        foreach (($requestBody['requestedEquipmentList'] ?? []) as $equipmentItem) {
+            $equipmentIdentifier = (int) ($equipmentItem['equipmentIdentifier'] ?? 0);
+            if ($equipmentIdentifier > 0) {
+                $equipmentIdentifiers[] = $equipmentIdentifier;
+            }
+        }
+
+        $hasVenue = (int) ($requestBody['venueIdentifier'] ?? 0) > 0;
+        $hasEquipment = $equipmentIdentifiers !== [];
+        $reservationType = $hasVenue && $hasEquipment
+            ? 'both'
+            : ($hasVenue ? 'venue' : ($hasEquipment ? 'equipment' : 'unknown'));
+
+        return [
+            'accountId' => (int) ($identity['accountIdentifier'] ?? 0),
+            'reservationType' => $reservationType,
+            'venueIdentifier' => $hasVenue ? (int) $requestBody['venueIdentifier'] : null,
+            'equipmentIdentifiers' => $equipmentIdentifiers,
+            'requestedQuantity' => (int) ($requestBody['requestedQuantity'] ?? 0),
+            'eventDateTime' => (string) ($requestBody['eventDateTime'] ?? ''),
+            'endDateTime' => (string) ($requestBody['endDateTime'] ?? ''),
+        ];
+    }
+
+    private function classifyReservationCreateFailureBucket(\Throwable $exception): string
+    {
+        if ($exception instanceof DomainValidationException) {
+            return 'validation';
+        }
+
+        if ($exception instanceof DomainOperationException) {
+            return 'persistence';
+        }
+
+        return 'unexpected';
+    }
+
+    private function logReservationCreateFailure(\Throwable $exception, string $failureBucket, array $context): void
+    {
+        error_log(sprintf(
+            'Reservation Creation - Failure Bucket: %s | Context: %s | Error [%s]: %s',
+            $failureBucket,
+            json_encode($context),
+            $exception::class,
+            $exception->getMessage()
+        ));
+    }
+
+    private function applyReservationFilters(array $reservations, Request $request): array
+    {
+        $search = strtolower(trim((string) $request->query->get('search', '')));
+        $status = strtolower(trim((string) $request->query->get('status', '')));
+        $organization = strtolower(trim((string) $request->query->get('organization', '')));
+        $borrower = strtolower(trim((string) $request->query->get('borrower', '')));
+        $startDate = trim((string) $request->query->get('startDate', ''));
+        $endDate = trim((string) $request->query->get('endDate', ''));
+
+        return array_values(array_filter($reservations, static function (array $reservation) use ($search, $status, $organization, $borrower, $startDate, $endDate): bool {
+            if ($search !== '') {
+                $haystack = strtolower(implode(' ', [
+                    (string) ($reservation['reservationCode'] ?? ''),
+                    (string) ($reservation['organizationName'] ?? ''),
+                    (string) ($reservation['borrowerFullName'] ?? ''),
+                    (string) ($reservation['venueName'] ?? ''),
+                ]));
+                if (!str_contains($haystack, $search)) {
+                    return false;
+                }
+            }
+
+            if ($status !== '' && strtolower((string) ($reservation['currentStatus'] ?? '')) !== $status) {
+                return false;
+            }
+
+            if ($organization !== '' && !str_contains(strtolower((string) ($reservation['organizationName'] ?? '')), $organization)) {
+                return false;
+            }
+
+            if ($borrower !== '' && !str_contains(strtolower((string) ($reservation['borrowerFullName'] ?? '')), $borrower)) {
+                return false;
+            }
+
+            $eventDate = substr((string) ($reservation['eventDateTime'] ?? ''), 0, 10);
+            if ($startDate !== '' && $eventDate !== '' && $eventDate < $startDate) {
+                return false;
+            }
+
+            if ($endDate !== '' && $eventDate !== '' && $eventDate > $endDate) {
+                return false;
+            }
+
+            return true;
+        }));
     }
 }

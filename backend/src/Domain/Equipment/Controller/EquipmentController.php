@@ -37,12 +37,20 @@ class EquipmentController extends AbstractController
             $equipmentDTOs = $resolvedRole === RoleConstants::ROLE_BORROWER
                 ? $this->equipmentManagementService->getAvailableEquipment()
                 : $this->equipmentManagementService->getAllEquipment();
+            $equipmentRows = array_map(
+                static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
+                $equipmentDTOs
+            );
+            $equipmentRows = $this->applyEquipmentFilters($equipmentRows, $request);
 
             return $this->createSuccessResponse([
-                'equipment' => array_map(
-                    static fn ($equipmentDTO): array => $equipmentDTO->toResponseArray(),
-                    $equipmentDTOs
-                ),
+                'equipment' => $equipmentRows,
+                'summary' => [
+                    'total' => count($equipmentRows),
+                    'available' => count(array_filter($equipmentRows, static fn (array $row): bool => (int) ($row['availableQuantity'] ?? 0) > 0)),
+                    'reserved' => array_sum(array_map(static fn (array $row): int => (int) ($row['reservedQuantity'] ?? 0), $equipmentRows)),
+                    'underMaintenance' => array_sum(array_map(static fn (array $row): int => (int) ($row['underMaintenanceQuantity'] ?? 0), $equipmentRows)),
+                ],
             ]);
         } catch (\Throwable $exception) {
             error_log(sprintf(
@@ -136,7 +144,12 @@ class EquipmentController extends AbstractController
             equipmentBrand: (string) ($requestBody['equipmentBrand'] ?? ''),
             availableQuantity: (int) ($requestBody['availableQuantity'] ?? $requestBody['totalQuantity'] ?? 0),
             operationalStatus: (string) ($requestBody['operationalStatus'] ?? $requestBody['equipmentState'] ?? ''),
+            equipmentModel: $requestBody['equipmentModel'] ?? null,
             description: $requestBody['description'] ?? $requestBody['scheduleDescription'] ?? null,
+            remarks: $requestBody['remarks'] ?? null,
+            specifications: is_array($requestBody['specifications'] ?? null) ? $requestBody['specifications'] : null,
+            units: is_array($requestBody['units'] ?? null) ? $requestBody['units'] : [],
+            actionReason: $requestBody['actionReason'] ?? null,
             imageUrl: $requestBody['imageUrl'] ?? null,
             barcode: (string) ($requestBody['barcode'] ?? ''),
             assetId: (string) ($requestBody['assetId'] ?? $requestBody['serialNumber'] ?? ''),
@@ -145,5 +158,48 @@ class EquipmentController extends AbstractController
             photoPositionX: (int) ($requestBody['photoPositionX'] ?? 50),
             photoPositionY: (int) ($requestBody['photoPositionY'] ?? 50)
         );
+    }
+
+    private function applyEquipmentFilters(array $equipmentRows, Request $request): array
+    {
+        $search = strtolower(trim((string) $request->query->get('search', '')));
+        $status = trim((string) $request->query->get('status', ''));
+        $category = strtolower(trim((string) $request->query->get('category', '')));
+        $sort = strtolower(trim((string) $request->query->get('sort', 'name')));
+
+        $filteredRows = array_values(array_filter($equipmentRows, static function (array $row) use ($search, $status, $category): bool {
+            if ($search !== '') {
+                $haystack = strtolower(implode(' ', [
+                    (string) ($row['equipmentName'] ?? ''),
+                    (string) ($row['equipmentCategory'] ?? ''),
+                    (string) ($row['equipmentBrand'] ?? ''),
+                    (string) ($row['equipmentModel'] ?? ''),
+                    (string) ($row['remarks'] ?? ''),
+                ]));
+                if (!str_contains($haystack, $search)) {
+                    return false;
+                }
+            }
+
+            if ($status !== '' && strcasecmp((string) ($row['operationalStatus'] ?? $row['equipmentState'] ?? ''), $status) !== 0) {
+                return false;
+            }
+
+            if ($category !== '' && strtolower((string) ($row['equipmentCategory'] ?? '')) !== $category) {
+                return false;
+            }
+
+            return true;
+        }));
+
+        usort($filteredRows, static function (array $left, array $right) use ($sort): int {
+            if ($sort === 'updated') {
+                return strtotime((string) ($right['updatedTimestamp'] ?? $right['createdTimestamp'] ?? '')) <=> strtotime((string) ($left['updatedTimestamp'] ?? $left['createdTimestamp'] ?? ''));
+            }
+
+            return strcasecmp((string) ($left['equipmentName'] ?? ''), (string) ($right['equipmentName'] ?? ''));
+        });
+
+        return $filteredRows;
     }
 }

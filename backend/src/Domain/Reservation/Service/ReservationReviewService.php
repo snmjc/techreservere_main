@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reservation\Service;
 
+use App\Domain\Account\Entity\AccountEntity;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Notification\Service\NotificationDispatchService;
 use App\Domain\Reservation\DTO\ReservationResponseDTO;
@@ -15,49 +16,50 @@ use App\Shared\Utils\RoleConstants;
 
 class ReservationReviewService
 {
-    private ReservationRepository $reservationRepository;
-    private AccountRepository $accountRepository;
-    private NotificationDispatchService $notificationDispatchService;
-    private VenueRepository $venueRepository;
-    private AutomaticTaskAssignmentService $automaticTaskAssignmentService;
-
     public function __construct(
-        ReservationRepository $reservationRepository,
-        AccountRepository $accountRepository,
-        NotificationDispatchService $notificationDispatchService,
-        VenueRepository $venueRepository,
-        AutomaticTaskAssignmentService $automaticTaskAssignmentService
-    )
-    {
-        $this->reservationRepository = $reservationRepository;
-        $this->accountRepository = $accountRepository;
-        $this->notificationDispatchService = $notificationDispatchService;
-        $this->venueRepository = $venueRepository;
-        $this->automaticTaskAssignmentService = $automaticTaskAssignmentService;
+        private readonly ReservationRepository $reservationRepository,
+        private readonly AccountRepository $accountRepository,
+        private readonly NotificationDispatchService $notificationDispatchService,
+        private readonly VenueRepository $venueRepository,
+        private readonly AutomaticTaskAssignmentService $automaticTaskAssignmentService,
+        private readonly ReservationMetadataService $reservationMetadataService
+    ) {
     }
-
-    // ===== AI GENERATED: getAllReservations =====
-    // Purpose: Retrieve all reservations (Admin view)
-    // Inputs: none
-    // Returns: ReservationResponseDTO[]
 
     /** @return ReservationResponseDTO[] */
     public function getAllReservations(): array
     {
+        $this->reservationMetadataService->ensureSchemaReady();
         $entities = $this->reservationRepository->findAllReservations();
-        return array_map(fn($entity) => $this->transformEntityToDTO($entity), $entities); // entity → DTO map
-    }
+        $metadataByReservation = $this->reservationMetadataService->fetchMetadataByReservationIds(
+            array_map(static fn (ReservationEntity $entity): int => (int) $entity->getReservationIdentifier(), $entities)
+        );
 
-    // ===== AI GENERATED: getReservationsByBorrower =====
-    // Purpose: Retrieve reservations for specific borrower (own only)
-    // Inputs: borrowerAccountId (int)
-    // Returns: ReservationResponseDTO[]
+        return array_map(
+            fn (ReservationEntity $entity): ReservationResponseDTO => $this->transformEntityToDTO(
+                $entity,
+                $metadataByReservation[(int) $entity->getReservationIdentifier()] ?? []
+            ),
+            $entities
+        );
+    }
 
     /** @return ReservationResponseDTO[] */
     public function getReservationsByBorrower(int $borrowerAccountId): array
     {
+        $this->reservationMetadataService->ensureSchemaReady();
         $entities = $this->reservationRepository->findByBorrowerAccountId($borrowerAccountId);
-        return array_map(fn($entity) => $this->transformEntityToDTO($entity), $entities); // entity → DTO map
+        $metadataByReservation = $this->reservationMetadataService->fetchMetadataByReservationIds(
+            array_map(static fn (ReservationEntity $entity): int => (int) $entity->getReservationIdentifier(), $entities)
+        );
+
+        return array_map(
+            fn (ReservationEntity $entity): ReservationResponseDTO => $this->transformEntityToDTO(
+                $entity,
+                $metadataByReservation[(int) $entity->getReservationIdentifier()] ?? []
+            ),
+            $entities
+        );
     }
 
     public function getReservationByIdForRole(int $reservationIdentifier, string $resolvedRole, int $accountIdentifier): ReservationResponseDTO
@@ -68,24 +70,21 @@ class ReservationReviewService
         }
 
         if (in_array($resolvedRole, [RoleConstants::ROLE_ADMIN, RoleConstants::ROLE_DEVELOPER], true)) {
-            return $this->transformEntityToDTO($entity);
+            return $this->transformEntityToDTO(
+                $entity,
+                $this->reservationMetadataService->fetchMetadataByReservationIds([$reservationIdentifier])[$reservationIdentifier] ?? []
+            );
         }
 
         if ($resolvedRole !== RoleConstants::ROLE_BORROWER || $entity->getBorrowerAccountId() !== $accountIdentifier) {
             throw new DomainValidationException('You are not allowed to access this reservation.');
         }
 
-        return $this->transformEntityToDTO($entity);
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->reservationMetadataService->fetchMetadataByReservationIds([$reservationIdentifier])[$reservationIdentifier] ?? []
+        );
     }
-
-    // ===== AI GENERATED: updateReservationStatus =====
-    // Purpose: Admin approves/rejects/requests revision on a reservation
-    // Inputs: reservationIdentifier (int), newStatus (string), rejectionReason (string|null)
-    // Returns: ReservationResponseDTO
-    // Flow:
-    // 1. Find reservation
-    // 2. Validate status transition
-    // 3. Update and persist
 
     public function updateReservationStatus(int $reservationIdentifier, string $newStatus, ?string $rejectionReason = null): ReservationResponseDTO
     {
@@ -117,12 +116,18 @@ class ReservationReviewService
         }
 
         $this->reservationRepository->persistReservation($entity);
+        $this->reservationMetadataService->updateStatusRemarks($reservationIdentifier, $newStatus, $normalizedReason);
+
         if ($isNewApproval) {
             $this->automaticTaskAssignmentService->createTaskForApproval($entity, $assignedToAccountId);
         }
+
         $this->notifyBorrowerOfStatusChange($entity, $newStatus, $normalizedReason);
 
-        return $this->transformEntityToDTO($entity);
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->reservationMetadataService->fetchMetadataByReservationIds([$reservationIdentifier])[$reservationIdentifier] ?? []
+        );
     }
 
     public function updateReservationStatusForActor(
@@ -160,9 +165,22 @@ class ReservationReviewService
         $entity->setRejectionReason($reason ?: 'Cancelled by requester');
 
         $this->reservationRepository->persistReservation($entity);
+
+        $borrower = $this->accountRepository->find($accountIdentifier);
+        $this->reservationMetadataService->updateStatusRemarks(
+            $reservationIdentifier,
+            'Cancelled',
+            $reason ?: 'Cancelled by requester',
+            $borrower?->getAccountIdentifier(),
+            $this->formatActorName($borrower),
+            $borrower?->getRoleDesignation()
+        );
         $this->notifyAdminsOfBorrowerCancellation($entity);
 
-        return $this->transformEntityToDTO($entity);
+        return $this->transformEntityToDTO(
+            $entity,
+            $this->reservationMetadataService->fetchMetadataByReservationIds([$reservationIdentifier])[$reservationIdentifier] ?? []
+        );
     }
 
     private function normalizeReservationStatusLabel(string $status): string
@@ -183,7 +201,7 @@ class ReservationReviewService
         };
     }
 
-    private function transformEntityToDTO(ReservationEntity $entity): ReservationResponseDTO
+    private function transformEntityToDTO(ReservationEntity $entity, array $metadata = []): ReservationResponseDTO
     {
         [$borrowerFirstName, $borrowerLastName, $borrowerFullName, $borrowerEmailAddress, $borrowerContactNumber] = $this->resolveBorrowerDetails($entity);
         $venueName = $this->resolveVenueName($entity);
@@ -203,11 +221,18 @@ class ReservationReviewService
             purposeDescription: $entity->getPurposeDescription(),
             activityType: $entity->getActivityType(),
             borrowerRemarks: $entity->getBorrowerRemarks(),
+            adminRemarks: $metadata['adminRemarks'] ?? null,
+            approvalRemarks: $metadata['approvalRemarks'] ?? null,
+            denialReason: $metadata['denialReason'] ?? null,
+            cancellationReason: $metadata['cancellationReason'] ?? null,
+            completionRemarks: $metadata['completionRemarks'] ?? null,
+            manualOverrideReason: $metadata['manualOverrideReason'] ?? null,
             currentStatus: $entity->getCurrentStatus(),
             priorityLevel: $entity->getPriorityLevel(),
             rejectionReason: $entity->getRejectionReason(),
             supportingDocuments: $entity->getSupportingDocuments(),
             submissionTimestamp: $entity->getSubmissionTimestamp()->format(\DateTime::ATOM),
+            remarkEvents: is_array($metadata['remarkEvents'] ?? null) ? $metadata['remarkEvents'] : [],
             borrowerFirstName: $borrowerFirstName,
             borrowerLastName: $borrowerLastName,
             borrowerFullName: $borrowerFullName,
@@ -228,14 +253,15 @@ class ReservationReviewService
             return null;
         }
 
-        $venueName = trim((string)$venue->getVenueName());
+        $venueName = trim((string) $venue->getVenueName());
         return $venueName === '' ? null : $venueName;
     }
+
     private function resolveBorrowerDetails(ReservationEntity $entity): array
     {
         $borrower = $this->accountRepository->find($entity->getBorrowerAccountId());
-        $firstName = trim((string)($borrower?->getFirstName() ?? ''));
-        $lastName = trim((string)($borrower?->getLastName() ?? ''));
+        $firstName = trim((string) ($borrower?->getFirstName() ?? ''));
+        $lastName = trim((string) ($borrower?->getLastName() ?? ''));
         $fullName = trim(sprintf('%s %s', $firstName, $lastName));
         $emailAddress = $borrower?->getEmailAddress();
         $contactNumber = $borrower?->getContactNumber();
@@ -257,6 +283,16 @@ class ReservationReviewService
         $endDateTime = $entity->getEndDateTime() ?? $startDateTime;
 
         return sprintf('%s-%s', $startDateTime->format('H:i'), $endDateTime->format('H:i'));
+    }
+
+    private function formatActorName(?AccountEntity $account): ?string
+    {
+        if ($account === null) {
+            return null;
+        }
+
+        $fullName = trim(sprintf('%s %s', $account->getFirstName(), $account->getLastName()));
+        return $fullName === '' ? $account->getEmailAddress() : $fullName;
     }
 
     private function notifyBorrowerOfStatusChange(ReservationEntity $entity, string $newStatus, ?string $reason): void
@@ -316,13 +352,13 @@ class ReservationReviewService
         $title = 'Reservation Cancelled';
         $message = sprintf(
             '%s cancelled reservation %s scheduled for %s.',
-            $this->resolveBorrowerNames($entity)[2],
+            $this->resolveBorrowerDetails($entity)[2],
             $entity->getReservationCode(),
             $entity->getEventDateTime()->format('F j, Y g:i A')
         );
 
         foreach ($adminAccounts as $adminAccount) {
-            $recipientAccountId = (int)($adminAccount->getAccountIdentifier() ?? 0);
+            $recipientAccountId = (int) ($adminAccount->getAccountIdentifier() ?? 0);
             if ($recipientAccountId <= 0) {
                 continue;
             }

@@ -55,6 +55,10 @@
         >
           {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </button>
+        <button class="equipment-page__ghost-button" type="button" @click="exportInventory('csv')">CSV</button>
+        <button class="equipment-page__ghost-button" type="button" @click="exportInventory('excel')">Excel</button>
+        <button class="equipment-page__ghost-button" type="button" @click="exportInventory('pdf')">PDF</button>
+        <button class="equipment-page__ghost-button" type="button" @click="exportInventory('print')">Print</button>
       </section>
 
       <section class="equipment-page__summary">
@@ -82,15 +86,18 @@
       <div v-else-if="filteredEquipment.length === 0" class="equipment-page__state-card">
         No equipment records match the current search and filter.
       </div>
-      <div v-else class="equipment-page__table-wrap">
+      <div v-else ref="inventorySurfaceRef" class="equipment-page__table-wrap">
         <table class="equipment-page__table">
           <thead>
             <tr>
               <th>Equipment ID</th>
               <th>Name</th>
               <th>Category</th>
+              <th>Model</th>
               <th>Quantity</th>
               <th>Available</th>
+              <th>Reserved</th>
+              <th>Maintenance</th>
               <th>Status</th>
               <th>Updated</th>
               <th>Actions</th>
@@ -101,8 +108,11 @@
               <td>{{ equipment.equipmentIdentifier }}</td>
               <td>{{ equipment.equipmentName }}</td>
               <td>{{ equipment.equipmentCategory || equipment.categoryName }}</td>
+              <td>{{ equipment.equipmentModel || 'N/A' }}</td>
               <td>{{ equipment.totalQuantity }}</td>
               <td>{{ equipment.availableQuantity }}</td>
+              <td>{{ equipment.reservedQuantity || 0 }}</td>
+              <td>{{ equipment.underMaintenanceQuantity || 0 }}</td>
               <td>
                 <span
                   class="equipment-page__status-badge"
@@ -150,15 +160,43 @@
             <div><dt>Name</dt><dd>{{ viewEquipment.equipmentName }}</dd></div>
             <div><dt>Category</dt><dd>{{ viewEquipment.equipmentCategory || viewEquipment.categoryName }}</dd></div>
             <div><dt>Brand</dt><dd>{{ viewEquipment.equipmentBrand || 'N/A' }}</dd></div>
+            <div><dt>Model</dt><dd>{{ viewEquipment.equipmentModel || 'N/A' }}</dd></div>
             <div><dt>Available Quantity</dt><dd>{{ viewEquipment.availableQuantity }}</dd></div>
+            <div><dt>Reserved Quantity</dt><dd>{{ viewEquipment.reservedQuantity || 0 }}</dd></div>
+            <div><dt>Unavailable Quantity</dt><dd>{{ viewEquipment.unavailableQuantity || 0 }}</dd></div>
             <div><dt>Status</dt><dd>{{ viewEquipment.operationalStatus || viewEquipment.equipmentState }}</dd></div>
             <div><dt>Operational Status</dt><dd>{{ viewEquipment.operationalStatus }}</dd></div>
             <div><dt>QR Code</dt><dd>{{ viewEquipment.barcode || 'N/A' }}</dd></div>
             <div><dt>Asset ID</dt><dd>{{ viewEquipment.assetId || 'N/A' }}</dd></div>
             <div><dt>Description</dt><dd>{{ viewEquipment.description || viewEquipment.scheduleDescription || 'N/A' }}</dd></div>
+            <div><dt>Remarks</dt><dd>{{ viewEquipment.remarks || 'No remarks provided' }}</dd></div>
             <div><dt>Created</dt><dd>{{ formatDateTime(viewEquipment.createdTimestamp) }}</dd></div>
             <div><dt>Updated</dt><dd>{{ formatDateTime(viewEquipment.updatedTimestamp || viewEquipment.createdTimestamp) }}</dd></div>
           </dl>
+          <div class="equipment-modal__unit-table-wrap" v-if="Array.isArray(viewEquipment.units) && viewEquipment.units.length > 0">
+            <table class="equipment-page__table">
+              <thead>
+                <tr>
+                  <th>Unit ID</th>
+                  <th>Barcode</th>
+                  <th>Asset Tag</th>
+                  <th>Serial</th>
+                  <th>Condition</th>
+                  <th>Availability</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="unit in viewEquipment.units" :key="unit.equipmentUnitIdentifier || unit.equipmentUnitIdentifierCode">
+                  <td>{{ unit.equipmentUnitIdentifierCode }}</td>
+                  <td>{{ unit.barcode || 'N/A' }}</td>
+                  <td>{{ unit.assetTag || 'N/A' }}</td>
+                  <td>{{ unit.serialNumber || 'N/A' }}</td>
+                  <td>{{ unit.conditionStatus || 'Good' }}</td>
+                  <td>{{ unit.availabilityStatus || 'Available' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <footer class="equipment-modal__footer">
             <button type="button" class="equipment-modal__secondary" @click="closeViewModal">Close</button>
@@ -190,6 +228,10 @@
               <input v-model.trim="form.equipmentBrand" type="text" maxlength="120" />
             </label>
             <label>
+              <span>Model</span>
+              <input v-model.trim="form.equipmentModel" type="text" maxlength="160" />
+            </label>
+            <label>
               <span>Available Quantity</span>
               <input v-model.number="form.availableQuantity" type="number" min="1" />
             </label>
@@ -215,6 +257,46 @@
                 placeholder="Optional usage notes or description"
               />
             </label>
+            <label class="equipment-modal__full-width">
+              <span>Admin Remarks</span>
+              <textarea
+                v-model.trim="form.remarks"
+                rows="3"
+                placeholder="Inventory handling notes, maintenance context, or storage reminders"
+              />
+            </label>
+          </div>
+          <div class="equipment-modal__full-width equipment-modal__unit-table-wrap">
+            <div class="equipment-page__actions" style="justify-content: space-between; margin-bottom: 0.75rem;">
+              <strong>Equipment Units</strong>
+              <button type="button" @click="addUnitRow">Add Unit</button>
+            </div>
+            <table class="equipment-page__table">
+              <thead>
+                <tr>
+                  <th>Unit ID</th>
+                  <th>Barcode</th>
+                  <th>Asset Tag</th>
+                  <th>Serial</th>
+                  <th>Condition</th>
+                  <th>Availability</th>
+                  <th>Location</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(unit, index) in form.units" :key="`${unit.equipmentUnitIdentifierCode}-${index}`">
+                  <td><input v-model.trim="unit.equipmentUnitIdentifierCode" type="text" /></td>
+                  <td><input v-model.trim="unit.barcode" type="text" /></td>
+                  <td><input v-model.trim="unit.assetTag" type="text" /></td>
+                  <td><input v-model.trim="unit.serialNumber" type="text" /></td>
+                  <td><input v-model.trim="unit.conditionStatus" type="text" /></td>
+                  <td><input v-model.trim="unit.availabilityStatus" type="text" /></td>
+                  <td><input v-model.trim="unit.storageLocation" type="text" /></td>
+                  <td><button type="button" class="equipment-page__danger-action" @click="removeUnitRow(index)">Remove</button></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <p v-if="formError" class="equipment-page__feedback equipment-page__feedback--error">{{ formError }}</p>
@@ -280,6 +362,12 @@ import {
   normalizeEquipmentForm,
   validateEquipmentForm,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
+import {
+  exportElementToPdf,
+  exportRowsToCsv,
+  exportRowsToExcel,
+  printElement,
+} from '@/shared/utils/adminExport.js';
 
 const EQUIPMENT_PAGE_CACHE_KEY = 'techreserve_equipment_page_cache';
 const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
@@ -293,6 +381,7 @@ const statusFilter = ref('all');
 const sortOrder = ref('asc');
 const equipmentCurrentPage = ref(1);
 const equipmentPageSize = 10;
+const inventorySurfaceRef = ref(null);
 
 const viewEquipment = ref(null);
 const formModalOpen = ref(false);
@@ -428,11 +517,16 @@ function openEditModal(equipment) {
     equipmentName: equipment.equipmentName,
     equipmentCategory: equipment.equipmentCategory || equipment.categoryName,
     equipmentBrand: equipment.equipmentBrand || '',
+    equipmentModel: equipment.equipmentModel || '',
     availableQuantity: equipment.availableQuantity,
     operationalStatus: equipment.operationalStatus || equipment.equipmentState,
     description: equipment.description || equipment.scheduleDescription || '',
+    remarks: equipment.remarks || '',
     barcode: equipment.barcode || '',
     assetId: equipment.assetId || '',
+    units: Array.isArray(equipment.units) && equipment.units.length > 0
+      ? equipment.units.map((unit) => ({ ...unit }))
+      : buildUnitRowsFromQuantity(equipment.availableQuantity, equipment.barcode, equipment.assetId),
   };
   formError.value = '';
   formModalOpen.value = true;
@@ -548,12 +642,85 @@ function createEmptyForm() {
     equipmentName: '',
     equipmentCategory: '',
     equipmentBrand: '',
+    equipmentModel: '',
     availableQuantity: 1,
     operationalStatus: 'Available',
     description: '',
+    remarks: '',
     barcode: '',
     assetId: '',
+    units: buildUnitRowsFromQuantity(1),
   };
+}
+
+function addUnitRow() {
+  form.value.units.push({
+    equipmentUnitIdentifierCode: `UNIT-${form.value.units.length + 1}`,
+    barcode: '',
+    assetTag: '',
+    serialNumber: '',
+    conditionStatus: 'Good',
+    availabilityStatus: 'Available',
+    storageLocation: '',
+  });
+  form.value.availableQuantity = form.value.units.length;
+}
+
+function removeUnitRow(index) {
+  form.value.units.splice(index, 1);
+  form.value.availableQuantity = Math.max(1, form.value.units.length || 1);
+  if (form.value.units.length === 0) {
+    form.value.units = buildUnitRowsFromQuantity(1);
+    form.value.availableQuantity = 1;
+  }
+}
+
+function buildUnitRowsFromQuantity(quantity, barcode = '', assetId = '') {
+  return Array.from({ length: Math.max(1, Number(quantity || 1)) }, (_, index) => ({
+    equipmentUnitIdentifierCode: `UNIT-${index + 1}`,
+    barcode: index === 0 ? barcode : '',
+    assetTag: index === 0 ? assetId : '',
+    serialNumber: index === 0 ? assetId : '',
+    conditionStatus: 'Good',
+    availabilityStatus: 'Available',
+    storageLocation: '',
+  }));
+}
+
+async function exportInventory(format) {
+  const rows = filteredEquipment.value.map((equipment) => ({
+    equipmentId: equipment.equipmentIdentifier,
+    name: equipment.equipmentName,
+    category: equipment.equipmentCategory || equipment.categoryName,
+    brand: equipment.equipmentBrand || '',
+    model: equipment.equipmentModel || '',
+    totalQuantity: equipment.totalQuantity,
+    availableQuantity: equipment.availableQuantity,
+    reservedQuantity: equipment.reservedQuantity || 0,
+    borrowedQuantity: equipment.borrowedQuantity || 0,
+    underMaintenanceQuantity: equipment.underMaintenanceQuantity || 0,
+    unavailableQuantity: equipment.unavailableQuantity || 0,
+    status: equipment.operationalStatus || equipment.equipmentState,
+    remarks: equipment.remarks || '',
+    units: Array.isArray(equipment.units) ? equipment.units.length : 0,
+  }));
+
+  if (format === 'csv') {
+    exportRowsToCsv('techreserve-inventory', rows);
+    return;
+  }
+
+  if (format === 'excel') {
+    exportRowsToExcel('techreserve-inventory', rows, 'Inventory');
+    return;
+  }
+
+  if (format === 'pdf') {
+    await exportElementToPdf('techreserve-inventory', inventorySurfaceRef.value);
+    return;
+  }
+
+  printElement(inventorySurfaceRef.value, 'TechReserve Inventory Export');
 }
 </script>
 

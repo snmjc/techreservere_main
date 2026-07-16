@@ -57,6 +57,11 @@ export const adminNavigationItems = [
     iconSvg: `<svg ${iconAttributes}><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/><path d="M19 7v5h-5"/></svg>`,
   },
   {
+    routeName: 'adminAuditTrailPage',
+    label: 'Audit Trail',
+    iconSvg: `<svg ${iconAttributes}><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>`,
+  },
+  {
     routeName: 'adminSupportCenterPage',
     label: 'Support Center',
     iconSvg: `<svg ${iconAttributes}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg>`,
