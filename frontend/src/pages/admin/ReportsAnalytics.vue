@@ -4,7 +4,11 @@
     :navigation-items="adminNavigationItems"
   >
     <section class="reports-analytics-page">
-      <div ref="reportSurfaceRef" class="reports-export-surface">
+      <div
+        ref="reportSurfaceRef"
+        :class="['reports-export-surface', { 'is-exporting-pdf': isExporting }]"
+      >
+        <div class="reports-pdf-page">
         <header class="reports-analytics-header">
           <div>
             <p class="reports-analytics-kicker">Analytics Dashboard</p>
@@ -33,14 +37,6 @@
               @click="handleRefreshReports"
             >
               {{ isReportsLoading ? 'Refreshing...' : 'Refresh' }}
-            </button>
-            <button
-              class="reports-models-button"
-              type="button"
-              :disabled="isReportsLoading"
-              @click="openModelSheet"
-            >
-              Analytics Models
             </button>
           </div>
 
@@ -400,64 +396,7 @@
             </dl>
           </section>
         </div>
-
-        <section class="reports-panel reports-detailed-panel">
-          <div class="reports-detailed-header">
-            <div>
-              <h2>Detailed Inventory and Reservation Reports</h2>
-              <p>Generate `CSV` or `Excel` exports filtered by Days, Weekly, Monthly, or Yearly timeframes.</p>
-            </div>
-
-            <div class="reports-detailed-filters">
-              <label class="reports-detailed-filter">
-                <span>Timeframe</span>
-                <select v-model="selectedDetailedTimeframe" :disabled="isDetailedReportsLoading">
-                  <option value="days">Days</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </label>
-
-              <label class="reports-detailed-filter">
-                <span>Reference Date</span>
-                <input v-model="reportReferenceDate" type="date" :disabled="isDetailedReportsLoading" />
-              </label>
-
-              <div class="reports-detailed-range">
-                <span>Applied Range</span>
-                <strong>{{ detailedReportRangeLabel }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <p v-if="detailedReportsError" class="reports-inline-message is-error">{{ detailedReportsError }}</p>
-          <p v-else-if="isDetailedReportsLoading" class="reports-inline-message">Loading detailed inventory and reservation reports...</p>
-
-          <div class="reports-detailed-generator-grid">
-            <article class="reports-detailed-generator-card">
-              <div>
-                <h3>Inventory Report</h3>
-                <p>Exports equipment records added within the selected timeframe.</p>
-                <small>{{ inventoryReportRows.length }} record(s) ready</small>
-              </div>
-              <div class="reports-detailed-actions">
-                <button type="button" class="reports-mini-button" @click="exportDetailedInventoryReport()" :disabled="inventoryReportRows.length === 0">Generate XLSX</button>
-              </div>
-            </article>
-
-            <article class="reports-detailed-generator-card">
-              <div>
-                <h3>Reservation Report</h3>
-                <p>Exports reservation requests submitted within the selected timeframe.</p>
-                <small>{{ reservationReportRows.length }} record(s) ready</small>
-              </div>
-              <div class="reports-detailed-actions">
-                <button type="button" class="reports-mini-button" @click="exportDetailedReservationReport()" :disabled="reservationReportRows.length === 0">Generate XLSX</button>
-              </div>
-            </article>
-          </div>
-        </section>
+        </div>
 
       </div>
 
@@ -674,10 +613,6 @@ import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
 import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
-import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
-import {
-  exportRowsToExcel,
-} from '@/shared/utils/adminExport.js';
 import {
   createEmptyForecastReport,
   createEmptyEquipmentTrendPagination,
@@ -730,10 +665,7 @@ const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
 const authStore = useAuthenticationStore();
 const requestStore = useRequestStore();
 const selectedRangeKey = ref('30d');
-const selectedDetailedTimeframe = ref('monthly');
-const reportReferenceDate = ref('2026-07-17');
 const isReportsLoading = ref(true);
-const isDetailedReportsLoading = ref(false);
 const sectionLoadingState = ref({
   forecast: false,
   readiness: false,
@@ -782,7 +714,6 @@ const analyticsRunStatusType = ref('info');
 const modelArtifactMessage = ref('');
 const modelArtifactMessageType = ref('info');
 const pdfError = ref('');
-const detailedReportsError = ref('');
 const reportSurfaceRef = ref(null);
 const forecastChartRef = ref(null);
 const riskChartRef = ref(null);
@@ -796,7 +727,6 @@ const optimizationReport = ref([]);
 const utilizationReport = ref(createEmptyUtilizationReport());
 const summaryReport = ref(createEmptySummaryReport());
 const reportsSourceLabel = ref('Loading stored analytics...');
-const inventoryDetailedRecords = ref([]);
 const modelArtifacts = ref({
   activeSet: 'default',
   activeArtifacts: {},
@@ -821,83 +751,6 @@ const analyticsScenarios = [
 
 const activeRange = computed(() => resolveAdminAnalyticsDateRange(selectedRangeKey.value));
 const activeRangeLabel = computed(() => formatDateRangeLabel(activeRange.value.startDateIso, activeRange.value.endDateIso));
-const allReservationDetailedRecords = computed(() => {
-  const uniqueRecords = new Map();
-
-  [
-    ...(requestStore.pendingRequestsList || []),
-    ...(requestStore.approvedRequestsList || []),
-    ...(requestStore.activeReservationsList || []),
-    ...(requestStore.pastRecordsList || []),
-  ].forEach((record) => {
-    const key = String(record?.requestIdentifier || record?.reservationIdentifier || '');
-    if (key !== '' && !uniqueRecords.has(key)) {
-      uniqueRecords.set(key, record);
-    }
-  });
-
-  return [...uniqueRecords.values()];
-});
-const detailedReportRange = computed(() => resolveDetailedReportRange(selectedDetailedTimeframe.value, reportReferenceDate.value));
-const detailedReportRangeLabel = computed(() => formatDateRangeLabel(
-  detailedReportRange.value.startDateIso,
-  detailedReportRange.value.endDateIso,
-));
-const inventoryReportRows = computed(() => inventoryDetailedRecords.value
-  .filter((record) => isDateWithinRange(record?.createdTimestamp, detailedReportRange.value))
-  .map((record) => ({
-    equipmentIdentifier: record?.equipmentIdentifier || 'N/A',
-    equipmentName: record?.equipmentName || 'Unnamed Equipment',
-    category: record?.equipmentCategory || record?.categoryName || 'Uncategorized',
-    status: record?.operationalStatus || record?.equipmentState || 'Unknown',
-    totalQuantity: Number(record?.totalQuantity ?? 0),
-    availableQuantity: Number(record?.availableQuantity ?? 0),
-    reservedQuantity: Number(record?.reservedQuantity ?? 0),
-    underMaintenanceQuantity: Number(record?.underMaintenanceQuantity ?? 0),
-    createdTimestamp: record?.createdTimestamp || '',
-    dateAddedLabel: formatDetailedReportDateTime(record?.createdTimestamp),
-  }))
-  .sort((left, right) => compareDescendingDate(left.createdTimestamp, right.createdTimestamp))
-);
-const inventoryReportSummary = computed(() => inventoryReportRows.value.reduce((summary, row) => ({
-  availableUnits: summary.availableUnits + row.availableQuantity,
-  reservedUnits: summary.reservedUnits + row.reservedQuantity,
-  maintenanceUnits: summary.maintenanceUnits + row.underMaintenanceQuantity,
-}), {
-  availableUnits: 0,
-  reservedUnits: 0,
-  maintenanceUnits: 0,
-}));
-const reservationReportRows = computed(() => allReservationDetailedRecords.value
-  .filter((record) => isDateWithinRange(record?.requestedDate || record?.dateOfRequest, detailedReportRange.value))
-  .map((record) => ({
-    requestIdentifier: record?.requestIdentifier || record?.reservationIdentifier || 'N/A',
-    requestDisplayIdentifier: record?.requestDisplayIdentifier || record?.requestIdentifier || record?.reservationIdentifier || 'N/A',
-    requesterFullName: record?.requesterFullName || 'Unknown Requester',
-    requesterRole: record?.requesterRole || 'Borrower',
-    requestType: record?.requestType || 'Unknown',
-    statusLabel: String(record?.requestStatus || record?.recordStatus || 'Unknown'),
-    requestQuantity: Number(record?.requestQuantity ?? 0),
-    requestedDate: record?.requestedDate || record?.dateOfRequest || '',
-    requestedDateLabel: formatDetailedReportDateTime(record?.requestedDate || record?.dateOfRequest),
-    requestSchedule: record?.requestSchedule || 'No schedule',
-  }))
-  .sort((left, right) => compareDescendingDate(left.requestedDate, right.requestedDate))
-);
-const reservationReportSummary = computed(() => reservationReportRows.value.reduce((summary, row) => {
-  const normalizedStatus = row.statusLabel.trim().toLowerCase();
-  if (normalizedStatus.includes('pending')) summary.pending += 1;
-  else if (normalizedStatus.includes('approved') || normalizedStatus.includes('prepared')) summary.approved += 1;
-  else if (normalizedStatus.includes('active') || normalizedStatus.includes('deployed')) summary.active += 1;
-  else if (normalizedStatus.includes('completed')) summary.completed += 1;
-
-  return summary;
-}, {
-  pending: 0,
-  approved: 0,
-  active: 0,
-  completed: 0,
-}));
 
 const modelCards = [
   {
@@ -1271,7 +1124,6 @@ watch(reportsAccordionPreferenceStorageKey, () => {
 
 onMounted(() => {
   loadReportsAnalytics();
-  loadDetailedReportsData();
 });
 
 onBeforeUnmount(() => {
@@ -1281,10 +1133,6 @@ onBeforeUnmount(() => {
 watch(selectedRangeKey, () => {
   resetEquipmentTrendPages();
   loadReportsAnalytics();
-});
-
-watch([selectedDetailedTimeframe, reportReferenceDate], () => {
-  detailedReportsError.value = '';
 });
 
 watch(isUtilizationSectionLoading, (isRefreshing) => {
@@ -1738,12 +1586,6 @@ async function handleTriggerAnalyticsRun() {
 function handleRefreshReports() {
   clearReportsSectionCacheForRange(activeRange.value);
   loadReportsAnalytics({ forceRefresh: true });
-  loadDetailedReportsData();
-}
-
-async function openModelSheet() {
-  isModelSheetOpen.value = true;
-  await loadModelArtifacts();
 }
 
 function closeModelSheet() {
@@ -1956,167 +1798,6 @@ function applyStoredAnalyticsSections(storedAnalytics) {
   summaryReport.value = storedAnalytics.summary;
 }
 
-async function loadDetailedReportsData() {
-  isDetailedReportsLoading.value = true;
-  detailedReportsError.value = '';
-
-  try {
-    const [inventoryResponse] = await Promise.all([
-      equipmentApi.listEquipment(),
-      requestStore.fetchReservations({ clearOnError: false }),
-    ]);
-
-    inventoryDetailedRecords.value = Array.isArray(inventoryResponse?.data?.equipment)
-      ? inventoryResponse.data.equipment
-      : Array.isArray(inventoryResponse?.equipment)
-        ? inventoryResponse.equipment
-        : [];
-  } catch (error) {
-    detailedReportsError.value = resolveReportsError(error) || 'Unable to load detailed reports right now.';
-  } finally {
-    isDetailedReportsLoading.value = false;
-  }
-}
-
-async function exportDetailedInventoryReport() {
-  const rows = inventoryReportRows.value.map((row) => ({
-    equipmentId: row.equipmentIdentifier,
-    name: row.equipmentName,
-    category: row.category,
-    status: row.status,
-    totalQuantity: row.totalQuantity,
-    availableQuantity: row.availableQuantity,
-    reservedQuantity: row.reservedQuantity,
-    maintenanceQuantity: row.underMaintenanceQuantity,
-    dateAdded: row.dateAddedLabel,
-  }));
-
-  await exportDetailedReport(rows, buildDetailedReportFileName('inventory'));
-}
-
-async function exportDetailedReservationReport() {
-  const rows = reservationReportRows.value.map((row) => ({
-    requestId: row.requestDisplayIdentifier,
-    requester: row.requesterFullName,
-    role: row.requesterRole,
-    type: row.requestType,
-    status: row.statusLabel,
-    quantity: row.requestQuantity,
-    dateRequested: row.requestedDateLabel,
-    schedule: row.requestSchedule,
-  }));
-
-  await exportDetailedReport(rows, buildDetailedReportFileName('reservations'));
-}
-
-async function exportDetailedReport(rows, fileName) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    detailedReportsError.value = 'No report records match the selected timeframe.';
-    return;
-  }
-
-  detailedReportsError.value = '';
-  exportRowsToExcel(fileName, rows, 'Report');
-}
-
-function buildDetailedReportFileName(reportType) {
-  return `techreserve-${reportType}-${selectedDetailedTimeframe.value}-${detailedReportRange.value.startDateIso}-to-${detailedReportRange.value.endDateIso}`;
-}
-
-function resolveDetailedReportRange(timeframe, referenceDateIso) {
-  const referenceDate = parseDateInputToLocalDate(referenceDateIso) || new Date(2026, 6, 17);
-  const startDate = new Date(referenceDate);
-  const endDate = new Date(referenceDate);
-
-  if (timeframe === 'weekly') {
-    const dayOfWeek = startDate.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    startDate.setDate(startDate.getDate() + mondayOffset);
-    endDate.setDate(startDate.getDate() + 6);
-  } else if (timeframe === 'monthly') {
-    startDate.setDate(1);
-    endDate.setMonth(startDate.getMonth() + 1, 0);
-  } else if (timeframe === 'yearly') {
-    startDate.setMonth(0, 1);
-    endDate.setMonth(11, 31);
-  }
-
-  return {
-    startDateIso: formatLocalDateIso(startDate),
-    endDateIso: formatLocalDateIso(endDate),
-  };
-}
-
-function parseDateInputToLocalDate(value) {
-  if (!value) {
-    return null;
-  }
-
-  const [year, month, day] = String(value).split('-').map((part) => Number(part));
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  return new Date(year, month - 1, day);
-}
-
-function isDateWithinRange(value, range) {
-  if (!value || !range?.startDateIso || !range?.endDateIso) {
-    return false;
-  }
-
-  const targetDate = normalizeDateToDayBoundary(value);
-  const startDate = normalizeDateToDayBoundary(range.startDateIso);
-  const endDate = normalizeDateToDayBoundary(range.endDateIso);
-
-  if (!targetDate || !startDate || !endDate) {
-    return false;
-  }
-
-  return targetDate.getTime() >= startDate.getTime() && targetDate.getTime() <= endDate.getTime();
-}
-
-function normalizeDateToDayBoundary(value) {
-  if (!value) {
-    return null;
-  }
-
-  const parsedDate = String(value).includes('T')
-    ? new Date(value)
-    : parseDateInputToLocalDate(String(value).slice(0, 10));
-
-  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
-    return null;
-  }
-
-  return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
-}
-
-function compareDescendingDate(leftValue, rightValue) {
-  const leftDate = new Date(leftValue || 0).getTime();
-  const rightDate = new Date(rightValue || 0).getTime();
-  return rightDate - leftDate;
-}
-
-function formatDetailedReportDateTime(value) {
-  if (!value) {
-    return 'N/A';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return new Intl.DateTimeFormat('en-PH', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-}
-
 function normalizeEquipmentTrendItems(items) {
   if (!Array.isArray(items)) {
     return [];
@@ -2264,35 +1945,43 @@ async function handleGeneratePdf() {
   pdfError.value = '';
 
   try {
+    await nextTick();
+
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
       import('html2canvas'),
       import('jspdf'),
     ]);
+
     const canvas = await html2canvas(reportSurfaceRef.value, {
       backgroundColor: '#f5faf7',
       scale: 2,
       useCORS: true,
       logging: false,
       windowWidth: reportSurfaceRef.value.scrollWidth,
+      windowHeight: reportSurfaceRef.value.scrollHeight,
+      scrollX: 0,
+      scrollY: -window.scrollY,
     });
 
     const imageData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imageWidth = pageWidth;
+    const pageMargin = 8;
+    const imageWidth = pageWidth - (pageMargin * 2);
     const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    const printablePageHeight = pageHeight - (pageMargin * 2);
     let remainingHeight = imageHeight;
-    let position = 0;
+    let position = pageMargin;
 
-    pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
-    remainingHeight -= pageHeight;
+    pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
+    remainingHeight -= printablePageHeight;
 
     while (remainingHeight > 0) {
-      position = remainingHeight - imageHeight;
+      position = pageMargin - (imageHeight - remainingHeight);
       pdf.addPage();
-      pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
-      remainingHeight -= pageHeight;
+      pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
+      remainingHeight -= printablePageHeight;
     }
 
     pdf.save(`techreserve-analytics-${activeRange.value.startDateIso}-to-${activeRange.value.endDateIso}.pdf`);

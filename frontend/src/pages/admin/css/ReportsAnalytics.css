@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 1.25rem;
   min-height: calc(100vh - 3rem);
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
   color: #17211d;
   font-family: inherit;
 }
@@ -11,6 +13,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .reports-pdf-page {
@@ -1170,6 +1174,7 @@
   gap: 0.75rem;
   justify-content: stretch;
   margin-top: 0.25rem;
+  padding: 0 0.25rem;
 }
 
 .reports-generate-button {
@@ -1592,16 +1597,18 @@
 
 .reports-export-surface.is-exporting-pdf {
   gap: 0;
-  padding: 0;
+  padding: 0 20px;
   background: #f5faf7;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-pdf-page {
   box-sizing: border-box;
-  width: 794px;
+  width: 100%;
+  max-width: 794px;
   min-height: 1123px;
   gap: 1rem;
-  padding: 28px;
+  margin: 0 auto;
+  padding: 28px 30px;
   background: #f5faf7;
   overflow: hidden;
 }
@@ -1754,10 +1761,6 @@
   }
 
   .reports-refresh-button {
-    width: 100%;
-  }
-
-  .reports-models-button {
     width: 100%;
   }
 
