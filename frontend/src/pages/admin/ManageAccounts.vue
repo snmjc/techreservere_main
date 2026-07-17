@@ -632,6 +632,7 @@ const {
   formatDateTime,
   formatNullableDateTime,
   getAcceptedStatusLabel,
+  getSystemEntryDateDisplay,
   getInviteSentStatusLabel,
   getReservationLabel,
   getWorkLogStatusClass,
