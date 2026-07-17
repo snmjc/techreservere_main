@@ -222,6 +222,7 @@
 
 .reports-panel {
   padding: 1.15rem;
+  min-width: 0;
 }
 
 .reports-panel h2 {
@@ -343,18 +344,19 @@
 .reports-rf-metrics-grid,
 .reports-risk-probability-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.75rem;
   margin-top: 1rem;
+  align-items: stretch;
 }
 
 .reports-rf-metrics-grid,
 .reports-risk-probability-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .reports-risk-probability-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .reports-validation-card,
@@ -364,9 +366,11 @@
   gap: 0.3rem;
   min-height: 92px;
   padding: 0.78rem;
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #dfe8e3;
   border-radius: 8px;
+  align-content: start;
 }
 
 .reports-validation-card.is-good {
@@ -506,6 +510,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  align-items: start;
 }
 
 .reports-risk-layout {
@@ -713,8 +718,9 @@
 
 .reports-bottom-grid {
   display: grid;
-  grid-template-columns: 1fr 1.25fr 0.8fr;
+  grid-template-columns: minmax(240px, 0.95fr) minmax(340px, 1.2fr) minmax(220px, 0.8fr);
   gap: 1rem;
+  align-items: start;
 }
 
 .reports-detailed-panel {
@@ -921,6 +927,7 @@
 .reports-table-stack {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .reports-bar-chart {
@@ -1092,6 +1099,7 @@
   gap: 1rem;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid #edf2ef;
+  align-items: flex-start;
 }
 
 .reports-summary-panel dd {
@@ -1708,7 +1716,6 @@
 @media (max-width: 1180px) {
   .reports-model-grid,
   .reports-two-column,
-  .reports-bottom-grid,
   .reports-detailed-grid,
   .reports-detailed-generator-grid,
   .reports-validation-grid,
@@ -1720,6 +1727,16 @@
   .reports-forecast-layout,
   .reports-risk-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1380px) {
+  .reports-bottom-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .reports-summary-panel {
+    grid-column: 1 / -1;
   }
 }
 
