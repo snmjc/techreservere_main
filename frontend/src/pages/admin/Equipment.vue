@@ -113,6 +113,14 @@
         >
           {{ isExportingExcel ? 'Exporting...' : 'Excel' }}
         </button>
+        <button
+          class="equipment-page__ghost-button"
+          type="button"
+          :disabled="isDetailedReportsLoading"
+          @click="openDetailedReportsModal"
+        >
+          {{ isDetailedReportsLoading ? 'Preparing Reports...' : 'Detailed XLSX Reports' }}
+        </button>
         <button class="equipment-page__ghost-button" type="button" @click="exportInventory('pdf')">PDF</button>
         <button class="equipment-page__ghost-button" type="button" @click="exportInventory('print')">Print</button>
       </section>
@@ -451,6 +459,116 @@
           </footer>
         </section>
       </div>
+
+      <div
+        v-if="isDetailedReportsModalOpen"
+        class="equipment-modal__overlay"
+        @click.self="closeDetailedReportsModal"
+      >
+        <section class="equipment-modal equipment-modal--wide">
+          <header class="equipment-modal__header">
+            <div>
+              <p class="equipment-modal__eyebrow">Equipment Reports</p>
+              <h2>Generate Detailed XLSX Reports</h2>
+            </div>
+            <button
+              type="button"
+              class="equipment-modal__close"
+              :disabled="isDetailedReportsLoading"
+              @click="closeDetailedReportsModal"
+            >
+              X
+            </button>
+          </header>
+
+          <div class="equipment-report-builder">
+            <p class="equipment-report-builder__intro">
+              Choose a simple timeframe, then export either the inventory register or the reservation report as an XLSX file.
+            </p>
+
+            <div class="equipment-report-builder__filters">
+              <label>
+                <span>Timeframe</span>
+                <select v-model="selectedDetailedTimeframe" :disabled="isDetailedReportsLoading">
+                  <option value="days">Days</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Reference Date</span>
+                <input
+                  v-model="reportReferenceDate"
+                  type="date"
+                  :disabled="isDetailedReportsLoading"
+                />
+              </label>
+
+              <div class="equipment-report-builder__range">
+                <strong>Applied Range</strong>
+                <span>{{ detailedReportRangeLabel }}</span>
+              </div>
+            </div>
+
+            <p
+              v-if="detailedReportsError"
+              class="equipment-page__feedback equipment-page__feedback--error"
+            >
+              {{ detailedReportsError }}
+            </p>
+            <p v-else-if="isDetailedReportsLoading" class="equipment-page__feedback">
+              Loading report data...
+            </p>
+
+            <div class="equipment-report-builder__grid">
+              <article class="equipment-report-card">
+                <div>
+                  <h3>Inventory XLSX</h3>
+                  <p>Exports equipment and unit-level inventory details inside the selected timeframe.</p>
+                  <small>{{ inventoryDetailedReportRows.length }} row(s) ready</small>
+                </div>
+                <button
+                  type="button"
+                  class="equipment-page__primary-button"
+                  :disabled="inventoryDetailedReportRows.length === 0 || isDetailedReportsLoading"
+                  @click="exportDetailedInventoryReport"
+                >
+                  Generate Inventory XLSX
+                </button>
+              </article>
+
+              <article class="equipment-report-card">
+                <div>
+                  <h3>Reservation XLSX</h3>
+                  <p>Exports reservation request details inside the selected timeframe.</p>
+                  <small>{{ reservationDetailedReportRows.length }} row(s) ready</small>
+                </div>
+                <button
+                  type="button"
+                  class="equipment-page__primary-button"
+                  :disabled="reservationDetailedReportRows.length === 0 || isDetailedReportsLoading"
+                  @click="exportDetailedReservationReport"
+                >
+                  Generate Reservation XLSX
+                </button>
+              </article>
+            </div>
+          </div>
+
+          <footer class="equipment-modal__footer">
+            <button
+              type="button"
+              class="equipment-modal__secondary"
+              :disabled="isDetailedReportsLoading"
+              @click="closeDetailedReportsModal"
+            >
+              Close
+            </button>
+          </footer>
+        </section>
+      </div>
       <DataRequestStatusFloater :items="equipmentStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
@@ -462,12 +580,14 @@ import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutC
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
 import equipmentApi from '@/modules/reservation/services/equipmentApi.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import {
   normalizeEquipmentForm,
   validateEquipmentForm,
 } from '@/modules/facility/utils/equipmentFormValidation.js';
 import {
+  exportRowsToExcel,
   exportElementToPdf,
   exportRowsToCsv,
   printElement,
@@ -475,12 +595,18 @@ import {
 
 const EQUIPMENT_PAGE_CACHE_KEY = 'techreserve_equipment_page_cache';
 const equipmentStatuses = ['Available', 'Unavailable', 'Under Maintenance', 'Retired'];
+const DEFAULT_REPORT_REFERENCE_DATE = '2026-07-17';
+
+const requestStore = useRequestStore();
 
 const equipmentList = ref(readEquipmentCache());
 const isLoading = ref(false);
 const isExportingExcel = ref(false);
+const isDetailedReportsLoading = ref(false);
+const isDetailedReportsModalOpen = ref(false);
 const pageError = ref('');
 const exportError = ref('');
+const detailedReportsError = ref('');
 const equipmentDataState = ref(equipmentList.value.length > 0 ? 'cached' : 'idle');
 const searchQuery = ref('');
 const categoryFilter = ref('');
@@ -495,6 +621,9 @@ const equipmentCurrentPage = ref(1);
 const equipmentPageSize = 10;
 const inventorySurfaceRef = ref(null);
 let equipmentFetchTimer = null;
+const selectedDetailedTimeframe = ref('monthly');
+const reportReferenceDate = ref(DEFAULT_REPORT_REFERENCE_DATE);
+const detailedReportEquipmentRecords = ref([]);
 
 const viewEquipment = ref(null);
 const formModalOpen = ref(false);
@@ -512,6 +641,11 @@ const equipmentStatusItems = computed(() => [
     key: 'equipment',
     label: 'Equipment Records',
     state: equipmentDataState.value,
+  },
+  {
+    key: 'equipment-detailed-reports',
+    label: 'Detailed XLSX Reports',
+    state: isDetailedReportsLoading.value ? 'loading' : 'idle',
   },
 ]);
 
@@ -545,6 +679,79 @@ const maintenanceCount = computed(() =>
 const retiredCount = computed(() =>
   equipmentList.value.filter((equipment) => equipment.equipmentState === 'Retired').length
 );
+const detailedReportRange = computed(() =>
+  resolveDetailedReportRange(selectedDetailedTimeframe.value, reportReferenceDate.value)
+);
+const detailedReportRangeLabel = computed(() => (
+  `${formatDetailedReportDate(detailedReportRange.value.startDateIso)} - ${formatDetailedReportDate(detailedReportRange.value.endDateIso)}`
+));
+const allReservationDetailedRecords = computed(() => {
+  const uniqueRecords = new Map();
+  [
+    ...(requestStore.pendingRequestsList || []),
+    ...(requestStore.approvedRequestsList || []),
+    ...(requestStore.activeReservationsList || []),
+    ...(requestStore.pastRecordsList || []),
+  ].forEach((record) => {
+    const recordKey = String(record?.requestIdentifier || record?.reservationIdentifier || record?.requestDisplayIdentifier || '');
+    if (recordKey && !uniqueRecords.has(recordKey)) {
+      uniqueRecords.set(recordKey, record);
+    }
+  });
+  return [...uniqueRecords.values()];
+});
+const inventoryDetailedReportRows = computed(() => detailedReportEquipmentRecords.value
+  .filter((record) => isDateWithinRange(record?.createdTimestamp, detailedReportRange.value))
+  .flatMap((record) => {
+    const units = Array.isArray(record?.units) && record.units.length > 0
+      ? record.units
+      : [{
+          equipmentUnitIdentifierCode: '',
+          barcode: record?.barcode || '',
+          assetTag: record?.assetId || '',
+          serialNumber: record?.assetId || '',
+          conditionStatus: '',
+          availabilityStatus: record?.operationalStatus || record?.equipmentState || '',
+          storageLocation: '',
+          remarks: record?.remarks || '',
+        }];
+
+    return units.map((unit, unitIndex) => ({
+      equipmentId: record?.equipmentIdentifier || 'N/A',
+      equipmentName: record?.equipmentName || 'Unnamed Equipment',
+      category: record?.equipmentCategory || record?.categoryName || 'Uncategorized',
+      brand: record?.equipmentBrand || 'N/A',
+      model: record?.equipmentModel || 'N/A',
+      totalQuantity: Number(record?.totalQuantity ?? record?.availableQuantity ?? units.length ?? 0),
+      availableQuantity: Number(record?.availableQuantity ?? 0),
+      reservedQuantity: Number(record?.reservedQuantity ?? 0),
+      maintenanceQuantity: Number(record?.underMaintenanceQuantity ?? 0),
+      unavailableQuantity: Number(record?.unavailableQuantity ?? 0),
+      unitNumber: unitIndex + 1,
+      unitCode: unit?.equipmentUnitIdentifierCode || 'N/A',
+      barcode: unit?.barcode || 'N/A',
+      assetTag: unit?.assetTag || 'N/A',
+      serialNumber: unit?.serialNumber || 'N/A',
+      condition: unit?.conditionStatus || 'N/A',
+      availability: unit?.availabilityStatus || 'N/A',
+      storageLocation: unit?.storageLocation || 'N/A',
+      remarks: unit?.remarks || record?.remarks || 'N/A',
+      dateAdded: formatDateTime(record?.createdTimestamp),
+    }));
+  }));
+const reservationDetailedReportRows = computed(() => allReservationDetailedRecords.value
+  .filter((record) => isDateWithinRange(record?.requestedDate || record?.dateOfRequest, detailedReportRange.value))
+  .map((record) => ({
+    requestId: record?.requestDisplayIdentifier || record?.requestIdentifier || record?.reservationIdentifier || 'N/A',
+    requester: record?.requesterFullName || 'Unknown Requester',
+    role: record?.requesterRole || 'Borrower',
+    type: record?.requestType || 'Unknown',
+    status: String(record?.requestStatus || record?.recordStatus || 'Unknown'),
+    quantity: Number(record?.requestQuantity ?? 0),
+    dateRequested: formatDateTime(record?.requestedDate || record?.dateOfRequest),
+    schedule: record?.requestSchedule || 'No schedule',
+    purpose: record?.requestPurpose || record?.purposeDescription || record?.purpose || 'N/A',
+  })));
 
 const isFormReady = computed(() => {
   return validateEquipmentForm(form.value) === '';
@@ -744,6 +951,20 @@ function closeDeleteModal() {
   deleteError.value = '';
 }
 
+async function openDetailedReportsModal() {
+  isDetailedReportsModalOpen.value = true;
+  await loadDetailedReportsData();
+}
+
+function closeDetailedReportsModal() {
+  if (isDetailedReportsLoading.value) {
+    return;
+  }
+
+  isDetailedReportsModalOpen.value = false;
+  detailedReportsError.value = '';
+}
+
 async function confirmDelete() {
   if (!deleteEquipmentRecord.value || isDeleting.value) {
     return;
@@ -912,6 +1133,148 @@ function createEmptySpecification() {
     key: '',
     value: '',
   };
+}
+
+async function loadDetailedReportsData() {
+  try {
+    isDetailedReportsLoading.value = true;
+    detailedReportsError.value = '';
+
+    const [inventoryResponse] = await Promise.all([
+      equipmentApi.listEquipment(),
+      requestStore.fetchReservations({ clearOnError: false }),
+    ]);
+
+    detailedReportEquipmentRecords.value = Array.isArray(inventoryResponse?.data?.equipment)
+      ? inventoryResponse.data.equipment
+      : Array.isArray(inventoryResponse?.equipment)
+        ? inventoryResponse.equipment
+        : [];
+  } catch (error) {
+    detailedReportsError.value = error?.response?.data?.errorMessage || 'Unable to load detailed report data right now.';
+  } finally {
+    isDetailedReportsLoading.value = false;
+  }
+}
+
+function resolveDetailedReportRange(timeframe, referenceDateIso) {
+  const referenceDate = parseDateInputToLocalDate(referenceDateIso || DEFAULT_REPORT_REFERENCE_DATE);
+
+  if (timeframe === 'days') {
+    return {
+      startDate: referenceDate,
+      endDate: referenceDate,
+      startDateIso: formatLocalDateIso(referenceDate),
+      endDateIso: formatLocalDateIso(referenceDate),
+    };
+  }
+
+  if (timeframe === 'weekly') {
+    const weekStart = new Date(referenceDate);
+    const dayOfWeek = weekStart.getDay();
+    const distanceToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    weekStart.setDate(weekStart.getDate() - distanceToMonday);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return {
+      startDate: weekStart,
+      endDate: weekEnd,
+      startDateIso: formatLocalDateIso(weekStart),
+      endDateIso: formatLocalDateIso(weekEnd),
+    };
+  }
+
+  if (timeframe === 'yearly') {
+    const yearStart = new Date(referenceDate.getFullYear(), 0, 1);
+    const yearEnd = new Date(referenceDate.getFullYear(), 11, 31);
+    return {
+      startDate: yearStart,
+      endDate: yearEnd,
+      startDateIso: formatLocalDateIso(yearStart),
+      endDateIso: formatLocalDateIso(yearEnd),
+    };
+  }
+
+  const monthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+  const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
+  return {
+    startDate: monthStart,
+    endDate: monthEnd,
+    startDateIso: formatLocalDateIso(monthStart),
+    endDateIso: formatLocalDateIso(monthEnd),
+  };
+}
+
+function parseDateInputToLocalDate(value) {
+  const [year, month, day] = String(value || DEFAULT_REPORT_REFERENCE_DATE).split('-').map((part) => Number.parseInt(part, 10));
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function normalizeDateToDayBoundary(value) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+}
+
+function isDateWithinRange(value, range) {
+  const normalizedDate = normalizeDateToDayBoundary(value);
+  if (!normalizedDate) {
+    return false;
+  }
+
+  return normalizedDate.getTime() >= range.startDate.getTime()
+    && normalizedDate.getTime() <= range.endDate.getTime();
+}
+
+function formatLocalDateIso(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDetailedReportDate(value) {
+  const parsedDate = parseDateInputToLocalDate(value);
+  return new Intl.DateTimeFormat('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(parsedDate);
+}
+
+function buildDetailedReportFileName(reportType) {
+  return `techreserve-${reportType}-${selectedDetailedTimeframe.value}-${detailedReportRange.value.startDateIso}-to-${detailedReportRange.value.endDateIso}`;
+}
+
+function exportDetailedInventoryReport() {
+  if (inventoryDetailedReportRows.value.length === 0) {
+    detailedReportsError.value = 'No inventory records match the selected timeframe.';
+    return;
+  }
+
+  detailedReportsError.value = '';
+  exportRowsToExcel(
+    buildDetailedReportFileName('inventory'),
+    inventoryDetailedReportRows.value,
+    'Inventory Report',
+  );
+}
+
+function exportDetailedReservationReport() {
+  if (reservationDetailedReportRows.value.length === 0) {
+    detailedReportsError.value = 'No reservation records match the selected timeframe.';
+    return;
+  }
+
+  detailedReportsError.value = '';
+  exportRowsToExcel(
+    buildDetailedReportFileName('reservations'),
+    reservationDetailedReportRows.value,
+    'Reservation Report',
+  );
 }
 
 async function exportInventory(format) {

@@ -719,6 +719,80 @@
   text-align: right;
 }
 
+.equipment-report-builder {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.equipment-report-builder__intro {
+  margin: 0;
+  color: #4b6354;
+}
+
+.equipment-report-builder__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.equipment-report-builder__filters label,
+.equipment-report-builder__range {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.equipment-report-builder__filters span,
+.equipment-report-builder__range strong {
+  color: #51635a;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.equipment-report-builder__filters input,
+.equipment-report-builder__filters select,
+.equipment-report-builder__range span {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #ced9d1;
+  border-radius: 12px;
+  font: inherit;
+  color: #16361f;
+  background: #fff;
+}
+
+.equipment-report-builder__range span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.equipment-report-builder__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.equipment-report-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #f7faf8;
+  border: 1px solid #e7efe9;
+  border-radius: 16px;
+}
+
+.equipment-report-card h3 {
+  margin: 0;
+  color: #16361f;
+}
+
+.equipment-report-card p,
+.equipment-report-card small {
+  margin: 0.2rem 0 0;
+  color: #607165;
+}
+
 @media (max-width: 900px) {
   .equipment-page__controls {
     grid-template-columns: 1fr 1fr;
@@ -738,7 +812,9 @@
   .equipment-page__summary,
   .equipment-modal__details,
   .equipment-modal__grid,
-  .equipment-modal__specs-list {
+  .equipment-modal__specs-list,
+  .equipment-report-builder__filters,
+  .equipment-report-builder__grid {
     grid-template-columns: 1fr;
   }
 }
