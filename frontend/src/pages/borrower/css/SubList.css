@@ -127,6 +127,7 @@
 
 .borrower-sublist-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background-color: #ffffff;
   border-radius: 8px;
@@ -161,7 +162,7 @@
 }
 
 .borrower-sublist-table-cell {
-  padding: 0.65rem 0.75rem;
+  padding: 0.65rem 0.7rem;
   font-size: 0.78rem;
   color: #444444;
   vertical-align: middle;
@@ -175,24 +176,29 @@
 
 .borrower-sublist-table-cell--name {
   font-weight: 500;
-  min-width: 120px;
+  width: 18%;
 }
 
 .borrower-sublist-table-cell--role {
   white-space: nowrap;
-  width: 70px;
+  width: 86px;
+}
+
+.borrower-sublist-table-cell--requested-date {
+  white-space: nowrap;
+  width: 120px;
 }
 
 .borrower-sublist-table-cell--schedule {
   font-size: 0.72rem;
   white-space: nowrap;
-  width: 120px;
+  width: 180px;
 }
 
 .borrower-sublist-table-cell--facility {
   font-size: 0.72rem;
   white-space: nowrap;
-  width: 80px;
+  width: 16%;
 }
 
 .borrower-sublist-table-cell--quantity {
@@ -201,15 +207,8 @@
 }
 
 .borrower-sublist-table-cell--type {
-  width: 80px;
-}
-
-.borrower-sublist-table-cell--purpose {
-  font-size: 0.72rem;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  width: 86px;
 }
 
 .borrower-sublist-table-cell--status {

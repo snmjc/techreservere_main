@@ -224,6 +224,8 @@ class EquipmentManagementService
         $imageUrl = trim((string) ($requestDTO->imageUrl ?? ''));
         $barcode = trim($requestDTO->barcode);
         $assetId = strtoupper(trim($requestDTO->assetId));
+        $specifications = is_array($requestDTO->specifications) ? $this->normalizeSpecifications($requestDTO->specifications) : [];
+        $units = is_array($requestDTO->units) ? $requestDTO->units : [];
         $photoData = $requestDTO->photoData === null ? null : trim($requestDTO->photoData);
         $operationalStatus = trim($requestDTO->operationalStatus);
         $availableQuantity = $requestDTO->availableQuantity;
@@ -243,6 +245,10 @@ class EquipmentManagementService
             throw new DomainValidationException('Equipment brand must be at least 2 characters.');
         }
 
+        if ($equipmentModel === '') {
+            throw new DomainValidationException('Equipment model is required.');
+        }
+
         if ($availableQuantity <= 0) {
             throw new DomainValidationException('Available quantity must be greater than zero.');
         }
@@ -259,9 +265,19 @@ class EquipmentManagementService
             throw new DomainValidationException('Description is required.');
         }
 
+        if ($specifications === []) {
+            throw new DomainValidationException('At least one equipment specification is required.');
+        }
+
+        if (count($units) !== $availableQuantity) {
+            throw new DomainValidationException('Available quantity must match the number of equipment unit rows.');
+        }
+
         if (!in_array($photoDisplayMode, self::ALLOWED_PHOTO_DISPLAY_MODES, true)) {
             throw new DomainValidationException('Invalid equipment photo display mode.');
         }
+
+        [$assetId, $barcode] = $this->resolveParentInventoryIdentifiers($assetId, $barcode, $units);
 
         if ($assetId === '' || $barcode === '') {
             [$assetId, $barcode] = $this->generateMissingInventoryIdentifiers($equipmentCategory, $assetId, $barcode);
@@ -295,7 +311,7 @@ class EquipmentManagementService
             'equipmentState' => $this->resolveEquipmentState($operationalStatus),
             'description' => $description,
             'remarks' => $remarks === '' ? null : $remarks,
-            'specifications' => is_array($requestDTO->specifications) ? $requestDTO->specifications : null,
+            'specifications' => $specifications,
             'imageUrl' => $imageUrl === '' ? null : $imageUrl,
             'barcode' => $barcode,
             'assetId' => $assetId,
@@ -700,6 +716,43 @@ class EquipmentManagementService
     private function normalizePhotoPosition(int $position): int
     {
         return max(0, min(100, $position));
+    }
+
+    private function resolveParentInventoryIdentifiers(string $assetId, string $barcode, array $units): array
+    {
+        if ($assetId !== '' && $barcode !== '') {
+            return [$assetId, $barcode];
+        }
+
+        $firstUnit = is_array($units[0] ?? null) ? $units[0] : [];
+        $resolvedAssetId = $assetId !== '' ? $assetId : strtoupper(trim((string) ($firstUnit['assetTag'] ?? $firstUnit['serialNumber'] ?? '')));
+        $resolvedBarcode = $barcode !== '' ? $barcode : trim((string) ($firstUnit['barcode'] ?? ''));
+
+        return [$resolvedAssetId, $resolvedBarcode];
+    }
+
+    private function normalizeSpecifications(array $specifications): array
+    {
+        $normalizedSpecifications = [];
+
+        foreach ($specifications as $specification) {
+            if (!is_array($specification)) {
+                continue;
+            }
+
+            $key = trim((string) ($specification['key'] ?? ''));
+            $value = trim((string) ($specification['value'] ?? ''));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+
+            $normalizedSpecifications[] = [
+                'key' => $key,
+                'value' => $value,
+            ];
+        }
+
+        return $normalizedSpecifications;
     }
 
     private function buildTodayDispatchSummary(): array

@@ -5,7 +5,7 @@
         <div>
           <p class="equipment-page__eyebrow">Admin Oversight</p>
           <h1 class="equipment-page__title">Audit Trail</h1>
-          <p class="equipment-page__subtitle">Review sensitive actions across reservations, inventory, and account management.</p>
+          <p class="equipment-page__subtitle">Review equipment and inventory audit records only, including their exact timestamps.</p>
         </div>
       </header>
 
@@ -31,7 +31,7 @@
         <table class="equipment-page__table">
           <thead>
             <tr>
-              <th>When</th>
+              <th>Timestamp</th>
               <th>Actor</th>
               <th>Role</th>
               <th>Action</th>
@@ -106,6 +106,10 @@ function formatDateTime(value) {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Manila',
+    timeZoneName: 'short',
   }).format(parsedDate);
 }
 </script>

@@ -516,6 +516,12 @@
   border: 1px solid #f5d1cd;
 }
 
+.equipment-page__feedback--warning {
+  color: #8a4b00;
+  background: #fff7e8;
+  border: 1px solid #f1d39b;
+}
+
 .equipment-modal__overlay {
   position: fixed;
   inset: 0;
@@ -653,6 +659,43 @@
   resize: vertical;
 }
 
+.equipment-modal__spec-editor,
+.equipment-modal__specs {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.equipment-modal__specs-title {
+  margin: 0 0 0.75rem;
+  color: #51635a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.equipment-modal__specs-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.equipment-modal__specs-list div {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 0.95rem;
+  background: #f7faf8;
+  border: 1px solid #e7efe9;
+  border-radius: 14px;
+}
+
+.equipment-modal__specs-list strong {
+  color: #607165;
+  font-size: 0.8rem;
+}
+
+.equipment-modal__specs-list span {
+  color: #16361f;
+  font-weight: 700;
+}
+
 .equipment-modal__danger-summary {
   display: grid;
   gap: 0.75rem;
@@ -694,7 +737,8 @@
   .equipment-page__controls,
   .equipment-page__summary,
   .equipment-modal__details,
-  .equipment-modal__grid {
+  .equipment-modal__grid,
+  .equipment-modal__specs-list {
     grid-template-columns: 1fr;
   }
 }

@@ -18,6 +18,10 @@ const EQUIPMENT_FORM_VALIDATORS = [
     message: 'Equipment brand must be at least 2 characters.',
   },
   {
+    isInvalid: (form) => form.equipmentModel.length < 1,
+    message: 'Equipment model is required.',
+  },
+  {
     isInvalid: (form) => !Number.isInteger(form.availableQuantity) || form.availableQuantity <= 0,
     message: 'Available quantity must be a whole number greater than zero.',
   },
@@ -28,6 +32,34 @@ const EQUIPMENT_FORM_VALIDATORS = [
   {
     isInvalid: (form) => form.description === '',
     message: 'Description is required.',
+  },
+  {
+    isInvalid: (form) => !Array.isArray(form.specifications) || form.specifications.length === 0,
+    message: 'At least one equipment specification is required.',
+  },
+  {
+    isInvalid: (form) => !Array.isArray(form.units) || form.units.length === 0,
+    message: 'At least one equipment unit is required.',
+  },
+  {
+    isInvalid: (form) => Array.isArray(form.units) && form.units.length !== form.availableQuantity,
+    message: 'Available quantity must match the number of equipment unit rows.',
+  },
+  {
+    isInvalid: (form) => Array.isArray(form.units) && form.units.some((unit) => unit.barcode === ''),
+    message: 'Every equipment unit must have a barcode.',
+  },
+  {
+    isInvalid: (form) => Array.isArray(form.units) && form.units.some((unit) => unit.assetTag === ''),
+    message: 'Every equipment unit must have an asset tag.',
+  },
+  {
+    isInvalid: (form) => Array.isArray(form.units) && form.units.some((unit) => unit.conditionStatus === ''),
+    message: 'Every equipment unit must have a condition status.',
+  },
+  {
+    isInvalid: (form) => Array.isArray(form.units) && form.units.some((unit) => unit.storageLocation === ''),
+    message: 'Every equipment unit must have a storage location.',
   },
   {
     isInvalid: (form) => Boolean(form.assetId) && !isSupportedAssetId(form.assetId),
@@ -67,6 +99,10 @@ export function normalizeEquipmentForm(form) {
 
 export function validateEquipmentForm(form) {
   const normalizedForm = normalizeEquipmentForm(form);
+  const duplicateUnitIdentifierMessage = validateDuplicateUnitIdentifiers(normalizedForm.units);
+  if (duplicateUnitIdentifierMessage) {
+    return duplicateUnitIdentifierMessage;
+  }
   const failedRule = EQUIPMENT_FORM_VALIDATORS.find(({ isInvalid }) => isInvalid(normalizedForm));
   return failedRule?.message || '';
 }
@@ -150,4 +186,35 @@ function normalizeEquipmentUnits(units) {
     remarks: String(unit?.remarks || '').trim(),
     maintenanceState: String(unit?.maintenanceState || 'Operational').trim(),
   }));
+}
+
+function validateDuplicateUnitIdentifiers(units) {
+  if (!Array.isArray(units)) {
+    return '';
+  }
+
+  const seen = new Set();
+  const fields = [
+    ['unit code', 'equipmentUnitIdentifierCode'],
+    ['barcode', 'barcode'],
+    ['asset tag', 'assetTag'],
+    ['serial number', 'serialNumber'],
+  ];
+
+  for (const unit of units) {
+    for (const [label, key] of fields) {
+      const value = String(unit?.[key] || '').trim().toLowerCase();
+      if (value === '') {
+        continue;
+      }
+
+      const fingerprint = `${key}:${value}`;
+      if (seen.has(fingerprint)) {
+        return `Duplicate ${label} found in the equipment units.`;
+      }
+      seen.add(fingerprint);
+    }
+  }
+
+  return '';
 }

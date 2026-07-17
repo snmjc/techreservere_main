@@ -37,6 +37,7 @@ class AuditLogController extends AbstractController
             'role' => (string) $request->query->get('role', ''),
             'action' => (string) $request->query->get('action', ''),
             'module' => (string) $request->query->get('module', ''),
+            'scope' => (string) $request->query->get('scope', ''),
         ]);
         return $this->createSuccessResponse(['auditLogs' => $auditLogs]);
     }

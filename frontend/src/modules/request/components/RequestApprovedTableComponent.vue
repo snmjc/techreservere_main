@@ -7,10 +7,10 @@
           <th class="request-approved-table-header-cell">ID</th>
           <th class="request-approved-table-header-cell">Name</th>
           <th class="request-approved-table-header-cell">Role</th>
+          <th class="request-approved-table-header-cell">Date Requested</th>
           <th class="request-approved-table-header-cell">Schedule</th>
           <th class="request-approved-table-header-cell">Quantity</th>
           <th class="request-approved-table-header-cell">Type</th>
-          <th class="request-approved-table-header-cell">Purpose</th>
           <th class="request-approved-table-header-cell">Action</th>
         </tr>
       </thead>
@@ -29,6 +29,9 @@
           <td class="request-approved-table-cell request-approved-table-cell--role">
             {{ requestRecord.requesterRole }}
           </td>
+          <td class="request-approved-table-cell request-approved-table-cell--requested-date">
+            {{ formatRequestedDate(requestRecord.requestedDate) }}
+          </td>
           <td class="request-approved-table-cell request-approved-table-cell--schedule">
             {{ requestRecord.requestSchedule }}
           </td>
@@ -42,9 +45,6 @@
             >
               {{ requestRecord.requestType }}
             </span>
-          </td>
-          <td class="request-approved-table-cell request-approved-table-cell--purpose">
-            {{ requestRecord.requestPurpose }}
           </td>
           <td class="request-approved-table-cell request-approved-table-cell--actions">
             <div class="request-approved-actions-group">
@@ -171,5 +171,18 @@ function handleEditWorkflowClick(requestRecord) {
  */
 function handleCancelRequestClick(requestRecord) {
   emit('cancelRequestRecord', requestRecord);
+}
+
+function formatRequestedDate(value) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsedDate);
 }
 </script>

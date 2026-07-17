@@ -7,10 +7,10 @@
           <th class="reservation-active-table-header-cell">ID</th>
           <th class="reservation-active-table-header-cell">Name</th>
           <th class="reservation-active-table-header-cell">Role</th>
+          <th class="reservation-active-table-header-cell">Date Requested</th>
           <th class="reservation-active-table-header-cell">Schedule</th>
           <th class="reservation-active-table-header-cell">Quantity</th>
           <th class="reservation-active-table-header-cell">Type</th>
-          <th class="reservation-active-table-header-cell">Purpose</th>
           <th class="reservation-active-table-header-cell">Action</th>
         </tr>
       </thead>
@@ -29,6 +29,9 @@
           <td class="reservation-active-table-cell reservation-active-table-cell--role">
             {{ reservationRecord.requesterRole }}
           </td>
+          <td class="reservation-active-table-cell reservation-active-table-cell--requested-date">
+            {{ formatRequestedDate(reservationRecord.requestedDate) }}
+          </td>
           <td class="reservation-active-table-cell reservation-active-table-cell--schedule">
             {{ reservationRecord.requestSchedule }}
           </td>
@@ -42,9 +45,6 @@
             >
               {{ reservationRecord.requestType }}
             </span>
-          </td>
-          <td class="reservation-active-table-cell reservation-active-table-cell--purpose">
-            {{ reservationRecord.requestPurpose }}
           </td>
           <td class="reservation-active-table-cell reservation-active-table-cell--actions">
             <div class="reservation-active-actions-group">
@@ -157,5 +157,18 @@ function handleReturnConfirmationClick(reservationRecord) {
  */
 function handleReportClick(reservationRecord) {
   emit('reportReservation', reservationRecord);
+}
+
+function formatRequestedDate(value) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsedDate);
 }
 </script>

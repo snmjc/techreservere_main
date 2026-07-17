@@ -7,10 +7,10 @@
           <th class="request-pending-table-header-cell">ID</th>
           <th class="request-pending-table-header-cell">Name</th>
           <th class="request-pending-table-header-cell">Role</th>
+          <th class="request-pending-table-header-cell">Date Requested</th>
           <th class="request-pending-table-header-cell">Schedule</th>
           <th class="request-pending-table-header-cell">Quantity</th>
           <th class="request-pending-table-header-cell">Type</th>
-          <th class="request-pending-table-header-cell">Purpose</th>
           <th class="request-pending-table-header-cell">Actions</th>
         </tr>
       </thead>
@@ -29,6 +29,9 @@
           <td class="request-pending-table-cell request-pending-table-cell--role">
             {{ requestRecord.requesterRole }}
           </td>
+          <td class="request-pending-table-cell request-pending-table-cell--requested-date">
+            {{ formatRequestedDate(requestRecord.requestedDate) }}
+          </td>
           <td class="request-pending-table-cell request-pending-table-cell--schedule">
             {{ requestRecord.requestSchedule }}
           </td>
@@ -42,9 +45,6 @@
             >
               {{ requestRecord.requestType }}
             </span>
-          </td>
-          <td class="request-pending-table-cell request-pending-table-cell--purpose">
-            {{ requestRecord.requestPurpose }}
           </td>
           <td class="request-pending-table-cell request-pending-table-cell--actions">
             <div class="request-pending-actions-group">
@@ -156,5 +156,18 @@ function handleApproveRequestClick(requestRecord) {
  */
 function handleRejectRequestClick(requestRecord) {
   emit('rejectRequestRecord', requestRecord);
+}
+
+function formatRequestedDate(value) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsedDate);
 }
 </script>

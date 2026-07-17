@@ -229,6 +229,7 @@
 .admin-ops-table-card .reservation-active-table {
   width: 100%;
   min-width: 980px;
+  table-layout: fixed;
   border-collapse: collapse;
   background: transparent;
 }
@@ -255,12 +256,68 @@
 .admin-ops-table-card .request-pending-table-cell,
 .admin-ops-table-card .request-approved-table-cell,
 .admin-ops-table-card .reservation-active-table-cell {
-  padding: 1rem 1rem;
+  padding: 0.95rem 0.8rem;
   color: #24332e;
   border-bottom: 1px solid #edf2ef;
   font-size: 0.85rem;
   vertical-align: middle;
   background: rgba(255, 255, 255, 0.9);
+}
+
+.admin-ops-table-card .request-pending-table-cell--id,
+.admin-ops-table-card .request-approved-table-cell--id,
+.admin-ops-table-card .reservation-active-table-cell--id {
+  width: 72px;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--name,
+.admin-ops-table-card .request-approved-table-cell--name,
+.admin-ops-table-card .reservation-active-table-cell--name {
+  width: 26%;
+}
+
+.admin-ops-table-card .request-pending-table-cell--role,
+.admin-ops-table-card .request-approved-table-cell--role,
+.admin-ops-table-card .reservation-active-table-cell--role {
+  width: 90px;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--requested-date,
+.admin-ops-table-card .request-approved-table-cell--requested-date,
+.admin-ops-table-card .reservation-active-table-cell--requested-date {
+  width: 128px;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--schedule,
+.admin-ops-table-card .request-approved-table-cell--schedule,
+.admin-ops-table-card .reservation-active-table-cell--schedule {
+  width: 220px;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--quantity,
+.admin-ops-table-card .request-approved-table-cell--quantity,
+.admin-ops-table-card .reservation-active-table-cell--quantity {
+  width: 76px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--type,
+.admin-ops-table-card .request-approved-table-cell--type,
+.admin-ops-table-card .reservation-active-table-cell--type {
+  width: 92px;
+  white-space: nowrap;
+}
+
+.admin-ops-table-card .request-pending-table-cell--actions,
+.admin-ops-table-card .request-approved-table-cell--actions,
+.admin-ops-table-card .reservation-active-table-cell--actions {
+  width: 132px;
+  white-space: nowrap;
 }
 
 .admin-ops-table-card .request-pending-table-body-row:hover,

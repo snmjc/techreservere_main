@@ -379,14 +379,33 @@ class EquipmentInventoryUnitService
             $barcode = $this->normalizeNullableString($unitRecord['barcode'] ?? null);
             $assetTag = $this->normalizeNullableString($unitRecord['assetTag'] ?? null);
             $serialNumber = $this->normalizeNullableString($unitRecord['serialNumber'] ?? null);
+            $conditionStatus = trim((string) ($unitRecord['conditionStatus'] ?? ''));
+            $storageLocation = $this->normalizeNullableString($unitRecord['storageLocation'] ?? $legacyFallback['storageLocation'] ?? null);
+
+            if ($barcode === null) {
+                throw new \InvalidArgumentException(sprintf('Equipment unit %d is missing a barcode.', $index + 1));
+            }
+
+            if ($assetTag === null) {
+                throw new \InvalidArgumentException(sprintf('Equipment unit %d is missing an asset tag.', $index + 1));
+            }
+
+            if ($conditionStatus === '') {
+                throw new \InvalidArgumentException(sprintf('Equipment unit %d is missing a condition status.', $index + 1));
+            }
+
+            if ($storageLocation === null) {
+                throw new \InvalidArgumentException(sprintf('Equipment unit %d is missing a storage location.', $index + 1));
+            }
+
             $units[] = [
                 'unitCode' => $unitCode,
                 'barcode' => $barcode,
                 'assetTag' => $assetTag,
                 'serialNumber' => $serialNumber,
-                'conditionStatus' => trim((string) ($unitRecord['conditionStatus'] ?? 'Good')) ?: 'Good',
+                'conditionStatus' => $conditionStatus,
                 'availabilityStatus' => trim((string) ($unitRecord['availabilityStatus'] ?? $legacyFallback['availabilityStatus'] ?? 'Available')) ?: 'Available',
-                'storageLocation' => $this->normalizeNullableString($unitRecord['storageLocation'] ?? $legacyFallback['storageLocation'] ?? null),
+                'storageLocation' => $storageLocation,
                 'dateAcquired' => $this->normalizeNullableString($unitRecord['dateAcquired'] ?? null),
                 'warrantyDetails' => $this->normalizeNullableString($unitRecord['warrantyDetails'] ?? null),
                 'specifications' => $this->normalizeArrayOrNull($unitRecord['specifications'] ?? null),
