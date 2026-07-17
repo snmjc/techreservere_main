@@ -35,6 +35,11 @@ export function normalizeAccount(account) {
     inviteSentAt: account.inviteSentAt || account.invite_sent_at,
     inviteExpiresAt: account.inviteExpiresAt || account.invite_expires_at,
     inviteAcceptedAt: account.inviteAcceptedAt || account.invite_accepted_at,
+    inviteStatus: account.inviteStatus || account.invite_status || '',
+    invitationStatus: account.invitationStatus || account.invitation_status || '',
+    inviteInvitedBy: account.inviteInvitedBy || account.invite_invited_by || account.sentBy || account.sent_by || '',
+    invitedAt: account.invitedAt || account.invited_at || '',
+    approvedAt: account.approvedAt || account.approved_at || '',
     actionPermissions: resolveActionPermissions(accountStatus, account.actionPermissions),
   };
 }
@@ -206,11 +211,37 @@ export function formatDisplayValue(value, fallback = 'N/A') {
 }
 
 export function getInviteSentStatusLabel(account) {
-  return account?.inviteSentAt ? 'Sent' : 'N/A';
+  const invitationState = getInvitationState(account);
+
+  if (invitationState.accepted) return 'Accepted';
+  if (invitationState.expired) return 'Expired';
+  if (invitationState.sent) return 'Sent';
+
+  return 'Not Sent';
 }
 
 export function getAcceptedStatusLabel(account) {
-  return account?.inviteAcceptedAt ? 'Accepted' : 'N/A';
+  const invitationState = getInvitationState(account);
+
+  if (invitationState.accepted) return 'Accepted';
+  if (invitationState.expired) return 'Expired';
+  if (invitationState.sent) return 'Waiting for Acceptance';
+
+  return 'Not Yet Accepted';
+}
+
+export function getSystemEntryDateDisplay(account) {
+  const acceptedAt = account?.inviteAcceptedAt || account?.approvedAt || null;
+  if (acceptedAt) {
+    return formatNullableDateTime(acceptedAt);
+  }
+
+  const addedAt = account?.createdTimestamp || null;
+  if (addedAt) {
+    return formatNullableDateTime(addedAt);
+  }
+
+  return 'No date available';
 }
 
 export function getStatusClass(status) {
@@ -290,4 +321,44 @@ export function canActivateAccount(account) {
 
 export function getDefaultAccountTab() {
   return 'admin';
+}
+
+function getInvitationState(account) {
+  const invitationStatus = String(account?.invitationStatus || '').trim().toLowerCase();
+  const inviteStatus = String(account?.inviteStatus || '').trim().toLowerCase();
+  const accountStatus = String(account?.accountStatus || account?.status || '').trim().toLowerCase();
+  const hasSentAt = Boolean(account?.inviteSentAt || account?.invitedAt);
+  const hasAcceptedAt = Boolean(account?.inviteAcceptedAt);
+
+  const accepted = hasAcceptedAt
+    || ['accepted', 'approved', 'active'].includes(invitationStatus)
+    || ['accepted', 'approved', 'active'].includes(inviteStatus)
+    || (accountStatus === 'active' && hasSentAt);
+
+  const expired = !accepted && isInvitationExpired(account?.inviteExpiresAt);
+
+  const sent = !accepted && !expired && (
+    hasSentAt
+    || ['sent', 'invited', 'pending'].includes(invitationStatus)
+    || ['sent', 'invited', 'pending'].includes(inviteStatus)
+    || accountStatus === 'verified'
+    || accountStatus === 'invited'
+  );
+
+  return {
+    accepted,
+    expired,
+    sent,
+  };
+}
+
+function isInvitationExpired(value) {
+  if (!value) return false;
+
+  const expirationDate = new Date(value);
+  if (Number.isNaN(expirationDate.getTime())) {
+    return false;
+  }
+
+  return expirationDate.getTime() < Date.now();
 }

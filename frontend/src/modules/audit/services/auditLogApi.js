@@ -7,7 +7,10 @@ const auditLogApi = {
     const authToken = await resolveAuthToken();
     const response = await axios.get(apiUrl('/api/v1/audit-logs'), {
       headers: buildAuthorizationHeaders(authToken),
-      params: filters,
+      params: {
+        scope: 'equipment_inventory',
+        ...filters,
+      },
     });
     return response.data;
   },

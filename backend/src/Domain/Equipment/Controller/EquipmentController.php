@@ -176,8 +176,30 @@ class EquipmentController extends AbstractController
     {
         try {
             $equipmentDTO = $this->equipmentManagementService->createEquipment($this->buildCreateRequestDTO($request));
+            $equipmentRecord = $equipmentDTO->toResponseArray();
+            $auditActor = $this->resolveAuditActorContext($request);
 
-            return $this->createSuccessResponse($equipmentDTO->toResponseArray(), 201);
+            $this->auditLogRecordService->recordAuditLog(
+                $auditActor['accountIdentifier'],
+                'Create Equipment',
+                'Equipment',
+                isset($equipmentRecord['equipmentIdentifier']) ? (int) $equipmentRecord['equipmentIdentifier'] : null,
+                [
+                    'createdEquipment' => $equipmentRecord,
+                ],
+                [
+                    'actorName' => $auditActor['actorName'],
+                    'actorRole' => $auditActor['actorRole'],
+                    'module' => 'Equipment Inventory',
+                    'targetDisplayLabel' => (string) ($equipmentRecord['equipmentName'] ?? 'Equipment'),
+                    'updatedValue' => $equipmentRecord,
+                    'reason' => 'Created a new equipment inventory record.',
+                    'ipAddress' => $request->getClientIp(),
+                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
+                ]
+            );
+
+            return $this->createSuccessResponse($equipmentRecord, 201);
         } catch (DomainValidationException $exception) {
             return $this->createErrorResponse('EquipmentValidationFailed', $exception->getMessage(), 422);
         }
@@ -188,12 +210,36 @@ class EquipmentController extends AbstractController
     public function updateEquipment(int $equipmentIdentifier, Request $request): JsonResponse
     {
         try {
+            $previousEquipmentRecord = $this->equipmentManagementService->getEquipmentById($equipmentIdentifier)->toResponseArray();
             $equipmentDTO = $this->equipmentManagementService->updateEquipment(
                 $equipmentIdentifier,
                 $this->buildCreateRequestDTO($request)
             );
+            $updatedEquipmentRecord = $equipmentDTO->toResponseArray();
+            $auditActor = $this->resolveAuditActorContext($request);
 
-            return $this->createSuccessResponse($equipmentDTO->toResponseArray());
+            $this->auditLogRecordService->recordAuditLog(
+                $auditActor['accountIdentifier'],
+                'Update Equipment',
+                'Equipment',
+                $equipmentIdentifier,
+                [
+                    'equipmentIdentifier' => $equipmentIdentifier,
+                ],
+                [
+                    'actorName' => $auditActor['actorName'],
+                    'actorRole' => $auditActor['actorRole'],
+                    'module' => 'Equipment Inventory',
+                    'targetDisplayLabel' => (string) ($updatedEquipmentRecord['equipmentName'] ?? $previousEquipmentRecord['equipmentName'] ?? 'Equipment'),
+                    'previousValue' => $previousEquipmentRecord,
+                    'updatedValue' => $updatedEquipmentRecord,
+                    'reason' => 'Updated an equipment inventory record.',
+                    'ipAddress' => $request->getClientIp(),
+                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
+                ]
+            );
+
+            return $this->createSuccessResponse($updatedEquipmentRecord);
         } catch (DomainNotFoundException $exception) {
             return $this->createErrorResponse('EquipmentNotFound', $exception->getMessage(), 404);
         } catch (DomainValidationException $exception) {
@@ -218,7 +264,29 @@ class EquipmentController extends AbstractController
         }
 
         try {
+            $previousEquipmentRecord = $this->equipmentManagementService->getEquipmentById($equipmentIdentifier)->toResponseArray();
             $this->equipmentManagementService->deleteEquipment($equipmentIdentifier);
+            $auditActor = $this->resolveAuditActorContext($request);
+
+            $this->auditLogRecordService->recordAuditLog(
+                $auditActor['accountIdentifier'],
+                'Delete Equipment',
+                'Equipment',
+                $equipmentIdentifier,
+                [
+                    'deletedEquipmentIdentifier' => $equipmentIdentifier,
+                ],
+                [
+                    'actorName' => $auditActor['actorName'],
+                    'actorRole' => $auditActor['actorRole'],
+                    'module' => 'Equipment Inventory',
+                    'targetDisplayLabel' => (string) ($previousEquipmentRecord['equipmentName'] ?? 'Equipment'),
+                    'previousValue' => $previousEquipmentRecord,
+                    'reason' => 'Deleted an equipment inventory record.',
+                    'ipAddress' => $request->getClientIp(),
+                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
+                ]
+            );
 
             return $this->createSuccessResponse(['message' => 'Equipment deleted successfully.']);
         } catch (DomainNotFoundException $exception) {
@@ -250,6 +318,25 @@ class EquipmentController extends AbstractController
             photoPositionX: (int) ($requestBody['photoPositionX'] ?? 50),
             photoPositionY: (int) ($requestBody['photoPositionY'] ?? 50)
         );
+    }
+
+    /**
+     * @return array{accountIdentifier: int, actorName: string, actorRole: string}
+     */
+    private function resolveAuditActorContext(Request $request): array
+    {
+        $accountIdentifier = $this->authenticatedAccountResolver->resolveAccountIdentifier($request);
+        $account = $this->accountRepository->find($accountIdentifier);
+        $actorName = $account === null
+            ? 'TechReserve Admin'
+            : trim(sprintf('%s %s', $account->getFirstName(), $account->getLastName()));
+        $actorName = $actorName !== '' ? $actorName : ($account?->getEmailAddress() ?? 'TechReserve Admin');
+
+        return [
+            'accountIdentifier' => $accountIdentifier,
+            'actorName' => $actorName,
+            'actorRole' => $account?->getRoleDesignation() ?? RoleConstants::ROLE_ADMIN,
+        ];
     }
 
     /**

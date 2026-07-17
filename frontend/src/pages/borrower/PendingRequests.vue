@@ -43,11 +43,11 @@
             <th class="borrower-sublist-table-header-cell">ID</th>
             <th class="borrower-sublist-table-header-cell">Name</th>
             <th class="borrower-sublist-table-header-cell">Role</th>
+            <th class="borrower-sublist-table-header-cell">Date Requested</th>
             <th class="borrower-sublist-table-header-cell">Schedule</th>
             <th class="borrower-sublist-table-header-cell">Facility</th>
             <th class="borrower-sublist-table-header-cell">Quantity</th>
             <th class="borrower-sublist-table-header-cell">Type</th>
-            <th class="borrower-sublist-table-header-cell">Purpose</th>
             <th class="borrower-sublist-table-header-cell">Status</th>
             <th class="borrower-sublist-table-header-cell">Action</th>
           </tr>
@@ -61,13 +61,13 @@
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--id">{{ record.requestDisplayIdentifier || record.requestIdentifier }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--name">{{ record.requesterFullName }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--role">{{ record.requesterRole }}</td>
+            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--requested-date">{{ formatRequestedDate(record.requestedDate) }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--schedule">{{ record.requestSchedule }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--facility">{{ record.facilityName }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--quantity">{{ record.requestQuantity }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--type">
               <span class="borrower-sublist-type-badge" :class="getTypeBadgeClass(record.requestType)">{{ record.requestType }}</span>
             </td>
-            <td class="borrower-sublist-table-cell borrower-sublist-table-cell--purpose">{{ record.requestPurpose }}</td>
             <td class="borrower-sublist-table-cell borrower-sublist-table-cell--status">
               <span class="borrower-sublist-status-badge borrower-sublist-status-badge--pending">Pending Approval</span>
             </td>
@@ -225,6 +225,19 @@ function getTypeBadgeClass(requestType) {
   if (typeLower === 'equipment') return 'borrower-sublist-type-badge--equipment';
   if (typeLower === 'both') return 'borrower-sublist-type-badge--both';
   return '';
+}
+
+function formatRequestedDate(value) {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value || 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsedDate);
 }
 
 function navigateBackToMyReservations() {

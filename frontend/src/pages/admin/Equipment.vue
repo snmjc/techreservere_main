@@ -150,12 +150,14 @@
               <th>Equipment ID</th>
               <th>Name</th>
               <th>Category</th>
+              <th>Brand</th>
               <th>Model</th>
-              <th>Quantity</th>
+              <th>Total</th>
               <th>Available</th>
               <th>Reserved</th>
               <th>Maintenance</th>
-              <th>Status</th>
+              <th>Unavailable</th>
+              <th>Inventory Health</th>
               <th>Updated</th>
               <th>Actions</th>
             </tr>
@@ -165,17 +167,19 @@
               <td>{{ equipment.equipmentIdentifier }}</td>
               <td>{{ equipment.equipmentName }}</td>
               <td>{{ equipment.equipmentCategory || equipment.categoryName }}</td>
+              <td>{{ equipment.equipmentBrand || 'N/A' }}</td>
               <td>{{ equipment.equipmentModel || 'N/A' }}</td>
               <td>{{ equipment.totalQuantity }}</td>
               <td>{{ equipment.availableQuantity }}</td>
               <td>{{ equipment.reservedQuantity || 0 }}</td>
               <td>{{ equipment.underMaintenanceQuantity || 0 }}</td>
+              <td>{{ equipment.unavailableQuantity || 0 }}</td>
               <td>
                 <span
                   class="equipment-page__status-badge"
-                  :class="statusBadgeClass(equipment.equipmentState)"
+                  :class="inventoryHealthBadgeClass(equipment)"
                 >
-                  {{ equipment.equipmentState }}
+                  {{ inventoryHealthLabel(equipment) }}
                 </span>
               </td>
               <td>{{ formatDateTime(equipment.updatedTimestamp || equipment.createdTimestamp) }}</td>
@@ -212,6 +216,13 @@
             <button type="button" class="equipment-modal__close" @click="closeViewModal">X</button>
           </header>
 
+          <p
+            v-if="isInventoryIncomplete(viewEquipment)"
+            class="equipment-page__feedback equipment-page__feedback--warning"
+          >
+            This inventory record needs review. Some required model, specification, or unit details are still missing.
+          </p>
+
           <dl class="equipment-modal__details">
             <div><dt>Equipment ID</dt><dd>{{ viewEquipment.equipmentIdentifier }}</dd></div>
             <div><dt>Name</dt><dd>{{ viewEquipment.equipmentName }}</dd></div>
@@ -230,6 +241,15 @@
             <div><dt>Created</dt><dd>{{ formatDateTime(viewEquipment.createdTimestamp) }}</dd></div>
             <div><dt>Updated</dt><dd>{{ formatDateTime(viewEquipment.updatedTimestamp || viewEquipment.createdTimestamp) }}</dd></div>
           </dl>
+          <div class="equipment-modal__specs" v-if="Array.isArray(viewEquipment.specifications) && viewEquipment.specifications.length > 0">
+            <p class="equipment-modal__specs-title">Specifications</p>
+            <div class="equipment-modal__specs-list">
+              <div v-for="(specification, index) in viewEquipment.specifications" :key="`${specification.key}-${index}`">
+                <strong>{{ specification.key || 'Specification' }}</strong>
+                <span>{{ specification.value || 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
           <div class="equipment-modal__unit-table-wrap" v-if="Array.isArray(viewEquipment.units) && viewEquipment.units.length > 0">
             <table class="equipment-page__table">
               <thead>
@@ -240,6 +260,8 @@
                   <th>Serial</th>
                   <th>Condition</th>
                   <th>Availability</th>
+                  <th>Location</th>
+                  <th>Remarks</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,6 +272,8 @@
                   <td>{{ unit.serialNumber || 'N/A' }}</td>
                   <td>{{ unit.conditionStatus || 'Good' }}</td>
                   <td>{{ unit.availabilityStatus || 'Available' }}</td>
+                  <td>{{ unit.storageLocation || 'N/A' }}</td>
+                  <td>{{ unit.remarks || 'N/A' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -323,6 +347,28 @@
               />
             </label>
           </div>
+          <div class="equipment-modal__full-width equipment-modal__spec-editor">
+            <div class="equipment-page__actions" style="justify-content: space-between; margin-bottom: 0.75rem;">
+              <strong>Structured Specifications</strong>
+              <button type="button" @click="addSpecificationRow">Add Specification</button>
+            </div>
+            <table class="equipment-page__table">
+              <thead>
+                <tr>
+                  <th>Specification</th>
+                  <th>Value</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(specification, index) in form.specifications" :key="`specification-${index}`">
+                  <td><input v-model.trim="specification.key" type="text" placeholder="e.g. Connector Type" /></td>
+                  <td><input v-model.trim="specification.value" type="text" placeholder="e.g. XLR" /></td>
+                  <td><button type="button" class="equipment-page__danger-action" @click="removeSpecificationRow(index)">Remove</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <div class="equipment-modal__full-width equipment-modal__unit-table-wrap">
             <div class="equipment-page__actions" style="justify-content: space-between; margin-bottom: 0.75rem;">
               <strong>Equipment Units</strong>
@@ -338,6 +384,7 @@
                   <th>Condition</th>
                   <th>Availability</th>
                   <th>Location</th>
+                  <th>Remarks</th>
                   <th></th>
                 </tr>
               </thead>
@@ -350,6 +397,7 @@
                   <td><input v-model.trim="unit.conditionStatus" type="text" /></td>
                   <td><input v-model.trim="unit.availabilityStatus" type="text" /></td>
                   <td><input v-model.trim="unit.storageLocation" type="text" /></td>
+                  <td><input v-model.trim="unit.remarks" type="text" /></td>
                   <td><button type="button" class="equipment-page__danger-action" @click="removeUnitRow(index)">Remove</button></td>
                 </tr>
               </tbody>
@@ -516,6 +564,31 @@ watch(sortOrder, () => {
   equipmentCurrentPage.value = 1;
 });
 
+watch(() => form.value.availableQuantity, (nextQuantity) => {
+  if (!formModalOpen.value) {
+    return;
+  }
+
+  const normalizedQuantity = Math.max(1, Number.parseInt(nextQuantity, 10) || 1);
+  if (normalizedQuantity !== form.value.availableQuantity) {
+    form.value.availableQuantity = normalizedQuantity;
+    return;
+  }
+
+  const currentUnits = Array.isArray(form.value.units) ? [...form.value.units] : [];
+  if (currentUnits.length === normalizedQuantity) {
+    return;
+  }
+
+  if (currentUnits.length < normalizedQuantity) {
+    const nextUnits = buildUnitRowsFromQuantity(normalizedQuantity);
+    form.value.units = nextUnits.map((unit, index) => currentUnits[index] ? { ...unit, ...currentUnits[index] } : unit);
+    return;
+  }
+
+  form.value.units = currentUnits.slice(0, normalizedQuantity);
+}, { flush: 'sync' });
+
 watch(equipmentTotalPages, (pageCount) => {
   if (equipmentCurrentPage.value > pageCount) {
     equipmentCurrentPage.value = pageCount;
@@ -599,6 +672,9 @@ function openEditModal(equipment) {
     remarks: equipment.remarks || '',
     barcode: equipment.barcode || '',
     assetId: equipment.assetId || '',
+    specifications: Array.isArray(equipment.specifications) && equipment.specifications.length > 0
+      ? equipment.specifications.map((specification) => ({ ...specification }))
+      : [createEmptySpecification()],
     units: Array.isArray(equipment.units) && equipment.units.length > 0
       ? equipment.units.map((unit) => ({ ...unit }))
       : buildUnitRowsFromQuantity(equipment.availableQuantity, equipment.barcode, equipment.assetId),
@@ -639,6 +715,8 @@ async function submitForm() {
     formError.value = '';
 
     const payload = normalizeEquipmentForm(form.value);
+    payload.barcode = payload.barcode || payload.units[0]?.barcode || '';
+    payload.assetId = payload.assetId || payload.units[0]?.assetTag || payload.units[0]?.serialNumber || '';
 
     if (formMode.value === 'create') {
       await equipmentApi.createEquipment(payload);
@@ -712,6 +790,43 @@ function statusBadgeClass(status) {
   };
 }
 
+function inventoryHealthLabel(equipment) {
+  return isInventoryIncomplete(equipment) ? 'Needs Review' : 'Complete';
+}
+
+function inventoryHealthBadgeClass(equipment) {
+  return isInventoryIncomplete(equipment)
+    ? 'equipment-page__status-badge--maintenance'
+    : 'equipment-page__status-badge--available';
+}
+
+function isInventoryIncomplete(equipment) {
+  if (!equipment) {
+    return true;
+  }
+
+  if (!String(equipment.equipmentBrand || '').trim() || !String(equipment.equipmentModel || '').trim()) {
+    return true;
+  }
+
+  if (!Array.isArray(equipment.specifications) || equipment.specifications.length === 0) {
+    return true;
+  }
+
+  const units = Array.isArray(equipment.units) ? equipment.units : [];
+  if (units.length === 0 || units.length !== Number(equipment.totalQuantity || 0)) {
+    return true;
+  }
+
+  return units.some((unit) => (
+    !String(unit?.equipmentUnitIdentifierCode || '').trim()
+    || !String(unit?.barcode || '').trim()
+    || !String(unit?.assetTag || '').trim()
+    || !String(unit?.conditionStatus || '').trim()
+    || !String(unit?.storageLocation || '').trim()
+  ));
+}
+
 function createEmptyForm() {
   return {
     equipmentName: '',
@@ -724,6 +839,7 @@ function createEmptyForm() {
     remarks: '',
     barcode: '',
     assetId: '',
+    specifications: [createEmptySpecification()],
     units: buildUnitRowsFromQuantity(1),
   };
 }
@@ -739,6 +855,17 @@ function addUnitRow() {
     storageLocation: '',
   });
   form.value.availableQuantity = form.value.units.length;
+}
+
+function addSpecificationRow() {
+  form.value.specifications.push(createEmptySpecification());
+}
+
+function removeSpecificationRow(index) {
+  form.value.specifications.splice(index, 1);
+  if (form.value.specifications.length === 0) {
+    form.value.specifications = [createEmptySpecification()];
+  }
 }
 
 function removeUnitRow(index) {
@@ -776,7 +903,15 @@ function buildUnitRowsFromQuantity(quantity, barcode = '', assetId = '') {
     conditionStatus: 'Good',
     availabilityStatus: 'Available',
     storageLocation: '',
+    remarks: '',
   }));
+}
+
+function createEmptySpecification() {
+  return {
+    key: '',
+    value: '',
+  };
 }
 
 async function exportInventory(format) {

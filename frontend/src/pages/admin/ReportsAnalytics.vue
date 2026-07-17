@@ -4,7 +4,11 @@
     :navigation-items="adminNavigationItems"
   >
     <section class="reports-analytics-page">
-      <div ref="reportSurfaceRef" class="reports-export-surface">
+      <div
+        ref="reportSurfaceRef"
+        :class="['reports-export-surface', { 'is-exporting-pdf': isExporting }]"
+      >
+        <div class="reports-pdf-page">
         <header class="reports-analytics-header">
           <div>
             <p class="reports-analytics-kicker">Analytics Dashboard</p>
@@ -33,14 +37,6 @@
               @click="handleRefreshReports"
             >
               {{ isReportsLoading ? 'Refreshing...' : 'Refresh' }}
-            </button>
-            <button
-              class="reports-models-button"
-              type="button"
-              :disabled="isReportsLoading"
-              @click="openModelSheet"
-            >
-              Analytics Models
             </button>
           </div>
 
@@ -400,6 +396,7 @@
             </dl>
           </section>
         </div>
+        </div>
 
       </div>
 
@@ -614,6 +611,7 @@ import '@/shared/components/adminSidebarLayout.css';
 import './css/ReportsAnalytics.css';
 import { adminNavigationItems } from '@/shared/constants/adminNavigationItems.js';
 import { useAuthenticationStore } from '@/modules/authentication/store/authenticationStore.js';
+import { useRequestStore } from '@/modules/request/store/requestStore.js';
 import adminAnalyticsApi from '@/modules/dashboard/services/adminAnalyticsApi.js';
 import {
   createEmptyForecastReport,
@@ -665,6 +663,7 @@ const DEFAULT_REPORTS_ACCORDION_PREFERENCES = Object.freeze({
 });
 
 const authStore = useAuthenticationStore();
+const requestStore = useRequestStore();
 const selectedRangeKey = ref('30d');
 const isReportsLoading = ref(true);
 const sectionLoadingState = ref({
@@ -1589,11 +1588,6 @@ function handleRefreshReports() {
   loadReportsAnalytics({ forceRefresh: true });
 }
 
-async function openModelSheet() {
-  isModelSheetOpen.value = true;
-  await loadModelArtifacts();
-}
-
 function closeModelSheet() {
   if (
     isCreatingModelSet.value
@@ -1951,35 +1945,43 @@ async function handleGeneratePdf() {
   pdfError.value = '';
 
   try {
+    await nextTick();
+
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
       import('html2canvas'),
       import('jspdf'),
     ]);
+
     const canvas = await html2canvas(reportSurfaceRef.value, {
       backgroundColor: '#f5faf7',
       scale: 2,
       useCORS: true,
       logging: false,
       windowWidth: reportSurfaceRef.value.scrollWidth,
+      windowHeight: reportSurfaceRef.value.scrollHeight,
+      scrollX: 0,
+      scrollY: -window.scrollY,
     });
 
     const imageData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imageWidth = pageWidth;
+    const pageMargin = 8;
+    const imageWidth = pageWidth - (pageMargin * 2);
     const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    const printablePageHeight = pageHeight - (pageMargin * 2);
     let remainingHeight = imageHeight;
-    let position = 0;
+    let position = pageMargin;
 
-    pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
-    remainingHeight -= pageHeight;
+    pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
+    remainingHeight -= printablePageHeight;
 
     while (remainingHeight > 0) {
-      position = remainingHeight - imageHeight;
+      position = pageMargin - (imageHeight - remainingHeight);
       pdf.addPage();
-      pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
-      remainingHeight -= pageHeight;
+      pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
+      remainingHeight -= printablePageHeight;
     }
 
     pdf.save(`techreserve-analytics-${activeRange.value.startDateIso}-to-${activeRange.value.endDateIso}.pdf`);

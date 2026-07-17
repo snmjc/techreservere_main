@@ -6,7 +6,8 @@ use ZipArchive;
 
 class EquipmentExcelExportService
 {
-    private const WORKSHEET_TITLE = 'Equipment Inventory';
+    private const SUMMARY_WORKSHEET_TITLE = 'Inventory Summary';
+    private const UNIT_WORKSHEET_TITLE = 'Inventory Units';
 
     /**
      * @param array<int, array<string, mixed>> $equipmentRows
@@ -15,20 +16,27 @@ class EquipmentExcelExportService
      */
     public function generateWorkbook(array $equipmentRows, array $filters, string $generatedBy, \DateTimeImmutable $exportedAt): array
     {
-        $normalizedRows = $this->buildExportRows($equipmentRows);
-        $worksheetRows = $this->buildWorksheetRows($normalizedRows, $filters, $generatedBy, $exportedAt);
-        $columnCount = count($worksheetRows['headers']);
-        $headerRowNumber = $worksheetRows['headerRowNumber'];
-        $lastRowNumber = $headerRowNumber + count($normalizedRows);
+        $normalizedRows = $this->buildSummaryExportRows($equipmentRows);
+        $unitRows = $this->buildUnitExportRows($equipmentRows);
+        $summaryWorksheetRows = $this->buildSummaryWorksheetRows($normalizedRows, $filters, $generatedBy, $exportedAt);
+        $unitWorksheetRows = $this->buildUnitWorksheetRows($unitRows, $filters, $generatedBy, $exportedAt);
 
         $workbookXml = $this->buildWorkbookXml();
-        $worksheetXml = $this->buildWorksheetXml(
-            $worksheetRows['rows'],
-            $worksheetRows['headers'],
-            $worksheetRows['columnWidths'],
-            $headerRowNumber,
-            $lastRowNumber,
-            $columnCount
+        $summaryWorksheetXml = $this->buildWorksheetXml(
+            $summaryWorksheetRows['rows'],
+            $summaryWorksheetRows['headers'],
+            $summaryWorksheetRows['columnWidths'],
+            $summaryWorksheetRows['headerRowNumber'],
+            $summaryWorksheetRows['headerRowNumber'] + count($normalizedRows),
+            count($summaryWorksheetRows['headers'])
+        );
+        $unitWorksheetXml = $this->buildWorksheetXml(
+            $unitWorksheetRows['rows'],
+            $unitWorksheetRows['headers'],
+            $unitWorksheetRows['columnWidths'],
+            $unitWorksheetRows['headerRowNumber'],
+            $unitWorksheetRows['headerRowNumber'] + count($unitRows),
+            count($unitWorksheetRows['headers'])
         );
 
         $archiveEntries = [
@@ -39,7 +47,8 @@ class EquipmentExcelExportService
             'xl/workbook.xml' => $workbookXml,
             'xl/_rels/workbook.xml.rels' => $this->buildWorkbookRelationshipsXml(),
             'xl/styles.xml' => $this->buildStylesXml(),
-            'xl/worksheets/sheet1.xml' => $worksheetXml,
+            'xl/worksheets/sheet1.xml' => $summaryWorksheetXml,
+            'xl/worksheets/sheet2.xml' => $unitWorksheetXml,
         ];
         $content = $this->buildArchiveContent($archiveEntries);
 
@@ -189,7 +198,7 @@ class EquipmentExcelExportService
      * @param array<int, array<string, mixed>> $equipmentRows
      * @return array<int, array<string, mixed>>
      */
-    private function buildExportRows(array $equipmentRows): array
+    private function buildSummaryExportRows(array $equipmentRows): array
     {
         $deduplicatedRows = [];
         foreach ($equipmentRows as $equipmentRow) {
@@ -208,13 +217,8 @@ class EquipmentExcelExportService
                 'Category' => (string) ($equipmentRow['equipmentCategory'] ?? ''),
                 'Brand' => (string) ($equipmentRow['equipmentBrand'] ?? ''),
                 'Model' => (string) ($equipmentRow['equipmentModel'] ?? ''),
-                'Barcode / Asset Tag' => $this->joinUniqueValues([
-                    (string) ($equipmentRow['barcode'] ?? ''),
-                    (string) ($equipmentRow['assetId'] ?? ''),
-                ], $units, ['barcode', 'assetTag']),
-                'Serial Number' => $this->joinUniqueValues([
-                    (string) ($equipmentRow['serialNumber'] ?? ''),
-                ], $units, ['serialNumber']),
+                'Primary Barcode' => (string) ($equipmentRow['barcode'] ?? ''),
+                'Primary Asset Tag' => (string) ($equipmentRow['assetId'] ?? ''),
                 'Relevant Specifications' => $this->buildSpecificationsSummary(
                     is_array($equipmentRow['specifications'] ?? null) ? $equipmentRow['specifications'] : [],
                     $units
@@ -225,13 +229,10 @@ class EquipmentExcelExportService
                 'Borrowed Quantity' => (int) ($equipmentRow['borrowedQuantity'] ?? 0),
                 'Under-maintenance Quantity' => (int) ($equipmentRow['underMaintenanceQuantity'] ?? 0),
                 'Unavailable Quantity' => (int) ($equipmentRow['unavailableQuantity'] ?? 0),
-                'Condition' => $this->joinUniqueValues([], $units, ['conditionStatus']),
                 'Status' => (string) ($equipmentRow['operationalStatus'] ?? $equipmentRow['equipmentState'] ?? ''),
-                'Storage Location' => $this->joinUniqueValues([], $units, ['storageLocation']),
-                'Date Acquired' => $this->buildAcquisitionDateSummary($units),
-                'Warranty Information' => $this->joinUniqueValues([], $units, ['warrantyDetails']),
-                'Last Maintenance Date' => $this->buildLastMaintenanceDate($units),
-                'Maintenance Status' => $this->joinUniqueValues([], $units, ['maintenanceState']),
+                'Inventory Health' => $this->buildInventoryHealthLabel($equipmentRow, $units),
+                'Storage Locations' => $this->joinUniqueValues([], $units, ['storageLocation']),
+                'Condition Summary' => $this->joinUniqueValues([], $units, ['conditionStatus']),
                 'Remarks' => $this->joinTextBlocks([
                     (string) ($equipmentRow['remarks'] ?? ''),
                 ], $units, ['remarks']),
@@ -242,19 +243,58 @@ class EquipmentExcelExportService
     }
 
     /**
+     * @param array<int, array<string, mixed>> $equipmentRows
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildUnitExportRows(array $equipmentRows): array
+    {
+        $rows = [];
+
+        foreach ($equipmentRows as $equipmentRow) {
+            $units = array_values(array_filter(
+                is_array($equipmentRow['units'] ?? null) ? $equipmentRow['units'] : [],
+                static fn (mixed $unit): bool => is_array($unit)
+            ));
+
+            foreach ($units as $unit) {
+                $rows[] = [
+                    'Equipment ID' => (int) ($equipmentRow['equipmentIdentifier'] ?? 0),
+                    'Equipment Name' => (string) ($equipmentRow['equipmentName'] ?? ''),
+                    'Category' => (string) ($equipmentRow['equipmentCategory'] ?? ''),
+                    'Brand' => (string) ($equipmentRow['equipmentBrand'] ?? ''),
+                    'Model' => (string) ($equipmentRow['equipmentModel'] ?? ''),
+                    'Unit Code' => (string) ($unit['equipmentUnitIdentifierCode'] ?? ''),
+                    'Barcode' => (string) ($unit['barcode'] ?? ''),
+                    'Asset Tag' => (string) ($unit['assetTag'] ?? ''),
+                    'Serial Number' => (string) ($unit['serialNumber'] ?? ''),
+                    'Condition' => (string) ($unit['conditionStatus'] ?? ''),
+                    'Availability' => (string) ($unit['availabilityStatus'] ?? ''),
+                    'Storage Location' => (string) ($unit['storageLocation'] ?? ''),
+                    'Date Acquired' => (string) ($unit['dateAcquired'] ?? ''),
+                    'Warranty Information' => (string) ($unit['warrantyDetails'] ?? ''),
+                    'Maintenance Status' => (string) ($unit['maintenanceState'] ?? ''),
+                    'Unit Remarks' => (string) ($unit['remarks'] ?? ''),
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
      * @param array<int, array<string, mixed>> $normalizedRows
      * @param array<string, mixed> $filters
      * @return array{rows: array<int, array<int, array<string, mixed>>>, headers: array<int, string>, headerRowNumber: int, columnWidths: array<int, int>}
      */
-    private function buildWorksheetRows(array $normalizedRows, array $filters, string $generatedBy, \DateTimeImmutable $exportedAt): array
+    private function buildSummaryWorksheetRows(array $normalizedRows, array $filters, string $generatedBy, \DateTimeImmutable $exportedAt): array
     {
         $headers = [
             'Equipment Name',
             'Category',
             'Brand',
             'Model',
-            'Barcode / Asset Tag',
-            'Serial Number',
+            'Primary Barcode',
+            'Primary Asset Tag',
             'Relevant Specifications',
             'Total Quantity',
             'Available Quantity',
@@ -262,21 +302,73 @@ class EquipmentExcelExportService
             'Borrowed Quantity',
             'Under-maintenance Quantity',
             'Unavailable Quantity',
-            'Condition',
             'Status',
+            'Inventory Health',
+            'Storage Locations',
+            'Condition Summary',
+            'Remarks',
+        ];
+
+        return $this->buildWorksheetRows(
+            self::SUMMARY_WORKSHEET_TITLE,
+            $headers,
+            $normalizedRows,
+            $filters,
+            $generatedBy,
+            $exportedAt
+        );
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $unitRows
+     * @param array<string, mixed> $filters
+     * @return array{rows: array<int, array<int, array<string, mixed>>>, headers: array<int, string>, headerRowNumber: int, columnWidths: array<int, int>}
+     */
+    private function buildUnitWorksheetRows(array $unitRows, array $filters, string $generatedBy, \DateTimeImmutable $exportedAt): array
+    {
+        $headers = [
+            'Equipment ID',
+            'Equipment Name',
+            'Category',
+            'Brand',
+            'Model',
+            'Unit Code',
+            'Barcode',
+            'Asset Tag',
+            'Serial Number',
+            'Condition',
+            'Availability',
             'Storage Location',
             'Date Acquired',
             'Warranty Information',
-            'Last Maintenance Date',
             'Maintenance Status',
-            'Remarks',
+            'Unit Remarks',
         ];
+
+        return $this->buildWorksheetRows(
+            self::UNIT_WORKSHEET_TITLE,
+            $headers,
+            $unitRows,
+            $filters,
+            $generatedBy,
+            $exportedAt
+        );
+    }
+
+    /**
+     * @param array<int, string> $headers
+     * @param array<int, array<string, mixed>> $normalizedRows
+     * @param array<string, mixed> $filters
+     * @return array{rows: array<int, array<int, array<string, mixed>>>, headers: array<int, string>, headerRowNumber: int, columnWidths: array<int, int>}
+     */
+    private function buildWorksheetRows(string $sheetTitle, array $headers, array $normalizedRows, array $filters, string $generatedBy, \DateTimeImmutable $exportedAt): array
+    {
 
         $activeFiltersLabel = $this->buildFilterSummary($filters);
 
         $rows = [
             [
-                ['value' => self::WORKSHEET_TITLE, 'type' => 'string', 'style' => 1],
+                ['value' => $sheetTitle, 'type' => 'string', 'style' => 1],
             ],
             [
                 ['value' => 'Generated By', 'type' => 'string', 'style' => 2],
@@ -306,7 +398,7 @@ class EquipmentExcelExportService
                 $row[] = [
                     'value' => $value,
                     'type' => is_int($value) || is_float($value) ? 'number' : 'string',
-                    'style' => in_array($header, ['Relevant Specifications', 'Warranty Information', 'Remarks'], true) ? 5 : 0,
+                    'style' => in_array($header, ['Relevant Specifications', 'Remarks', 'Unit Remarks'], true) ? 5 : 0,
                 ];
             }
             $rows[] = $row;
@@ -396,6 +488,7 @@ class EquipmentExcelExportService
             . '<Default Extension="xml" ContentType="application/xml"/>'
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
             . '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
             . '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
@@ -416,7 +509,10 @@ class EquipmentExcelExportService
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            . '<sheets><sheet name="' . $this->escapeXml(self::WORKSHEET_TITLE) . '" sheetId="1" r:id="rId1"/></sheets>'
+            . '<sheets>'
+            . '<sheet name="' . $this->escapeXml(self::SUMMARY_WORKSHEET_TITLE) . '" sheetId="1" r:id="rId1"/>'
+            . '<sheet name="' . $this->escapeXml(self::UNIT_WORKSHEET_TITLE) . '" sheetId="2" r:id="rId2"/>'
+            . '</sheets>'
             . '</workbook>';
     }
 
@@ -425,7 +521,8 @@ class EquipmentExcelExportService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
+            . '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
             . '</Relationships>';
     }
 
@@ -465,6 +562,8 @@ class EquipmentExcelExportService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
             . '<Application>TechReserve</Application>'
+            . '<HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>2</vt:i4></vt:variant></vt:vector></HeadingPairs>'
+            . '<TitlesOfParts><vt:vector size="2" baseType="lpstr"><vt:lpstr>' . $this->escapeXml(self::SUMMARY_WORKSHEET_TITLE) . '</vt:lpstr><vt:lpstr>' . $this->escapeXml(self::UNIT_WORKSHEET_TITLE) . '</vt:lpstr></vt:vector></TitlesOfParts>'
             . '</Properties>';
     }
 
@@ -478,7 +577,7 @@ class EquipmentExcelExportService
             . '<cp:lastModifiedBy>' . $this->escapeXml($generatedBy) . '</cp:lastModifiedBy>'
             . '<dcterms:created xsi:type="dcterms:W3CDTF">' . $isoTimestamp . '</dcterms:created>'
             . '<dcterms:modified xsi:type="dcterms:W3CDTF">' . $isoTimestamp . '</dcterms:modified>'
-            . '<dc:title>' . $this->escapeXml(self::WORKSHEET_TITLE) . '</dc:title>'
+            . '<dc:title>' . $this->escapeXml(self::SUMMARY_WORKSHEET_TITLE) . '</dc:title>'
             . '</cp:coreProperties>';
     }
 
@@ -551,33 +650,33 @@ class EquipmentExcelExportService
     {
         $segments = [];
 
-        foreach ($parentSpecifications as $key => $value) {
-            if (is_array($value)) {
+        foreach ($parentSpecifications as $specification) {
+            if (!is_array($specification)) {
                 continue;
             }
 
-            $normalizedKey = trim(is_string($key) ? $key : '');
-            $normalizedValue = trim((string) $value);
-            if ($normalizedKey === '' && $normalizedValue === '') {
+            $normalizedKey = trim((string) ($specification['key'] ?? ''));
+            $normalizedValue = trim((string) ($specification['value'] ?? ''));
+            if ($normalizedKey === '' || $normalizedValue === '') {
                 continue;
             }
 
-            $segments[$normalizedKey !== '' ? sprintf('%s: %s', $normalizedKey, $normalizedValue) : $normalizedValue] = true;
+            $segments[sprintf('%s: %s', $normalizedKey, $normalizedValue)] = true;
         }
 
         foreach ($units as $unit) {
-            foreach ((array) ($unit['specifications'] ?? []) as $key => $value) {
-                if (is_array($value)) {
+            foreach ((array) ($unit['specifications'] ?? []) as $specification) {
+                if (!is_array($specification)) {
                     continue;
                 }
 
-                $normalizedKey = trim(is_string($key) ? $key : '');
-                $normalizedValue = trim((string) $value);
-                if ($normalizedKey === '' && $normalizedValue === '') {
+                $normalizedKey = trim((string) ($specification['key'] ?? ''));
+                $normalizedValue = trim((string) ($specification['value'] ?? ''));
+                if ($normalizedKey === '' || $normalizedValue === '') {
                     continue;
                 }
 
-                $segments[$normalizedKey !== '' ? sprintf('%s: %s', $normalizedKey, $normalizedValue) : $normalizedValue] = true;
+                $segments[sprintf('%s: %s', $normalizedKey, $normalizedValue)] = true;
             }
         }
 
@@ -633,6 +732,38 @@ class EquipmentExcelExportService
         }
 
         return $latestTimestamp === null ? '' : gmdate('Y-m-d', $latestTimestamp);
+    }
+
+    /**
+     * @param array<string, mixed> $equipmentRow
+     * @param array<int, array<string, mixed>> $units
+     */
+    private function buildInventoryHealthLabel(array $equipmentRow, array $units): string
+    {
+        if (trim((string) ($equipmentRow['equipmentBrand'] ?? '')) === '' || trim((string) ($equipmentRow['equipmentModel'] ?? '')) === '') {
+            return 'Needs Review';
+        }
+
+        $specifications = is_array($equipmentRow['specifications'] ?? null) ? $equipmentRow['specifications'] : [];
+        if ($specifications === []) {
+            return 'Needs Review';
+        }
+
+        if ($units === [] || count($units) !== (int) ($equipmentRow['totalQuantity'] ?? 0)) {
+            return 'Needs Review';
+        }
+
+        foreach ($units as $unit) {
+            if (trim((string) ($unit['equipmentUnitIdentifierCode'] ?? '')) === ''
+                || trim((string) ($unit['barcode'] ?? '')) === ''
+                || trim((string) ($unit['assetTag'] ?? '')) === ''
+                || trim((string) ($unit['conditionStatus'] ?? '')) === ''
+                || trim((string) ($unit['storageLocation'] ?? '')) === '') {
+                return 'Needs Review';
+            }
+        }
+
+        return 'Complete';
     }
 
     /**

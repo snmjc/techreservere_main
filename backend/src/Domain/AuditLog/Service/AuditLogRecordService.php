@@ -81,6 +81,11 @@ class AuditLogRecordService
         }, $rows);
 
         return array_values(array_filter($normalizedRows, function (array $row) use ($filters): bool {
+            $scope = strtolower(trim((string) ($filters['scope'] ?? '')));
+            if ($scope === 'equipment_inventory' && !$this->isEquipmentInventoryAuditRow($row)) {
+                return false;
+            }
+
             $search = strtolower(trim((string) ($filters['search'] ?? '')));
             if ($search !== '') {
                 $haystack = strtolower(implode(' ', array_filter([
@@ -106,6 +111,15 @@ class AuditLogRecordService
 
             return true;
         }));
+    }
+
+    private function isEquipmentInventoryAuditRow(array $row): bool
+    {
+        $module = strtolower(trim((string) ($row['module'] ?? '')));
+        $targetEntityType = strtolower(trim((string) ($row['targetEntityType'] ?? '')));
+
+        return in_array($module, ['equipment inventory', 'inventory', 'equipment'], true)
+            || in_array($targetEntityType, ['equipment', 'equipment_inventory', 'inventory'], true);
     }
 
     private function ensureSchemaReady(): void

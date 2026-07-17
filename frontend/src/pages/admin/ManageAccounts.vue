@@ -288,7 +288,7 @@
               <p><strong>Account Registered:</strong> <span>{{ formatDateTime(viewAccount.createdTimestamp) }}</span></p>
               <p><strong>Account Type:</strong> <span class="manage-accounts-type-pill" :class="getAccountTypeClass(viewAccount.accountType)">{{ formatDisplayValue(viewAccount.accountType) }}</span></p>
               <p><strong>Invite Sent Status:</strong> <span>{{ getInviteSentStatusLabel(viewAccount) }}</span></p>
-              <p><strong>Expiration Date:</strong> <span>{{ formatNullableDateTime(viewAccount.inviteExpiresAt) }}</span></p>
+              <p><strong>Added / Accepted Date:</strong> <span>{{ getSystemEntryDateDisplay(viewAccount) }}</span></p>
               <p><strong>Accepted Status:</strong> <span>{{ getAcceptedStatusLabel(viewAccount) }}</span></p>
             </div>
           </div>
@@ -343,7 +343,7 @@
               <p><strong>Account Registered:</strong> <span>{{ formatDateTime(updateAccount.createdTimestamp) }}</span></p>
               <p><strong>Account Type:</strong> <span class="manage-accounts-type-pill" :class="getAccountTypeClass(updateForm.accountType)">{{ updateForm.accountType }}</span></p>
               <p><strong>Invite Sent:</strong> <span>{{ formatNullableDateTime(updateAccount.inviteSentAt) }}</span></p>
-              <p><strong>Expires:</strong> <span>{{ formatNullableDateTime(updateAccount.inviteExpiresAt) }}</span></p>
+              <p><strong>Added / Accepted:</strong> <span>{{ getSystemEntryDateDisplay(updateAccount) }}</span></p>
               <p><strong>Accepted:</strong> <span>{{ formatNullableDateTime(updateAccount.inviteAcceptedAt) }}</span></p>
             </div>
 
