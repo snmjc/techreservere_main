@@ -3,7 +3,6 @@
 namespace App\Domain\Account\Service;
 
 use App\Domain\Account\Repository\AccountRepository;
-use App\Domain\AuditLog\Service\AuditLogRecordService;
 use App\Shared\Utils\AccountUsername;
 use Psr\Log\LoggerInterface;
 
@@ -11,7 +10,6 @@ class ClerkWebhookService
 {
     public function __construct(
         private readonly AccountRepository $accountRepository,
-        private readonly AuditLogRecordService $auditLogRecordService,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -41,14 +39,6 @@ class ClerkWebhookService
         }
 
         $result = $this->accountRepository->upsertClerkAccount($attributes);
-        if (($result['created'] ?? false) === true) {
-            $this->recordWebhookAudit('CLERK_USER_CREATED', $result);
-        } else {
-            if (!$this->isApprovedLifecycleStatus((string)($result['previousStatus'] ?? ''))) {
-                $this->recordWebhookAudit('CLERK_USER_ACCEPTED_INVITATION', $result);
-            }
-            $this->recordWebhookAudit('CLERK_USER_CREATED', $result);
-        }
 
         return [
             'handled' => true,
@@ -69,8 +59,6 @@ class ClerkWebhookService
 
         $result = $this->accountRepository->updateClerkAccountFromWebhook($attributes)
             ?? $this->accountRepository->upsertClerkAccount($attributes);
-
-        $this->recordWebhookAudit('CLERK_USER_UPDATED', $result);
 
         return [
             'handled' => true,
@@ -103,8 +91,6 @@ class ClerkWebhookService
                 'account' => null,
             ];
         }
-
-        $this->recordWebhookAudit('CLERK_USER_DELETED', $result);
 
         return [
             'handled' => true,
@@ -180,33 +166,4 @@ class ClerkWebhookService
         };
     }
 
-    private function recordWebhookAudit(string $action, array $account): void
-    {
-        try {
-            $this->auditLogRecordService->recordAuditLog(
-                null,
-                $action,
-                'account',
-                (int)($account['accountIdentifier'] ?? 0) ?: null,
-                [
-                    'clerk_user_id' => $account['clerkUserId'] ?? null,
-                    'email' => $account['emailAddress'] ?? null,
-                    'timestamp' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-                    'status' => $account['status'] ?? null,
-                ]
-            );
-        } catch (\Throwable $exception) {
-            $this->logger->error('Failed to record Clerk webhook audit log.', [
-                'action' => $action,
-                'error' => $exception->getMessage(),
-                'clerkUserId' => $account['clerkUserId'] ?? null,
-                'emailAddress' => $account['emailAddress'] ?? null,
-            ]);
-        }
-    }
-
-    private function isApprovedLifecycleStatus(string $status): bool
-    {
-        return in_array(strtolower(trim($status)), ['approved', 'accepted'], true);
-    }
 }

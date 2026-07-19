@@ -5,7 +5,6 @@ namespace App\Domain\Equipment\Controller;
 use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\AdminSecurityConfirmationService;
 use App\Domain\Account\Service\AuthenticatedAccountResolver;
-use App\Domain\AuditLog\Service\AuditLogRecordService;
 use App\Domain\Equipment\DTO\EquipmentCreateRequestDTO;
 use App\Domain\Equipment\Service\EquipmentExcelExportService;
 use App\Domain\Equipment\Service\EquipmentManagementService;
@@ -30,7 +29,6 @@ class EquipmentController extends AbstractController
         private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
         private readonly AuthenticatedAccountResolver $authenticatedAccountResolver,
         private readonly EquipmentExcelExportService $equipmentExcelExportService,
-        private readonly AuditLogRecordService $auditLogRecordService,
         private readonly AccountRepository $accountRepository
     ) {
     }
@@ -98,36 +96,12 @@ class EquipmentController extends AbstractController
                 ? 'TechReserve Admin'
                 : trim(sprintf('%s %s', $account->getFirstName(), $account->getLastName()));
             $actorName = $actorName !== '' ? $actorName : ($account?->getEmailAddress() ?? 'TechReserve Admin');
-            $actorRole = $account?->getRoleDesignation() ?? RoleConstants::ROLE_ADMIN;
 
             $workbook = $this->equipmentExcelExportService->generateWorkbook(
                 $equipmentRows,
                 $filterPayload,
                 $actorName,
                 new \DateTimeImmutable('now')
-            );
-
-            $this->auditLogRecordService->recordAuditLog(
-                $accountIdentifier,
-                'Export Equipment Excel',
-                'Equipment',
-                null,
-                [
-                    'filters' => $filterPayload,
-                    'exportedRecordCount' => $workbook['exportedRowCount'],
-                ],
-                [
-                    'actorName' => $actorName,
-                    'actorRole' => $actorRole,
-                    'module' => 'Equipment Inventory',
-                    'targetDisplayLabel' => $workbook['fileName'],
-                    'reason' => sprintf(
-                        'Exported %d equipment record(s) using the active inventory filters.',
-                        (int) $workbook['exportedRowCount']
-                    ),
-                    'ipAddress' => $request->getClientIp(),
-                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
-                ]
             );
 
             $response = new Response($workbook['content'], 200, [
@@ -177,27 +151,6 @@ class EquipmentController extends AbstractController
         try {
             $equipmentDTO = $this->equipmentManagementService->createEquipment($this->buildCreateRequestDTO($request));
             $equipmentRecord = $equipmentDTO->toResponseArray();
-            $auditActor = $this->resolveAuditActorContext($request);
-
-            $this->auditLogRecordService->recordAuditLog(
-                $auditActor['accountIdentifier'],
-                'Create Equipment',
-                'Equipment',
-                isset($equipmentRecord['equipmentIdentifier']) ? (int) $equipmentRecord['equipmentIdentifier'] : null,
-                [
-                    'createdEquipment' => $equipmentRecord,
-                ],
-                [
-                    'actorName' => $auditActor['actorName'],
-                    'actorRole' => $auditActor['actorRole'],
-                    'module' => 'Equipment Inventory',
-                    'targetDisplayLabel' => (string) ($equipmentRecord['equipmentName'] ?? 'Equipment'),
-                    'updatedValue' => $equipmentRecord,
-                    'reason' => 'Created a new equipment inventory record.',
-                    'ipAddress' => $request->getClientIp(),
-                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
-                ]
-            );
 
             return $this->createSuccessResponse($equipmentRecord, 201);
         } catch (DomainValidationException $exception) {
@@ -216,28 +169,6 @@ class EquipmentController extends AbstractController
                 $this->buildCreateRequestDTO($request)
             );
             $updatedEquipmentRecord = $equipmentDTO->toResponseArray();
-            $auditActor = $this->resolveAuditActorContext($request);
-
-            $this->auditLogRecordService->recordAuditLog(
-                $auditActor['accountIdentifier'],
-                'Update Equipment',
-                'Equipment',
-                $equipmentIdentifier,
-                [
-                    'equipmentIdentifier' => $equipmentIdentifier,
-                ],
-                [
-                    'actorName' => $auditActor['actorName'],
-                    'actorRole' => $auditActor['actorRole'],
-                    'module' => 'Equipment Inventory',
-                    'targetDisplayLabel' => (string) ($updatedEquipmentRecord['equipmentName'] ?? $previousEquipmentRecord['equipmentName'] ?? 'Equipment'),
-                    'previousValue' => $previousEquipmentRecord,
-                    'updatedValue' => $updatedEquipmentRecord,
-                    'reason' => 'Updated an equipment inventory record.',
-                    'ipAddress' => $request->getClientIp(),
-                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
-                ]
-            );
 
             return $this->createSuccessResponse($updatedEquipmentRecord);
         } catch (DomainNotFoundException $exception) {
@@ -266,27 +197,6 @@ class EquipmentController extends AbstractController
         try {
             $previousEquipmentRecord = $this->equipmentManagementService->getEquipmentById($equipmentIdentifier)->toResponseArray();
             $this->equipmentManagementService->deleteEquipment($equipmentIdentifier);
-            $auditActor = $this->resolveAuditActorContext($request);
-
-            $this->auditLogRecordService->recordAuditLog(
-                $auditActor['accountIdentifier'],
-                'Delete Equipment',
-                'Equipment',
-                $equipmentIdentifier,
-                [
-                    'deletedEquipmentIdentifier' => $equipmentIdentifier,
-                ],
-                [
-                    'actorName' => $auditActor['actorName'],
-                    'actorRole' => $auditActor['actorRole'],
-                    'module' => 'Equipment Inventory',
-                    'targetDisplayLabel' => (string) ($previousEquipmentRecord['equipmentName'] ?? 'Equipment'),
-                    'previousValue' => $previousEquipmentRecord,
-                    'reason' => 'Deleted an equipment inventory record.',
-                    'ipAddress' => $request->getClientIp(),
-                    'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
-                ]
-            );
 
             return $this->createSuccessResponse(['message' => 'Equipment deleted successfully.']);
         } catch (DomainNotFoundException $exception) {
@@ -318,25 +228,6 @@ class EquipmentController extends AbstractController
             photoPositionX: (int) ($requestBody['photoPositionX'] ?? 50),
             photoPositionY: (int) ($requestBody['photoPositionY'] ?? 50)
         );
-    }
-
-    /**
-     * @return array{accountIdentifier: int, actorName: string, actorRole: string}
-     */
-    private function resolveAuditActorContext(Request $request): array
-    {
-        $accountIdentifier = $this->authenticatedAccountResolver->resolveAccountIdentifier($request);
-        $account = $this->accountRepository->find($accountIdentifier);
-        $actorName = $account === null
-            ? 'TechReserve Admin'
-            : trim(sprintf('%s %s', $account->getFirstName(), $account->getLastName()));
-        $actorName = $actorName !== '' ? $actorName : ($account?->getEmailAddress() ?? 'TechReserve Admin');
-
-        return [
-            'accountIdentifier' => $accountIdentifier,
-            'actorName' => $actorName,
-            'actorRole' => $account?->getRoleDesignation() ?? RoleConstants::ROLE_ADMIN,
-        ];
     }
 
     /**

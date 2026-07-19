@@ -50,12 +50,6 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Domain/Task/Entity'
                 prefix: 'App\Domain\Task\Entity'
                 alias: Task
-            AuditLog:
-                type: attribute
-                is_bundle: false
-                dir: '%kernel.project_dir%/src/Domain/AuditLog/Entity'
-                prefix: 'App\Domain\AuditLog\Entity'
-                alias: AuditLog
             Notification:
                 type: attribute
                 is_bundle: false

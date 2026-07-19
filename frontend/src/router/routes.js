@@ -326,16 +326,6 @@ export const routeDefinitions = [
     },
   },
   {
-    path: '/admin/audit-trail',
-    name: 'adminAuditTrailPage',
-    component: () => import('@/pages/admin/AuditTrail.vue'),
-    meta: {
-      requiresAuth: true,
-      allowedRoles: ['ROLE_ADMIN'],
-      rbac: rbacAny(permission(RBAC_CAPABILITY.EXPORT_REPORTS, RBAC_ACTION.READ)),
-    },
-  },
-  {
     path: '/admin/support',
     name: 'adminSupportCenterPage',
     component: () => import('@/pages/support/SupportCenterPage.vue'),
