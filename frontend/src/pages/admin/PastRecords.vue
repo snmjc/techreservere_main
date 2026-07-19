@@ -434,7 +434,6 @@ const currentPage = ref(1);
 const selectedRecord = ref(null);
 const showPastRecordsReportModal = ref(false);
 const pastRecordsReportError = ref('');
-const pastRecordsReportPreviewVisible = ref(false);
 const isExportingPastRecordsReport = ref(false);
 const pastRecordsReportType = ref('all');
 const pastRecordsReportCategory = ref('all');
@@ -641,12 +640,10 @@ watch(pastRecordsReportType, () => {
   pastRecordsReportCategory.value = 'all';
   pastRecordsReportFacilityFilter.value = 'all';
   pastRecordsReportSecondaryFilter.value = 'all';
-  pastRecordsReportPreviewVisible.value = false;
 });
 
 function openPastRecordsReportModal() {
   pastRecordsReportError.value = '';
-  pastRecordsReportPreviewVisible.value = false;
   pastRecordsReportType.value = 'all';
   pastRecordsReportCategory.value = 'all';
   pastRecordsReportTimeframe.value = 'daily';
@@ -667,7 +664,6 @@ function closePastRecordsReportModal() {
 
   showPastRecordsReportModal.value = false;
   pastRecordsReportError.value = '';
-  pastRecordsReportPreviewVisible.value = false;
 }
 
 function exportAllPastRecords() {
@@ -714,9 +710,6 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     }
 
     XLSX.writeFile(workbook, `${fileName}.xlsx`);
-    if (!isDirectExportAll) {
-      pastRecordsReportPreviewVisible.value = true;
-    }
   } catch (error) {
     pastRecordsReportError.value = error?.message || 'Unable to export the archive report right now.';
   } finally {
