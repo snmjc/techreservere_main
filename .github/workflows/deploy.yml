@@ -45,7 +45,20 @@ jobs:
 
               docker compose -f compose.prod.yml up -d
 
-              docker compose -f compose.prod.yml exec -T backend php bin/console doctrine:migrations:migrate --no-interaction --env=prod
+              backend_attempts=0
+              until docker compose -f compose.prod.yml exec -T backend php bin/console about --env=prod >/dev/null 2>&1
+              do
+                backend_attempts=\$((backend_attempts + 1))
+                if [ \$backend_attempts -ge 12 ]; then
+                  docker compose -f compose.prod.yml ps
+                  docker compose -f compose.prod.yml logs --tail=100 backend frontend analytics-service
+                  exit 1
+                fi
+
+                sleep 5
+              done
+
+              docker compose -f compose.prod.yml exec -T backend php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=prod
 
               docker compose -f compose.prod.yml ps
             "
