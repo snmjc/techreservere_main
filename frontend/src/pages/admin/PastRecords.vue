@@ -719,7 +719,6 @@ function mapPastRecordToReportRow(record) {
     reservationId: record.requestIdentifier,
     borrower: record.requesterFullName,
     role: record.requesterRole,
-    facility: record.facilityName,
     venue,
     equipment,
     type: record.requestType,
@@ -737,7 +736,6 @@ function buildPastRecordsDetailedExportRows(rows) {
   return rows.map((row) => ({
     ID: row.reservationId || 'N/A',
     Borrower: row.borrower || 'N/A',
-    Facility: row.facility || 'N/A',
     Venue: row.venue || 'N/A',
     Equipment: row.equipment || 'N/A',
     Type: row.type || 'N/A',
@@ -753,7 +751,6 @@ function buildPastRecordsDetailedEmptyRow(message) {
   return {
     ID: message,
     Borrower: '',
-    Facility: '',
     Venue: '',
     Equipment: '',
     Type: '',
