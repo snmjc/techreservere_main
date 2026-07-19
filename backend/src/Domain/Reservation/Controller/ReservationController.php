@@ -2,7 +2,10 @@
 
 namespace App\Domain\Reservation\Controller;
 
+use App\Domain\Account\Entity\AccountEntity;
+use App\Domain\Account\Repository\AccountRepository;
 use App\Domain\Account\Service\AdminSecurityConfirmationService;
+use App\Domain\AuditLog\Service\AuditLogRecordService;
 use App\Domain\Reservation\DTO\ReservationCreateRequestDTO;
 use App\Domain\Reservation\Service\ReservationCreateService;
 use App\Domain\Reservation\Service\ReservationReviewService;
@@ -25,7 +28,9 @@ class ReservationController extends AbstractController
     public function __construct(
         private readonly ReservationCreateService $reservationCreateService,
         private readonly ReservationReviewService $reservationReviewService,
-        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService
+        private readonly AdminSecurityConfirmationService $adminSecurityConfirmationService,
+        private readonly AuditLogRecordService $auditLogRecordService,
+        private readonly AccountRepository $accountRepository
     ) {
     }
 
@@ -59,12 +64,20 @@ class ReservationController extends AbstractController
             }
 
             $responseDTO = $this->reservationCreateService->createReservation($borrowerAccountId, $createDTO);
-
-            return $this->createSuccessResponse([
+            $responsePayload = [
                 'reservationIdentifier' => $responseDTO->reservationIdentifier,
                 'reservationCode' => $responseDTO->reservationCode,
                 'currentStatus' => $responseDTO->currentStatus,
-            ], 201);
+            ];
+            $this->recordReservationAuditLog(
+                request: $request,
+                actorAccountId: $borrowerAccountId,
+                actionPerformed: 'Create Reservation Request',
+                reservationPayload: $responseDTO->toResponseArray(),
+                reason: 'Submitted a new reservation request for review.'
+            );
+
+            return $this->createSuccessResponse($responsePayload, 201);
         } catch (\JsonException) {
             return $this->createErrorResponse('ReservationInvalidPayload', 'Reservation request body must be valid JSON.', 400);
         } catch (DomainValidationException $exception) {
@@ -163,6 +176,9 @@ class ReservationController extends AbstractController
             $resolvedRole = (string) $request->attributes->get('resolvedRole', '');
             $identity = $request->attributes->get('authenticatedIdentity', []);
             $accountIdentifier = (int) ($identity['accountIdentifier'] ?? 0);
+            $beforePayload = $this->reservationReviewService
+                ->getReservationByIdForRole($reservationIdentifier, $resolvedRole, $accountIdentifier)
+                ->toResponseArray();
             $confirmedAdminEmail = (string) ($requestBody['confirmedAdminEmail'] ?? '');
             $confirmedAdminPassword = (string) ($requestBody['confirmedAdminPassword'] ?? '');
 
@@ -200,8 +216,19 @@ class ReservationController extends AbstractController
                 $accountIdentifier,
                 $rejectionReason
             );
+            $afterPayload = $responseDTO->toResponseArray();
+            $normalizedStatus = (string) ($afterPayload['currentStatus'] ?? $newStatus);
+            $this->recordReservationAuditLog(
+                request: $request,
+                actorAccountId: $accountIdentifier,
+                actionPerformed: $this->resolveReservationAuditActionLabel($normalizedStatus),
+                reservationPayload: $afterPayload,
+                reason: $this->buildReservationAuditReason($beforePayload, $afterPayload, $rejectionReason),
+                previousValue: $beforePayload,
+                updatedValue: $afterPayload
+            );
 
-            return $this->createSuccessResponse($responseDTO->toResponseArray());
+            return $this->createSuccessResponse($afterPayload);
         } catch (DomainNotFoundException $exception) {
             return $this->createErrorResponse('ReservationNotFound', $exception->getMessage(), 404);
         } catch (DomainValidationException $exception) {
@@ -258,6 +285,105 @@ class ReservationController extends AbstractController
             $exception::class,
             $exception->getMessage()
         ));
+    }
+
+    private function recordReservationAuditLog(
+        Request $request,
+        int $actorAccountId,
+        string $actionPerformed,
+        array $reservationPayload,
+        string $reason,
+        ?array $previousValue = null,
+        ?array $updatedValue = null
+    ): void {
+        $actor = $this->accountRepository->find($actorAccountId);
+        $reservationIdentifier = (int) ($reservationPayload['reservationIdentifier'] ?? 0);
+
+        $context = [
+            'actorName' => $this->resolveActorName($actor),
+            'actorRole' => $actor?->getRoleDesignation() ?? (string) $request->attributes->get('resolvedRole', ''),
+            'module' => 'Reservation Records',
+            'targetDisplayLabel' => $this->buildReservationAuditLabel($reservationPayload),
+            'reason' => $reason,
+            'ipAddress' => $request->getClientIp(),
+            'deviceMetadata' => (string) $request->headers->get('User-Agent', ''),
+        ];
+
+        if ($previousValue !== null) {
+            $context['previousValue'] = $previousValue;
+        }
+
+        if ($updatedValue !== null) {
+            $context['updatedValue'] = $updatedValue;
+        }
+
+        $this->auditLogRecordService->recordAuditLog(
+            $actorAccountId > 0 ? $actorAccountId : null,
+            $actionPerformed,
+            'Reservation',
+            $reservationIdentifier > 0 ? $reservationIdentifier : null,
+            [
+                'reservationCode' => $reservationPayload['reservationCode'] ?? null,
+                'organizationName' => $reservationPayload['organizationName'] ?? null,
+                'currentStatus' => $reservationPayload['currentStatus'] ?? null,
+            ],
+            $context
+        );
+    }
+
+    private function resolveReservationAuditActionLabel(string $status): string
+    {
+        return match (strtolower(trim($status))) {
+            'approved' => 'Approve Reservation',
+            'rejected' => 'Reject Reservation',
+            'cancelled' => 'Cancel Reservation',
+            'completed' => 'Complete Reservation',
+            'prepared', 'deployed', 'active' => 'Activate Reservation',
+            'returned' => 'Return Reservation',
+            default => 'Update Reservation Status',
+        };
+    }
+
+    private function buildReservationAuditReason(array $beforePayload, array $afterPayload, ?string $reason): string
+    {
+        $beforeStatus = (string) ($beforePayload['currentStatus'] ?? 'Unknown');
+        $afterStatus = (string) ($afterPayload['currentStatus'] ?? 'Unknown');
+        $baseReason = sprintf('Updated reservation status from %s to %s.', $beforeStatus, $afterStatus);
+        $normalizedReason = trim((string) ($reason ?? ''));
+
+        return $normalizedReason !== ''
+            ? sprintf('%s Reason: %s', $baseReason, $normalizedReason)
+            : $baseReason;
+    }
+
+    private function buildReservationAuditLabel(array $reservationPayload): string
+    {
+        $reservationCode = trim((string) ($reservationPayload['reservationCode'] ?? ''));
+        $organizationName = trim((string) ($reservationPayload['organizationName'] ?? ''));
+
+        if ($reservationCode !== '' && $organizationName !== '') {
+            return sprintf('%s | %s', $reservationCode, $organizationName);
+        }
+
+        if ($reservationCode !== '') {
+            return $reservationCode;
+        }
+
+        if ($organizationName !== '') {
+            return $organizationName;
+        }
+
+        return sprintf('Reservation #%s', (string) ($reservationPayload['reservationIdentifier'] ?? ''));
+    }
+
+    private function resolveActorName(?AccountEntity $actor): string
+    {
+        if ($actor === null) {
+            return 'System';
+        }
+
+        $fullName = trim(sprintf('%s %s', $actor->getFirstName(), $actor->getLastName()));
+        return $fullName !== '' ? $fullName : ($actor->getEmailAddress() ?? 'System');
     }
 
     private function applyReservationFilters(array $reservations, Request $request): array

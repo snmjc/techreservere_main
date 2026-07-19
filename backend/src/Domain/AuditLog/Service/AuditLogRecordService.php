@@ -82,7 +82,7 @@ class AuditLogRecordService
 
         return array_values(array_filter($normalizedRows, function (array $row) use ($filters): bool {
             $scope = strtolower(trim((string) ($filters['scope'] ?? '')));
-            if ($scope === 'equipment_inventory' && !$this->isEquipmentInventoryAuditRow($row)) {
+            if (!$this->matchesScopeFilter($row, $scope)) {
                 return false;
             }
 
@@ -120,6 +120,52 @@ class AuditLogRecordService
 
         return in_array($module, ['equipment inventory', 'inventory', 'equipment'], true)
             || in_array($targetEntityType, ['equipment', 'equipment_inventory', 'inventory'], true);
+    }
+
+    private function isVenueAuditRow(array $row): bool
+    {
+        $module = strtolower(trim((string) ($row['module'] ?? '')));
+        $targetEntityType = strtolower(trim((string) ($row['targetEntityType'] ?? '')));
+
+        return in_array($module, ['venue', 'venue management', 'facility', 'facility management', 'venue schedule'], true)
+            || in_array($targetEntityType, ['venue', 'facility', 'venue_schedule', 'schedule_block'], true);
+    }
+
+    private function isReservationAuditRow(array $row): bool
+    {
+        $module = strtolower(trim((string) ($row['module'] ?? '')));
+        $targetEntityType = strtolower(trim((string) ($row['targetEntityType'] ?? '')));
+
+        return in_array($module, ['reservation', 'reservations', 'reservation records'], true)
+            || in_array($targetEntityType, ['reservation', 'reservation_record'], true);
+    }
+
+    private function isAccountAuditRow(array $row): bool
+    {
+        $module = strtolower(trim((string) ($row['module'] ?? '')));
+        $targetEntityType = strtolower(trim((string) ($row['targetEntityType'] ?? '')));
+
+        return in_array($module, ['account', 'accounts', 'authentication'], true)
+            || in_array($targetEntityType, ['account', 'user', 'invitation', 'authentication'], true);
+    }
+
+    private function matchesScopeFilter(array $row, string $scope): bool
+    {
+        if ($this->isAccountAuditRow($row)) {
+            return false;
+        }
+
+        return match ($scope) {
+            'equipment_inventory', 'equipment' => $this->isEquipmentInventoryAuditRow($row),
+            'venue', 'facility' => $this->isVenueAuditRow($row),
+            'reservations', 'reservation' => $this->isReservationAuditRow($row),
+            'both', '' => $this->isEquipmentInventoryAuditRow($row)
+                || $this->isVenueAuditRow($row)
+                || $this->isReservationAuditRow($row),
+            default => $this->isEquipmentInventoryAuditRow($row)
+                || $this->isVenueAuditRow($row)
+                || $this->isReservationAuditRow($row),
+        };
     }
 
     private function ensureSchemaReady(): void
