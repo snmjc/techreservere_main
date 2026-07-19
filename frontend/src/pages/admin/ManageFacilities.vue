@@ -1743,19 +1743,6 @@
 
           <p v-if="facilityReportError" class="manage-facilities-modal-error">{{ facilityReportError }}</p>
 
-          <div v-if="facilityReportPreviewVisible" class="manage-facilities-report-preview">
-            <div class="manage-facilities-report-preview__card">
-              <strong>{{ facilityReportPreviewSummary.title }}</strong>
-              <span>{{ facilityReportPreviewSummary.recordCount }} record(s)</span>
-              <span>{{ facilityReportPreviewSummary.reservationCount }} reservation row(s)</span>
-            </div>
-            <div class="manage-facilities-report-preview__card">
-              <strong>Applied Range</strong>
-              <span>{{ facilityReportRangeLabel }}</span>
-              <span>{{ facilityReportPreviewSummary.statusLabel }}</span>
-            </div>
-          </div>
-
           <div class="manage-facilities-report-builder__footer">
             <div class="manage-facilities-report-builder__notice">
               The report will be generated in Excel format and downloaded to your device.
@@ -1763,7 +1750,6 @@
 
             <div class="manage-facilities-modal-actions manage-facilities-modal-actions--report">
               <button class="manage-facilities-cancel-button" type="button" @click="closeFacilityReportModal">Cancel</button>
-              <button class="manage-facilities-cancel-button" type="button" @click="previewFacilityReportRecords">Preview Records</button>
               <button
                 class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
                 type="button"
@@ -1946,7 +1932,6 @@ const selectedVenueReservationEntry = ref(null);
 const venueReservationModalLoading = ref(false);
 const venueReservationModalError = ref('');
 const facilityReportError = ref('');
-const facilityReportPreviewVisible = ref(false);
 const isExportingFacilityReport = ref(false);
 const facilityReportType = ref('venue');
 const facilityReportCategory = ref('all');
@@ -2508,21 +2493,6 @@ const facilityFilteredVenueRecords = computed(() => buildFacilityVenueReportReco
 const facilityFilteredEquipmentRecords = computed(() => buildFacilityEquipmentReportRecords());
 const facilityVenueReservationRows = computed(() => buildFacilityVenueReservationRows(facilityFilteredVenueRecords.value));
 const facilityEquipmentReservationRows = computed(() => buildFacilityEquipmentReservationRows(facilityFilteredEquipmentRecords.value));
-const facilityReportPreviewSummary = computed(() => {
-  const isVenueReport = facilityReportType.value === 'venue';
-  const detailRows = isVenueReport ? facilityFilteredVenueRecords.value : facilityFilteredEquipmentRecords.value;
-  const reservationRows = isVenueReport ? facilityVenueReservationRows.value : facilityEquipmentReservationRows.value;
-
-  return {
-    title: isVenueReport ? 'Venue Report Preview' : 'Equipment Report Preview',
-    recordCount: detailRows.length,
-    reservationCount: reservationRows.length,
-    statusLabel: facilityReportAvailabilityStatus.value === 'all'
-      ? 'All availability statuses'
-      : `Filtered by ${facilityReportAvailabilityStatus.value}`,
-  };
-});
-
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
     return;
@@ -2591,7 +2561,6 @@ function handleAddFacility() {
 
 function openFacilityReportModal() {
   facilityReportError.value = '';
-  facilityReportPreviewVisible.value = false;
   facilityReportType.value = activeFacilityTab.value === 'equipment' ? 'equipment' : 'venue';
   facilityReportCategory.value = 'all';
   facilityReportTimeframe.value = 'daily';
@@ -2613,12 +2582,6 @@ function closeFacilityReportModal() {
 
   showFacilityReportModal.value = false;
   facilityReportError.value = '';
-  facilityReportPreviewVisible.value = false;
-}
-
-function previewFacilityReportRecords() {
-  facilityReportError.value = '';
-  facilityReportPreviewVisible.value = true;
 }
 
 function exportFacilityReportWorkbook() {
@@ -2665,7 +2628,6 @@ function exportFacilityReportWorkbook() {
     }
 
     XLSX.writeFile(workbook, buildFacilityReportFileName());
-    facilityReportPreviewVisible.value = true;
   } catch (error) {
     facilityReportError.value = error?.message || 'Unable to export the facility report right now.';
   } finally {
@@ -3090,7 +3052,6 @@ watch(facilityReportType, () => {
   facilityReportSecondaryFilter.value = 'all';
   facilityReportReservationStatus.value = 'all';
   facilityReportAvailabilityStatus.value = 'all';
-  facilityReportPreviewVisible.value = false;
 });
 
 function handleEditEquipment(equipmentRecord) {
