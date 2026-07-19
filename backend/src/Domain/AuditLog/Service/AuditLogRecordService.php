@@ -81,6 +81,10 @@ class AuditLogRecordService
         }, $rows);
 
         return array_values(array_filter($normalizedRows, function (array $row) use ($filters): bool {
+            if (!$this->hasVisibleActor($row)) {
+                return false;
+            }
+
             $scope = strtolower(trim((string) ($filters['scope'] ?? '')));
             if (!$this->matchesScopeFilter($row, $scope)) {
                 return false;
@@ -166,6 +170,11 @@ class AuditLogRecordService
                 || $this->isVenueAuditRow($row)
                 || $this->isReservationAuditRow($row),
         };
+    }
+
+    private function hasVisibleActor(array $row): bool
+    {
+        return trim((string) ($row['actorName'] ?? '')) !== '';
     }
 
     private function ensureSchemaReady(): void

@@ -48,7 +48,7 @@
             </tr>
             <tr v-for="auditLog in auditLogs" :key="auditLog.auditLogIdentifier" v-else>
               <td>{{ formatDateTime(auditLog.occurredTimestamp) }}</td>
-              <td>{{ auditLog.actorName || auditLog.performedByAccountId || 'System' }}</td>
+              <td>{{ auditLog.actorName || 'Unknown User' }}</td>
               <td>{{ auditLog.module || 'General' }}</td>
               <td>{{ auditLog.targetDisplayLabel || `${auditLog.targetEntityType} #${auditLog.targetEntityIdentifier || ''}` }}</td>
               <td>{{ auditLog.reason || 'No reason recorded' }}</td>
