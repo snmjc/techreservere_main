@@ -1960,28 +1960,58 @@ async function handleGeneratePdf() {
       windowWidth: reportSurfaceRef.value.scrollWidth,
       windowHeight: reportSurfaceRef.value.scrollHeight,
       scrollX: 0,
-      scrollY: -window.scrollY,
+      scrollY: 0,
     });
 
-    const imageData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const pageMargin = 8;
+    const pageMargin = 10;
     const imageWidth = pageWidth - (pageMargin * 2);
-    const imageHeight = (canvas.height * imageWidth) / canvas.width;
     const printablePageHeight = pageHeight - (pageMargin * 2);
-    let remainingHeight = imageHeight;
-    let position = pageMargin;
+    const sourcePageHeight = Math.max(1, Math.floor((printablePageHeight * canvas.width) / imageWidth));
+    let sourceOffset = 0;
+    let pageIndex = 0;
 
-    pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
-    remainingHeight -= printablePageHeight;
+    while (sourceOffset < canvas.height) {
+      const sliceHeight = Math.min(sourcePageHeight, canvas.height - sourceOffset);
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceHeight;
 
-    while (remainingHeight > 0) {
-      position = pageMargin - (imageHeight - remainingHeight);
-      pdf.addPage();
-      pdf.addImage(imageData, 'PNG', pageMargin, position, imageWidth, imageHeight);
-      remainingHeight -= printablePageHeight;
+      const pageContext = pageCanvas.getContext('2d');
+      if (!pageContext) {
+        throw new Error('Unable to prepare the PDF page canvas.');
+      }
+
+      pageContext.fillStyle = '#f5faf7';
+      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      pageContext.drawImage(
+        canvas,
+        0,
+        sourceOffset,
+        canvas.width,
+        sliceHeight,
+        0,
+        0,
+        canvas.width,
+        sliceHeight,
+      );
+
+      const imageHeight = (sliceHeight * imageWidth) / canvas.width;
+      const imageData = pageCanvas.toDataURL('image/png');
+
+      if (pageIndex > 0) {
+        pdf.addPage();
+      }
+
+      pdf.addImage(imageData, 'PNG', pageMargin, pageMargin, imageWidth, imageHeight);
+      sourceOffset += sliceHeight;
+      pageIndex += 1;
+
+      if (sourceOffset < canvas.height) {
+        await nextTick();
+      }
     }
 
     pdf.save(`techreserve-analytics-${activeRange.value.startDateIso}-to-${activeRange.value.endDateIso}.pdf`);

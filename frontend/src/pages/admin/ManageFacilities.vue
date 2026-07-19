@@ -20,13 +20,6 @@
         <div class="manage-facilities-tab-cluster manage-facilities-tab-cluster--classic" role="tablist" aria-label="Facility tabs">
           <button
             class="manage-facilities-tab-button"
-            :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'all' }"
-            @click="handleFacilityTabChange('all')"
-          >
-            All
-          </button>
-          <button
-            class="manage-facilities-tab-button"
             :class="{ 'manage-facilities-tab-button--active': activeFacilityTab === 'venue' }"
             @click="handleFacilityTabChange('venue')"
           >
@@ -49,6 +42,9 @@
         </div>
 
         <div v-if="activeFacilityTab === 'equipment' || activeFacilityTab === 'all'" class="manage-facilities-inline-actions">
+          <button class="manage-facilities-add-button manage-facilities-add-button--compact manage-facilities-add-button--secondary" @click="openFacilityReportModal">
+            Generate Report
+          </button>
           <button class="manage-facilities-add-button manage-facilities-add-button--compact" @click="handleAddFacility">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
@@ -168,6 +164,15 @@
                     <option value="weekly">Weekly View</option>
                   </select>
                 </label>
+
+                <button type="button" class="manage-facilities-venue-report-button" @click="openFacilityReportModal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3v12" />
+                    <path d="m7 10 5 5 5-5" />
+                    <path d="M5 21h14" />
+                  </svg>
+                  Generate Report
+                </button>
 
                 <button type="button" class="manage-facilities-venue-reserve-button" @click="handleAddFacility">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1567,6 +1572,207 @@
       </section>
     </div>
 
+    <div
+      v-if="showFacilityReportModal"
+      class="manage-facilities-modal-overlay"
+      @click.self="closeFacilityReportModal"
+    >
+      <section class="manage-facilities-delete-modal manage-facilities-report-modal">
+        <button class="manage-facilities-modal-close" type="button" aria-label="Close" @click="closeFacilityReportModal">
+          X
+        </button>
+
+        <div class="manage-facilities-modal-heading">
+          <h2>Generate Facility Report</h2>
+          <p>Build a hardcoded Excel report for venues or equipment using a simple timeframe and filter setup.</p>
+        </div>
+
+        <div class="manage-facilities-report-builder">
+          <div class="manage-facilities-report-builder__grid">
+            <section class="manage-facilities-report-builder__section">
+              <span class="manage-facilities-report-builder__step">1. Report Type</span>
+              <div class="manage-facilities-report-builder__inline-options">
+                <label class="manage-facilities-report-builder__radio">
+                  <input v-model="facilityReportType" type="radio" value="venue" />
+                  <span>Venue Report</span>
+                </label>
+                <label class="manage-facilities-report-builder__radio">
+                  <input v-model="facilityReportType" type="radio" value="equipment" />
+                  <span>Equipment Report</span>
+                </label>
+              </div>
+            </section>
+
+            <section class="manage-facilities-report-builder__section">
+              <span class="manage-facilities-report-builder__step">2. Report Category</span>
+              <select v-model="facilityReportCategory" class="manage-facilities-report-builder__select">
+                <option
+                  v-for="option in facilityReportCategoryOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </section>
+
+            <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
+              <span class="manage-facilities-report-builder__step">3. Timeframe</span>
+              <div class="manage-facilities-report-builder__timeframe-row">
+                <button
+                  v-for="timeframeOption in facilityReportTimeframeOptions"
+                  :key="timeframeOption.value"
+                  type="button"
+                  class="manage-facilities-report-builder__timeframe-button"
+                  :class="{ 'is-active': facilityReportTimeframe === timeframeOption.value }"
+                  @click="facilityReportTimeframe = timeframeOption.value"
+                >
+                  {{ timeframeOption.label }}
+                </button>
+              </div>
+            </section>
+
+            <section class="manage-facilities-report-builder__section">
+              <span class="manage-facilities-report-builder__step">Select Date</span>
+              <input v-model="facilityReportStartDate" type="date" class="manage-facilities-report-builder__input" />
+              <input
+                v-if="facilityReportTimeframe === 'custom'"
+                v-model="facilityReportEndDate"
+                type="date"
+                class="manage-facilities-report-builder__input"
+              />
+              <small>{{ facilityReportRangeLabel }}</small>
+            </section>
+
+            <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
+              <span class="manage-facilities-report-builder__step">4. Additional Filters (Optional)</span>
+              <div class="manage-facilities-report-builder__filters-grid">
+                <label>
+                  <span>{{ facilityPrimaryFilterLabel }}</span>
+                  <select v-model="facilityReportPrimaryFilter" class="manage-facilities-report-builder__select">
+                    <option
+                      v-for="option in facilityPrimaryFilterOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>{{ facilitySecondaryFilterLabel }}</span>
+                  <select v-model="facilityReportSecondaryFilter" class="manage-facilities-report-builder__select">
+                    <option
+                      v-for="option in facilitySecondaryFilterOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Reservation Status</span>
+                  <select v-model="facilityReportReservationStatus" class="manage-facilities-report-builder__select">
+                    <option value="all">All Statuses</option>
+                    <option value="reserved">Reserved</option>
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Availability Status</span>
+                  <select v-model="facilityReportAvailabilityStatus" class="manage-facilities-report-builder__select">
+                    <option value="all">All Statuses</option>
+                    <option value="available">Available</option>
+                    <option value="unavailable">Unavailable</option>
+                    <option value="maintenance">Under Maintenance</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
+              <span class="manage-facilities-report-builder__step">5. Excel Contents</span>
+              <div class="manage-facilities-report-builder__checkbox-grid">
+                <label class="manage-facilities-report-builder__checkbox">
+                  <input v-model="facilityReportIncludeSummary" type="checkbox" />
+                  <div>
+                    <strong>Summary sheet</strong>
+                    <small>Overview and key metrics</small>
+                  </div>
+                </label>
+                <label class="manage-facilities-report-builder__checkbox">
+                  <input v-model="facilityReportIncludeUtilization" type="checkbox" />
+                  <div>
+                    <strong>Utilization statistics</strong>
+                    <small>Usage and utilization data</small>
+                  </div>
+                </label>
+                <label class="manage-facilities-report-builder__checkbox">
+                  <input v-model="facilityReportIncludeDetails" type="checkbox" />
+                  <div>
+                    <strong>Detailed records</strong>
+                    <small>Full list of records</small>
+                  </div>
+                </label>
+                <label class="manage-facilities-report-builder__checkbox">
+                  <input v-model="facilityReportIncludeFilters" type="checkbox" />
+                  <div>
+                    <strong>Applied filters</strong>
+                    <small>Filters used in this report</small>
+                  </div>
+                </label>
+                <label class="manage-facilities-report-builder__checkbox manage-facilities-report-builder__checkbox--wide">
+                  <input v-model="facilityReportIncludeReservations" type="checkbox" />
+                  <div>
+                    <strong>Reservation information</strong>
+                    <small>Reservation and booking details</small>
+                  </div>
+                </label>
+              </div>
+            </section>
+          </div>
+
+          <p v-if="facilityReportError" class="manage-facilities-modal-error">{{ facilityReportError }}</p>
+
+          <div v-if="facilityReportPreviewVisible" class="manage-facilities-report-preview">
+            <div class="manage-facilities-report-preview__card">
+              <strong>{{ facilityReportPreviewSummary.title }}</strong>
+              <span>{{ facilityReportPreviewSummary.recordCount }} record(s)</span>
+              <span>{{ facilityReportPreviewSummary.reservationCount }} reservation row(s)</span>
+            </div>
+            <div class="manage-facilities-report-preview__card">
+              <strong>Applied Range</strong>
+              <span>{{ facilityReportRangeLabel }}</span>
+              <span>{{ facilityReportPreviewSummary.statusLabel }}</span>
+            </div>
+          </div>
+
+          <div class="manage-facilities-modal-actions">
+            <button class="manage-facilities-cancel-button" type="button" @click="closeFacilityReportModal">Cancel</button>
+            <button class="manage-facilities-cancel-button" type="button" @click="previewFacilityReportRecords">Preview Records</button>
+            <button
+              class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
+              type="button"
+              :disabled="isExportingFacilityReport"
+              @click="exportFacilityReportWorkbook"
+            >
+              {{ isExportingFacilityReport ? 'Exporting...' : 'Export Excel' }}
+            </button>
+          </div>
+
+          <div class="manage-facilities-report-builder__notice">
+            The report will be generated in Excel format and downloaded to your device.
+          </div>
+        </div>
+      </section>
+    </div>
+
     <DataRequestStatusFloater :items="facilityStatusItems" />
   </AdminSidebarLayoutComponent>
 </template>
@@ -1574,6 +1780,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import * as XLSX from 'xlsx';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -1641,6 +1848,7 @@ const searchQuery = ref('');
 
 const showVenueModal = ref(false);
 const showEquipmentModal = ref(false);
+const showFacilityReportModal = ref(false);
 const selectedVenue = ref(null);
 const selectedVenueCard = ref(null);
 const selectedEquipment = ref(null);
@@ -1732,6 +1940,23 @@ const quickClassScheduleForm = ref(createEmptyQuickAddScheduleForm());
 const selectedVenueReservationEntry = ref(null);
 const venueReservationModalLoading = ref(false);
 const venueReservationModalError = ref('');
+const facilityReportError = ref('');
+const facilityReportPreviewVisible = ref(false);
+const isExportingFacilityReport = ref(false);
+const facilityReportType = ref('venue');
+const facilityReportCategory = ref('all');
+const facilityReportTimeframe = ref('daily');
+const facilityReportStartDate = ref(getTodayDateInputValue());
+const facilityReportEndDate = ref(getTodayDateInputValue());
+const facilityReportPrimaryFilter = ref('all');
+const facilityReportSecondaryFilter = ref('all');
+const facilityReportReservationStatus = ref('all');
+const facilityReportAvailabilityStatus = ref('all');
+const facilityReportIncludeSummary = ref(true);
+const facilityReportIncludeUtilization = ref(true);
+const facilityReportIncludeDetails = ref(true);
+const facilityReportIncludeFilters = ref(true);
+const facilityReportIncludeReservations = ref(true);
 let activeReservedVenueWeekRequestSequence = 0;
 
 const currentAdminEmail = computed(() =>
@@ -2212,6 +2437,89 @@ const importScheduleCanImport = computed(() => (
   importScheduleValidReviewRows.value.length > 0
   && !importScheduleImporting.value
 ));
+const facilityReportTimeframeOptions = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+  { value: 'custom', label: 'Custom Range' },
+];
+const facilityReportCategoryOptions = computed(() => (
+  facilityReportType.value === 'venue'
+    ? [{ value: 'all', label: 'All Venues' }, ...venuesList.value.map((venueRecord) => ({
+      value: `venue:${venueRecord.venueIdentifier}`,
+      label: venueRecord.venueName || `Venue ${venueRecord.venueIdentifier}`,
+    }))]
+    : [{ value: 'all', label: 'All Equipment' }, ...Array.from(new Set(
+      equipmentList.value.map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))
+    )).map((categoryLabel) => ({
+      value: `equipment-category:${categoryLabel}`,
+      label: categoryLabel,
+    }))]
+));
+const facilityPrimaryFilterLabel = computed(() => (
+  facilityReportType.value === 'venue' ? 'Venue' : 'Equipment Category'
+));
+const facilitySecondaryFilterLabel = computed(() => (
+  facilityReportType.value === 'venue' ? 'Venue Type' : 'Equipment Brand'
+));
+const facilityPrimaryFilterOptions = computed(() => (
+  facilityReportType.value === 'venue'
+    ? [{ value: 'all', label: 'All Venues' }, ...venuesList.value.map((venueRecord) => ({
+      value: String(venueRecord.venueIdentifier),
+      label: venueRecord.venueName || `Venue ${venueRecord.venueIdentifier}`,
+    }))]
+    : [{ value: 'all', label: 'All Categories' }, ...Array.from(new Set(
+      equipmentList.value.map((equipmentRecord) => resolveEquipmentCategory(equipmentRecord))
+    )).map((categoryLabel) => ({
+      value: categoryLabel,
+      label: categoryLabel,
+    }))]
+));
+const facilitySecondaryFilterOptions = computed(() => (
+  facilityReportType.value === 'venue'
+    ? [
+      { value: 'all', label: 'All Types' },
+      { value: 'classroom', label: 'Classroom' },
+      { value: 'laboratory', label: 'Laboratory' },
+      { value: 'auditorium', label: 'Auditorium' },
+      { value: 'office', label: 'Office' },
+      { value: 'other', label: 'Other' },
+    ]
+    : [{ value: 'all', label: 'All Brands' }, ...Array.from(new Set(
+      equipmentList.value.map((equipmentRecord) => formatEquipmentText(equipmentRecord.equipmentBrand || ''))
+        .filter((value) => value && value !== 'N/A')
+    )).map((brandLabel) => ({
+      value: brandLabel,
+      label: brandLabel,
+    }))]
+));
+const facilityReportRange = computed(() => resolveFacilityReportRange(
+  facilityReportTimeframe.value,
+  facilityReportStartDate.value,
+  facilityReportEndDate.value,
+));
+const facilityReportRangeLabel = computed(() => (
+  `${formatSummaryDate(facilityReportRange.value.start)} - ${formatSummaryDate(facilityReportRange.value.end)}`
+));
+const facilityFilteredVenueRecords = computed(() => buildFacilityVenueReportRecords());
+const facilityFilteredEquipmentRecords = computed(() => buildFacilityEquipmentReportRecords());
+const facilityVenueReservationRows = computed(() => buildFacilityVenueReservationRows(facilityFilteredVenueRecords.value));
+const facilityEquipmentReservationRows = computed(() => buildFacilityEquipmentReservationRows(facilityFilteredEquipmentRecords.value));
+const facilityReportPreviewSummary = computed(() => {
+  const isVenueReport = facilityReportType.value === 'venue';
+  const detailRows = isVenueReport ? facilityFilteredVenueRecords.value : facilityFilteredEquipmentRecords.value;
+  const reservationRows = isVenueReport ? facilityVenueReservationRows.value : facilityEquipmentReservationRows.value;
+
+  return {
+    title: isVenueReport ? 'Venue Report Preview' : 'Equipment Report Preview',
+    recordCount: detailRows.length,
+    reservationCount: reservationRows.length,
+    statusLabel: facilityReportAvailabilityStatus.value === 'all'
+      ? 'All availability statuses'
+      : `Filtered by ${facilityReportAvailabilityStatus.value}`,
+  };
+});
 
 function handleFacilityTabChange(tabName) {
   if (activeFacilityTab.value === tabName) {
@@ -2277,6 +2585,105 @@ function handleAddFacility() {
   selectedEquipment.value = null;
   equipmentError.value = '';
   showEquipmentModal.value = true;
+}
+
+function openFacilityReportModal() {
+  facilityReportError.value = '';
+  facilityReportPreviewVisible.value = false;
+  facilityReportType.value = activeFacilityTab.value === 'equipment' ? 'equipment' : 'venue';
+  facilityReportCategory.value = 'all';
+  facilityReportTimeframe.value = 'daily';
+  facilityReportStartDate.value = getTodayDateInputValue();
+  facilityReportEndDate.value = getTodayDateInputValue();
+  facilityReportPrimaryFilter.value = 'all';
+  facilityReportSecondaryFilter.value = 'all';
+  facilityReportReservationStatus.value = 'all';
+  facilityReportAvailabilityStatus.value = 'all';
+  facilityReportIncludeSummary.value = true;
+  facilityReportIncludeUtilization.value = true;
+  facilityReportIncludeDetails.value = true;
+  facilityReportIncludeFilters.value = true;
+  facilityReportIncludeReservations.value = true;
+  showFacilityReportModal.value = true;
+}
+
+function closeFacilityReportModal() {
+  if (isExportingFacilityReport.value) {
+    return;
+  }
+
+  showFacilityReportModal.value = false;
+  facilityReportError.value = '';
+  facilityReportPreviewVisible.value = false;
+}
+
+function previewFacilityReportRecords() {
+  facilityReportError.value = '';
+  facilityReportPreviewVisible.value = true;
+}
+
+function exportFacilityReportWorkbook() {
+  try {
+    isExportingFacilityReport.value = true;
+    facilityReportError.value = '';
+
+    const workbook = XLSX.utils.book_new();
+    const isVenueReport = facilityReportType.value === 'venue';
+    const detailRows = isVenueReport ? facilityFilteredVenueRecords.value : facilityFilteredEquipmentRecords.value;
+    const reservationRows = isVenueReport ? facilityVenueReservationRows.value : facilityEquipmentReservationRows.value;
+
+    if (facilityReportIncludeSummary.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(buildFacilitySummarySheetRows(detailRows, reservationRows)),
+        'Summary',
+      );
+    }
+
+    if (facilityReportIncludeDetails.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(withReportFallbackRows(detailRows, isVenueReport ? 'No venue records match the selected report filters.' : 'No equipment records match the selected report filters.')),
+        'Detailed Records',
+      );
+    }
+
+    if (facilityReportIncludeReservations.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(withReportFallbackRows(reservationRows, 'No reservation information matches the selected report filters.')),
+        'Reservation Info',
+      );
+    }
+
+    if (facilityReportIncludeUtilization.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(withReportFallbackRows(buildFacilityUtilizationRows(detailRows, reservationRows), 'No utilization statistics are available for the selected report filters.')),
+        'Utilization',
+      );
+    }
+
+    if (facilityReportIncludeFilters.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(buildFacilityAppliedFilterRows()),
+        'Applied Filters',
+      );
+    }
+
+    if (workbook.SheetNames.length === 0) {
+      facilityReportError.value = 'Select at least one Excel content option before exporting.';
+      return;
+    }
+
+    XLSX.writeFile(workbook, buildFacilityReportFileName());
+    facilityReportPreviewVisible.value = true;
+  } catch (error) {
+    facilityReportError.value = error?.message || 'Unable to export the facility report right now.';
+  } finally {
+    isExportingFacilityReport.value = false;
+  }
 }
 
 function handleEditVenue(venueRecord) {
@@ -2690,6 +3097,15 @@ watch([equipmentPageSize, filteredEquipmentRecords], () => {
   }
 });
 
+watch(facilityReportType, () => {
+  facilityReportCategory.value = 'all';
+  facilityReportPrimaryFilter.value = 'all';
+  facilityReportSecondaryFilter.value = 'all';
+  facilityReportReservationStatus.value = 'all';
+  facilityReportAvailabilityStatus.value = 'all';
+  facilityReportPreviewVisible.value = false;
+});
+
 function handleEditEquipment(equipmentRecord) {
   selectedEquipmentCard.value = equipmentRecord;
   selectedEquipment.value = equipmentRecord;
@@ -2723,6 +3139,338 @@ function openEditFromDetails() {
 
 function normalizeEmailForConfirmation(emailAddress) {
   return String(emailAddress || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '').trim().toLowerCase();
+}
+
+function resolveFacilityReportRange(timeframe, startDateValue, endDateValue) {
+  const startDate = new Date(`${startDateValue}T00:00:00`);
+  const safeStartDate = Number.isNaN(startDate.getTime()) ? new Date(`${getTodayDateInputValue()}T00:00:00`) : startDate;
+
+  if (timeframe === 'daily') {
+    return {
+      start: formatDateInputValue(safeStartDate),
+      end: formatDateInputValue(safeStartDate),
+    };
+  }
+
+  if (timeframe === 'weekly') {
+    const weekStart = new Date(safeStartDate);
+    const dayOfWeek = weekStart.getDay();
+    const distanceToSunday = dayOfWeek;
+    weekStart.setDate(weekStart.getDate() - distanceToSunday);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return {
+      start: formatDateInputValue(weekStart),
+      end: formatDateInputValue(weekEnd),
+    };
+  }
+
+  if (timeframe === 'monthly') {
+    return {
+      start: formatDateInputValue(new Date(safeStartDate.getFullYear(), safeStartDate.getMonth(), 1)),
+      end: formatDateInputValue(new Date(safeStartDate.getFullYear(), safeStartDate.getMonth() + 1, 0)),
+    };
+  }
+
+  if (timeframe === 'yearly') {
+    return {
+      start: `${safeStartDate.getFullYear()}-01-01`,
+      end: `${safeStartDate.getFullYear()}-12-31`,
+    };
+  }
+
+  const customEndDate = new Date(`${endDateValue}T00:00:00`);
+  const safeEndDate = Number.isNaN(customEndDate.getTime()) ? safeStartDate : customEndDate;
+  const normalizedStart = safeStartDate <= safeEndDate ? safeStartDate : safeEndDate;
+  const normalizedEnd = safeStartDate <= safeEndDate ? safeEndDate : safeStartDate;
+
+  return {
+    start: formatDateInputValue(normalizedStart),
+    end: formatDateInputValue(normalizedEnd),
+  };
+}
+
+function buildFacilityVenueReportRecords() {
+  return venuesList.value
+    .filter((venueRecord) => matchesFacilityVenueCategory(venueRecord))
+    .filter((venueRecord) => matchesFacilityVenueFilters(venueRecord))
+    .map((venueRecord) => {
+      const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, facilityReportRange.value.start);
+      const reservationRows = extractVenueReservationRows(venueRecord);
+
+      return {
+        venueId: venueRecord.venueIdentifier,
+        venueName: venueRecord.venueName || 'Unnamed Venue',
+        location: venueRecord.venueLocation || 'N/A',
+        floorLevel: venueRecord.floorLevel || 'N/A',
+        venueType: inferVenueType(venueRecord),
+        capacityLimit: venueRecord.capacityLimit ?? 'N/A',
+        availabilityStatus,
+        operationalStatus: venueRecord.operationalStatus || 'N/A',
+        reservationCount: reservationRows.length,
+        description: venueRecord.description || 'N/A',
+      };
+    });
+}
+
+function buildFacilityEquipmentReportRecords() {
+  return equipmentList.value
+    .filter((equipmentRecord) => matchesFacilityEquipmentCategory(equipmentRecord))
+    .filter((equipmentRecord) => matchesFacilityEquipmentFilters(equipmentRecord))
+    .map((equipmentRecord) => ({
+      equipmentId: equipmentRecord.equipmentIdentifier,
+      equipmentName: equipmentRecord.equipmentName || 'Unnamed Equipment',
+      category: resolveEquipmentCategory(equipmentRecord),
+      brand: formatEquipmentText(equipmentRecord.equipmentBrand),
+      model: formatEquipmentText(equipmentRecord.equipmentModel),
+      totalQuantity: Number(equipmentRecord.totalQuantity ?? equipmentRecord.availableQuantity ?? 0),
+      availableQuantity: Number(equipmentRecord.availableQuantity ?? 0),
+      reservedQuantity: Number(equipmentRecord.reservedQuantity ?? 0),
+      maintenanceQuantity: Number(equipmentRecord.underMaintenanceQuantity ?? 0),
+      unavailableQuantity: Number(equipmentRecord.unavailableQuantity ?? 0),
+      status: formatEquipmentStatus(equipmentRecord),
+      barcode: formatEquipmentText(equipmentRecord.barcode),
+      assetId: formatEquipmentText(equipmentRecord.assetId || equipmentRecord.serialNumber),
+      description: formatEquipmentText(equipmentRecord.description || equipmentRecord.scheduleDescription),
+    }));
+}
+
+function buildFacilityVenueReservationRows(venueRows) {
+  const selectedVenueIdentifiers = new Set(venueRows.map((venueRow) => Number(venueRow.venueId)));
+
+  return venuesList.value
+    .filter((venueRecord) => selectedVenueIdentifiers.has(Number(venueRecord.venueIdentifier)))
+    .flatMap((venueRecord) => extractVenueReservationRows(venueRecord)
+      .filter((reservationRow) => matchesFacilityReservationStatus(reservationRow.status))
+      .filter((reservationRow) => isDateWithinFacilityRange(reservationRow.dateValue || reservationRow.startDate))
+      .map((reservationRow) => ({
+        venueName: venueRecord.venueName || 'Venue',
+        reservationCode: reservationRow.reservationCode || 'N/A',
+        borrowerName: reservationRow.borrowerName || 'N/A',
+        status: reservationRow.status || 'Reserved',
+        date: reservationRow.dateValue || 'N/A',
+        startTime: reservationRow.startTime || 'N/A',
+        endTime: reservationRow.endTime || 'N/A',
+        purpose: reservationRow.purpose || 'N/A',
+      })));
+}
+
+function buildFacilityEquipmentReservationRows(equipmentRows) {
+  const selectedEquipmentNames = new Set(equipmentRows.map((equipmentRow) => String(equipmentRow.equipmentName)));
+
+  return equipmentList.value
+    .filter((equipmentRecord) => selectedEquipmentNames.has(String(equipmentRecord.equipmentName || '')))
+    .filter((equipmentRecord) => Number(equipmentRecord.reservedQuantity ?? 0) > 0)
+    .map((equipmentRecord) => ({
+      equipmentName: equipmentRecord.equipmentName || 'Equipment',
+      category: resolveEquipmentCategory(equipmentRecord),
+      status: formatEquipmentStatus(equipmentRecord),
+      reservedQuantity: Number(equipmentRecord.reservedQuantity ?? 0),
+      availableQuantity: Number(equipmentRecord.availableQuantity ?? 0),
+      model: formatEquipmentText(equipmentRecord.equipmentModel),
+      barcode: formatEquipmentText(equipmentRecord.barcode),
+    }));
+}
+
+function buildFacilitySummarySheetRows(detailRows, reservationRows) {
+  return [{
+    reportType: facilityReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
+    recordCount: detailRows.length,
+    reservationRowCount: reservationRows.length,
+    timeframe: facilityReportTimeframe.value,
+    appliedRange: facilityReportRangeLabel.value,
+    generatedBy: currentAdminDisplayName.value,
+    generatedOn: formatDateTimeLong(new Date().toISOString()),
+  }];
+}
+
+function buildFacilityUtilizationRows(detailRows, reservationRows) {
+  if (facilityReportType.value === 'venue') {
+    return detailRows.map((venueRow) => {
+      const venueReservations = reservationRows.filter((reservationRow) => reservationRow.venueName === venueRow.venueName);
+      return {
+        venueName: venueRow.venueName,
+        availabilityStatus: venueRow.availabilityStatus,
+        reservationCount: venueReservations.length,
+        utilizationScore: venueReservations.length > 0 ? 100 : 0,
+      };
+    });
+  }
+
+  return detailRows.map((equipmentRow) => {
+    const totalQuantity = Number(equipmentRow.totalQuantity || 0);
+    const reservedQuantity = Number(equipmentRow.reservedQuantity || 0);
+    return {
+      equipmentName: equipmentRow.equipmentName,
+      category: equipmentRow.category,
+      reservedQuantity,
+      availableQuantity: Number(equipmentRow.availableQuantity || 0),
+      utilizationScore: totalQuantity > 0 ? Math.round((reservedQuantity / totalQuantity) * 100) : 0,
+    };
+  });
+}
+
+function buildFacilityAppliedFilterRows() {
+  return [
+    { filter: 'Report Type', value: facilityReportType.value },
+    { filter: 'Report Category', value: facilityReportCategory.value },
+    { filter: 'Timeframe', value: facilityReportTimeframe.value },
+    { filter: 'Applied Range', value: facilityReportRangeLabel.value },
+    { filter: facilityPrimaryFilterLabel.value, value: facilityReportPrimaryFilter.value },
+    { filter: facilitySecondaryFilterLabel.value, value: facilityReportSecondaryFilter.value },
+    { filter: 'Reservation Status', value: facilityReportReservationStatus.value },
+    { filter: 'Availability Status', value: facilityReportAvailabilityStatus.value },
+  ];
+}
+
+function buildFacilityReportFileName() {
+  return `techreserve-${facilityReportType.value}-report-${facilityReportRange.value.start}-to-${facilityReportRange.value.end}.xlsx`;
+}
+
+function withReportFallbackRows(rows, emptyMessage) {
+  return Array.isArray(rows) && rows.length > 0 ? rows : [{ message: emptyMessage }];
+}
+
+function matchesFacilityVenueCategory(venueRecord) {
+  if (facilityReportCategory.value === 'all') {
+    return true;
+  }
+
+  return facilityReportCategory.value === `venue:${venueRecord.venueIdentifier}`;
+}
+
+function matchesFacilityVenueFilters(venueRecord) {
+  if (facilityReportPrimaryFilter.value !== 'all' && String(venueRecord.venueIdentifier) !== facilityReportPrimaryFilter.value) {
+    return false;
+  }
+
+  if (facilityReportSecondaryFilter.value !== 'all' && inferVenueType(venueRecord).toLowerCase() !== facilityReportSecondaryFilter.value) {
+    return false;
+  }
+
+  if (facilityReportAvailabilityStatus.value !== 'all') {
+    const availabilityStatus = deriveVenueAvailabilityForDate(venueRecord, facilityReportRange.value.start);
+    if (facilityReportAvailabilityStatus.value === 'available' && availabilityStatus !== 'Available') {
+      return false;
+    }
+    if (facilityReportAvailabilityStatus.value === 'unavailable' && availabilityStatus === 'Available') {
+      return false;
+    }
+  }
+
+  if (facilityReportReservationStatus.value !== 'all') {
+    const hasMatchingReservation = extractVenueReservationRows(venueRecord)
+      .some((reservationRow) => matchesFacilityReservationStatus(reservationRow.status));
+    if (!hasMatchingReservation) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function matchesFacilityEquipmentCategory(equipmentRecord) {
+  if (facilityReportCategory.value === 'all') {
+    return true;
+  }
+
+  return facilityReportCategory.value === `equipment-category:${resolveEquipmentCategory(equipmentRecord)}`;
+}
+
+function matchesFacilityEquipmentFilters(equipmentRecord) {
+  if (facilityReportPrimaryFilter.value !== 'all' && resolveEquipmentCategory(equipmentRecord) !== facilityReportPrimaryFilter.value) {
+    return false;
+  }
+
+  if (facilityReportSecondaryFilter.value !== 'all' && formatEquipmentText(equipmentRecord.equipmentBrand) !== facilityReportSecondaryFilter.value) {
+    return false;
+  }
+
+  if (facilityReportAvailabilityStatus.value === 'available' && formatEquipmentStatus(equipmentRecord) !== 'Available') {
+    return false;
+  }
+  if (facilityReportAvailabilityStatus.value === 'unavailable' && formatEquipmentStatus(equipmentRecord) === 'Available') {
+    return false;
+  }
+  if (facilityReportAvailabilityStatus.value === 'maintenance' && formatEquipmentStatus(equipmentRecord) !== 'Under Maintenance') {
+    return false;
+  }
+
+  if (facilityReportReservationStatus.value !== 'all') {
+    const reservedQuantity = Number(equipmentRecord.reservedQuantity ?? 0);
+    if (facilityReportReservationStatus.value === 'reserved' && reservedQuantity <= 0) {
+      return false;
+    }
+    if (facilityReportReservationStatus.value === 'pending' && reservedQuantity > 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function extractVenueReservationRows(venueRecord) {
+  const reservationDetails = Array.isArray(venueRecord.reservationDetails) ? venueRecord.reservationDetails : [];
+  const reservationRanges = Array.isArray(venueRecord.reservationTimeRanges) ? venueRecord.reservationTimeRanges : [];
+
+  if (reservationDetails.length > 0) {
+    return reservationDetails.map((reservationRecord, index) => ({
+      reservationCode: reservationRecord?.reservationCode || reservationRecord?.reservationIdentifier || `RES-${index + 1}`,
+      borrowerName: reservationRecord?.borrowerFullName || reservationRecord?.reservedByName || 'Borrower unavailable',
+      status: reservationRecord?.currentStatus || reservationRecord?.statusLabel || 'Reserved',
+      dateValue: resolveDateValue(
+        reservationRecord?.eventDateTime
+          || reservationRecord?.startDateTimeLabel
+          || reservationRecord?.submissionTimestamp
+          || venueRecord.availabilityDate
+      ),
+      startTime: reservationRecord?.eventDateTime ? formatTimeFromDateTime(reservationRecord.eventDateTime) : 'N/A',
+      endTime: reservationRecord?.endDateTime ? formatTimeFromDateTime(reservationRecord.endDateTime) : 'N/A',
+      purpose: reservationRecord?.purposeDescription || reservationRecord?.activityType || 'N/A',
+    }));
+  }
+
+  return reservationRanges.map((rangeRecord, index) => ({
+    reservationCode: rangeRecord?.reservationCode || `RANGE-${index + 1}`,
+    borrowerName: rangeRecord?.reservedByName || 'Borrower unavailable',
+    status: rangeRecord?.statusLabel || 'Reserved',
+    dateValue: resolveDateValue(rangeRecord?.startDateTimeLabel || venueRecord.availabilityDate),
+    startTime: rangeRecord?.startDateTimeLabel ? formatTimeFromDateTime(rangeRecord.startDateTimeLabel) : 'N/A',
+    endTime: rangeRecord?.endDateTimeLabel ? formatTimeFromDateTime(rangeRecord.endDateTimeLabel) : 'N/A',
+    purpose: rangeRecord?.purposeDescription || rangeRecord?.activityType || 'N/A',
+  }));
+}
+
+function matchesFacilityReservationStatus(statusValue) {
+  if (facilityReportReservationStatus.value === 'all') {
+    return true;
+  }
+
+  const normalizedStatus = normalizeFilterQuery(statusValue);
+  return normalizedStatus.includes(facilityReportReservationStatus.value);
+}
+
+function inferVenueType(venueRecord) {
+  const sourceText = normalizeFilterQuery([
+    venueRecord?.venueName,
+    venueRecord?.venueLocation,
+    venueRecord?.description,
+  ].join(' '));
+
+  if (sourceText.includes('lab')) return 'Laboratory';
+  if (sourceText.includes('auditorium') || sourceText.includes('hall')) return 'Auditorium';
+  if (sourceText.includes('office')) return 'Office';
+  if (sourceText.includes('class')) return 'Classroom';
+  return 'Other';
+}
+
+function isDateWithinFacilityRange(dateValue) {
+  const normalizedDate = String(dateValue || '').slice(0, 10);
+  if (!normalizedDate) {
+    return false;
+  }
+
+  return normalizedDate >= facilityReportRange.value.start && normalizedDate <= facilityReportRange.value.end;
 }
 
 function filterAndSortClassSchedules(scheduleRecords, rawQuery, selectedRoomValue, sortDirection, venueRecords) {

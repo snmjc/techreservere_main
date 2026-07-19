@@ -5,11 +5,12 @@ import { buildAuthorizationHeaders, resolveAuthToken } from '@/shared/utils/auth
 const auditLogApi = {
   async listAuditLogs(filters = {}) {
     const authToken = await resolveAuthToken();
+    const { scope, ...restFilters } = filters || {};
     const response = await axios.get(apiUrl('/api/v1/audit-logs'), {
       headers: buildAuthorizationHeaders(authToken),
       params: {
-        scope: 'equipment_inventory',
-        ...filters,
+        ...restFilters,
+        ...(scope ? { scope } : {}),
       },
     });
     return response.data;

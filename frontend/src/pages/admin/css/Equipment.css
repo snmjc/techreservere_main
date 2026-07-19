@@ -439,6 +439,25 @@
   font-size: 1.6rem;
 }
 
+.equipment-page__inventory-note {
+  padding: 1rem 1.1rem;
+  background: #f7faf8;
+  border: 1px solid #dbe5df;
+  border-radius: 16px;
+}
+
+.equipment-page__inventory-note strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #16361f;
+}
+
+.equipment-page__inventory-note p {
+  margin: 0;
+  color: #56685e;
+  line-height: 1.55;
+}
+
 .equipment-page__table-wrap {
   overflow: auto;
   background: #fff;
@@ -657,6 +676,12 @@
 .equipment-modal__grid textarea {
   min-height: 120px;
   resize: vertical;
+}
+
+.equipment-modal__section-note {
+  margin: 0 0 0.75rem;
+  color: #607165;
+  line-height: 1.5;
 }
 
 .equipment-modal__spec-editor,
