@@ -14,9 +14,9 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
 ENV VITE_FRONTEND_URL=${VITE_FRONTEND_URL}
 
-RUN if echo "$VITE_FRONTEND_URL" | grep -q "techreserve.farahkenawy.codes" \
-    && ! echo "$VITE_CLERK_PUBLISHABLE_KEY" | grep -q "^pk_live_"; then \
-      echo "Production builds for techreserve.farahkenawy.codes require a Clerk pk_live_ publishable key."; \
+RUN if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ] \
+    || echo "$VITE_CLERK_PUBLISHABLE_KEY" | grep -q "^pk_test_your_clerk_key_here$"; then \
+      echo "Production builds require a real VITE_CLERK_PUBLISHABLE_KEY value."; \
       exit 1; \
     fi
 
