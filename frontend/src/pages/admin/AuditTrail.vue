@@ -12,15 +12,7 @@
       <section class="equipment-page__controls">
         <label class="equipment-page__search">
           <span class="equipment-page__label">Search</span>
-          <input v-model.trim="filters.search" type="text" placeholder="Actor, record, or action" />
-        </label>
-        <label class="equipment-page__filter">
-          <span class="equipment-page__label">Role</span>
-          <input v-model.trim="filters.role" type="text" placeholder="ROLE_ADMIN" />
-        </label>
-        <label class="equipment-page__filter">
-          <span class="equipment-page__label">Action</span>
-          <input v-model.trim="filters.action" type="text" placeholder="Create Equipment" />
+          <input v-model.trim="filters.search" type="text" placeholder="Actor, record, or reason" />
         </label>
         <label class="equipment-page__filter">
           <span class="equipment-page__label">Scope</span>
@@ -42,8 +34,6 @@
             <tr>
               <th>Timestamp</th>
               <th>Actor</th>
-              <th>Role</th>
-              <th>Action</th>
               <th>Module</th>
               <th>Record</th>
               <th>Reason</th>
@@ -51,16 +41,14 @@
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="7">Loading audit logs...</td>
+              <td colspan="5">Loading audit logs...</td>
             </tr>
             <tr v-else-if="auditLogs.length === 0">
-              <td colspan="7">No audit entries match the current filters.</td>
+              <td colspan="5">No audit entries match the current filters.</td>
             </tr>
             <tr v-for="auditLog in auditLogs" :key="auditLog.auditLogIdentifier" v-else>
               <td>{{ formatDateTime(auditLog.occurredTimestamp) }}</td>
               <td>{{ auditLog.actorName || auditLog.performedByAccountId || 'System' }}</td>
-              <td>{{ auditLog.actorRole || 'N/A' }}</td>
-              <td>{{ auditLog.actionPerformed }}</td>
               <td>{{ auditLog.module || 'General' }}</td>
               <td>{{ auditLog.targetDisplayLabel || `${auditLog.targetEntityType} #${auditLog.targetEntityIdentifier || ''}` }}</td>
               <td>{{ auditLog.reason || 'No reason recorded' }}</td>
@@ -85,8 +73,6 @@ const isLoading = ref(false);
 const selectedAuditScope = ref('both');
 const filters = reactive({
   search: '',
-  role: '',
-  action: '',
 });
 
 onMounted(() => {
