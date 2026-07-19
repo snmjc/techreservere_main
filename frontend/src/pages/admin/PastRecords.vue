@@ -338,45 +338,10 @@
             </section>
 
             <section class="admin-past-records-report-section admin-past-records-report-section--framed">
-              <span class="admin-past-records-report-step">3. Report Options</span>
-              <div class="admin-past-records-report-options-grid">
-                <label class="admin-past-records-report-select">
-                  <span>Report Type</span>
-                  <div class="admin-past-records-report-field">
-                    <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportFileIconSvg"></span>
-                    <select v-model="pastRecordsReportType">
-                      <option value="all">Past Records Report</option>
-                      <option value="venue">Venue Past Records</option>
-                      <option value="equipment">Equipment Past Records</option>
-                    </select>
-                  </div>
-                </label>
-
-                <label class="admin-past-records-report-select">
-                  <span>Category (Optional)</span>
-                  <div class="admin-past-records-report-field">
-                    <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportCategoryIconSvg"></span>
-                    <select v-model="pastRecordsReportCategory">
-                      <option
-                        v-for="option in pastRecordsReportCategoryOptions"
-                        :key="option.value"
-                        :value="option.value"
-                      >
-                        {{ option.label }}
-                      </option>
-                    </select>
-                  </div>
-                </label>
-
-                <label class="admin-past-records-report-checkbox">
-                  <span>Include Details</span>
-                  <div class="admin-past-records-report-checkbox-card">
-                    <input v-model="pastRecordsReportIncludeReservationInfo" type="checkbox" />
-                    <div>
-                      <strong>Include detailed data</strong>
-                    </div>
-                  </div>
-                </label>
+              <span class="admin-past-records-report-step">3. Report Output</span>
+              <div class="admin-past-records-report-note">
+                <span class="admin-past-records-report-note-icon" v-html="pastRecordsReportExcelIconSvg"></span>
+                <span>The report will include archived records with separate Venue and Equipment columns in Excel (.xlsx) format.</span>
               </div>
             </section>
 
@@ -435,20 +400,11 @@ const selectedRecord = ref(null);
 const showPastRecordsReportModal = ref(false);
 const pastRecordsReportError = ref('');
 const isExportingPastRecordsReport = ref(false);
-const pastRecordsReportType = ref('all');
-const pastRecordsReportCategory = ref('all');
 const pastRecordsReportTimeframe = ref('daily');
 const pastRecordsReportStartDate = ref('2026-07-19');
 const pastRecordsReportEndDate = ref('2026-07-19');
-const pastRecordsReportFacilityFilter = ref('all');
-const pastRecordsReportSecondaryFilter = ref('all');
-const pastRecordsReportStatusFilter = ref('all');
-const pastRecordsReportIncludeDetails = ref(true);
-const pastRecordsReportIncludeReservationInfo = ref(false);
 const pastRecordsReportHeaderIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M10 13h4"/><path d="M10 17h8"/><path d="M10 9h1"/></svg>`;
 const pastRecordsReportCalendarIconSvg = `<svg ${summaryIconAttributes}><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>`;
-const pastRecordsReportFileIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 15h6"/></svg>`;
-const pastRecordsReportCategoryIconSvg = `<svg ${summaryIconAttributes}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>`;
 const pastRecordsReportExcelIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m10 12 4 6"/><path d="m14 12-4 6"/></svg>`;
 const pastRecordsReportExportIconSvg = `<svg ${summaryIconAttributes}><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
 
@@ -577,27 +533,6 @@ const pastRecordsReportTimeframeOptions = [
   { value: 'yearly', label: 'Yearly' },
   { value: 'custom', label: 'Custom' },
 ];
-const pastRecordsReportCategoryOptions = computed(() => (
-  pastRecordsReportType.value === 'all'
-    ? [{ value: 'all', label: 'All Categories' }, ...Array.from(new Set(
-      pastRecordsList.value
-        .map((record) => String(record.facilityName || '').trim())
-        .filter(Boolean)
-    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
-    : pastRecordsReportType.value === 'venue'
-    ? [{ value: 'all', label: 'All Venues' }, ...Array.from(new Set(
-      pastRecordsList.value
-        .filter((record) => getTypeTone(record.requestType) === 'venue')
-        .map((record) => String(record.facilityName || '').trim())
-        .filter(Boolean)
-    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
-    : [{ value: 'all', label: 'All Equipment' }, ...Array.from(new Set(
-      pastRecordsList.value
-        .filter((record) => getTypeTone(record.requestType) !== 'venue')
-        .map((record) => String(record.facilityName || '').trim())
-        .filter(Boolean)
-    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
-));
 const pastRecordsReportRange = computed(() => resolvePastRecordsReportRange(
   pastRecordsReportTimeframe.value,
   pastRecordsReportStartDate.value,
@@ -636,24 +571,11 @@ watch(
   { immediate: true }
 );
 
-watch(pastRecordsReportType, () => {
-  pastRecordsReportCategory.value = 'all';
-  pastRecordsReportFacilityFilter.value = 'all';
-  pastRecordsReportSecondaryFilter.value = 'all';
-});
-
 function openPastRecordsReportModal() {
   pastRecordsReportError.value = '';
-  pastRecordsReportType.value = 'all';
-  pastRecordsReportCategory.value = 'all';
   pastRecordsReportTimeframe.value = 'daily';
   pastRecordsReportStartDate.value = '2026-07-19';
   pastRecordsReportEndDate.value = '2026-07-19';
-  pastRecordsReportFacilityFilter.value = 'all';
-  pastRecordsReportSecondaryFilter.value = 'all';
-  pastRecordsReportStatusFilter.value = 'all';
-  pastRecordsReportIncludeDetails.value = true;
-  pastRecordsReportIncludeReservationInfo.value = false;
   showPastRecordsReportModal.value = true;
 }
 
@@ -689,25 +611,11 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
       ? buildPastRecordsDetailedExportRows(detailRows)
       : [buildPastRecordsDetailedEmptyRow('No archived reservations match the selected report filters.')];
 
-    if (isDirectExportAll || pastRecordsReportIncludeDetails.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(normalizedRows),
-        'Detailed Records',
-      );
-    }
-
-    if (!isDirectExportAll && pastRecordsReportIncludeReservationInfo.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(
-          Array.isArray(detailRows) && detailRows.length > 0
-            ? buildPastRecordsReservationInfoRows(detailRows)
-            : [buildPastRecordsReservationInfoEmptyRow('No reservation information matches the selected report filters.')]
-        ),
-        'Reservation Info',
-      );
-    }
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(normalizedRows),
+      'Detailed Records',
+    );
 
     XLSX.writeFile(workbook, `${fileName}.xlsx`);
   } catch (error) {
@@ -789,47 +697,8 @@ function resolvePastRecordsReportRange(timeframe, startDateValue, endDateValue) 
 
 function buildPastRecordsReportRows() {
   return pastRecordsList.value
-    .filter((record) => matchesPastRecordsReportType(record))
-    .filter((record) => matchesPastRecordsReportCategory(record))
-    .filter((record) => matchesPastRecordsReportFacility(record))
-    .filter((record) => matchesPastRecordsReportSecondary(record))
-    .filter((record) => matchesPastRecordsReportStatus(record))
     .filter((record) => isPastRecordsReportDateInRange(record))
     .map((record) => mapPastRecordToReportRow(record));
-}
-
-function matchesPastRecordsReportType(record) {
-  const tone = getTypeTone(record.requestType);
-  if (pastRecordsReportType.value === 'all') {
-    return true;
-  }
-
-  return pastRecordsReportType.value === 'venue'
-    ? tone === 'venue' || tone === 'mixed'
-    : tone === 'equipment' || tone === 'mixed';
-}
-
-function matchesPastRecordsReportCategory(record) {
-  return pastRecordsReportCategory.value === 'all'
-    || String(record.facilityName || '').trim() === pastRecordsReportCategory.value;
-}
-
-function matchesPastRecordsReportFacility(record) {
-  return pastRecordsReportFacilityFilter.value === 'all'
-    || String(record.facilityName || '').trim() === pastRecordsReportFacilityFilter.value;
-}
-
-function matchesPastRecordsReportSecondary(record) {
-  if (pastRecordsReportSecondaryFilter.value === 'all') {
-    return true;
-  }
-
-  return getTypeTone(record.requestType) === pastRecordsReportSecondaryFilter.value;
-}
-
-function matchesPastRecordsReportStatus(record) {
-  return pastRecordsReportStatusFilter.value === 'all'
-    || String(record.recordStatus || '').toLowerCase() === pastRecordsReportStatusFilter.value;
 }
 
 function isPastRecordsReportDateInRange(record) {
@@ -842,12 +711,17 @@ function isPastRecordsReportDateInRange(record) {
 }
 
 function mapPastRecordToReportRow(record) {
+  const venue = resolvePastRecordVenue(record);
+  const equipment = resolvePastRecordEquipment(record);
+
   return {
     reportTimestamp: formatDateTime(new Date().toISOString()),
     reservationId: record.requestIdentifier,
     borrower: record.requesterFullName,
     role: record.requesterRole,
     facility: record.facilityName,
+    venue,
+    equipment,
     type: record.requestType,
     quantity: record.requestQuantity,
     requestedDate: formatDateTime(record.requestedDate),
@@ -864,28 +738,13 @@ function buildPastRecordsDetailedExportRows(rows) {
     ID: row.reservationId || 'N/A',
     Borrower: row.borrower || 'N/A',
     Facility: row.facility || 'N/A',
+    Venue: row.venue || 'N/A',
+    Equipment: row.equipment || 'N/A',
     Type: row.type || 'N/A',
     Qty: Number(row.quantity || 0),
     Requested: row.requestedDate || 'N/A',
     Needed: row.neededDate || 'N/A',
     Status: row.status || 'N/A',
-    Timestamp: row.reportTimestamp || 'N/A',
-  }));
-}
-
-function buildPastRecordsReservationInfoRows(rows) {
-  return rows.map((row) => ({
-    ID: row.reservationId || 'N/A',
-    Borrower: row.borrower || 'N/A',
-    Facility: row.facility || 'N/A',
-    Type: row.type || 'N/A',
-    Qty: Number(row.quantity || 0),
-    Requested: row.requestedDate || 'N/A',
-    Needed: row.neededDate || 'N/A',
-    'Processed Date': row.processedDate || 'N/A',
-    Status: row.status || 'N/A',
-    Purpose: row.purpose || 'N/A',
-    Remarks: row.remarks || 'N/A',
     Timestamp: row.reportTimestamp || 'N/A',
   }));
 }
@@ -895,34 +754,58 @@ function buildPastRecordsDetailedEmptyRow(message) {
     ID: message,
     Borrower: '',
     Facility: '',
+    Venue: '',
+    Equipment: '',
     Type: '',
     Qty: '',
     Requested: '',
     Needed: '',
     Status: '',
-    Timestamp: '',
-  };
-}
-
-function buildPastRecordsReservationInfoEmptyRow(message) {
-  return {
-    ID: message,
-    Borrower: '',
-    Facility: '',
-    Type: '',
-    Qty: '',
-    Requested: '',
-    Needed: '',
-    'Processed Date': '',
-    Status: '',
-    Purpose: '',
-    Remarks: '',
     Timestamp: '',
   };
 }
 
 function buildPastRecordsReportFileName() {
-  return `techreserve-past-records-${pastRecordsReportType.value}-${pastRecordsReportRange.value.start}-to-${pastRecordsReportRange.value.end}`;
+  return `techreserve-past-records-${pastRecordsReportRange.value.start}-to-${pastRecordsReportRange.value.end}`;
+}
+
+function resolvePastRecordVenue(record) {
+  const facilityResource = Array.isArray(record?.reservedResources)
+    ? record.reservedResources.find((resource) => String(resource?.resourceType || '').toLowerCase() === 'facility')
+    : null;
+
+  return String(facilityResource?.resourceName || '').trim() || (
+    getTypeTone(record?.requestType) === 'venue' || getTypeTone(record?.requestType) === 'mixed'
+      ? String(record?.facilityName || '').trim() || 'N/A'
+      : 'N/A'
+  );
+}
+
+function resolvePastRecordEquipment(record) {
+  const equipmentResources = Array.isArray(record?.reservedResources)
+    ? record.reservedResources
+      .filter((resource) => String(resource?.resourceType || '').toLowerCase() === 'equipment')
+      .map((resource) => String(resource?.resourceName || '').trim())
+      .filter(Boolean)
+    : [];
+
+  if (equipmentResources.length > 0) {
+    return equipmentResources.join(', ');
+  }
+
+  const summaryItems = Array.isArray(record?.reservationSummary)
+    ? record.reservationSummary
+      .map((item) => String(item?.itemName || '').trim())
+      .filter(Boolean)
+    : [];
+
+  if (summaryItems.length > 0) {
+    return summaryItems.join(', ');
+  }
+
+  return getTypeTone(record?.requestType) === 'equipment'
+    ? String(record?.facilityName || '').trim() || 'N/A'
+    : 'N/A';
 }
 
 function parseDateInput(value) {
