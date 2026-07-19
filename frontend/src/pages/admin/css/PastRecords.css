@@ -573,6 +573,11 @@
   border-bottom: 1px solid rgba(24, 47, 84, 0.08);
 }
 
+.admin-past-records-detail-item--remarks {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
 .admin-past-records-detail-item:last-child {
   border-bottom: 0;
   padding-bottom: 0;
@@ -589,6 +594,17 @@
   color: var(--admin-records-ink);
   font-size: 0.86rem;
   line-height: 1.45;
+}
+
+.admin-past-records-detail-remarks {
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 231, 225, 0.95);
+  border-radius: 12px;
+  background: rgba(246, 250, 248, 0.95);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: left;
 }
 
 .admin-past-records-detail-borrower {

@@ -238,9 +238,9 @@
                   <dt>Status</dt>
                   <dd>{{ selectedRecord.recordStatus }}</dd>
                 </div>
-                <div class="admin-past-records-detail-item">
+                <div class="admin-past-records-detail-item admin-past-records-detail-item--remarks">
                   <dt>Remarks</dt>
-                  <dd>{{ selectedRecord.remarks }}</dd>
+                  <dd class="admin-past-records-detail-remarks">{{ selectedRecord.remarks }}</dd>
                 </div>
               </dl>
             </div>
