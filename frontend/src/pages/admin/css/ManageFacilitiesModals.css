@@ -262,6 +262,179 @@
   grid-column: 1 / -1;
 }
 
+.manage-facilities-report-modal {
+  width: min(760px, 100%);
+}
+
+.manage-facilities-report-builder {
+  display: grid;
+  gap: 1rem;
+}
+
+.manage-facilities-report-builder__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.manage-facilities-report-builder__section {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.95rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+
+.manage-facilities-report-builder__section--wide {
+  grid-column: 1 / -1;
+}
+
+.manage-facilities-report-builder__step {
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.manage-facilities-report-builder__inline-options,
+.manage-facilities-report-builder__timeframe-row,
+.manage-facilities-report-builder__checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.manage-facilities-report-builder__radio,
+.manage-facilities-report-builder__checkbox {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  color: #374151;
+}
+
+.manage-facilities-report-builder__checkbox {
+  min-width: 220px;
+  padding: 0.65rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 12px;
+}
+
+.manage-facilities-report-builder__checkbox--wide {
+  min-width: 280px;
+}
+
+.manage-facilities-report-builder__checkbox strong {
+  display: block;
+  color: #111827;
+  font-size: 0.85rem;
+}
+
+.manage-facilities-report-builder__checkbox small,
+.manage-facilities-report-builder__section small {
+  color: #6b7280;
+  font-size: 0.76rem;
+}
+
+.manage-facilities-report-builder__select,
+.manage-facilities-report-builder__input,
+.manage-facilities-report-builder__filters-grid select {
+  min-height: 42px;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.manage-facilities-report-builder__filters-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.manage-facilities-report-builder__filters-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.manage-facilities-report-builder__timeframe-button {
+  min-height: 38px;
+  padding: 0 0.9rem;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.manage-facilities-report-builder__timeframe-button.is-active {
+  color: #14532d;
+  background: #ecfdf3;
+  border-color: #16a34a;
+}
+
+.manage-facilities-report-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.manage-facilities-report-preview__card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  background: #f0fdf4;
+  border: 1px solid #cce9d4;
+  border-radius: 12px;
+}
+
+.manage-facilities-report-preview__card strong {
+  color: #14532d;
+}
+
+.manage-facilities-report-preview__card span {
+  color: #166534;
+  font-size: 0.84rem;
+}
+
+.manage-facilities-report-builder__notice {
+  padding: 0.8rem 0.9rem;
+  color: #14532d;
+  background: #ecfdf3;
+  border: 1px solid #cce9d4;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.manage-facilities-add-button--secondary,
+.manage-facilities-venue-report-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0 1rem;
+  color: #14532d;
+  background: #ffffff;
+  border: 1px solid #b7d5bf;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.manage-facilities-venue-report-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .manage-facilities-venue-dialog {
   padding-top: 1.6rem;
 }
@@ -657,7 +830,10 @@
   .manage-facilities-venue-reservation-modal__overview,
   .manage-facilities-venue-reservation-modal__overview-grid,
   .manage-facilities-venue-reservation-modal__schedule-grid,
-  .manage-facilities-venue-reservation-modal__meta-grid {
+  .manage-facilities-venue-reservation-modal__meta-grid,
+  .manage-facilities-report-builder__grid,
+  .manage-facilities-report-builder__filters-grid,
+  .manage-facilities-report-preview {
     grid-template-columns: 1fr;
   }
 

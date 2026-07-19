@@ -1605,7 +1605,7 @@
 
 .reports-export-surface.is-exporting-pdf {
   gap: 0;
-  padding: 0 20px;
+  padding: 0 24px 24px;
   background: #f5faf7;
 }
 
@@ -1613,12 +1613,12 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 794px;
-  min-height: 1123px;
+  min-height: auto;
   gap: 1rem;
   margin: 0 auto;
-  padding: 28px 30px;
+  padding: 30px 34px;
   background: #f5faf7;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-analytics-header {
@@ -1660,6 +1660,13 @@
 .reports-export-surface.is-exporting-pdf .reports-bottom-grid {
   grid-template-columns: minmax(0, 1fr) 1.2fr 0.82fr;
   align-items: start;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-row-icon-button,
+.reports-export-surface.is-exporting-pdf .reports-equipment-pagination,
+.reports-export-surface.is-exporting-pdf .reports-trigger-button,
+.reports-export-surface.is-exporting-pdf .reports-models-button {
+  display: none !important;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-chart-card {

@@ -71,6 +71,15 @@
                 {{ sortOrderAscending ? 'Asc' : 'Desc' }}
               </button>
             </div>
+
+            <div class="admin-past-records-toolbar-actions">
+              <button class="admin-past-records-action-button admin-past-records-action-button--ghost" type="button" @click="openPastRecordsReportModal">
+                Generate Report
+              </button>
+              <button class="admin-past-records-action-button" type="button" @click="exportAllPastRecords">
+                Export All
+              </button>
+            </div>
           </div>
 
           <div class="admin-past-records-filter-strip">
@@ -267,6 +276,198 @@
       <div class="admin-past-records-page-footer">
         &copy; 2026 TECHRESERVE. DATAMS MANAGEMENT.
       </div>
+
+      <div
+        v-if="showPastRecordsReportModal"
+        class="admin-past-records-report-overlay"
+        @click.self="closePastRecordsReportModal"
+      >
+        <section class="admin-past-records-report-modal">
+          <button class="admin-past-records-report-close" type="button" aria-label="Close" @click="closePastRecordsReportModal">X</button>
+
+          <div class="admin-past-records-report-header">
+            <h2>Generate Report</h2>
+            <p>Build a hardcoded Excel report for archived venue or equipment reservations using a simple timeframe and filter setup.</p>
+          </div>
+
+          <div class="admin-past-records-report-builder">
+            <div class="admin-past-records-report-grid">
+              <section class="admin-past-records-report-section">
+                <span class="admin-past-records-report-step">1. Report Type</span>
+                <div class="admin-past-records-report-type-grid">
+                  <label class="admin-past-records-report-choice">
+                    <input v-model="pastRecordsReportType" type="radio" value="venue" />
+                    <span>Venue Report</span>
+                  </label>
+                  <label class="admin-past-records-report-choice">
+                    <input v-model="pastRecordsReportType" type="radio" value="equipment" />
+                    <span>Equipment Report</span>
+                  </label>
+                </div>
+              </section>
+
+              <section class="admin-past-records-report-section">
+                <span class="admin-past-records-report-step">2. Report Category</span>
+                <select v-model="pastRecordsReportCategory">
+                  <option
+                    v-for="option in pastRecordsReportCategoryOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </section>
+
+              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
+                <span class="admin-past-records-report-step">3. Timeframe</span>
+                <div class="admin-past-records-report-timeframe-grid">
+                  <button
+                    v-for="option in pastRecordsReportTimeframeOptions"
+                    :key="option.value"
+                    type="button"
+                    class="admin-past-records-report-timeframe"
+                    :class="{ 'admin-past-records-report-timeframe--active': pastRecordsReportTimeframe === option.value }"
+                    @click="pastRecordsReportTimeframe = option.value"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </section>
+
+              <section class="admin-past-records-report-section">
+                <span class="admin-past-records-report-step">Select Date</span>
+                <input v-model="pastRecordsReportStartDate" type="date" />
+                <input
+                  v-if="pastRecordsReportTimeframe === 'custom'"
+                  v-model="pastRecordsReportEndDate"
+                  type="date"
+                />
+                <small>{{ pastRecordsReportRangeLabel }}</small>
+              </section>
+
+              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
+                <span class="admin-past-records-report-step">4. Additional Filters (Optional)</span>
+                <div class="admin-past-records-report-filters-grid">
+                  <label>
+                    <span>{{ pastRecordsPrimaryFilterLabel }}</span>
+                    <select v-model="pastRecordsReportFacilityFilter">
+                      <option value="all">All Facilities</option>
+                      <option
+                        v-for="option in pastRecordsReportCategoryOptions.filter((option) => option.value !== 'all')"
+                        :key="`facility-${option.value}`"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>{{ pastRecordsSecondaryFilterLabel }}</span>
+                    <select v-model="pastRecordsReportSecondaryFilter">
+                      <option
+                        v-for="option in pastRecordsReportSecondaryFilterOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Reservation Status</span>
+                    <select v-model="pastRecordsReportStatusFilter">
+                      <option value="all">All Statuses</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
+                <span class="admin-past-records-report-step">5. Excel Contents</span>
+                <div class="admin-past-records-report-contents-grid">
+                  <label class="admin-past-records-report-checkbox">
+                    <input v-model="pastRecordsReportIncludeSummary" type="checkbox" />
+                    <div>
+                      <strong>Summary sheet</strong>
+                      <small>Overview and key metrics</small>
+                    </div>
+                  </label>
+                  <label class="admin-past-records-report-checkbox">
+                    <input v-model="pastRecordsReportIncludeReservationInfo" type="checkbox" />
+                    <div>
+                      <strong>Reservation information</strong>
+                      <small>Reservation and booking details</small>
+                    </div>
+                  </label>
+                  <label class="admin-past-records-report-checkbox">
+                    <input v-model="pastRecordsReportIncludeDetails" type="checkbox" />
+                    <div>
+                      <strong>Detailed records</strong>
+                      <small>Full list of archived reservations</small>
+                    </div>
+                  </label>
+                  <label class="admin-past-records-report-checkbox">
+                    <input v-model="pastRecordsReportIncludeUtilization" type="checkbox" />
+                    <div>
+                      <strong>Utilization statistics</strong>
+                      <small>Reservation totals and quantity usage</small>
+                    </div>
+                  </label>
+                  <label class="admin-past-records-report-checkbox admin-past-records-report-checkbox--wide">
+                    <input v-model="pastRecordsReportIncludeAppliedFilters" type="checkbox" />
+                    <div>
+                      <strong>Applied filters</strong>
+                      <small>Filters used in this report</small>
+                    </div>
+                  </label>
+                </div>
+              </section>
+            </div>
+
+            <p v-if="pastRecordsReportError" class="admin-past-records-report-error">{{ pastRecordsReportError }}</p>
+
+            <div v-if="pastRecordsReportPreviewVisible" class="admin-past-records-report-preview">
+              <article>
+                <strong>{{ pastRecordsReportPreviewSummary.title }}</strong>
+                <span>{{ pastRecordsReportPreviewSummary.recordCount }} record(s)</span>
+                <span>{{ pastRecordsReportPreviewSummary.statusLabel }}</span>
+              </article>
+              <article>
+                <strong>Applied Range</strong>
+                <span>{{ pastRecordsReportRangeLabel }}</span>
+                <span>{{ pastRecordsReportPreviewSummary.generatedLabel }}</span>
+              </article>
+            </div>
+
+            <footer class="admin-past-records-report-actions">
+              <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="closePastRecordsReportModal">
+                Cancel
+              </button>
+              <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="previewPastRecordsReport">
+                Preview Records
+              </button>
+              <button
+                type="button"
+                class="admin-past-records-report-button"
+                :disabled="isExportingPastRecordsReport"
+                @click="exportPastRecordsReportWorkbook"
+              >
+                {{ isExportingPastRecordsReport ? 'Exporting...' : 'Export Excel' }}
+              </button>
+            </footer>
+
+            <div class="admin-past-records-report-note">
+              The report will be generated in Excel format and downloaded to your device.
+            </div>
+          </div>
+        </section>
+      </div>
       <DataRequestStatusFloater :items="pastRecordsStatusItems" />
     </section>
   </AdminSidebarLayoutComponent>
@@ -274,6 +475,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import * as XLSX from 'xlsx';
 import AdminSidebarLayoutComponent from '@/shared/components/AdminSidebarLayoutComponent.vue';
 import DataRequestStatusFloater from '@/shared/components/DataRequestStatusFloater.vue';
 import '@/shared/components/adminSidebarLayout.css';
@@ -292,6 +494,23 @@ const sortOrderAscending = ref(false);
 const sortByValue = ref('requestedDate');
 const currentPage = ref(1);
 const selectedRecord = ref(null);
+const showPastRecordsReportModal = ref(false);
+const pastRecordsReportError = ref('');
+const pastRecordsReportPreviewVisible = ref(false);
+const isExportingPastRecordsReport = ref(false);
+const pastRecordsReportType = ref('venue');
+const pastRecordsReportCategory = ref('all');
+const pastRecordsReportTimeframe = ref('custom');
+const pastRecordsReportStartDate = ref('2026-06-04');
+const pastRecordsReportEndDate = ref('2026-06-18');
+const pastRecordsReportFacilityFilter = ref('all');
+const pastRecordsReportSecondaryFilter = ref('all');
+const pastRecordsReportStatusFilter = ref('all');
+const pastRecordsReportIncludeSummary = ref(true);
+const pastRecordsReportIncludeDetails = ref(true);
+const pastRecordsReportIncludeReservationInfo = ref(true);
+const pastRecordsReportIncludeUtilization = ref(true);
+const pastRecordsReportIncludeAppliedFilters = ref(true);
 
 onMounted(async () => {
   try {
@@ -411,6 +630,64 @@ const pageStart = computed(() => (
     : ((currentPage.value - 1) * resolvedPageSize.value) + 1
 ));
 const pageEnd = computed(() => Math.min(currentPage.value * resolvedPageSize.value, filteredRecordList.value.length));
+const pastRecordsReportTimeframeOptions = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+  { value: 'custom', label: 'Custom Range' },
+];
+const pastRecordsReportCategoryOptions = computed(() => (
+  pastRecordsReportType.value === 'venue'
+    ? [{ value: 'all', label: 'All Venues' }, ...Array.from(new Set(
+      pastRecordsList.value
+        .filter((record) => getTypeTone(record.requestType) === 'venue')
+        .map((record) => String(record.facilityName || '').trim())
+        .filter(Boolean)
+    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
+    : [{ value: 'all', label: 'All Equipment' }, ...Array.from(new Set(
+      pastRecordsList.value
+        .filter((record) => getTypeTone(record.requestType) !== 'venue')
+        .map((record) => String(record.facilityName || '').trim())
+        .filter(Boolean)
+    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
+));
+const pastRecordsReportSecondaryFilterOptions = computed(() => (
+  pastRecordsReportType.value === 'venue'
+    ? [
+      { value: 'all', label: 'All Types' },
+      { value: 'venue', label: 'Venue' },
+      { value: 'both', label: 'Both' },
+    ]
+    : [
+      { value: 'all', label: 'All Types' },
+      { value: 'equipment', label: 'Equipment' },
+      { value: 'mixed', label: 'Both' },
+    ]
+));
+const pastRecordsPrimaryFilterLabel = computed(() => (
+  pastRecordsReportType.value === 'venue' ? 'Venue' : 'Equipment Group'
+));
+const pastRecordsSecondaryFilterLabel = computed(() => (
+  pastRecordsReportType.value === 'venue' ? 'Venue Type' : 'Reservation Type'
+));
+const pastRecordsReportRange = computed(() => resolvePastRecordsReportRange(
+  pastRecordsReportTimeframe.value,
+  pastRecordsReportStartDate.value,
+  pastRecordsReportEndDate.value,
+));
+const pastRecordsReportRangeLabel = computed(() => (
+  `${formatDate(pastRecordsReportRange.value.start)} - ${formatDate(pastRecordsReportRange.value.end)}`
+));
+const filteredPastRecordsReportRows = computed(() => buildPastRecordsReportRows());
+const pastRecordsReportPreviewSummary = computed(() => ({
+  title: pastRecordsReportType.value === 'venue' ? 'Venue Report Preview' : 'Equipment Report Preview',
+  recordCount: filteredPastRecordsReportRows.value.length,
+  statusLabel: pastRecordsReportStatusFilter.value === 'all'
+    ? 'All archive statuses'
+    : `${pastRecordsReportStatusFilter.value} records only`,
+  generatedLabel: `Generated ${formatDateTime(new Date().toISOString())}`,
+}));
 
 watch([activeRecordTab, searchQueryText, showingFilterValue, sortOrderAscending, sortByValue], () => {
   currentPage.value = 1;
@@ -440,6 +717,121 @@ watch(
   { immediate: true }
 );
 
+watch(pastRecordsReportType, () => {
+  pastRecordsReportCategory.value = 'all';
+  pastRecordsReportFacilityFilter.value = 'all';
+  pastRecordsReportSecondaryFilter.value = 'all';
+  pastRecordsReportPreviewVisible.value = false;
+});
+
+function openPastRecordsReportModal() {
+  pastRecordsReportError.value = '';
+  pastRecordsReportPreviewVisible.value = false;
+  pastRecordsReportType.value = 'venue';
+  pastRecordsReportCategory.value = 'all';
+  pastRecordsReportTimeframe.value = 'custom';
+  pastRecordsReportStartDate.value = '2026-06-04';
+  pastRecordsReportEndDate.value = '2026-06-18';
+  pastRecordsReportFacilityFilter.value = 'all';
+  pastRecordsReportSecondaryFilter.value = 'all';
+  pastRecordsReportStatusFilter.value = 'all';
+  pastRecordsReportIncludeSummary.value = true;
+  pastRecordsReportIncludeDetails.value = true;
+  pastRecordsReportIncludeReservationInfo.value = true;
+  pastRecordsReportIncludeUtilization.value = true;
+  pastRecordsReportIncludeAppliedFilters.value = true;
+  showPastRecordsReportModal.value = true;
+}
+
+function closePastRecordsReportModal() {
+  if (isExportingPastRecordsReport.value) {
+    return;
+  }
+
+  showPastRecordsReportModal.value = false;
+  pastRecordsReportError.value = '';
+  pastRecordsReportPreviewVisible.value = false;
+}
+
+function previewPastRecordsReport() {
+  pastRecordsReportError.value = '';
+  pastRecordsReportPreviewVisible.value = true;
+}
+
+function exportAllPastRecords() {
+  const rows = filteredRecordList.value.map((record) => mapPastRecordToReportRow(record));
+  exportPastRecordsWorkbook('techreserve-past-records-all', rows, true);
+}
+
+function exportPastRecordsReportWorkbook() {
+  exportPastRecordsWorkbook(
+    buildPastRecordsReportFileName(),
+    filteredPastRecordsReportRows.value,
+    false,
+  );
+}
+
+function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
+  try {
+    isExportingPastRecordsReport.value = true;
+    pastRecordsReportError.value = '';
+
+    const workbook = XLSX.utils.book_new();
+    const normalizedRows = Array.isArray(detailRows) && detailRows.length > 0
+      ? detailRows
+      : [{ message: 'No archived reservations match the selected report filters.' }];
+
+    if (isDirectExportAll || pastRecordsReportIncludeSummary.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(buildPastRecordsSummaryRows(detailRows)),
+        'Summary',
+      );
+    }
+
+    if (isDirectExportAll || pastRecordsReportIncludeDetails.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(normalizedRows),
+        'Detailed Records',
+      );
+    }
+
+    if (!isDirectExportAll && pastRecordsReportIncludeReservationInfo.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(normalizedRows),
+        'Reservation Info',
+      );
+    }
+
+    if (!isDirectExportAll && pastRecordsReportIncludeUtilization.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(buildPastRecordsUtilizationRows(detailRows)),
+        'Utilization',
+      );
+    }
+
+    if (!isDirectExportAll && pastRecordsReportIncludeAppliedFilters.value) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(buildPastRecordsAppliedFilterRows()),
+        'Applied Filters',
+      );
+    }
+
+    XLSX.writeFile(workbook, `${fileName}.xlsx`);
+    if (!isDirectExportAll) {
+      pastRecordsReportPreviewVisible.value = true;
+    }
+  } catch (error) {
+    pastRecordsReportError.value = error?.message || 'Unable to export the archive report right now.';
+  } finally {
+    isExportingPastRecordsReport.value = false;
+  }
+}
+
 function resolveSortValue(record, sortKey) {
   if (sortKey === 'borrower') return String(record.requesterFullName || '').toLowerCase();
   if (sortKey === 'facility') return String(record.facilityName || '').toLowerCase();
@@ -465,8 +857,191 @@ function getTypeTone(type) {
   return 'venue';
 }
 
+function resolvePastRecordsReportRange(timeframe, startDateValue, endDateValue) {
+  const safeStartDate = parseDateInput(startDateValue);
+
+  if (timeframe === 'daily') {
+    return {
+      start: formatDateInputValue(safeStartDate),
+      end: formatDateInputValue(safeStartDate),
+    };
+  }
+
+  if (timeframe === 'weekly') {
+    const weekStart = new Date(safeStartDate);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return {
+      start: formatDateInputValue(weekStart),
+      end: formatDateInputValue(weekEnd),
+    };
+  }
+
+  if (timeframe === 'monthly') {
+    return {
+      start: formatDateInputValue(new Date(safeStartDate.getFullYear(), safeStartDate.getMonth(), 1)),
+      end: formatDateInputValue(new Date(safeStartDate.getFullYear(), safeStartDate.getMonth() + 1, 0)),
+    };
+  }
+
+  if (timeframe === 'yearly') {
+    return {
+      start: `${safeStartDate.getFullYear()}-01-01`,
+      end: `${safeStartDate.getFullYear()}-12-31`,
+    };
+  }
+
+  const safeEndDate = parseDateInput(endDateValue);
+  const normalizedStart = safeStartDate <= safeEndDate ? safeStartDate : safeEndDate;
+  const normalizedEnd = safeStartDate <= safeEndDate ? safeEndDate : safeStartDate;
+
+  return {
+    start: formatDateInputValue(normalizedStart),
+    end: formatDateInputValue(normalizedEnd),
+  };
+}
+
+function buildPastRecordsReportRows() {
+  return pastRecordsList.value
+    .filter((record) => matchesPastRecordsReportType(record))
+    .filter((record) => matchesPastRecordsReportCategory(record))
+    .filter((record) => matchesPastRecordsReportFacility(record))
+    .filter((record) => matchesPastRecordsReportSecondary(record))
+    .filter((record) => matchesPastRecordsReportStatus(record))
+    .filter((record) => isPastRecordsReportDateInRange(record))
+    .map((record) => mapPastRecordToReportRow(record));
+}
+
+function matchesPastRecordsReportType(record) {
+  const tone = getTypeTone(record.requestType);
+  return pastRecordsReportType.value === 'venue'
+    ? tone === 'venue' || tone === 'mixed'
+    : tone === 'equipment' || tone === 'mixed';
+}
+
+function matchesPastRecordsReportCategory(record) {
+  return pastRecordsReportCategory.value === 'all'
+    || String(record.facilityName || '').trim() === pastRecordsReportCategory.value;
+}
+
+function matchesPastRecordsReportFacility(record) {
+  return pastRecordsReportFacilityFilter.value === 'all'
+    || String(record.facilityName || '').trim() === pastRecordsReportFacilityFilter.value;
+}
+
+function matchesPastRecordsReportSecondary(record) {
+  if (pastRecordsReportSecondaryFilter.value === 'all') {
+    return true;
+  }
+
+  return getTypeTone(record.requestType) === pastRecordsReportSecondaryFilter.value;
+}
+
+function matchesPastRecordsReportStatus(record) {
+  return pastRecordsReportStatusFilter.value === 'all'
+    || String(record.recordStatus || '').toLowerCase() === pastRecordsReportStatusFilter.value;
+}
+
+function isPastRecordsReportDateInRange(record) {
+  const comparisonDate = String(record.dateProcessed || record.neededDate || record.requestedDate || '').slice(0, 10);
+  if (!comparisonDate) {
+    return false;
+  }
+
+  return comparisonDate >= pastRecordsReportRange.value.start && comparisonDate <= pastRecordsReportRange.value.end;
+}
+
+function mapPastRecordToReportRow(record) {
+  return {
+    reservationId: record.requestIdentifier,
+    borrower: record.requesterFullName,
+    role: record.requesterRole,
+    facility: record.facilityName,
+    type: record.requestType,
+    quantity: record.requestQuantity,
+    requestedDate: formatDateTime(record.requestedDate),
+    neededDate: formatDateTime(record.neededDate),
+    processedDate: formatDateTime(record.dateProcessed),
+    status: record.recordStatus,
+    purpose: record.requestPurpose || 'N/A',
+    remarks: record.remarks || 'N/A',
+  };
+}
+
+function buildPastRecordsSummaryRows(rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const completed = safeRows.filter((row) => row.status === 'Completed').length;
+  const rejected = safeRows.filter((row) => row.status === 'Rejected').length;
+  const cancelled = safeRows.filter((row) => row.status === 'Cancelled').length;
+
+  return [{
+    reportType: pastRecordsReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
+    totalRecords: safeRows.length,
+    completed,
+    rejected,
+    cancelled,
+    appliedRange: pastRecordsReportRangeLabel.value,
+    generatedOn: formatDateTime(new Date().toISOString()),
+  }];
+}
+
+function buildPastRecordsUtilizationRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [{ message: 'No utilization statistics are available for the selected report filters.' }];
+  }
+
+  const groupedRows = rows.reduce((accumulator, row) => {
+    const key = String(row.facility || 'Unknown Facility');
+    if (!accumulator[key]) {
+      accumulator[key] = {
+        facility: key,
+        totalReservations: 0,
+        totalQuantity: 0,
+      };
+    }
+
+    accumulator[key].totalReservations += 1;
+    accumulator[key].totalQuantity += Number(row.quantity || 0);
+    return accumulator;
+  }, {});
+
+  return Object.values(groupedRows);
+}
+
+function buildPastRecordsAppliedFilterRows() {
+  return [
+    { filter: 'Report Type', value: pastRecordsReportType.value },
+    { filter: 'Report Category', value: pastRecordsReportCategory.value },
+    { filter: 'Timeframe', value: pastRecordsReportTimeframe.value },
+    { filter: 'Applied Range', value: pastRecordsReportRangeLabel.value },
+    { filter: 'Facility', value: pastRecordsReportFacilityFilter.value },
+    { filter: 'Type Filter', value: pastRecordsReportSecondaryFilter.value },
+    { filter: 'Reservation Status', value: pastRecordsReportStatusFilter.value },
+  ];
+}
+
+function buildPastRecordsReportFileName() {
+  return `techreserve-past-records-${pastRecordsReportType.value}-${pastRecordsReportRange.value.start}-to-${pastRecordsReportRange.value.end}`;
+}
+
+function parseDateInput(value) {
+  const normalizedValue = String(value || '').trim();
+  if (normalizedValue === '') {
+    return new Date('2026-07-18T00:00:00');
+  }
+
+  const parsedDate = new Date(`${normalizedValue}T00:00:00`);
+  return Number.isNaN(parsedDate.getTime()) ? new Date('2026-07-18T00:00:00') : parsedDate;
+}
+
 function formatDate(value) {
-  return new Date(value).toLocaleDateString('en-US', {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'N/A';
+  }
+
+  return parsedDate.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -474,7 +1049,12 @@ function formatDate(value) {
 }
 
 function formatDateTime(value) {
-  return new Date(value).toLocaleString('en-US', {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'N/A';
+  }
+
+  return parsedDate.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -580,5 +1160,12 @@ function resolveReservationListState(records) {
   }
 
   return records.length > 0 ? 'fresh' : 'idle';
+}
+
+function formatDateInputValue(dateValue) {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+  const day = String(dateValue.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 </script>

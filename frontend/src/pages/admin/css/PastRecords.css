@@ -213,6 +213,30 @@
   align-items: flex-end;
 }
 
+.admin-past-records-toolbar-actions {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.admin-past-records-action-button {
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid #0c8048;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0d9a56, #0c8048);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-past-records-action-button--ghost {
+  background: #fff;
+  color: #0c8048;
+}
+
 .admin-past-records-sort-toggle {
   height: 46px;
   padding: 0 16px;
@@ -672,6 +696,275 @@
   text-transform: uppercase;
 }
 
+.admin-past-records-report-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.admin-past-records-report-modal {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  border: 1px solid #dbe4de;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+}
+
+.admin-past-records-report-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #dbe4de;
+  border-radius: 10px;
+  background: #fff;
+  color: #6b7280;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-past-records-report-header {
+  padding-right: 2.4rem;
+  margin-bottom: 1rem;
+}
+
+.admin-past-records-report-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-header p {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+  font-size: 0.86rem;
+}
+
+.admin-past-records-report-builder {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-past-records-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-past-records-report-section {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.admin-past-records-report-section--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-past-records-report-step {
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-type-grid,
+.admin-past-records-report-timeframe-grid,
+.admin-past-records-report-contents-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-past-records-report-choice,
+.admin-past-records-report-timeframe {
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+}
+
+.admin-past-records-report-timeframe {
+  min-height: 38px;
+  padding: 0 0.9rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-timeframe--active {
+  color: #14532d;
+  background: #ecfdf3;
+  border-color: #16a34a;
+}
+
+.admin-past-records-report-choice {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  min-width: 180px;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-choice input {
+  margin: 0;
+}
+
+.admin-past-records-report-choice span {
+  color: #111827;
+}
+
+.admin-past-records-report-section select,
+.admin-past-records-report-section input {
+  min-height: 42px;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d7dfda;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-section small {
+  color: #6b7280;
+  font-size: 0.76rem;
+}
+
+.admin-past-records-report-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.admin-past-records-report-filters-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-checkbox {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  min-width: 220px;
+  padding: 0.65rem 0.75rem;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #dbe4de;
+  border-radius: 12px;
+}
+
+.admin-past-records-report-checkbox--wide {
+  min-width: 280px;
+}
+
+.admin-past-records-report-checkbox strong {
+  display: block;
+  color: #111827;
+  font-size: 0.85rem;
+}
+
+.admin-past-records-report-checkbox small {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.admin-past-records-report-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.admin-past-records-report-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-past-records-report-preview article {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  border: 1px solid #cce9d4;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+
+.admin-past-records-report-preview strong {
+  color: #14532d;
+}
+
+.admin-past-records-report-preview span {
+  color: #166534;
+  font-size: 0.84rem;
+}
+
+.admin-past-records-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-past-records-report-button {
+  min-height: 42px;
+  padding: 0 1rem;
+  border: 1px solid #0c8048;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0d9a56, #0c8048);
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-past-records-report-button--secondary {
+  background: #fff;
+  color: #14532d;
+  border-color: #b7d5bf;
+}
+
+.admin-past-records-report-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-past-records-report-note {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #cce9d4;
+  border-radius: 12px;
+  background: #ecfdf3;
+  color: #14532d;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 @media (max-width: 1200px) {
   .admin-past-records-shell {
     grid-template-columns: 1fr;
@@ -693,8 +986,15 @@
     align-items: stretch;
   }
 
-  .admin-past-records-toolbar-controls {
+  .admin-past-records-toolbar-controls,
+  .admin-past-records-toolbar-actions {
     flex-wrap: wrap;
+  }
+
+  .admin-past-records-report-grid,
+  .admin-past-records-report-preview,
+  .admin-past-records-report-filters-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -7,9 +7,9 @@
       <header class="equipment-page__header">
         <div>
           <p class="equipment-page__eyebrow">Admin Equipment Management</p>
-          <h1 class="equipment-page__title">Equipment Lifecycle</h1>
+          <h1 class="equipment-page__title">Equipment Inventory Register</h1>
           <p class="equipment-page__subtitle">
-            Add, review, update, and delete equipment records without exposing admin actions to requestors.
+            Maintain a clear equipment inventory with exact quantities, specific models, tracked barcodes, asset tags, serial details, and structured item specifications.
           </p>
         </div>
         <button class="equipment-page__primary-button" type="button" @click="openCreateModal">
@@ -23,7 +23,7 @@
           <input
             v-model.trim="searchQuery"
             type="text"
-            placeholder="Search by equipment name or category"
+            placeholder="Search by name, model, brand, barcode, asset tag, or serial"
           />
         </label>
 
@@ -127,22 +127,30 @@
 
       <section class="equipment-page__summary">
         <article class="equipment-page__summary-card">
-          <span>Total Records</span>
+          <span>Inventory Records</span>
           <strong>{{ equipmentList.length }}</strong>
         </article>
         <article class="equipment-page__summary-card">
-          <span>Available</span>
+          <span>Available Units</span>
           <strong>{{ availableCount }}</strong>
         </article>
         <article class="equipment-page__summary-card">
-          <span>Under Maintenance</span>
+          <span>Maintenance Units</span>
           <strong>{{ maintenanceCount }}</strong>
         </article>
         <article class="equipment-page__summary-card">
-          <span>Retired</span>
-          <strong>{{ retiredCount }}</strong>
+          <span>Incomplete Records</span>
+          <strong>{{ incompleteInventoryCount }}</strong>
         </article>
       </section>
+
+      <article class="equipment-page__inventory-note">
+        <strong>Inventory standard</strong>
+        <p>
+          Each equipment record should clearly show the quantity breakdown, brand, model, structured specifications,
+          and tracked unit identifiers such as barcode, asset tag, serial number, condition, and storage location.
+        </p>
+      </article>
 
       <p v-if="pageError" class="equipment-page__feedback equipment-page__feedback--error">{{ pageError }}</p>
       <p v-if="exportError" class="equipment-page__feedback equipment-page__feedback--error">{{ exportError }}</p>
@@ -165,8 +173,8 @@
               <th>Reserved</th>
               <th>Maintenance</th>
               <th>Unavailable</th>
-              <th>Inventory Health</th>
-              <th>Updated</th>
+              <th>Record Completeness</th>
+              <th>Last Updated</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -219,7 +227,7 @@
           <header class="equipment-modal__header">
             <div>
               <p class="equipment-modal__eyebrow">Equipment Details</p>
-              <h2>View Equipment</h2>
+              <h2>View Inventory Record</h2>
             </div>
             <button type="button" class="equipment-modal__close" @click="closeViewModal">X</button>
           </header>
@@ -237,20 +245,22 @@
             <div><dt>Category</dt><dd>{{ viewEquipment.equipmentCategory || viewEquipment.categoryName }}</dd></div>
             <div><dt>Brand</dt><dd>{{ viewEquipment.equipmentBrand || 'N/A' }}</dd></div>
             <div><dt>Model</dt><dd>{{ viewEquipment.equipmentModel || 'N/A' }}</dd></div>
-            <div><dt>Available Quantity</dt><dd>{{ viewEquipment.availableQuantity }}</dd></div>
-            <div><dt>Reserved Quantity</dt><dd>{{ viewEquipment.reservedQuantity || 0 }}</dd></div>
-            <div><dt>Unavailable Quantity</dt><dd>{{ viewEquipment.unavailableQuantity || 0 }}</dd></div>
+            <div><dt>Total Quantity</dt><dd>{{ viewEquipment.totalQuantity || viewEquipment.availableQuantity || 0 }}</dd></div>
+            <div><dt>Available Units</dt><dd>{{ viewEquipment.availableQuantity }}</dd></div>
+            <div><dt>Reserved Units</dt><dd>{{ viewEquipment.reservedQuantity || 0 }}</dd></div>
+            <div><dt>Maintenance Units</dt><dd>{{ viewEquipment.underMaintenanceQuantity || 0 }}</dd></div>
+            <div><dt>Unavailable Units</dt><dd>{{ viewEquipment.unavailableQuantity || 0 }}</dd></div>
             <div><dt>Status</dt><dd>{{ viewEquipment.operationalStatus || viewEquipment.equipmentState }}</dd></div>
-            <div><dt>Operational Status</dt><dd>{{ viewEquipment.operationalStatus }}</dd></div>
-            <div><dt>QR Code</dt><dd>{{ viewEquipment.barcode || 'N/A' }}</dd></div>
-            <div><dt>Asset ID</dt><dd>{{ viewEquipment.assetId || 'N/A' }}</dd></div>
+            <div><dt>Record Completeness</dt><dd>{{ inventoryHealthLabel(viewEquipment) }}</dd></div>
+            <div><dt>Primary Barcode</dt><dd>{{ viewEquipment.barcode || 'N/A' }}</dd></div>
+            <div><dt>Primary Asset Tag</dt><dd>{{ viewEquipment.assetId || 'N/A' }}</dd></div>
             <div><dt>Description</dt><dd>{{ viewEquipment.description || viewEquipment.scheduleDescription || 'N/A' }}</dd></div>
             <div><dt>Remarks</dt><dd>{{ viewEquipment.remarks || 'No remarks provided' }}</dd></div>
             <div><dt>Created</dt><dd>{{ formatDateTime(viewEquipment.createdTimestamp) }}</dd></div>
             <div><dt>Updated</dt><dd>{{ formatDateTime(viewEquipment.updatedTimestamp || viewEquipment.createdTimestamp) }}</dd></div>
           </dl>
           <div class="equipment-modal__specs" v-if="Array.isArray(viewEquipment.specifications) && viewEquipment.specifications.length > 0">
-            <p class="equipment-modal__specs-title">Specifications</p>
+            <p class="equipment-modal__specs-title">Structured Item Specifications</p>
             <div class="equipment-modal__specs-list">
               <div v-for="(specification, index) in viewEquipment.specifications" :key="`${specification.key}-${index}`">
                 <strong>{{ specification.key || 'Specification' }}</strong>
@@ -262,13 +272,15 @@
             <table class="equipment-page__table">
               <thead>
                 <tr>
-                  <th>Unit ID</th>
+                  <th>Unit Code</th>
                   <th>Barcode</th>
                   <th>Asset Tag</th>
-                  <th>Serial</th>
+                  <th>Serial Number</th>
                   <th>Condition</th>
                   <th>Availability</th>
-                  <th>Location</th>
+                  <th>Storage Location</th>
+                  <th>Date Acquired</th>
+                  <th>Maintenance State</th>
                   <th>Remarks</th>
                 </tr>
               </thead>
@@ -281,6 +293,8 @@
                   <td>{{ unit.conditionStatus || 'Good' }}</td>
                   <td>{{ unit.availabilityStatus || 'Available' }}</td>
                   <td>{{ unit.storageLocation || 'N/A' }}</td>
+                  <td>{{ formatDateOnly(unit.dateAcquired) }}</td>
+                  <td>{{ unit.maintenanceState || 'Operational' }}</td>
                   <td>{{ unit.remarks || 'N/A' }}</td>
                 </tr>
               </tbody>
@@ -297,8 +311,8 @@
         <section class="equipment-modal equipment-modal--wide">
           <header class="equipment-modal__header">
             <div>
-              <p class="equipment-modal__eyebrow">Equipment Record</p>
-              <h2>{{ formMode === 'create' ? 'Add Equipment' : 'Update Equipment' }}</h2>
+              <p class="equipment-modal__eyebrow">Inventory Record</p>
+              <h2>{{ formMode === 'create' ? 'Add Inventory Record' : 'Update Inventory Record' }}</h2>
             </div>
             <button type="button" class="equipment-modal__close" :disabled="isSaving" @click="closeFormModal">X</button>
           </header>
@@ -309,7 +323,7 @@
               <input v-model.trim="form.equipmentName" type="text" maxlength="150" />
             </label>
             <label>
-              <span>Category</span>
+              <span>Equipment Category</span>
               <input v-model.trim="form.equipmentCategory" type="text" maxlength="120" />
             </label>
             <label>
@@ -317,11 +331,11 @@
               <input v-model.trim="form.equipmentBrand" type="text" maxlength="120" />
             </label>
             <label>
-              <span>Model</span>
-              <input v-model.trim="form.equipmentModel" type="text" maxlength="160" />
+              <span>Specific Model</span>
+              <input v-model.trim="form.equipmentModel" type="text" maxlength="160" placeholder="e.g. Sony PXW-Z90" />
             </label>
             <label>
-              <span>Available Quantity</span>
+              <span>Total Quantity / Unit Count</span>
               <input v-model.number="form.availableQuantity" type="number" min="1" />
             </label>
             <label>
@@ -331,11 +345,11 @@
               </select>
             </label>
             <label>
-              <span>QR Code</span>
-              <input v-model.trim="form.barcode" type="text" maxlength="120" />
+              <span>Primary Barcode</span>
+              <input v-model.trim="form.barcode" type="text" maxlength="120" placeholder="Optional parent-level barcode" />
             </label>
             <label>
-              <span>Asset ID</span>
+              <span>Primary Asset Tag</span>
               <input v-model.trim="form.assetId" type="text" maxlength="13" placeholder="F123-456-789" />
             </label>
             <label class="equipment-modal__full-width">
@@ -343,7 +357,7 @@
               <textarea
                 v-model.trim="form.description"
                 rows="4"
-                placeholder="Optional usage notes or description"
+                placeholder="Describe the equipment, its model-specific use, and important operating details."
               />
             </label>
             <label class="equipment-modal__full-width">
@@ -351,20 +365,23 @@
               <textarea
                 v-model.trim="form.remarks"
                 rows="3"
-                placeholder="Inventory handling notes, maintenance context, or storage reminders"
+                placeholder="Inventory handling notes, maintenance context, storage reminders, or receiving notes."
               />
             </label>
           </div>
           <div class="equipment-modal__full-width equipment-modal__spec-editor">
+            <p class="equipment-modal__section-note">
+              Add the required structured specifications for this model such as wattage, connector type, battery type, dimensions, compatibility, or included accessories.
+            </p>
             <div class="equipment-page__actions" style="justify-content: space-between; margin-bottom: 0.75rem;">
-              <strong>Structured Specifications</strong>
+              <strong>Required Structured Specifications</strong>
               <button type="button" @click="addSpecificationRow">Add Specification</button>
             </div>
             <table class="equipment-page__table">
               <thead>
                 <tr>
-                  <th>Specification</th>
-                  <th>Value</th>
+                  <th>Specification Label</th>
+                  <th>Specification Value</th>
                   <th></th>
                 </tr>
               </thead>
@@ -378,20 +395,25 @@
             </table>
           </div>
           <div class="equipment-modal__full-width equipment-modal__unit-table-wrap">
+            <p class="equipment-modal__section-note">
+              Each physical unit should have its own unit code, barcode, asset tag, serial number, condition, availability, and storage location.
+            </p>
             <div class="equipment-page__actions" style="justify-content: space-between; margin-bottom: 0.75rem;">
-              <strong>Equipment Units</strong>
+              <strong>Tracked Physical Units</strong>
               <button type="button" @click="addUnitRow">Add Unit</button>
             </div>
             <table class="equipment-page__table">
               <thead>
                 <tr>
-                  <th>Unit ID</th>
+                  <th>Unit Code</th>
                   <th>Barcode</th>
                   <th>Asset Tag</th>
-                  <th>Serial</th>
+                  <th>Serial Number</th>
                   <th>Condition</th>
                   <th>Availability</th>
-                  <th>Location</th>
+                  <th>Storage Location</th>
+                  <th>Date Acquired</th>
+                  <th>Maintenance State</th>
                   <th>Remarks</th>
                   <th></th>
                 </tr>
@@ -405,6 +427,8 @@
                   <td><input v-model.trim="unit.conditionStatus" type="text" /></td>
                   <td><input v-model.trim="unit.availabilityStatus" type="text" /></td>
                   <td><input v-model.trim="unit.storageLocation" type="text" /></td>
+                  <td><input v-model="unit.dateAcquired" type="date" /></td>
+                  <td><input v-model.trim="unit.maintenanceState" type="text" /></td>
                   <td><input v-model.trim="unit.remarks" type="text" /></td>
                   <td><button type="button" class="equipment-page__danger-action" @click="removeUnitRow(index)">Remove</button></td>
                 </tr>
@@ -671,13 +695,16 @@ const equipmentPageStart = computed(() => (
 const equipmentPageEnd = computed(() => Math.min(equipmentCurrentPage.value * equipmentPageSize, filteredEquipment.value.length));
 
 const availableCount = computed(() =>
-  equipmentList.value.filter((equipment) => equipment.equipmentState === 'Available').length
+  equipmentList.value.reduce((total, equipment) => total + Number(equipment.availableQuantity || 0), 0)
 );
 const maintenanceCount = computed(() =>
-  equipmentList.value.filter((equipment) => equipment.equipmentState === 'Under Maintenance').length
+  equipmentList.value.reduce((total, equipment) => total + Number(equipment.underMaintenanceQuantity || 0), 0)
 );
 const retiredCount = computed(() =>
   equipmentList.value.filter((equipment) => equipment.equipmentState === 'Retired').length
+);
+const incompleteInventoryCount = computed(() =>
+  equipmentList.value.filter((equipment) => isInventoryIncomplete(equipment)).length
 );
 const detailedReportRange = computed(() =>
   resolveDetailedReportRange(selectedDetailedTimeframe.value, reportReferenceDate.value)
@@ -1002,6 +1029,23 @@ function formatDateTime(value) {
   }).format(parsedDate);
 }
 
+function formatDateOnly(value) {
+  if (!value) {
+    return 'N/A';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'N/A';
+  }
+
+  return new Intl.DateTimeFormat('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(parsedDate);
+}
+
 function statusBadgeClass(status) {
   return {
     'equipment-page__status-badge--available': status === 'Available',
@@ -1074,6 +1118,10 @@ function addUnitRow() {
     conditionStatus: 'Good',
     availabilityStatus: 'Available',
     storageLocation: '',
+    dateAcquired: '',
+    maintenanceState: 'Operational',
+    warrantyDetails: '',
+    remarks: '',
   });
   form.value.availableQuantity = form.value.units.length;
 }
@@ -1124,6 +1172,9 @@ function buildUnitRowsFromQuantity(quantity, barcode = '', assetId = '') {
     conditionStatus: 'Good',
     availabilityStatus: 'Available',
     storageLocation: '',
+    dateAcquired: '',
+    maintenanceState: 'Operational',
+    warrantyDetails: '',
     remarks: '',
   }));
 }
