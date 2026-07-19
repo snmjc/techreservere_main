@@ -44,10 +44,6 @@ domain_analytics_controllers:
     resource: "../src/Domain/Analytics/Controller/"
     type: attribute
 
-domain_audit_log_controllers:
-    resource: "../src/Domain/AuditLog/Controller/"
-    type: attribute
-
 domain_notification_controllers:
     resource: "../src/Domain/Notification/Controller/"
     type: attribute

@@ -777,14 +777,15 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     pastRecordsReportError.value = '';
 
     const workbook = XLSX.utils.book_new();
+    const exportTimestamp = formatDateTime(new Date().toISOString());
     const normalizedRows = Array.isArray(detailRows) && detailRows.length > 0
       ? detailRows
-      : [{ message: 'No archived reservations match the selected report filters.' }];
+      : [{ message: 'No archived reservations match the selected report filters.', reportTimestamp: exportTimestamp }];
 
     if (isDirectExportAll || pastRecordsReportIncludeSummary.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsSummaryRows(detailRows)),
+        XLSX.utils.json_to_sheet(buildPastRecordsSummaryRows(detailRows, exportTimestamp)),
         'Summary',
       );
     }
@@ -808,7 +809,7 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     if (!isDirectExportAll && pastRecordsReportIncludeUtilization.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsUtilizationRows(detailRows)),
+        XLSX.utils.json_to_sheet(buildPastRecordsUtilizationRows(detailRows, exportTimestamp)),
         'Utilization',
       );
     }
@@ -816,7 +817,7 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     if (!isDirectExportAll && pastRecordsReportIncludeAppliedFilters.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsAppliedFilterRows()),
+        XLSX.utils.json_to_sheet(buildPastRecordsAppliedFilterRows(exportTimestamp)),
         'Applied Filters',
       );
     }
@@ -954,6 +955,7 @@ function isPastRecordsReportDateInRange(record) {
 
 function mapPastRecordToReportRow(record) {
   return {
+    reportTimestamp: formatDateTime(new Date().toISOString()),
     reservationId: record.requestIdentifier,
     borrower: record.requesterFullName,
     role: record.requesterRole,
@@ -969,26 +971,27 @@ function mapPastRecordToReportRow(record) {
   };
 }
 
-function buildPastRecordsSummaryRows(rows) {
+function buildPastRecordsSummaryRows(rows, exportTimestamp = formatDateTime(new Date().toISOString())) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const completed = safeRows.filter((row) => row.status === 'Completed').length;
   const rejected = safeRows.filter((row) => row.status === 'Rejected').length;
   const cancelled = safeRows.filter((row) => row.status === 'Cancelled').length;
 
   return [{
+    reportTimestamp: exportTimestamp,
     reportType: pastRecordsReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
     totalRecords: safeRows.length,
     completed,
     rejected,
     cancelled,
     appliedRange: pastRecordsReportRangeLabel.value,
-    generatedOn: formatDateTime(new Date().toISOString()),
+    generatedOn: exportTimestamp,
   }];
 }
 
-function buildPastRecordsUtilizationRows(rows) {
+function buildPastRecordsUtilizationRows(rows, exportTimestamp = formatDateTime(new Date().toISOString())) {
   if (!Array.isArray(rows) || rows.length === 0) {
-    return [{ message: 'No utilization statistics are available for the selected report filters.' }];
+    return [{ message: 'No utilization statistics are available for the selected report filters.', reportTimestamp: exportTimestamp }];
   }
 
   const groupedRows = rows.reduce((accumulator, row) => {
@@ -1009,15 +1012,15 @@ function buildPastRecordsUtilizationRows(rows) {
   return Object.values(groupedRows);
 }
 
-function buildPastRecordsAppliedFilterRows() {
+function buildPastRecordsAppliedFilterRows(exportTimestamp = formatDateTime(new Date().toISOString())) {
   return [
-    { filter: 'Report Type', value: pastRecordsReportType.value },
-    { filter: 'Report Category', value: pastRecordsReportCategory.value },
-    { filter: 'Timeframe', value: pastRecordsReportTimeframe.value },
-    { filter: 'Applied Range', value: pastRecordsReportRangeLabel.value },
-    { filter: 'Facility', value: pastRecordsReportFacilityFilter.value },
-    { filter: 'Type Filter', value: pastRecordsReportSecondaryFilter.value },
-    { filter: 'Reservation Status', value: pastRecordsReportStatusFilter.value },
+    { reportTimestamp: exportTimestamp, filter: 'Report Type', value: pastRecordsReportType.value },
+    { reportTimestamp: exportTimestamp, filter: 'Report Category', value: pastRecordsReportCategory.value },
+    { reportTimestamp: exportTimestamp, filter: 'Timeframe', value: pastRecordsReportTimeframe.value },
+    { reportTimestamp: exportTimestamp, filter: 'Applied Range', value: pastRecordsReportRangeLabel.value },
+    { reportTimestamp: exportTimestamp, filter: 'Facility', value: pastRecordsReportFacilityFilter.value },
+    { reportTimestamp: exportTimestamp, filter: 'Type Filter', value: pastRecordsReportSecondaryFilter.value },
+    { reportTimestamp: exportTimestamp, filter: 'Reservation Status', value: pastRecordsReportStatusFilter.value },
   ];
 }
 

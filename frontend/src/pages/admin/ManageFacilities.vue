@@ -2628,6 +2628,7 @@ function exportFacilityReportWorkbook() {
     facilityReportError.value = '';
 
     const workbook = XLSX.utils.book_new();
+    const exportTimestamp = formatDateTimeLong(new Date().toISOString());
     const isVenueReport = facilityReportType.value === 'venue';
     const detailRows = isVenueReport ? facilityFilteredVenueRecords.value : facilityFilteredEquipmentRecords.value;
     const reservationRows = isVenueReport ? facilityVenueReservationRows.value : facilityEquipmentReservationRows.value;
@@ -2635,7 +2636,7 @@ function exportFacilityReportWorkbook() {
     if (facilityReportIncludeSummary.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(buildFacilitySummarySheetRows(detailRows, reservationRows)),
+        XLSX.utils.json_to_sheet(buildFacilitySummarySheetRows(detailRows, reservationRows, exportTimestamp)),
         'Summary',
       );
     }
@@ -2643,7 +2644,7 @@ function exportFacilityReportWorkbook() {
     if (facilityReportIncludeDetails.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(detailRows, isVenueReport ? 'No venue records match the selected report filters.' : 'No equipment records match the selected report filters.')),
+        XLSX.utils.json_to_sheet(withReportFallbackRows(detailRows, isVenueReport ? 'No venue records match the selected report filters.' : 'No equipment records match the selected report filters.', exportTimestamp)),
         'Detailed Records',
       );
     }
@@ -2651,7 +2652,7 @@ function exportFacilityReportWorkbook() {
     if (facilityReportIncludeReservations.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(reservationRows, 'No reservation information matches the selected report filters.')),
+        XLSX.utils.json_to_sheet(withReportFallbackRows(reservationRows, 'No reservation information matches the selected report filters.', exportTimestamp)),
         'Reservation Info',
       );
     }
@@ -2659,7 +2660,7 @@ function exportFacilityReportWorkbook() {
     if (facilityReportIncludeUtilization.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(buildFacilityUtilizationRows(detailRows, reservationRows), 'No utilization statistics are available for the selected report filters.')),
+        XLSX.utils.json_to_sheet(withReportFallbackRows(buildFacilityUtilizationRows(detailRows, reservationRows, exportTimestamp), 'No utilization statistics are available for the selected report filters.', exportTimestamp)),
         'Utilization',
       );
     }
@@ -2667,7 +2668,7 @@ function exportFacilityReportWorkbook() {
     if (facilityReportIncludeFilters.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(buildFacilityAppliedFilterRows()),
+        XLSX.utils.json_to_sheet(buildFacilityAppliedFilterRows(exportTimestamp)),
         'Applied Filters',
       );
     }
@@ -3191,6 +3192,7 @@ function resolveFacilityReportRange(timeframe, startDateValue, endDateValue) {
 }
 
 function buildFacilityVenueReportRecords() {
+  const exportTimestamp = formatDateTimeLong(new Date().toISOString());
   return venuesList.value
     .filter((venueRecord) => matchesFacilityVenueCategory(venueRecord))
     .filter((venueRecord) => matchesFacilityVenueFilters(venueRecord))
@@ -3199,6 +3201,7 @@ function buildFacilityVenueReportRecords() {
       const reservationRows = extractVenueReservationRows(venueRecord);
 
       return {
+        reportTimestamp: exportTimestamp,
         venueId: venueRecord.venueIdentifier,
         venueName: venueRecord.venueName || 'Unnamed Venue',
         location: venueRecord.venueLocation || 'N/A',
@@ -3214,10 +3217,12 @@ function buildFacilityVenueReportRecords() {
 }
 
 function buildFacilityEquipmentReportRecords() {
+  const exportTimestamp = formatDateTimeLong(new Date().toISOString());
   return equipmentList.value
     .filter((equipmentRecord) => matchesFacilityEquipmentCategory(equipmentRecord))
     .filter((equipmentRecord) => matchesFacilityEquipmentFilters(equipmentRecord))
     .map((equipmentRecord) => ({
+      reportTimestamp: exportTimestamp,
       equipmentId: equipmentRecord.equipmentIdentifier,
       equipmentName: equipmentRecord.equipmentName || 'Unnamed Equipment',
       category: resolveEquipmentCategory(equipmentRecord),
@@ -3244,6 +3249,7 @@ function buildFacilityVenueReservationRows(venueRows) {
       .filter((reservationRow) => matchesFacilityReservationStatus(reservationRow.status))
       .filter((reservationRow) => isDateWithinFacilityRange(reservationRow.dateValue || reservationRow.startDate))
       .map((reservationRow) => ({
+        reportTimestamp: formatDateTimeLong(new Date().toISOString()),
         venueName: venueRecord.venueName || 'Venue',
         reservationCode: reservationRow.reservationCode || 'N/A',
         borrowerName: reservationRow.borrowerName || 'N/A',
@@ -3262,6 +3268,7 @@ function buildFacilityEquipmentReservationRows(equipmentRows) {
     .filter((equipmentRecord) => selectedEquipmentNames.has(String(equipmentRecord.equipmentName || '')))
     .filter((equipmentRecord) => Number(equipmentRecord.reservedQuantity ?? 0) > 0)
     .map((equipmentRecord) => ({
+      reportTimestamp: formatDateTimeLong(new Date().toISOString()),
       equipmentName: equipmentRecord.equipmentName || 'Equipment',
       category: resolveEquipmentCategory(equipmentRecord),
       status: formatEquipmentStatus(equipmentRecord),
@@ -3272,23 +3279,25 @@ function buildFacilityEquipmentReservationRows(equipmentRows) {
     }));
 }
 
-function buildFacilitySummarySheetRows(detailRows, reservationRows) {
+function buildFacilitySummarySheetRows(detailRows, reservationRows, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
   return [{
+    reportTimestamp: exportTimestamp,
     reportType: facilityReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
     recordCount: detailRows.length,
     reservationRowCount: reservationRows.length,
     timeframe: facilityReportTimeframe.value,
     appliedRange: facilityReportRangeLabel.value,
     generatedBy: currentAdminDisplayName.value,
-    generatedOn: formatDateTimeLong(new Date().toISOString()),
+    generatedOn: exportTimestamp,
   }];
 }
 
-function buildFacilityUtilizationRows(detailRows, reservationRows) {
+function buildFacilityUtilizationRows(detailRows, reservationRows, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
   if (facilityReportType.value === 'venue') {
     return detailRows.map((venueRow) => {
       const venueReservations = reservationRows.filter((reservationRow) => reservationRow.venueName === venueRow.venueName);
       return {
+        reportTimestamp: exportTimestamp,
         venueName: venueRow.venueName,
         availabilityStatus: venueRow.availabilityStatus,
         reservationCount: venueReservations.length,
@@ -3301,6 +3310,7 @@ function buildFacilityUtilizationRows(detailRows, reservationRows) {
     const totalQuantity = Number(equipmentRow.totalQuantity || 0);
     const reservedQuantity = Number(equipmentRow.reservedQuantity || 0);
     return {
+      reportTimestamp: exportTimestamp,
       equipmentName: equipmentRow.equipmentName,
       category: equipmentRow.category,
       reservedQuantity,
@@ -3310,16 +3320,16 @@ function buildFacilityUtilizationRows(detailRows, reservationRows) {
   });
 }
 
-function buildFacilityAppliedFilterRows() {
+function buildFacilityAppliedFilterRows(exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
   return [
-    { filter: 'Report Type', value: facilityReportType.value },
-    { filter: 'Report Category', value: facilityReportCategory.value },
-    { filter: 'Timeframe', value: facilityReportTimeframe.value },
-    { filter: 'Applied Range', value: facilityReportRangeLabel.value },
-    { filter: facilityPrimaryFilterLabel.value, value: facilityReportPrimaryFilter.value },
-    { filter: facilitySecondaryFilterLabel.value, value: facilityReportSecondaryFilter.value },
-    { filter: 'Reservation Status', value: facilityReportReservationStatus.value },
-    { filter: 'Availability Status', value: facilityReportAvailabilityStatus.value },
+    { reportTimestamp: exportTimestamp, filter: 'Report Type', value: facilityReportType.value },
+    { reportTimestamp: exportTimestamp, filter: 'Report Category', value: facilityReportCategory.value },
+    { reportTimestamp: exportTimestamp, filter: 'Timeframe', value: facilityReportTimeframe.value },
+    { reportTimestamp: exportTimestamp, filter: 'Applied Range', value: facilityReportRangeLabel.value },
+    { reportTimestamp: exportTimestamp, filter: facilityPrimaryFilterLabel.value, value: facilityReportPrimaryFilter.value },
+    { reportTimestamp: exportTimestamp, filter: facilitySecondaryFilterLabel.value, value: facilityReportSecondaryFilter.value },
+    { reportTimestamp: exportTimestamp, filter: 'Reservation Status', value: facilityReportReservationStatus.value },
+    { reportTimestamp: exportTimestamp, filter: 'Availability Status', value: facilityReportAvailabilityStatus.value },
   ];
 }
 
@@ -3327,8 +3337,8 @@ function buildFacilityReportFileName() {
   return `techreserve-${facilityReportType.value}-report-${facilityReportRange.value.start}-to-${facilityReportRange.value.end}.xlsx`;
 }
 
-function withReportFallbackRows(rows, emptyMessage) {
-  return Array.isArray(rows) && rows.length > 0 ? rows : [{ message: emptyMessage }];
+function withReportFallbackRows(rows, emptyMessage, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
+  return Array.isArray(rows) && rows.length > 0 ? rows : [{ message: emptyMessage, reportTimestamp: exportTimestamp }];
 }
 
 function matchesFacilityVenueCategory(venueRecord) {

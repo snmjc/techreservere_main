@@ -56,10 +56,6 @@ services:
         resource: '../src/Domain/Analytics/Controller/'
         tags: ['controller.service_arguments']
 
-    App\Domain\AuditLog\Controller\:
-        resource: '../src/Domain/AuditLog/Controller/'
-        tags: ['controller.service_arguments']
-
     App\Domain\Notification\Controller\:
         resource: '../src/Domain/Notification/Controller/'
         tags: ['controller.service_arguments']
