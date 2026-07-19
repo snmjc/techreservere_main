@@ -286,6 +286,7 @@
           <button class="admin-past-records-report-close" type="button" aria-label="Close" @click="closePastRecordsReportModal">X</button>
 
           <div class="admin-past-records-report-header">
+            <span class="admin-past-records-report-eyebrow">Excel Report Builder</span>
             <h2>Generate Report</h2>
             <p>Build a hardcoded Excel report for archived venue or equipment reservations using a simple timeframe and filter setup.</p>
           </div>
@@ -294,20 +295,28 @@
             <div class="admin-past-records-report-grid">
               <section class="admin-past-records-report-section">
                 <span class="admin-past-records-report-step">1. Report Type</span>
+                <small class="admin-past-records-report-hint">Choose what you want to report.</small>
                 <div class="admin-past-records-report-type-grid">
                   <label class="admin-past-records-report-choice">
                     <input v-model="pastRecordsReportType" type="radio" value="venue" />
-                    <span>Venue Report</span>
+                    <span>
+                      <strong>Venue Report</strong>
+                      <small>Generate report for venues</small>
+                    </span>
                   </label>
                   <label class="admin-past-records-report-choice">
                     <input v-model="pastRecordsReportType" type="radio" value="equipment" />
-                    <span>Equipment Report</span>
+                    <span>
+                      <strong>Equipment Report</strong>
+                      <small>Generate report for equipment</small>
+                    </span>
                   </label>
                 </div>
               </section>
 
               <section class="admin-past-records-report-section">
                 <span class="admin-past-records-report-step">2. Report Category</span>
+                <small class="admin-past-records-report-hint">Select the category to include.</small>
                 <select v-model="pastRecordsReportCategory">
                   <option
                     v-for="option in pastRecordsReportCategoryOptions"
@@ -321,6 +330,7 @@
 
               <section class="admin-past-records-report-section admin-past-records-report-section--wide">
                 <span class="admin-past-records-report-step">3. Timeframe</span>
+                <small class="admin-past-records-report-hint">Select the time period for your report.</small>
                 <div class="admin-past-records-report-timeframe-grid">
                   <button
                     v-for="option in pastRecordsReportTimeframeOptions"
@@ -337,17 +347,27 @@
 
               <section class="admin-past-records-report-section">
                 <span class="admin-past-records-report-step">Select Date</span>
-                <input v-model="pastRecordsReportStartDate" type="date" />
-                <input
-                  v-if="pastRecordsReportTimeframe === 'custom'"
-                  v-model="pastRecordsReportEndDate"
-                  type="date"
-                />
-                <small>{{ pastRecordsReportRangeLabel }}</small>
+                <div class="admin-past-records-report-date-layout">
+                  <div class="admin-past-records-report-date-column">
+                    <input v-model="pastRecordsReportStartDate" type="date" />
+                    <input
+                      v-if="pastRecordsReportTimeframe === 'custom'"
+                      v-model="pastRecordsReportEndDate"
+                      type="date"
+                    />
+                    <small>{{ pastRecordsReportRangeLabel }}</small>
+                  </div>
+                  <div class="admin-past-records-report-date-summary">
+                    <strong>{{ pastRecordsReportTimeframeOptions.find((option) => option.value === pastRecordsReportTimeframe)?.label || 'Custom Range' }} report</strong>
+                    <span>{{ formatDate(pastRecordsReportStartDate) }}</span>
+                    <small>{{ pastRecordsReportRangeLabel }}</small>
+                  </div>
+                </div>
               </section>
 
               <section class="admin-past-records-report-section admin-past-records-report-section--wide">
                 <span class="admin-past-records-report-step">4. Additional Filters (Optional)</span>
+                <small class="admin-past-records-report-hint">Narrow down the results with additional filters.</small>
                 <div class="admin-past-records-report-filters-grid">
                   <label>
                     <span>{{ pastRecordsPrimaryFilterLabel }}</span>
@@ -390,21 +410,8 @@
 
               <section class="admin-past-records-report-section admin-past-records-report-section--wide">
                 <span class="admin-past-records-report-step">5. Excel Contents</span>
+                <small class="admin-past-records-report-hint">Choose what to include in your report.</small>
                 <div class="admin-past-records-report-contents-grid">
-                  <label class="admin-past-records-report-checkbox">
-                    <input v-model="pastRecordsReportIncludeSummary" type="checkbox" />
-                    <div>
-                      <strong>Summary sheet</strong>
-                      <small>Overview and key metrics</small>
-                    </div>
-                  </label>
-                  <label class="admin-past-records-report-checkbox">
-                    <input v-model="pastRecordsReportIncludeReservationInfo" type="checkbox" />
-                    <div>
-                      <strong>Reservation information</strong>
-                      <small>Reservation and booking details</small>
-                    </div>
-                  </label>
                   <label class="admin-past-records-report-checkbox">
                     <input v-model="pastRecordsReportIncludeDetails" type="checkbox" />
                     <div>
@@ -412,18 +419,11 @@
                       <small>Full list of archived reservations</small>
                     </div>
                   </label>
-                  <label class="admin-past-records-report-checkbox">
-                    <input v-model="pastRecordsReportIncludeUtilization" type="checkbox" />
-                    <div>
-                      <strong>Utilization statistics</strong>
-                      <small>Reservation totals and quantity usage</small>
-                    </div>
-                  </label>
                   <label class="admin-past-records-report-checkbox admin-past-records-report-checkbox--wide">
-                    <input v-model="pastRecordsReportIncludeAppliedFilters" type="checkbox" />
+                    <input v-model="pastRecordsReportIncludeReservationInfo" type="checkbox" />
                     <div>
-                      <strong>Applied filters</strong>
-                      <small>Filters used in this report</small>
+                      <strong>Reservation information</strong>
+                      <small>Reservation and booking details</small>
                     </div>
                   </label>
                 </div>
@@ -445,25 +445,27 @@
               </article>
             </div>
 
-            <footer class="admin-past-records-report-actions">
-              <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="closePastRecordsReportModal">
-                Cancel
-              </button>
-              <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="previewPastRecordsReport">
-                Preview Records
-              </button>
-              <button
-                type="button"
-                class="admin-past-records-report-button"
-                :disabled="isExportingPastRecordsReport"
-                @click="exportPastRecordsReportWorkbook"
-              >
-                {{ isExportingPastRecordsReport ? 'Exporting...' : 'Export Excel' }}
-              </button>
-            </footer>
+            <div class="admin-past-records-report-footer">
+              <div class="admin-past-records-report-note">
+                The report will be generated in Excel format and downloaded to your device.
+              </div>
 
-            <div class="admin-past-records-report-note">
-              The report will be generated in Excel format and downloaded to your device.
+              <footer class="admin-past-records-report-actions">
+                <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="closePastRecordsReportModal">
+                  Cancel
+                </button>
+                <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="previewPastRecordsReport">
+                  Preview Records
+                </button>
+                <button
+                  type="button"
+                  class="admin-past-records-report-button"
+                  :disabled="isExportingPastRecordsReport"
+                  @click="exportPastRecordsReportWorkbook"
+                >
+                  {{ isExportingPastRecordsReport ? 'Exporting...' : 'Export Excel' }}
+                </button>
+              </footer>
             </div>
           </div>
         </section>
@@ -506,11 +508,8 @@ const pastRecordsReportEndDate = ref('2026-06-18');
 const pastRecordsReportFacilityFilter = ref('all');
 const pastRecordsReportSecondaryFilter = ref('all');
 const pastRecordsReportStatusFilter = ref('all');
-const pastRecordsReportIncludeSummary = ref(true);
 const pastRecordsReportIncludeDetails = ref(true);
 const pastRecordsReportIncludeReservationInfo = ref(true);
-const pastRecordsReportIncludeUtilization = ref(true);
-const pastRecordsReportIncludeAppliedFilters = ref(true);
 
 onMounted(async () => {
   try {
@@ -735,11 +734,8 @@ function openPastRecordsReportModal() {
   pastRecordsReportFacilityFilter.value = 'all';
   pastRecordsReportSecondaryFilter.value = 'all';
   pastRecordsReportStatusFilter.value = 'all';
-  pastRecordsReportIncludeSummary.value = true;
   pastRecordsReportIncludeDetails.value = true;
   pastRecordsReportIncludeReservationInfo.value = true;
-  pastRecordsReportIncludeUtilization.value = true;
-  pastRecordsReportIncludeAppliedFilters.value = true;
   showPastRecordsReportModal.value = true;
 }
 
@@ -777,18 +773,9 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     pastRecordsReportError.value = '';
 
     const workbook = XLSX.utils.book_new();
-    const exportTimestamp = formatDateTime(new Date().toISOString());
     const normalizedRows = Array.isArray(detailRows) && detailRows.length > 0
-      ? detailRows
-      : [{ message: 'No archived reservations match the selected report filters.', reportTimestamp: exportTimestamp }];
-
-    if (isDirectExportAll || pastRecordsReportIncludeSummary.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsSummaryRows(detailRows, exportTimestamp)),
-        'Summary',
-      );
-    }
+      ? buildPastRecordsDetailedExportRows(detailRows)
+      : [buildPastRecordsDetailedEmptyRow('No archived reservations match the selected report filters.')];
 
     if (isDirectExportAll || pastRecordsReportIncludeDetails.value) {
       XLSX.utils.book_append_sheet(
@@ -801,24 +788,12 @@ function exportPastRecordsWorkbook(fileName, detailRows, isDirectExportAll) {
     if (!isDirectExportAll && pastRecordsReportIncludeReservationInfo.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(normalizedRows),
+        XLSX.utils.json_to_sheet(
+          Array.isArray(detailRows) && detailRows.length > 0
+            ? buildPastRecordsReservationInfoRows(detailRows)
+            : [buildPastRecordsReservationInfoEmptyRow('No reservation information matches the selected report filters.')]
+        ),
         'Reservation Info',
-      );
-    }
-
-    if (!isDirectExportAll && pastRecordsReportIncludeUtilization.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsUtilizationRows(detailRows, exportTimestamp)),
-        'Utilization',
-      );
-    }
-
-    if (!isDirectExportAll && pastRecordsReportIncludeAppliedFilters.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(buildPastRecordsAppliedFilterRows(exportTimestamp)),
-        'Applied Filters',
       );
     }
 
@@ -971,57 +946,66 @@ function mapPastRecordToReportRow(record) {
   };
 }
 
-function buildPastRecordsSummaryRows(rows, exportTimestamp = formatDateTime(new Date().toISOString())) {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const completed = safeRows.filter((row) => row.status === 'Completed').length;
-  const rejected = safeRows.filter((row) => row.status === 'Rejected').length;
-  const cancelled = safeRows.filter((row) => row.status === 'Cancelled').length;
-
-  return [{
-    reportTimestamp: exportTimestamp,
-    reportType: pastRecordsReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
-    totalRecords: safeRows.length,
-    completed,
-    rejected,
-    cancelled,
-    appliedRange: pastRecordsReportRangeLabel.value,
-    generatedOn: exportTimestamp,
-  }];
+function buildPastRecordsDetailedExportRows(rows) {
+  return rows.map((row) => ({
+    ID: row.reservationId || 'N/A',
+    Borrower: row.borrower || 'N/A',
+    Facility: row.facility || 'N/A',
+    Type: row.type || 'N/A',
+    Qty: Number(row.quantity || 0),
+    Requested: row.requestedDate || 'N/A',
+    Needed: row.neededDate || 'N/A',
+    Status: row.status || 'N/A',
+    Timestamp: row.reportTimestamp || 'N/A',
+  }));
 }
 
-function buildPastRecordsUtilizationRows(rows, exportTimestamp = formatDateTime(new Date().toISOString())) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return [{ message: 'No utilization statistics are available for the selected report filters.', reportTimestamp: exportTimestamp }];
-  }
-
-  const groupedRows = rows.reduce((accumulator, row) => {
-    const key = String(row.facility || 'Unknown Facility');
-    if (!accumulator[key]) {
-      accumulator[key] = {
-        facility: key,
-        totalReservations: 0,
-        totalQuantity: 0,
-      };
-    }
-
-    accumulator[key].totalReservations += 1;
-    accumulator[key].totalQuantity += Number(row.quantity || 0);
-    return accumulator;
-  }, {});
-
-  return Object.values(groupedRows);
+function buildPastRecordsReservationInfoRows(rows) {
+  return rows.map((row) => ({
+    ID: row.reservationId || 'N/A',
+    Borrower: row.borrower || 'N/A',
+    Facility: row.facility || 'N/A',
+    Type: row.type || 'N/A',
+    Qty: Number(row.quantity || 0),
+    Requested: row.requestedDate || 'N/A',
+    Needed: row.neededDate || 'N/A',
+    'Processed Date': row.processedDate || 'N/A',
+    Status: row.status || 'N/A',
+    Purpose: row.purpose || 'N/A',
+    Remarks: row.remarks || 'N/A',
+    Timestamp: row.reportTimestamp || 'N/A',
+  }));
 }
 
-function buildPastRecordsAppliedFilterRows(exportTimestamp = formatDateTime(new Date().toISOString())) {
-  return [
-    { reportTimestamp: exportTimestamp, filter: 'Report Type', value: pastRecordsReportType.value },
-    { reportTimestamp: exportTimestamp, filter: 'Report Category', value: pastRecordsReportCategory.value },
-    { reportTimestamp: exportTimestamp, filter: 'Timeframe', value: pastRecordsReportTimeframe.value },
-    { reportTimestamp: exportTimestamp, filter: 'Applied Range', value: pastRecordsReportRangeLabel.value },
-    { reportTimestamp: exportTimestamp, filter: 'Facility', value: pastRecordsReportFacilityFilter.value },
-    { reportTimestamp: exportTimestamp, filter: 'Type Filter', value: pastRecordsReportSecondaryFilter.value },
-    { reportTimestamp: exportTimestamp, filter: 'Reservation Status', value: pastRecordsReportStatusFilter.value },
-  ];
+function buildPastRecordsDetailedEmptyRow(message) {
+  return {
+    ID: message,
+    Borrower: '',
+    Facility: '',
+    Type: '',
+    Qty: '',
+    Requested: '',
+    Needed: '',
+    Status: '',
+    Timestamp: '',
+  };
+}
+
+function buildPastRecordsReservationInfoEmptyRow(message) {
+  return {
+    ID: message,
+    Borrower: '',
+    Facility: '',
+    Type: '',
+    Qty: '',
+    Requested: '',
+    Needed: '',
+    'Processed Date': '',
+    Status: '',
+    Purpose: '',
+    Remarks: '',
+    Timestamp: '',
+  };
 }
 
 function buildPastRecordsReportFileName() {

@@ -1583,6 +1583,7 @@
         </button>
 
         <div class="manage-facilities-modal-heading">
+          <span class="manage-facilities-report-builder__eyebrow">Excel Report Builder</span>
           <h2>Generate Facility Report</h2>
           <p>Build a hardcoded Excel report for venues or equipment using a simple timeframe and filter setup.</p>
         </div>
@@ -1591,20 +1592,28 @@
           <div class="manage-facilities-report-builder__grid">
             <section class="manage-facilities-report-builder__section">
               <span class="manage-facilities-report-builder__step">1. Report Type</span>
+              <small class="manage-facilities-report-builder__hint">Choose what you want to report.</small>
               <div class="manage-facilities-report-builder__inline-options">
                 <label class="manage-facilities-report-builder__radio">
                   <input v-model="facilityReportType" type="radio" value="venue" />
-                  <span>Venue Report</span>
+                  <span>
+                    <strong>Venue Report</strong>
+                    <small>Generate report for venues</small>
+                  </span>
                 </label>
                 <label class="manage-facilities-report-builder__radio">
                   <input v-model="facilityReportType" type="radio" value="equipment" />
-                  <span>Equipment Report</span>
+                  <span>
+                    <strong>Equipment Report</strong>
+                    <small>Generate report for equipment</small>
+                  </span>
                 </label>
               </div>
             </section>
 
             <section class="manage-facilities-report-builder__section">
               <span class="manage-facilities-report-builder__step">2. Report Category</span>
+              <small class="manage-facilities-report-builder__hint">Select the category to include.</small>
               <select v-model="facilityReportCategory" class="manage-facilities-report-builder__select">
                 <option
                   v-for="option in facilityReportCategoryOptions"
@@ -1618,6 +1627,7 @@
 
             <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
               <span class="manage-facilities-report-builder__step">3. Timeframe</span>
+              <small class="manage-facilities-report-builder__hint">Select the time period for your report.</small>
               <div class="manage-facilities-report-builder__timeframe-row">
                 <button
                   v-for="timeframeOption in facilityReportTimeframeOptions"
@@ -1634,18 +1644,28 @@
 
             <section class="manage-facilities-report-builder__section">
               <span class="manage-facilities-report-builder__step">Select Date</span>
-              <input v-model="facilityReportStartDate" type="date" class="manage-facilities-report-builder__input" />
-              <input
-                v-if="facilityReportTimeframe === 'custom'"
-                v-model="facilityReportEndDate"
-                type="date"
-                class="manage-facilities-report-builder__input"
-              />
-              <small>{{ facilityReportRangeLabel }}</small>
+              <div class="manage-facilities-report-builder__date-layout">
+                <div class="manage-facilities-report-builder__date-column">
+                  <input v-model="facilityReportStartDate" type="date" class="manage-facilities-report-builder__input" />
+                  <input
+                    v-if="facilityReportTimeframe === 'custom'"
+                    v-model="facilityReportEndDate"
+                    type="date"
+                    class="manage-facilities-report-builder__input"
+                  />
+                  <small>{{ facilityReportRangeLabel }}</small>
+                </div>
+                <div class="manage-facilities-report-builder__date-summary">
+                  <strong>{{ facilityReportTimeframeOptions.find((option) => option.value === facilityReportTimeframe)?.label || 'Custom Range' }} report</strong>
+                  <span>{{ formatDisplayDateHeading(facilityReportStartDate) }}</span>
+                  <small>{{ facilityReportRangeLabel }}</small>
+                </div>
+              </div>
             </section>
 
             <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
               <span class="manage-facilities-report-builder__step">4. Additional Filters (Optional)</span>
+              <small class="manage-facilities-report-builder__hint">Narrow down the results with additional filters.</small>
               <div class="manage-facilities-report-builder__filters-grid">
                 <label>
                   <span>{{ facilityPrimaryFilterLabel }}</span>
@@ -1698,21 +1718,8 @@
 
             <section class="manage-facilities-report-builder__section manage-facilities-report-builder__section--wide">
               <span class="manage-facilities-report-builder__step">5. Excel Contents</span>
+              <small class="manage-facilities-report-builder__hint">Choose what to include in your report.</small>
               <div class="manage-facilities-report-builder__checkbox-grid">
-                <label class="manage-facilities-report-builder__checkbox">
-                  <input v-model="facilityReportIncludeSummary" type="checkbox" />
-                  <div>
-                    <strong>Summary sheet</strong>
-                    <small>Overview and key metrics</small>
-                  </div>
-                </label>
-                <label class="manage-facilities-report-builder__checkbox">
-                  <input v-model="facilityReportIncludeUtilization" type="checkbox" />
-                  <div>
-                    <strong>Utilization statistics</strong>
-                    <small>Usage and utilization data</small>
-                  </div>
-                </label>
                 <label class="manage-facilities-report-builder__checkbox">
                   <input v-model="facilityReportIncludeDetails" type="checkbox" />
                   <div>
@@ -1720,14 +1727,10 @@
                     <small>Full list of records</small>
                   </div>
                 </label>
-                <label class="manage-facilities-report-builder__checkbox">
-                  <input v-model="facilityReportIncludeFilters" type="checkbox" />
-                  <div>
-                    <strong>Applied filters</strong>
-                    <small>Filters used in this report</small>
-                  </div>
-                </label>
-                <label class="manage-facilities-report-builder__checkbox manage-facilities-report-builder__checkbox--wide">
+                <label
+                  v-if="facilityReportType === 'venue'"
+                  class="manage-facilities-report-builder__checkbox manage-facilities-report-builder__checkbox--wide"
+                >
                   <input v-model="facilityReportIncludeReservations" type="checkbox" />
                   <div>
                     <strong>Reservation information</strong>
@@ -1753,21 +1756,23 @@
             </div>
           </div>
 
-          <div class="manage-facilities-modal-actions">
-            <button class="manage-facilities-cancel-button" type="button" @click="closeFacilityReportModal">Cancel</button>
-            <button class="manage-facilities-cancel-button" type="button" @click="previewFacilityReportRecords">Preview Records</button>
-            <button
-              class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
-              type="button"
-              :disabled="isExportingFacilityReport"
-              @click="exportFacilityReportWorkbook"
-            >
-              {{ isExportingFacilityReport ? 'Exporting...' : 'Export Excel' }}
-            </button>
-          </div>
+          <div class="manage-facilities-report-builder__footer">
+            <div class="manage-facilities-report-builder__notice">
+              The report will be generated in Excel format and downloaded to your device.
+            </div>
 
-          <div class="manage-facilities-report-builder__notice">
-            The report will be generated in Excel format and downloaded to your device.
+            <div class="manage-facilities-modal-actions manage-facilities-modal-actions--report">
+              <button class="manage-facilities-cancel-button" type="button" @click="closeFacilityReportModal">Cancel</button>
+              <button class="manage-facilities-cancel-button" type="button" @click="previewFacilityReportRecords">Preview Records</button>
+              <button
+                class="manage-facilities-delete-confirm-button manage-facilities-delete-confirm-button--neutral"
+                type="button"
+                :disabled="isExportingFacilityReport"
+                @click="exportFacilityReportWorkbook"
+              >
+                {{ isExportingFacilityReport ? 'Exporting...' : 'Export Excel' }}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -1952,10 +1957,7 @@ const facilityReportPrimaryFilter = ref('all');
 const facilityReportSecondaryFilter = ref('all');
 const facilityReportReservationStatus = ref('all');
 const facilityReportAvailabilityStatus = ref('all');
-const facilityReportIncludeSummary = ref(true);
-const facilityReportIncludeUtilization = ref(true);
 const facilityReportIncludeDetails = ref(true);
-const facilityReportIncludeFilters = ref(true);
 const facilityReportIncludeReservations = ref(true);
 let activeReservedVenueWeekRequestSequence = 0;
 
@@ -2599,10 +2601,7 @@ function openFacilityReportModal() {
   facilityReportSecondaryFilter.value = 'all';
   facilityReportReservationStatus.value = 'all';
   facilityReportAvailabilityStatus.value = 'all';
-  facilityReportIncludeSummary.value = true;
-  facilityReportIncludeUtilization.value = true;
   facilityReportIncludeDetails.value = true;
-  facilityReportIncludeFilters.value = true;
   facilityReportIncludeReservations.value = true;
   showFacilityReportModal.value = true;
 }
@@ -2628,48 +2627,35 @@ function exportFacilityReportWorkbook() {
     facilityReportError.value = '';
 
     const workbook = XLSX.utils.book_new();
-    const exportTimestamp = formatDateTimeLong(new Date().toISOString());
     const isVenueReport = facilityReportType.value === 'venue';
-    const detailRows = isVenueReport ? facilityFilteredVenueRecords.value : facilityFilteredEquipmentRecords.value;
-    const reservationRows = isVenueReport ? facilityVenueReservationRows.value : facilityEquipmentReservationRows.value;
-
-    if (facilityReportIncludeSummary.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(buildFacilitySummarySheetRows(detailRows, reservationRows, exportTimestamp)),
-        'Summary',
-      );
-    }
+    const detailRows = isVenueReport
+      ? buildFacilityVenueDetailedExportRows(facilityFilteredVenueRecords.value)
+      : buildFacilityEquipmentDetailedExportRows(facilityFilteredEquipmentRecords.value);
+    const reservationRows = isVenueReport
+      ? buildFacilityVenueReservationExportRows(facilityVenueReservationRows.value)
+      : [];
 
     if (facilityReportIncludeDetails.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(detailRows, isVenueReport ? 'No venue records match the selected report filters.' : 'No equipment records match the selected report filters.', exportTimestamp)),
+        XLSX.utils.json_to_sheet(
+          detailRows.length > 0
+            ? detailRows
+            : [buildFacilityDetailedEmptyRow(isVenueReport ? 'No venue records match the selected report filters.' : 'No equipment records match the selected report filters.', isVenueReport)]
+        ),
         'Detailed Records',
       );
     }
 
-    if (facilityReportIncludeReservations.value) {
+    if (isVenueReport && facilityReportIncludeReservations.value) {
       XLSX.utils.book_append_sheet(
         workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(reservationRows, 'No reservation information matches the selected report filters.', exportTimestamp)),
+        XLSX.utils.json_to_sheet(
+          reservationRows.length > 0
+            ? reservationRows
+            : [buildFacilityReservationInfoEmptyRow('No reservation information matches the selected report filters.')]
+        ),
         'Reservation Info',
-      );
-    }
-
-    if (facilityReportIncludeUtilization.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(withReportFallbackRows(buildFacilityUtilizationRows(detailRows, reservationRows, exportTimestamp), 'No utilization statistics are available for the selected report filters.', exportTimestamp)),
-        'Utilization',
-      );
-    }
-
-    if (facilityReportIncludeFilters.value) {
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(buildFacilityAppliedFilterRows(exportTimestamp)),
-        'Applied Filters',
       );
     }
 
@@ -3279,66 +3265,108 @@ function buildFacilityEquipmentReservationRows(equipmentRows) {
     }));
 }
 
-function buildFacilitySummarySheetRows(detailRows, reservationRows, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
-  return [{
-    reportTimestamp: exportTimestamp,
-    reportType: facilityReportType.value === 'venue' ? 'Venue Report' : 'Equipment Report',
-    recordCount: detailRows.length,
-    reservationRowCount: reservationRows.length,
-    timeframe: facilityReportTimeframe.value,
-    appliedRange: facilityReportRangeLabel.value,
-    generatedBy: currentAdminDisplayName.value,
-    generatedOn: exportTimestamp,
-  }];
-}
-
-function buildFacilityUtilizationRows(detailRows, reservationRows, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
-  if (facilityReportType.value === 'venue') {
-    return detailRows.map((venueRow) => {
-      const venueReservations = reservationRows.filter((reservationRow) => reservationRow.venueName === venueRow.venueName);
-      return {
-        reportTimestamp: exportTimestamp,
-        venueName: venueRow.venueName,
-        availabilityStatus: venueRow.availabilityStatus,
-        reservationCount: venueReservations.length,
-        utilizationScore: venueReservations.length > 0 ? 100 : 0,
-      };
-    });
-  }
-
-  return detailRows.map((equipmentRow) => {
-    const totalQuantity = Number(equipmentRow.totalQuantity || 0);
-    const reservedQuantity = Number(equipmentRow.reservedQuantity || 0);
-    return {
-      reportTimestamp: exportTimestamp,
-      equipmentName: equipmentRow.equipmentName,
-      category: equipmentRow.category,
-      reservedQuantity,
-      availableQuantity: Number(equipmentRow.availableQuantity || 0),
-      utilizationScore: totalQuantity > 0 ? Math.round((reservedQuantity / totalQuantity) * 100) : 0,
-    };
-  });
-}
-
-function buildFacilityAppliedFilterRows(exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
-  return [
-    { reportTimestamp: exportTimestamp, filter: 'Report Type', value: facilityReportType.value },
-    { reportTimestamp: exportTimestamp, filter: 'Report Category', value: facilityReportCategory.value },
-    { reportTimestamp: exportTimestamp, filter: 'Timeframe', value: facilityReportTimeframe.value },
-    { reportTimestamp: exportTimestamp, filter: 'Applied Range', value: facilityReportRangeLabel.value },
-    { reportTimestamp: exportTimestamp, filter: facilityPrimaryFilterLabel.value, value: facilityReportPrimaryFilter.value },
-    { reportTimestamp: exportTimestamp, filter: facilitySecondaryFilterLabel.value, value: facilityReportSecondaryFilter.value },
-    { reportTimestamp: exportTimestamp, filter: 'Reservation Status', value: facilityReportReservationStatus.value },
-    { reportTimestamp: exportTimestamp, filter: 'Availability Status', value: facilityReportAvailabilityStatus.value },
-  ];
-}
-
 function buildFacilityReportFileName() {
   return `techreserve-${facilityReportType.value}-report-${facilityReportRange.value.start}-to-${facilityReportRange.value.end}.xlsx`;
 }
 
-function withReportFallbackRows(rows, emptyMessage, exportTimestamp = formatDateTimeLong(new Date().toISOString())) {
-  return Array.isArray(rows) && rows.length > 0 ? rows : [{ message: emptyMessage, reportTimestamp: exportTimestamp }];
+function buildFacilityVenueDetailedExportRows(rows) {
+  return rows.map((row) => ({
+    ID: row.venueId || 'N/A',
+    Venue: row.venueName || 'N/A',
+    Location: row.location || 'N/A',
+    Floor: row.floorLevel || 'N/A',
+    Type: row.venueType || 'N/A',
+    Capacity: row.capacityLimit ?? 'N/A',
+    Availability: row.availabilityStatus || 'N/A',
+    Status: row.operationalStatus || 'N/A',
+    Reservations: Number(row.reservationCount || 0),
+    Description: row.description || 'N/A',
+    Timestamp: row.reportTimestamp || 'N/A',
+  }));
+}
+
+function buildFacilityEquipmentDetailedExportRows(rows) {
+  return rows.map((row) => ({
+    ID: row.equipmentId || 'N/A',
+    Equipment: row.equipmentName || 'N/A',
+    Category: row.category || 'N/A',
+    Brand: row.brand || 'N/A',
+    Model: row.model || 'N/A',
+    Total: Number(row.totalQuantity || 0),
+    Available: Number(row.availableQuantity || 0),
+    Reserved: Number(row.reservedQuantity || 0),
+    Maintenance: Number(row.maintenanceQuantity || 0),
+    Unavailable: Number(row.unavailableQuantity || 0),
+    Status: row.status || 'N/A',
+    Barcode: row.barcode || 'N/A',
+    'Asset ID': row.assetId || 'N/A',
+    Description: row.description || 'N/A',
+    Timestamp: row.reportTimestamp || 'N/A',
+  }));
+}
+
+function buildFacilityVenueReservationExportRows(rows) {
+  return rows.map((row) => ({
+    Borrower: row.borrowerName || 'N/A',
+    'Reservation Code': row.reservationCode || 'N/A',
+    Venue: row.venueName || 'N/A',
+    Status: row.status || 'N/A',
+    Date: row.date || 'N/A',
+    'Start Time': row.startTime || 'N/A',
+    'End Time': row.endTime || 'N/A',
+    Purpose: row.purpose || 'N/A',
+    Timestamp: row.reportTimestamp || 'N/A',
+  }));
+}
+
+function buildFacilityDetailedEmptyRow(message, isVenueReport) {
+  if (isVenueReport) {
+    return {
+      ID: message,
+      Venue: '',
+      Location: '',
+      Floor: '',
+      Type: '',
+      Capacity: '',
+      Availability: '',
+      Status: '',
+      Reservations: '',
+      Description: '',
+      Timestamp: '',
+    };
+  }
+
+  return {
+    ID: message,
+    Equipment: '',
+    Category: '',
+    Brand: '',
+    Model: '',
+    Total: '',
+    Available: '',
+    Reserved: '',
+    Maintenance: '',
+    Unavailable: '',
+    Status: '',
+    Barcode: '',
+    'Asset ID': '',
+    Description: '',
+    Timestamp: '',
+  };
+}
+
+function buildFacilityReservationInfoEmptyRow(message) {
+  return {
+    Borrower: message,
+    'Reservation Code': '',
+    Venue: '',
+    Status: '',
+    Date: '',
+    'Start Time': '',
+    'End Time': '',
+    Purpose: '',
+    Timestamp: '',
+  };
 }
 
 function matchesFacilityVenueCategory(venueRecord) {
