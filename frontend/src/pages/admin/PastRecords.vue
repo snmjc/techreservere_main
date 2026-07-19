@@ -283,179 +283,114 @@
         @click.self="closePastRecordsReportModal"
       >
         <section class="admin-past-records-report-modal">
-          <button class="admin-past-records-report-close" type="button" aria-label="Close" @click="closePastRecordsReportModal">X</button>
+          <button class="admin-past-records-report-close" type="button" aria-label="Close" @click="closePastRecordsReportModal">
+            <span aria-hidden="true">&times;</span>
+          </button>
 
           <div class="admin-past-records-report-header">
-            <span class="admin-past-records-report-eyebrow">Excel Report Builder</span>
-            <h2>Generate Report</h2>
-            <p>Build a hardcoded Excel report for archived venue or equipment reservations using a simple timeframe and filter setup.</p>
+            <div class="admin-past-records-report-title-group">
+              <span class="admin-past-records-report-icon" v-html="pastRecordsReportHeaderIconSvg"></span>
+              <div>
+                <h2>Generate Report</h2>
+                <p>Create a report from past records based on your selected timeframe.</p>
+              </div>
+            </div>
           </div>
 
           <div class="admin-past-records-report-builder">
-            <div class="admin-past-records-report-grid">
-              <section class="admin-past-records-report-section">
-                <span class="admin-past-records-report-step">1. Report Type</span>
-                <small class="admin-past-records-report-hint">Choose what you want to report.</small>
-                <div class="admin-past-records-report-type-grid">
-                  <label class="admin-past-records-report-choice">
-                    <input v-model="pastRecordsReportType" type="radio" value="venue" />
-                    <span>
-                      <strong>Venue Report</strong>
-                      <small>Generate report for venues</small>
-                    </span>
-                  </label>
-                  <label class="admin-past-records-report-choice">
-                    <input v-model="pastRecordsReportType" type="radio" value="equipment" />
-                    <span>
-                      <strong>Equipment Report</strong>
-                      <small>Generate report for equipment</small>
-                    </span>
-                  </label>
-                </div>
-              </section>
+            <section class="admin-past-records-report-section admin-past-records-report-section--framed">
+              <span class="admin-past-records-report-step">1. Select Timeframe</span>
+              <div class="admin-past-records-report-timeframe-grid">
+                <button
+                  v-for="option in pastRecordsReportTimeframeOptions"
+                  :key="option.value"
+                  type="button"
+                  class="admin-past-records-report-timeframe"
+                  :class="{ 'admin-past-records-report-timeframe--active': pastRecordsReportTimeframe === option.value }"
+                  @click="pastRecordsReportTimeframe = option.value"
+                >
+                  <span class="admin-past-records-report-timeframe-icon" v-html="pastRecordsReportCalendarIconSvg"></span>
+                  <span>{{ option.label }}</span>
+                  <span class="admin-past-records-report-timeframe-indicator" aria-hidden="true"></span>
+                </button>
+              </div>
+            </section>
 
-              <section class="admin-past-records-report-section">
-                <span class="admin-past-records-report-step">2. Report Category</span>
-                <small class="admin-past-records-report-hint">Select the category to include.</small>
-                <select v-model="pastRecordsReportCategory">
-                  <option
-                    v-for="option in pastRecordsReportCategoryOptions"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    {{ option.label }}
-                  </option>
-                </select>
-              </section>
+            <section class="admin-past-records-report-section admin-past-records-report-section--framed">
+              <span class="admin-past-records-report-step">2. Select Date</span>
+              <div class="admin-past-records-report-date-stack">
+                <label class="admin-past-records-report-field admin-past-records-report-field--date">
+                  <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportCalendarIconSvg"></span>
+                  <input v-model="pastRecordsReportStartDate" type="date" />
+                </label>
+                <label v-if="pastRecordsReportTimeframe === 'custom'" class="admin-past-records-report-field admin-past-records-report-field--date">
+                  <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportCalendarIconSvg"></span>
+                  <input v-model="pastRecordsReportEndDate" type="date" />
+                </label>
+                <p class="admin-past-records-report-help">
+                  {{
+                    pastRecordsReportTimeframe === 'custom'
+                      ? 'Choose the start and end dates for your report.'
+                      : 'Choose the specific day you want to generate the report.'
+                  }}
+                </p>
+              </div>
+            </section>
 
-              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
-                <span class="admin-past-records-report-step">3. Timeframe</span>
-                <small class="admin-past-records-report-hint">Select the time period for your report.</small>
-                <div class="admin-past-records-report-timeframe-grid">
-                  <button
-                    v-for="option in pastRecordsReportTimeframeOptions"
-                    :key="option.value"
-                    type="button"
-                    class="admin-past-records-report-timeframe"
-                    :class="{ 'admin-past-records-report-timeframe--active': pastRecordsReportTimeframe === option.value }"
-                    @click="pastRecordsReportTimeframe = option.value"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
-              </section>
-
-              <section class="admin-past-records-report-section">
-                <span class="admin-past-records-report-step">Select Date</span>
-                <div class="admin-past-records-report-date-layout">
-                  <div class="admin-past-records-report-date-column">
-                    <input v-model="pastRecordsReportStartDate" type="date" />
-                    <input
-                      v-if="pastRecordsReportTimeframe === 'custom'"
-                      v-model="pastRecordsReportEndDate"
-                      type="date"
-                    />
-                    <small>{{ pastRecordsReportRangeLabel }}</small>
-                  </div>
-                  <div class="admin-past-records-report-date-summary">
-                    <strong>{{ pastRecordsReportTimeframeOptions.find((option) => option.value === pastRecordsReportTimeframe)?.label || 'Custom Range' }} report</strong>
-                    <span>{{ formatDate(pastRecordsReportStartDate) }}</span>
-                    <small>{{ pastRecordsReportRangeLabel }}</small>
-                  </div>
-                </div>
-              </section>
-
-              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
-                <span class="admin-past-records-report-step">4. Additional Filters (Optional)</span>
-                <small class="admin-past-records-report-hint">Narrow down the results with additional filters.</small>
-                <div class="admin-past-records-report-filters-grid">
-                  <label>
-                    <span>{{ pastRecordsPrimaryFilterLabel }}</span>
-                    <select v-model="pastRecordsReportFacilityFilter">
-                      <option value="all">All Facilities</option>
-                      <option
-                        v-for="option in pastRecordsReportCategoryOptions.filter((option) => option.value !== 'all')"
-                        :key="`facility-${option.value}`"
-                        :value="option.value"
-                      >
-                        {{ option.label }}
-                      </option>
+            <section class="admin-past-records-report-section admin-past-records-report-section--framed">
+              <span class="admin-past-records-report-step">3. Report Options</span>
+              <div class="admin-past-records-report-options-grid">
+                <label class="admin-past-records-report-select">
+                  <span>Report Type</span>
+                  <div class="admin-past-records-report-field">
+                    <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportFileIconSvg"></span>
+                    <select v-model="pastRecordsReportType">
+                      <option value="all">Past Records Report</option>
+                      <option value="venue">Venue Past Records</option>
+                      <option value="equipment">Equipment Past Records</option>
                     </select>
-                  </label>
+                  </div>
+                </label>
 
-                  <label>
-                    <span>{{ pastRecordsSecondaryFilterLabel }}</span>
-                    <select v-model="pastRecordsReportSecondaryFilter">
+                <label class="admin-past-records-report-select">
+                  <span>Category (Optional)</span>
+                  <div class="admin-past-records-report-field">
+                    <span class="admin-past-records-report-field-icon" v-html="pastRecordsReportCategoryIconSvg"></span>
+                    <select v-model="pastRecordsReportCategory">
                       <option
-                        v-for="option in pastRecordsReportSecondaryFilterOptions"
+                        v-for="option in pastRecordsReportCategoryOptions"
                         :key="option.value"
                         :value="option.value"
                       >
                         {{ option.label }}
                       </option>
                     </select>
-                  </label>
+                  </div>
+                </label>
 
-                  <label>
-                    <span>Reservation Status</span>
-                    <select v-model="pastRecordsReportStatusFilter">
-                      <option value="all">All Statuses</option>
-                      <option value="completed">Completed</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </label>
-                </div>
-              </section>
-
-              <section class="admin-past-records-report-section admin-past-records-report-section--wide">
-                <span class="admin-past-records-report-step">5. Excel Contents</span>
-                <small class="admin-past-records-report-hint">Choose what to include in your report.</small>
-                <div class="admin-past-records-report-contents-grid">
-                  <label class="admin-past-records-report-checkbox">
-                    <input v-model="pastRecordsReportIncludeDetails" type="checkbox" />
-                    <div>
-                      <strong>Detailed records</strong>
-                      <small>Full list of archived reservations</small>
-                    </div>
-                  </label>
-                  <label class="admin-past-records-report-checkbox admin-past-records-report-checkbox--wide">
+                <label class="admin-past-records-report-checkbox">
+                  <span>Include Details</span>
+                  <div class="admin-past-records-report-checkbox-card">
                     <input v-model="pastRecordsReportIncludeReservationInfo" type="checkbox" />
                     <div>
-                      <strong>Reservation information</strong>
-                      <small>Reservation and booking details</small>
+                      <strong>Include detailed data</strong>
                     </div>
-                  </label>
-                </div>
-              </section>
-            </div>
+                  </div>
+                </label>
+              </div>
+            </section>
 
             <p v-if="pastRecordsReportError" class="admin-past-records-report-error">{{ pastRecordsReportError }}</p>
 
-            <div v-if="pastRecordsReportPreviewVisible" class="admin-past-records-report-preview">
-              <article>
-                <strong>{{ pastRecordsReportPreviewSummary.title }}</strong>
-                <span>{{ pastRecordsReportPreviewSummary.recordCount }} record(s)</span>
-                <span>{{ pastRecordsReportPreviewSummary.statusLabel }}</span>
-              </article>
-              <article>
-                <strong>Applied Range</strong>
-                <span>{{ pastRecordsReportRangeLabel }}</span>
-                <span>{{ pastRecordsReportPreviewSummary.generatedLabel }}</span>
-              </article>
-            </div>
-
             <div class="admin-past-records-report-footer">
               <div class="admin-past-records-report-note">
-                The report will be generated in Excel format and downloaded to your device.
+                <span class="admin-past-records-report-note-icon" v-html="pastRecordsReportExcelIconSvg"></span>
+                <span>The report will be generated in Excel (.xlsx) format.</span>
               </div>
 
               <footer class="admin-past-records-report-actions">
                 <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="closePastRecordsReportModal">
                   Cancel
-                </button>
-                <button type="button" class="admin-past-records-report-button admin-past-records-report-button--secondary" @click="previewPastRecordsReport">
-                  Preview Records
                 </button>
                 <button
                   type="button"
@@ -463,7 +398,8 @@
                   :disabled="isExportingPastRecordsReport"
                   @click="exportPastRecordsReportWorkbook"
                 >
-                  {{ isExportingPastRecordsReport ? 'Exporting...' : 'Export Excel' }}
+                  <span class="admin-past-records-report-button-icon" v-html="pastRecordsReportExportIconSvg"></span>
+                  {{ isExportingPastRecordsReport ? 'Generating...' : 'Generate Report' }}
                 </button>
               </footer>
             </div>
@@ -500,16 +436,22 @@ const showPastRecordsReportModal = ref(false);
 const pastRecordsReportError = ref('');
 const pastRecordsReportPreviewVisible = ref(false);
 const isExportingPastRecordsReport = ref(false);
-const pastRecordsReportType = ref('venue');
+const pastRecordsReportType = ref('all');
 const pastRecordsReportCategory = ref('all');
-const pastRecordsReportTimeframe = ref('custom');
-const pastRecordsReportStartDate = ref('2026-06-04');
-const pastRecordsReportEndDate = ref('2026-06-18');
+const pastRecordsReportTimeframe = ref('daily');
+const pastRecordsReportStartDate = ref('2026-07-19');
+const pastRecordsReportEndDate = ref('2026-07-19');
 const pastRecordsReportFacilityFilter = ref('all');
 const pastRecordsReportSecondaryFilter = ref('all');
 const pastRecordsReportStatusFilter = ref('all');
 const pastRecordsReportIncludeDetails = ref(true);
-const pastRecordsReportIncludeReservationInfo = ref(true);
+const pastRecordsReportIncludeReservationInfo = ref(false);
+const pastRecordsReportHeaderIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M10 13h4"/><path d="M10 17h8"/><path d="M10 9h1"/></svg>`;
+const pastRecordsReportCalendarIconSvg = `<svg ${summaryIconAttributes}><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>`;
+const pastRecordsReportFileIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 15h6"/></svg>`;
+const pastRecordsReportCategoryIconSvg = `<svg ${summaryIconAttributes}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>`;
+const pastRecordsReportExcelIconSvg = `<svg ${summaryIconAttributes}><path d="M14 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m10 12 4 6"/><path d="m14 12-4 6"/></svg>`;
+const pastRecordsReportExportIconSvg = `<svg ${summaryIconAttributes}><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
 
 onMounted(async () => {
   try {
@@ -634,10 +576,16 @@ const pastRecordsReportTimeframeOptions = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' },
-  { value: 'custom', label: 'Custom Range' },
+  { value: 'custom', label: 'Custom' },
 ];
 const pastRecordsReportCategoryOptions = computed(() => (
-  pastRecordsReportType.value === 'venue'
+  pastRecordsReportType.value === 'all'
+    ? [{ value: 'all', label: 'All Categories' }, ...Array.from(new Set(
+      pastRecordsList.value
+        .map((record) => String(record.facilityName || '').trim())
+        .filter(Boolean)
+    )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
+    : pastRecordsReportType.value === 'venue'
     ? [{ value: 'all', label: 'All Venues' }, ...Array.from(new Set(
       pastRecordsList.value
         .filter((record) => getTypeTone(record.requestType) === 'venue')
@@ -651,25 +599,6 @@ const pastRecordsReportCategoryOptions = computed(() => (
         .filter(Boolean)
     )).map((facilityName) => ({ value: facilityName, label: facilityName }))]
 ));
-const pastRecordsReportSecondaryFilterOptions = computed(() => (
-  pastRecordsReportType.value === 'venue'
-    ? [
-      { value: 'all', label: 'All Types' },
-      { value: 'venue', label: 'Venue' },
-      { value: 'both', label: 'Both' },
-    ]
-    : [
-      { value: 'all', label: 'All Types' },
-      { value: 'equipment', label: 'Equipment' },
-      { value: 'mixed', label: 'Both' },
-    ]
-));
-const pastRecordsPrimaryFilterLabel = computed(() => (
-  pastRecordsReportType.value === 'venue' ? 'Venue' : 'Equipment Group'
-));
-const pastRecordsSecondaryFilterLabel = computed(() => (
-  pastRecordsReportType.value === 'venue' ? 'Venue Type' : 'Reservation Type'
-));
 const pastRecordsReportRange = computed(() => resolvePastRecordsReportRange(
   pastRecordsReportTimeframe.value,
   pastRecordsReportStartDate.value,
@@ -679,14 +608,6 @@ const pastRecordsReportRangeLabel = computed(() => (
   `${formatDate(pastRecordsReportRange.value.start)} - ${formatDate(pastRecordsReportRange.value.end)}`
 ));
 const filteredPastRecordsReportRows = computed(() => buildPastRecordsReportRows());
-const pastRecordsReportPreviewSummary = computed(() => ({
-  title: pastRecordsReportType.value === 'venue' ? 'Venue Report Preview' : 'Equipment Report Preview',
-  recordCount: filteredPastRecordsReportRows.value.length,
-  statusLabel: pastRecordsReportStatusFilter.value === 'all'
-    ? 'All archive statuses'
-    : `${pastRecordsReportStatusFilter.value} records only`,
-  generatedLabel: `Generated ${formatDateTime(new Date().toISOString())}`,
-}));
 
 watch([activeRecordTab, searchQueryText, showingFilterValue, sortOrderAscending, sortByValue], () => {
   currentPage.value = 1;
@@ -726,16 +647,16 @@ watch(pastRecordsReportType, () => {
 function openPastRecordsReportModal() {
   pastRecordsReportError.value = '';
   pastRecordsReportPreviewVisible.value = false;
-  pastRecordsReportType.value = 'venue';
+  pastRecordsReportType.value = 'all';
   pastRecordsReportCategory.value = 'all';
-  pastRecordsReportTimeframe.value = 'custom';
-  pastRecordsReportStartDate.value = '2026-06-04';
-  pastRecordsReportEndDate.value = '2026-06-18';
+  pastRecordsReportTimeframe.value = 'daily';
+  pastRecordsReportStartDate.value = '2026-07-19';
+  pastRecordsReportEndDate.value = '2026-07-19';
   pastRecordsReportFacilityFilter.value = 'all';
   pastRecordsReportSecondaryFilter.value = 'all';
   pastRecordsReportStatusFilter.value = 'all';
   pastRecordsReportIncludeDetails.value = true;
-  pastRecordsReportIncludeReservationInfo.value = true;
+  pastRecordsReportIncludeReservationInfo.value = false;
   showPastRecordsReportModal.value = true;
 }
 
@@ -747,11 +668,6 @@ function closePastRecordsReportModal() {
   showPastRecordsReportModal.value = false;
   pastRecordsReportError.value = '';
   pastRecordsReportPreviewVisible.value = false;
-}
-
-function previewPastRecordsReport() {
-  pastRecordsReportError.value = '';
-  pastRecordsReportPreviewVisible.value = true;
 }
 
 function exportAllPastRecords() {
@@ -891,6 +807,10 @@ function buildPastRecordsReportRows() {
 
 function matchesPastRecordsReportType(record) {
   const tone = getTypeTone(record.requestType);
+  if (pastRecordsReportType.value === 'all') {
+    return true;
+  }
+
   return pastRecordsReportType.value === 'venue'
     ? tone === 'venue' || tone === 'mixed'
     : tone === 'equipment' || tone === 'mixed';

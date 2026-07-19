@@ -710,86 +710,92 @@
 
 .admin-past-records-report-modal {
   position: relative;
-  width: min(860px, 100%);
-  max-height: calc(100vh - 4rem);
+  width: min(840px, 100%);
+  max-height: calc(100vh - 2rem);
   overflow-y: auto;
-  padding: 1.3rem;
-  border: 1px solid #dfe8e2;
+  padding: 0.95rem 1.1rem 1.05rem;
+  border: 1px solid #d9e7dd;
   border-radius: 20px;
   background:
-    radial-gradient(circle at top right, rgba(199, 251, 224, 0.35), transparent 28%),
-    linear-gradient(180deg, #ffffff, #f8fbf9);
-  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+    radial-gradient(circle at top right, rgba(221, 242, 229, 0.95), transparent 22%),
+    linear-gradient(135deg, #ffffff, #fbfdfb 45%, #f6fbf8 100%);
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.22);
 }
 
 .admin-past-records-report-close {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
+  top: 1rem;
+  right: 1rem;
   display: grid;
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid #dbe4de;
-  border-radius: 10px;
-  background: #fff;
-  color: #6b7280;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #10211a;
   font: inherit;
-  font-weight: 800;
+  font-size: 1.2rem;
+  line-height: 1;
   cursor: pointer;
 }
 
 .admin-past-records-report-header {
-  padding-right: 2.4rem;
-  margin-bottom: 0.85rem;
+  padding-right: 2.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e4ece7;
 }
 
-.admin-past-records-report-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: 0.35rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(12, 128, 72, 0.08);
-  color: #0c8048;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.admin-past-records-report-title-group {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.admin-past-records-report-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f1f8f4, #e5f2e9);
+  color: #0f8b57;
+  box-shadow: inset 0 0 0 1px rgba(15, 139, 87, 0.08);
+}
+
+.admin-past-records-report-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
 }
 
 .admin-past-records-report-header h2 {
   margin: 0;
-  color: #111827;
-  font-size: 1.18rem;
-  font-weight: 700;
+  color: #10211a;
+  font-size: 1.55rem;
+  font-weight: 900;
 }
 
 .admin-past-records-report-header p {
-  margin: 0.35rem 0 0;
-  color: #6b7280;
+  margin: 0.3rem 0 0;
+  color: #44544c;
   font-size: 0.86rem;
 }
 
 .admin-past-records-report-builder {
   display: grid;
-  gap: 1.1rem;
-}
-
-.admin-past-records-report-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.95rem;
+  gap: 1rem;
+  padding-top: 1rem;
 }
 
 .admin-past-records-report-section {
   display: grid;
-  gap: 0.7rem;
-  padding: 1rem;
-  border: 1px solid #e2ebe5;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 249, 0.96));
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  gap: 0.8rem;
+}
+
+.admin-past-records-report-section--framed {
+  padding: 1rem 0 0;
+  border-top: 1px solid #e4ece7;
 }
 
 .admin-past-records-report-section--wide {
@@ -797,149 +803,162 @@
 }
 
 .admin-past-records-report-step {
-  color: #111827;
-  font-size: 0.86rem;
+  color: #11281d;
+  font-size: 0.98rem;
   font-weight: 800;
 }
 
-.admin-past-records-report-hint {
-  margin-top: -0.35rem;
-  color: #64748b;
-  font-size: 0.76rem;
-}
-
-.admin-past-records-report-type-grid,
-.admin-past-records-report-contents-grid {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.admin-past-records-report-type-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.admin-past-records-report-contents-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .admin-past-records-report-timeframe-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.admin-past-records-report-timeframe {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
-.admin-past-records-report-choice,
-.admin-past-records-report-timeframe {
-  color: #374151;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 68px;
+  padding: 0.8rem 0.85rem 0.8rem 0.75rem;
+  color: #15231b;
   background: #ffffff;
-  border: 1px solid #d6e0da;
-  border-radius: 12px;
+  border: 1px solid #d8e6dc;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
-.admin-past-records-report-timeframe {
-  min-height: 36px;
-  padding: 0 0.8rem;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 700;
+.admin-past-records-report-timeframe-icon,
+.admin-past-records-report-field-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: #f7f8f7;
+  color: #10211a;
+}
+
+.admin-past-records-report-timeframe-icon :deep(svg),
+.admin-past-records-report-field-icon :deep(svg),
+.admin-past-records-report-note-icon :deep(svg),
+.admin-past-records-report-button-icon :deep(svg) {
+  width: 15px;
+  height: 15px;
+}
+
+.admin-past-records-report-timeframe-indicator {
+  margin-left: auto;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #c9d4cd;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .admin-past-records-report-timeframe--active {
-  color: #14532d;
-  background: #ecfdf3;
-  border-color: #16a34a;
+  color: #0f6f49;
+  background: linear-gradient(180deg, #f0faf4, #eef8f2);
+  border-color: #1d9b63;
+  box-shadow: 0 0 0 3px rgba(29, 155, 99, 0.12);
 }
 
-.admin-past-records-report-choice {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-  min-width: 0;
-  padding: 0.8rem 0.9rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
+.admin-past-records-report-timeframe--active .admin-past-records-report-timeframe-icon {
+  background: #dff3e7;
+  color: #0f8b57;
 }
 
-.admin-past-records-report-choice input {
-  margin: 0.15rem 0 0;
+.admin-past-records-report-timeframe--active .admin-past-records-report-timeframe-indicator {
+  border-color: #0f8b57;
+  box-shadow: inset 0 0 0 4px #ffffff;
+  background: #0f8b57;
 }
 
-.admin-past-records-report-choice span,
-.admin-past-records-report-checkbox div {
+.admin-past-records-report-date-stack {
   display: grid;
-  gap: 0.18rem;
+  gap: 0.5rem;
 }
 
-.admin-past-records-report-choice strong {
-  color: #132238;
-  font-size: 0.9rem;
+.admin-past-records-report-field {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid #d8e6dc;
+  border-radius: 12px;
+  background: #ffffff;
 }
 
-.admin-past-records-report-choice small {
-  color: #64748b;
-  font-size: 0.74rem;
+.admin-past-records-report-field--date {
+  max-width: 230px;
 }
 
-.admin-past-records-report-section select,
-.admin-past-records-report-section input {
-  min-height: 40px;
+.admin-past-records-report-field input,
+.admin-past-records-report-field select {
   width: 100%;
-  padding: 0.6rem 0.7rem;
-  background: #fff;
-  color: #111827;
-  border: 1px solid #d7dfda;
-  border-radius: 10px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #15231b;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.83rem;
   font-weight: 700;
 }
 
-.admin-past-records-report-section small {
-  color: #6b7280;
+.admin-past-records-report-help {
+  margin: 0;
+  color: #4e5d56;
   font-size: 0.76rem;
 }
 
-.admin-past-records-report-filters-grid {
+.admin-past-records-report-options-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.15fr) minmax(220px, 0.9fr);
+  gap: 0.75rem;
+  align-items: end;
 }
 
-.admin-past-records-report-filters-grid label {
-  display: grid;
-  gap: 0.35rem;
-  color: #374151;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
+.admin-past-records-report-select,
 .admin-past-records-report-checkbox {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-past-records-report-select > span,
+.admin-past-records-report-checkbox > span {
+  color: #11281d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-past-records-report-checkbox-card {
   display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-  min-width: 0;
-  min-height: 100%;
-  padding: 0.65rem 0.7rem;
-  color: #374151;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.75rem;
   background: #ffffff;
-  border: 1px solid #dbe4de;
+  border: 1px solid #d8e6dc;
   border-radius: 12px;
 }
 
-.admin-past-records-report-checkbox--wide {
-  grid-column: span 2;
+.admin-past-records-report-checkbox-card input {
+  width: 16px;
+  height: 16px;
+  accent-color: #0f8b57;
 }
 
-.admin-past-records-report-checkbox strong {
-  display: block;
-  color: #111827;
-  font-size: 0.85rem;
-}
-
-.admin-past-records-report-checkbox small {
-  display: block;
-  margin-top: 0.15rem;
+.admin-past-records-report-checkbox-card strong {
+  color: #15231b;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .admin-past-records-report-error {
@@ -949,101 +968,31 @@
   font-weight: 800;
 }
 
-.admin-past-records-report-preview {
+.admin-past-records-report-footer {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
 }
 
-.admin-past-records-report-preview article {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.9rem;
-  border: 1px solid #cce9d4;
-  border-radius: 12px;
-  background: #f0fdf4;
-}
-
-.admin-past-records-report-preview strong {
-  color: #14532d;
-}
-
-.admin-past-records-report-preview span {
-  color: #166534;
-  font-size: 0.84rem;
-}
-
-.admin-past-records-report-date-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(180px, 0.95fr);
-  gap: 0.9rem;
-  align-items: stretch;
-}
-
-.admin-past-records-report-date-column {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.admin-past-records-report-date-summary {
-  display: grid;
-  align-content: start;
-  gap: 0.25rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid #d9eadf;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fbfefc, #f2fbf5);
-}
-
-.admin-past-records-report-date-summary strong {
-  color: #0f5132;
-  font-size: 0.84rem;
-}
-
-.admin-past-records-report-date-summary span {
-  color: #111827;
-  font-size: 1rem;
-  font-weight: 800;
-}
-
-.admin-past-records-report-footer {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding-top: 0.25rem;
-}
-
 .admin-past-records-report-actions {
-  position: static;
   display: flex;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-top: 0;
-  background: transparent;
+  gap: 0.7rem;
 }
 
 .admin-past-records-report-button {
   min-height: 42px;
-  padding: 0 1rem;
-  border: 1px solid #0c8048;
+  padding: 0 0.95rem;
+  border: 1px solid transparent;
   border-radius: 12px;
-  background: linear-gradient(180deg, #0d9a56, #0c8048);
-  color: #fff;
+  background: linear-gradient(180deg, #0d8c55, #0a7445);
+  color: #ffffff;
   font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 800;
   cursor: pointer;
-}
-
-.admin-past-records-report-button--secondary {
-  background: #fff;
-  color: #14532d;
-  border-color: #b7d5bf;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .admin-past-records-report-button:disabled {
@@ -1051,16 +1000,39 @@
   cursor: not-allowed;
 }
 
+.admin-past-records-report-button--secondary {
+  border-color: #d9e3dd;
+  background: #ffffff;
+  color: #10211a;
+}
+
 .admin-past-records-report-note {
-  flex: 1 1 280px;
-  margin-top: 0;
-  padding: 0.9rem 1rem;
-  border: 1px solid #cce9d4;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f7fcf9, #ecfdf3);
-  color: #14532d;
-  font-size: 0.8rem;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e0ece4;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f6fbf8, #f1f8f4);
+  color: #174f36;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-past-records-report-note-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border-radius: 10px;
+  background: #dbf1e4;
+  color: #0f8b57;
+}
+
+.admin-past-records-report-button-icon {
+  display: grid;
+  place-items: center;
 }
 
 @media (max-width: 1200px) {
@@ -1089,25 +1061,13 @@
     flex-wrap: wrap;
   }
 
-  .admin-past-records-report-grid,
-  .admin-past-records-report-contents-grid,
-  .admin-past-records-report-preview,
-  .admin-past-records-report-filters-grid {
+  .admin-past-records-report-timeframe-grid,
+  .admin-past-records-report-options-grid {
     grid-template-columns: 1fr;
   }
 
-  .admin-past-records-report-type-grid,
-  .admin-past-records-report-date-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-past-records-report-footer {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .admin-past-records-report-checkbox--wide {
-    grid-column: auto;
+  .admin-past-records-report-note {
+    align-items: flex-start;
   }
 }
 
@@ -1136,6 +1096,32 @@
 
   .admin-past-records-row {
     padding: 10px 14px;
+  }
+
+  .admin-past-records-report-overlay {
+    padding: 0.5rem;
+  }
+
+  .admin-past-records-report-modal {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .admin-past-records-report-title-group {
+    align-items: center;
+  }
+
+  .admin-past-records-report-header h2 {
+    font-size: 1.55rem;
+  }
+
+  .admin-past-records-report-actions {
+    flex-direction: column-reverse;
+  }
+
+  .admin-past-records-report-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .admin-past-records-table td {
