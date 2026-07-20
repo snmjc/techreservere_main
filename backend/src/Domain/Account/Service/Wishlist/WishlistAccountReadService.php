@@ -120,6 +120,9 @@ class WishlistAccountReadService
 
         $supportingDocumentPath = $this->resolveAvailableSupportingDocumentPath($row);
 
+        $inviteSentAt = $row['invite_sent_at'] ?: ($row['invited_at'] ?? null);
+        $inviteExpiresAt = $row['invite_expires_at'] ?: $this->resolveFallbackInviteExpiresAt($inviteSentAt);
+
         return [
             'accountIdentifier' => (int)$row['account_identifier'],
             'idNumber' => ($isEmployee && !empty($row['staff_employee_id_number'])) ? (string)$row['staff_employee_id_number'] : ($row['id_number'] ?: substr((string)$row['created_timestamp'], 0, 4) . str_pad((string)$row['account_identifier'], 4, '0', STR_PAD_LEFT)),
@@ -148,8 +151,8 @@ class WishlistAccountReadService
             'registeredAt' => (string)$row['created_timestamp'],
             'inviteStatus' => $row['invite_status'] ? (string)$row['invite_status'] : null,
             'inviteInvitedBy' => $row['invite_invited_by'] ? (string)$row['invite_invited_by'] : null,
-            'inviteSentAt' => $row['invite_sent_at'] ? (string)$row['invite_sent_at'] : null,
-            'inviteExpiresAt' => $row['invite_expires_at'] ? (string)$row['invite_expires_at'] : null,
+            'inviteSentAt' => $inviteSentAt ? (string)$inviteSentAt : null,
+            'inviteExpiresAt' => $inviteExpiresAt ? (string)$inviteExpiresAt : null,
             'inviteAcceptedAt' => $row['invite_accepted_at'] ? (string)$row['invite_accepted_at'] : null,
             'invitedAt' => $row['invited_at'] ? (string)$row['invited_at'] : null,
             'approvedAt' => $row['approved_at'] ? (string)$row['approved_at'] : null,
@@ -211,6 +214,21 @@ class WishlistAccountReadService
 
         $normalized = strtolower(trim((string)$value));
         return in_array($normalized, ['1', 't', 'true', 'yes'], true);
+    }
+
+    private function resolveFallbackInviteExpiresAt(mixed $inviteSentAt): ?string
+    {
+        if (empty($inviteSentAt)) {
+            return null;
+        }
+
+        try {
+            return (new \DateTimeImmutable((string)$inviteSentAt))
+                ->modify('+7 days')
+                ->format('Y-m-d H:i:sP');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function resolveAvailableSupportingDocumentPath(array $row): ?string

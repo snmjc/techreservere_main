@@ -64,14 +64,25 @@ function parseDisplayDate(value) {
     return new Date(Number.NaN);
   }
 
-  const hasExplicitTimeZone = /([zZ]|[+-]\d{2}:\d{2})$/.test(normalizedValue);
+  const normalizedTimestamp = normalizeTimestampSeparator(normalizedValue);
+  const hasExplicitTimeZone = /([zZ]|[+-]\d{2}(?::?\d{2})?)$/.test(normalizedTimestamp);
   if (hasExplicitTimeZone) {
-    return new Date(normalizedValue);
+    return new Date(normalizeExplicitTimeZoneOffset(normalizedTimestamp));
   }
 
-  const normalizedTimestamp = normalizedValue.includes('T')
-    ? normalizedValue
-    : normalizedValue.replace(' ', 'T');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedTimestamp)) {
+    return new Date(`${normalizedTimestamp}T00:00:00Z`);
+  }
 
-  return new Date(`${normalizedTimestamp}+08:00`);
+  return new Date(`${normalizedTimestamp}Z`);
+}
+
+function normalizeTimestampSeparator(value) {
+  return value.includes('T') ? value : value.replace(' ', 'T');
+}
+
+function normalizeExplicitTimeZoneOffset(value) {
+  return value
+    .replace(/([+-]\d{2})$/, '$1:00')
+    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
 }
