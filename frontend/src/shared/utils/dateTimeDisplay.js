@@ -29,7 +29,7 @@ export function formatDisplayDateTime(value) {
     timeZone: MANILA_TIME_ZONE,
   }).format(date);
 
-  return `${formattedDateTime} PH Time`;
+  return `${formattedDateTime} PHT+8`;
 }
 
 export function formatNullableDateTime(value) {
