@@ -266,10 +266,19 @@ export function createReportsAnalyticsChartRenderer() {
           },
         },
         scales: {
+          x: {
+            grid: { color: '#e5e7eb' },
+            ticks: {
+              autoSkip: false,
+              minRotation: 24,
+              maxRotation: 24,
+            },
+          },
           y: {
             beginAtZero: true,
             max: 100,
             ticks: {
+              stepSize: 10,
               callback(value) {
                 return `${value}%`;
               },

@@ -1790,7 +1790,7 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-bottom-grid {
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1.12fr) minmax(0, 0.78fr);
   gap: 0.58rem;
   align-items: start;
 }
@@ -1849,11 +1849,12 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding: 0.72rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-utilization-panel .reports-chart-canvas-wrap--bar {
-  height: 156px;
-  margin: 0.32rem 0 0.2rem;
+  height: 250px;
+  margin: 0.42rem 0 0.38rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-utilization-panel .reports-chart-canvas {
@@ -1861,7 +1862,7 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-utilization-panel .reports-accordion {
-  margin-top: 0.28rem;
+  margin-top: 0.35rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-accordion {
