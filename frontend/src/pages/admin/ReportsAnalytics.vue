@@ -2040,23 +2040,26 @@ async function handleGeneratePdf() {
       import('jspdf'),
     ]);
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    renderChartsForCurrentLayout();
+    await nextTick();
+
+    const pdf = new jsPDF('l', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const pageMargin = 10;
     const printableWidth = pageWidth - (pageMargin * 2);
-    const exportScale = 0.82;
+    const exportScale = 0.96;
     const imageWidth = printableWidth * exportScale;
     const imageX = (pageWidth - imageWidth) / 2;
     const printablePageHeight = pageHeight - (pageMargin * 2);
     const exportRoot = reportSurfaceRef.value.querySelector('.reports-pdf-page') || reportSurfaceRef.value;
     const exportBlockSelectors = [
       '.reports-analytics-header',
-      '.reports-inline-message',
+      ':scope > .reports-inline-message',
       '.reports-model-grid',
       '.reports-forecast-panel',
-      '.reports-two-column > .reports-panel',
-      '.reports-bottom-grid > .reports-panel',
+      '.reports-two-column',
+      '.reports-bottom-grid',
     ];
     const exportBlocks = Array.from(
       exportRoot.querySelectorAll(exportBlockSelectors.join(', '))
@@ -2165,6 +2168,8 @@ async function handleGeneratePdf() {
     pdfError.value = error?.message || 'Unable to generate the PDF report right now.';
   } finally {
     isExporting.value = false;
+    await nextTick();
+    renderChartsForCurrentLayout();
   }
 }
 
@@ -2213,6 +2218,12 @@ function renderUtilizationChart() {
     utilizationComparisonItems: utilizationComparisonItems.value,
     formatMetricNumber,
   });
+}
+
+function renderChartsForCurrentLayout() {
+  renderForecastChart();
+  renderRiskChart();
+  renderUtilizationChart();
 }
 
 function handlePreferenceAccordionToggle(preferenceKey, event) {

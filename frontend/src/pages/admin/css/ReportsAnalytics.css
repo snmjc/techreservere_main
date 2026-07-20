@@ -1605,18 +1605,19 @@
 
 .reports-export-surface.is-exporting-pdf {
   gap: 0;
-  padding: 0 24px 24px;
+  align-items: center;
+  padding: 0 14px 14px;
   background: #f5faf7;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-pdf-page {
   box-sizing: border-box;
-  width: 100%;
-  max-width: 760px;
+  width: 1120px;
+  max-width: none;
   min-height: auto;
-  gap: 0.65rem;
+  gap: 0.58rem;
   margin: 0 auto;
-  padding: 18px 20px 22px;
+  padding: 12px 14px 16px;
   background: #f5faf7;
   overflow: visible;
 }
@@ -1666,17 +1667,52 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-analytics-header {
-  padding: 0.75rem 0.9rem;
+  min-height: 58px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 16px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-analytics-controls {
-  display: none;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-date-range {
+  min-height: 28px;
+  padding: 0 0.55rem;
+  border-radius: 8px;
+  font-size: 0.55rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-date-range select {
+  min-height: 24px;
+  padding: 0 0.35rem;
+  font-size: 0.55rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-date-range small {
+  font-size: 0.5rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-header h1 {
+  font-size: 1.25rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-source {
+  font-size: 0.56rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-analytics-kicker {
+  margin-bottom: 0.18rem;
+  font-size: 0.52rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-refresh-button {
-  min-height: 38px;
-  padding: 0 0.9rem;
+  min-height: 28px;
+  padding: 0 0.55rem;
+  border-radius: 8px;
   box-shadow: none;
+  font-size: 0.55rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-model-grid {
@@ -1686,7 +1722,8 @@
 
 .reports-export-surface.is-exporting-pdf .reports-model-card {
   min-height: 0;
-  padding: 0.52rem;
+  padding: 0.54rem;
+  border-radius: 12px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-model-card p {
@@ -1708,42 +1745,58 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-model-card span {
-  max-width: 100%;
+  max-width: 74%;
   font-size: 0.5rem;
   line-height: 1.32;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-model-card svg {
-  display: none;
+  display: block;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  width: 42px;
+  height: 34px;
+  stroke-width: 2.4;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-panel {
-  padding: 0.72rem;
+  padding: 0.62rem;
+  border-radius: 14px;
   min-height: 0;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-panel h2 {
   display: block;
-  min-height: 1.45em;
+  min-height: 0;
+  font-size: 0.72rem;
   line-height: 1.35;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-panel p {
-  line-height: 1.45;
+  margin-top: 0.18rem;
+  font-size: 0.52rem;
+  line-height: 1.35;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-forecast-layout {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-two-column {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.58rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-bottom-grid {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.85fr);
+  gap: 0.58rem;
   align-items: start;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-summary-panel {
+  grid-column: auto;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-row-icon-button,
@@ -1755,23 +1808,27 @@
 
 .reports-export-surface.is-exporting-pdf .reports-chart-card {
   min-height: 0;
+  overflow: hidden;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-chart-canvas-wrap {
-  height: 170px;
+  height: 220px;
+  overflow: hidden;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-forecast-panel .reports-insights-card {
-  padding: 0.62rem 0.72rem;
+  padding: 0.58rem 0.62rem;
+  border-radius: 12px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-forecast-panel .reports-insights-card h3 {
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.38rem;
+  font-size: 0.62rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-forecast-panel .reports-insights-card dl {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.48rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-forecast-panel .reports-insights-card div {
@@ -1779,22 +1836,23 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-chart-canvas-wrap--donut {
-  max-width: 120px;
-  height: 120px;
+  max-width: 90px;
+  height: 90px;
   margin: 0 auto;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-chart-canvas-wrap--bar {
-  height: 145px;
+  height: 100px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-accordion {
-  gap: 0.3rem;
-  margin-top: 0.5rem;
+  gap: 0.25rem;
+  margin-top: 0.42rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-accordion details {
-  padding: 0.45rem 0.55rem;
+  padding: 0.34rem 0.46rem;
+  border-radius: 8px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-accordion details > :not(summary) {
@@ -1803,6 +1861,7 @@
 
 .reports-export-surface.is-exporting-pdf .reports-accordion summary {
   align-items: flex-start;
+  font-size: 0.56rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-accordion summary small {
@@ -1822,26 +1881,27 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-risk-layout {
-  grid-template-columns: 118px minmax(0, 1fr) 155px;
-  gap: 0.65rem;
+  grid-template-columns: 105px minmax(0, 1fr) 135px;
+  gap: 0.48rem;
   align-items: start;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-optimization-list {
-  gap: 0.45rem;
-  margin-top: 0.6rem;
+  gap: 0.36rem;
+  margin-top: 0.48rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-optimization-list article {
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: start;
-  padding: 0.55rem;
+  padding: 0.42rem;
+  border-radius: 10px;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-equipment-table th,
 .reports-export-surface.is-exporting-pdf .reports-equipment-table td {
-  padding: 0.48rem 0.38rem;
-  font-size: 0.68rem;
+  padding: 0.34rem 0.26rem;
+  font-size: 0.5rem;
   vertical-align: top;
   white-space: normal;
 }
@@ -1868,7 +1928,8 @@
 
 .reports-export-surface.is-exporting-pdf .reports-decision-pill {
   min-height: 0;
-  padding: 0.12rem 0.36rem;
+  padding: 0.08rem 0.26rem;
+  font-size: 0.46rem;
   white-space: normal;
 }
 
@@ -1891,28 +1952,65 @@
 }
 
 .reports-export-surface.is-exporting-pdf .reports-bottom-grid > .reports-panel {
-  padding-top: 0.9rem;
+  padding-top: 0.68rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-insights-card dl,
 .reports-export-surface.is-exporting-pdf .reports-summary-panel dl {
-  gap: 0.42rem;
+  gap: 0.35rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-insights-card dd,
 .reports-export-surface.is-exporting-pdf .reports-summary-panel dd {
-  line-height: 1.4;
+  font-size: 0.5rem;
+  line-height: 1.32;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-insights-card dt,
+.reports-export-surface.is-exporting-pdf .reports-summary-panel dt {
+  font-size: 0.5rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-risk-list,
 .reports-export-surface.is-exporting-pdf .reports-top-risk-card ol {
-  gap: 0.45rem;
+  gap: 0.28rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-risk-list li,
+.reports-export-surface.is-exporting-pdf .reports-top-risk-card ol {
+  font-size: 0.5rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-risk-list strong {
+  font-size: 0.46rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-top-risk-card {
+  padding: 0.5rem;
+  border-radius: 10px;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-top-risk-card h3 {
+  margin-bottom: 0.35rem;
+  font-size: 0.58rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-optimization-list strong,
 .reports-export-surface.is-exporting-pdf .reports-optimization-list small,
 .reports-export-surface.is-exporting-pdf .reports-optimization-list em {
-  line-height: 1.45;
+  line-height: 1.35;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-optimization-list strong {
+  font-size: 0.54rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-optimization-list small {
+  font-size: 0.46rem;
+}
+
+.reports-export-surface.is-exporting-pdf .reports-optimization-list em {
+  font-size: 0.62rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-optimization-list em {
@@ -1923,8 +2021,8 @@
 .reports-export-surface.is-exporting-pdf .reports-summary-panel div {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.25rem;
-  padding-bottom: 0.48rem;
+  gap: 0.18rem;
+  padding-bottom: 0.36rem;
 }
 
 .reports-export-surface.is-exporting-pdf .reports-summary-panel dd {
