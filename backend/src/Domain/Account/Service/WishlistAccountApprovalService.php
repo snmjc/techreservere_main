@@ -305,7 +305,8 @@ class WishlistAccountApprovalService
             'invitedBy' => $context['invitedBy'],
             'organization' => 'TechReserve',
             'invitationToken' => $invitationDraft['token'],
-            'status' => 'sent',
+            // The invitations table constraint only allows pending/accepted/expired.
+            'status' => 'pending',
             'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d H:i:sP'),
             'createdAt' => $invitationDraft['createdAt']->format('Y-m-d H:i:sP'),
             'acceptedAt' => null,
@@ -412,26 +413,48 @@ class WishlistAccountApprovalService
     private function buildInvitationSuccessPayload(array $context): array
     {
         $account = $context['account'];
-        $invitationDraft = $context['draft'];
+        $latestInvitation = $this->buildLatestInvitationPayload($context);
 
         return [
             'message' => 'Invitation sent successfully.',
-            'account' => $this->buildInvitedAccountPayload($account),
+            'account' => $this->buildInvitedAccountPayload($account, $latestInvitation),
             'invitation' => [
                 'emailAddress' => (string)$account['email_address'],
                 'role' => (string)$account['role_designation'],
                 'status' => 'invited',
-                'token' => $invitationDraft['token'],
-                'clerkInvitationId' => $invitationDraft['clerkInvitationId'],
-                'sentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
-                'expiresAt' => $invitationDraft['expiresAt']->format('Y-m-d\TH:i:sP'),
-                'acceptedAt' => null,
-                'redirectUrl' => $invitationDraft['redirectUrl'],
-                'invitationUrl' => $invitationDraft['invitationUrl'],
+                'token' => $latestInvitation['token'],
+                'clerkInvitationId' => $latestInvitation['clerkInvitationId'],
+                'sentAt' => $latestInvitation['inviteSentAt'],
+                'expiresAt' => $latestInvitation['inviteExpiresAt'],
+                'acceptedAt' => $latestInvitation['inviteAcceptedAt'],
+                'redirectUrl' => $latestInvitation['redirectUrl'],
+                'invitationUrl' => $latestInvitation['invitationUrl'],
                 'sentBy' => $context['invitedBy'],
+                'inviteSentAt' => $latestInvitation['inviteSentAt'],
+                'inviteExpiresAt' => $latestInvitation['inviteExpiresAt'],
+                'inviteAcceptedAt' => $latestInvitation['inviteAcceptedAt'],
+                'inviteInvitedBy' => $latestInvitation['inviteInvitedBy'],
+                'invitationStatus' => $latestInvitation['invitationStatus'],
                 'emailSent' => true,
                 'movesToManageAccounts' => false,
             ],
+        ];
+    }
+
+    private function buildLatestInvitationPayload(array $context): array
+    {
+        $invitationDraft = $context['draft'];
+
+        return [
+            'inviteSentAt' => $invitationDraft['createdAt']->format('Y-m-d\TH:i:sP'),
+            'inviteExpiresAt' => $invitationDraft['expiresAt']->format('Y-m-d\TH:i:sP'),
+            'inviteAcceptedAt' => null,
+            'inviteInvitedBy' => $context['invitedBy'],
+            'invitationStatus' => 'sent',
+            'token' => $invitationDraft['token'],
+            'clerkInvitationId' => $invitationDraft['clerkInvitationId'],
+            'redirectUrl' => $invitationDraft['redirectUrl'],
+            'invitationUrl' => $invitationDraft['invitationUrl'],
         ];
     }
 
@@ -479,7 +502,7 @@ class WishlistAccountApprovalService
         }
     }
 
-    private function buildInvitedAccountPayload(array $account): array
+    private function buildInvitedAccountPayload(array $account, array $latestInvitation): array
     {
         return [
             'accountIdentifier' => (int)$account['account_identifier'],
@@ -492,7 +515,11 @@ class WishlistAccountApprovalService
             'status' => 'invited',
             'isApproved' => false,
             'isActive' => false,
-            'invitedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:sP'),
+            'invitedAt' => $latestInvitation['inviteSentAt'],
+            'inviteSentAt' => $latestInvitation['inviteSentAt'],
+            'inviteExpiresAt' => $latestInvitation['inviteExpiresAt'],
+            'inviteAcceptedAt' => $latestInvitation['inviteAcceptedAt'],
+            'inviteInvitedBy' => $latestInvitation['inviteInvitedBy'],
         ];
     }
 

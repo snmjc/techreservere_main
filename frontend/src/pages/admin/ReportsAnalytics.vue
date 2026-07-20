@@ -1060,7 +1060,7 @@ const paginatedPossibleBorrowedEquipment = computed(() => paginateEquipmentTrend
 ));
 const optimizationNarrative = computed(() => buildOptimizationNarrative(optimizationMetrics.value, summaryReport.value || {}));
 const utilizationNarrative = computed(() => buildUtilizationNarrative(utilizationItems.value));
-const reportGeneratedAt = computed(() => summaryReport.value?.generatedAt || 'Not generated');
+const reportGeneratedAt = computed(() => formatReportGeneratedAt(summaryReport.value?.generatedAt));
 const summaryItems = computed(() => [
   { label: 'Total Equipment', value: formatMetricNumber(summaryReport.value?.totalEquipment || 0, 0) },
   { label: 'Active Reservations', value: formatMetricNumber(summaryReport.value?.activeReservations || 0, 0) },
@@ -1927,6 +1927,94 @@ function formatModelArtifactDate(value) {
   }).format(date);
 }
 
+function formatReportGeneratedAt(value) {
+  if (!value || value === 'Not generated') {
+    return 'Not generated';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function resolvePreferredPdfBreakpoints(block, canvasHeight) {
+  const blockHeight = Math.max(block.scrollHeight, block.getBoundingClientRect().height, 1);
+  const scaleRatio = canvasHeight / blockHeight;
+  const blockRect = block.getBoundingClientRect();
+  const selectors = [
+    ':scope > *',
+    ':scope .reports-forecast-layout > *',
+    ':scope .reports-risk-layout > *',
+    ':scope .reports-table-stack > div',
+    ':scope .reports-accordion details',
+    ':scope .reports-optimization-list article',
+    ':scope .reports-validation-grid > *',
+    ':scope .reports-rf-metrics-grid > *',
+    ':scope .reports-risk-probability-grid > *',
+    ':scope .reports-summary-panel dl > div',
+  ];
+  const breakpoints = new Set();
+
+  selectors.forEach((selector) => {
+    block.querySelectorAll(selector).forEach((element) => {
+      if (!(element instanceof HTMLElement) || element === block) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      const relativeBottom = rect.bottom - blockRect.top;
+      if (relativeBottom <= 0 || relativeBottom >= blockRect.height) {
+        return;
+      }
+
+      breakpoints.add(Math.round(relativeBottom * scaleRatio));
+    });
+  });
+
+  return Array.from(breakpoints)
+    .filter((value) => value > 0 && value < canvasHeight)
+    .sort((first, second) => first - second);
+}
+
+function resolvePdfSliceHeight(sourceOffset, maxSliceHeight, remainingSourceHeight, preferredBreakpoints) {
+  if (!preferredBreakpoints.length) {
+    return maxSliceHeight;
+  }
+
+  const minimumTargetHeight = Math.max(180, Math.floor(maxSliceHeight * 0.58));
+  const targetBottom = sourceOffset + maxSliceHeight;
+  const minimumBottom = sourceOffset + Math.min(minimumTargetHeight, maxSliceHeight);
+  let chosenBreakpoint = null;
+
+  for (const breakpoint of preferredBreakpoints) {
+    if (breakpoint <= minimumBottom) {
+      continue;
+    }
+
+    if (breakpoint <= targetBottom) {
+      chosenBreakpoint = breakpoint;
+      continue;
+    }
+
+    break;
+  }
+
+  if (chosenBreakpoint !== null) {
+    return Math.max(1, chosenBreakpoint - sourceOffset);
+  }
+
+  return Math.min(maxSliceHeight, remainingSourceHeight);
+}
+
 function closeScenarioModal() {
   if (isTriggeringAnalytics.value) {
     return;
@@ -1952,65 +2040,126 @@ async function handleGeneratePdf() {
       import('jspdf'),
     ]);
 
-    const canvas = await html2canvas(reportSurfaceRef.value, {
-      backgroundColor: '#f5faf7',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      windowWidth: reportSurfaceRef.value.scrollWidth,
-      windowHeight: reportSurfaceRef.value.scrollHeight,
-      scrollX: 0,
-      scrollY: 0,
-    });
+    renderChartsForCurrentLayout();
+    await nextTick();
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF('l', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const pageMargin = 10;
-    const imageWidth = pageWidth - (pageMargin * 2);
+    const printableWidth = pageWidth - (pageMargin * 2);
+    const exportScale = 0.96;
+    const imageWidth = printableWidth * exportScale;
+    const imageX = (pageWidth - imageWidth) / 2;
     const printablePageHeight = pageHeight - (pageMargin * 2);
-    const sourcePageHeight = Math.max(1, Math.floor((printablePageHeight * canvas.width) / imageWidth));
-    let sourceOffset = 0;
-    let pageIndex = 0;
+    const exportRoot = reportSurfaceRef.value.querySelector('.reports-pdf-page') || reportSurfaceRef.value;
+    const exportBlockSelectors = [
+      '.reports-analytics-header',
+      ':scope > .reports-inline-message',
+      '.reports-model-grid',
+      '.reports-forecast-panel',
+      '.reports-two-column',
+      '.reports-bottom-grid',
+    ];
+    const exportBlocks = Array.from(
+      exportRoot.querySelectorAll(exportBlockSelectors.join(', '))
+    ).filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+    const blockGap = 3;
+    const continuedSliceTopPadding = 2;
+    let currentY = pageMargin;
 
-    while (sourceOffset < canvas.height) {
-      const sliceHeight = Math.min(sourcePageHeight, canvas.height - sourceOffset);
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = sliceHeight;
+    for (const block of exportBlocks) {
+      const canvas = await html2canvas(block, {
+        backgroundColor: '#f5faf7',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: Math.ceil(block.scrollWidth),
+        windowHeight: Math.ceil(block.scrollHeight),
+        scrollX: 0,
+        scrollY: 0,
+      });
 
-      const pageContext = pageCanvas.getContext('2d');
-      if (!pageContext) {
-        throw new Error('Unable to prepare the PDF page canvas.');
-      }
+      const sourcePageHeight = Math.max(1, Math.floor((printablePageHeight * canvas.width) / imageWidth));
+      const totalImageHeight = (canvas.height * imageWidth) / canvas.width;
+      const preferredBreakpoints = resolvePreferredPdfBreakpoints(block, canvas.height);
 
-      pageContext.fillStyle = '#f5faf7';
-      pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      pageContext.drawImage(
-        canvas,
-        0,
-        sourceOffset,
-        canvas.width,
-        sliceHeight,
-        0,
-        0,
-        canvas.width,
-        sliceHeight,
-      );
-
-      const imageHeight = (sliceHeight * imageWidth) / canvas.width;
-      const imageData = pageCanvas.toDataURL('image/png');
-
-      if (pageIndex > 0) {
-        pdf.addPage();
-      }
-
-      pdf.addImage(imageData, 'PNG', pageMargin, pageMargin, imageWidth, imageHeight);
-      sourceOffset += sliceHeight;
-      pageIndex += 1;
-
-      if (sourceOffset < canvas.height) {
+      if (totalImageHeight <= (pageHeight - pageMargin) - currentY) {
+        const imageData = canvas.toDataURL('image/png');
+        pdf.addImage(imageData, 'PNG', imageX, currentY, imageWidth, totalImageHeight);
+        currentY += totalImageHeight + blockGap;
         await nextTick();
+        continue;
+      }
+
+      if (currentY > pageMargin) {
+        pdf.addPage();
+        currentY = pageMargin;
+      }
+
+      let sourceOffset = 0;
+      let isFirstSlice = true;
+
+      while (sourceOffset < canvas.height) {
+        const remainingPrintableHeight = (pageHeight - pageMargin) - currentY;
+        const remainingSourceHeight = canvas.height - sourceOffset;
+        const maxSliceHeight = Math.min(sourcePageHeight, remainingSourceHeight);
+        let sliceHeight = resolvePdfSliceHeight(
+          sourceOffset,
+          maxSliceHeight,
+          remainingSourceHeight,
+          preferredBreakpoints,
+        );
+        let imageHeight = (sliceHeight * imageWidth) / canvas.width;
+
+        if (remainingPrintableHeight < imageHeight && !isFirstSlice) {
+          pdf.addPage();
+          currentY = pageMargin + continuedSliceTopPadding;
+          continue;
+        }
+
+        if (remainingPrintableHeight < imageHeight && isFirstSlice) {
+          sliceHeight = Math.max(1, Math.floor((remainingPrintableHeight * canvas.width) / imageWidth));
+          imageHeight = (sliceHeight * imageWidth) / canvas.width;
+        }
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+
+        const pageContext = pageCanvas.getContext('2d');
+        if (!pageContext) {
+          throw new Error('Unable to prepare the PDF page canvas.');
+        }
+
+        pageContext.fillStyle = '#f5faf7';
+        pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageContext.drawImage(
+          canvas,
+          0,
+          sourceOffset,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight,
+        );
+
+        const imageData = pageCanvas.toDataURL('image/png');
+        pdf.addImage(imageData, 'PNG', imageX, currentY, imageWidth, imageHeight);
+
+        sourceOffset += sliceHeight;
+        currentY += imageHeight;
+        isFirstSlice = false;
+
+        if (sourceOffset < canvas.height) {
+          pdf.addPage();
+          currentY = pageMargin + continuedSliceTopPadding;
+          await nextTick();
+        } else {
+          currentY += blockGap;
+        }
       }
     }
 
@@ -2019,6 +2168,8 @@ async function handleGeneratePdf() {
     pdfError.value = error?.message || 'Unable to generate the PDF report right now.';
   } finally {
     isExporting.value = false;
+    await nextTick();
+    renderChartsForCurrentLayout();
   }
 }
 
@@ -2067,6 +2218,12 @@ function renderUtilizationChart() {
     utilizationComparisonItems: utilizationComparisonItems.value,
     formatMetricNumber,
   });
+}
+
+function renderChartsForCurrentLayout() {
+  renderForecastChart();
+  renderRiskChart();
+  renderUtilizationChart();
 }
 
 function handlePreferenceAccordionToggle(preferenceKey, event) {

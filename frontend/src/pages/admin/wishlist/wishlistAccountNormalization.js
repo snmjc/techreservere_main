@@ -97,5 +97,17 @@ function normalizeWishlistAccountSource(account) {
 }
 
 function isNewerAccount(account, existingAccount) {
-  return new Date(account.registeredAt).getTime() > new Date(existingAccount.registeredAt).getTime();
+  const accountInviteTime = getTimestamp(account.inviteSentAt || account.invitedAt);
+  const existingInviteTime = getTimestamp(existingAccount.inviteSentAt || existingAccount.invitedAt);
+
+  if (accountInviteTime !== existingInviteTime) {
+    return accountInviteTime > existingInviteTime;
+  }
+
+  return getTimestamp(account.registeredAt) > getTimestamp(existingAccount.registeredAt);
+}
+
+function getTimestamp(value) {
+  const timestamp = new Date(value || 0).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }
