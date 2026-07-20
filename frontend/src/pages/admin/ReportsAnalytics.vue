@@ -285,7 +285,7 @@
         </div>
 
         <div class="reports-bottom-grid">
-          <section class="reports-panel">
+          <section class="reports-panel reports-utilization-panel">
             <h2>Equipment Utilization Overview (Random Forest)</h2>
             <p v-if="isUtilizationSectionLoading" class="reports-section-loading">Loading equipment utilization...</p>
             <p v-if="utilizationSectionError" class="reports-inline-message is-error">{{ utilizationSectionError }}</p>
