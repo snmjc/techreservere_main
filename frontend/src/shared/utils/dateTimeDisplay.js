@@ -20,15 +20,16 @@ export function formatDisplayDateTime(value) {
   const date = parseDisplayDate(value);
   if (Number.isNaN(date.getTime())) return 'N/A';
 
-  return new Intl.DateTimeFormat('en-US', {
+  const formattedDateTime = new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     timeZone: MANILA_TIME_ZONE,
-    timeZoneName: 'short',
   }).format(date);
+
+  return `${formattedDateTime} PH Time`;
 }
 
 export function formatNullableDateTime(value) {

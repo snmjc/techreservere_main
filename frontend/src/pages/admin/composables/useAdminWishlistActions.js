@@ -114,6 +114,7 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
         return;
       }
 
+      syncInviteDetails(result.data);
       const successMessage = getInviteSuccessMessage();
       closeModals();
       showToast(successMessage);
@@ -298,6 +299,46 @@ export function useAdminWishlistActions({ authStore, currentAdminEmail, loadWish
 
   function getInviteSuccessMessage() {
     return approvalMode.value === 'resend' ? 'Invitation resent successfully!' : 'Invitation sent successfully!';
+  }
+
+  function syncInviteDetails(resultData) {
+    const invitationData = buildInviteStatePatch(resultData);
+    if (!invitationData) return;
+
+    applyInviteStatePatch(selectedAccount.value, invitationData);
+    applyInviteStatePatch(approvalAccount.value, invitationData);
+  }
+
+  function buildInviteStatePatch(resultData) {
+    const accountData = resultData?.account || {};
+    const invitationData = resultData?.invitation || {};
+    const inviteSentAt = invitationData.inviteSentAt || invitationData.sentAt || accountData.inviteSentAt || accountData.invitedAt || null;
+    const inviteExpiresAt = invitationData.inviteExpiresAt || invitationData.expiresAt || accountData.inviteExpiresAt || null;
+    const inviteAcceptedAt = invitationData.inviteAcceptedAt || invitationData.acceptedAt || accountData.inviteAcceptedAt || null;
+    const inviteInvitedBy = invitationData.inviteInvitedBy || invitationData.sentBy || accountData.inviteInvitedBy || null;
+    const invitationStatus = invitationData.invitationStatus || accountData.invitationStatus || 'sent';
+
+    if (!inviteSentAt && !inviteExpiresAt && !inviteAcceptedAt && !inviteInvitedBy && !invitationStatus) {
+      return null;
+    }
+
+    return {
+      inviteSentAt,
+      inviteExpiresAt,
+      inviteAcceptedAt,
+      inviteInvitedBy,
+      invitationStatus,
+      inviteStatus: 'sent',
+      invitedAt: accountData.invitedAt || inviteSentAt,
+      accountStatus: accountData.accountStatus || accountData.status || 'invited',
+      isApproved: Boolean(accountData.isApproved ?? false),
+      isActive: Boolean(accountData.isActive ?? false),
+    };
+  }
+
+  function applyInviteStatePatch(account, inviteStatePatch) {
+    if (!account || !inviteStatePatch) return;
+    Object.assign(account, inviteStatePatch);
   }
 
   async function handleRequestDecisionResult(result, closeModal, errorRef, successMessage, fallbackError) {
