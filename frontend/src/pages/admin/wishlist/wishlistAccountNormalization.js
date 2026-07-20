@@ -70,7 +70,12 @@ export function formatIdNumber(idNumber) {
 
 function normalizeWishlistAccountSource(account) {
   const inviteAcceptedAt = account.inviteAcceptedAt || account.invite_accepted_at || null;
-  const inviteExpiresAt = account.inviteExpiresAt || account.invite_expires_at || null;
+  const invitedAt = account.invitedAt || account.invited_at || null;
+  const inviteSentAt = account.inviteSentAt || account.invite_sent_at || invitedAt || null;
+  const inviteExpiresAt = account.inviteExpiresAt
+    || account.invite_expires_at
+    || resolveFallbackInviteExpiresAt(inviteSentAt)
+    || null;
 
   return {
     roleDesignation: account.roleDesignation || account.role_designation || 'ROLE_BORROWER',
@@ -78,7 +83,7 @@ function normalizeWishlistAccountSource(account) {
     lastName: account.lastName || account.last_name || '',
     emailAddress: account.emailAddress || account.email_address || '',
     username: account.username || '',
-    inviteSentAt: account.inviteSentAt || account.invite_sent_at || null,
+    inviteSentAt,
     inviteExpiresAt,
     inviteAcceptedAt,
     inviteStatus: account.inviteStatus || account.invite_status || null,
@@ -110,4 +115,11 @@ function isNewerAccount(account, existingAccount) {
 function getTimestamp(value) {
   const timestamp = new Date(value || 0).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function resolveFallbackInviteExpiresAt(inviteSentAt) {
+  const sentTimestamp = getTimestamp(inviteSentAt);
+  if (sentTimestamp === 0) return null;
+
+  return new Date(sentTimestamp + (7 * 24 * 60 * 60 * 1000)).toISOString();
 }
