@@ -1,9 +1,110 @@
-- name: Azure login (OIDC)
-  uses: azure/login@v2
-  with:
-    client-id: ${{ vars.AZURE_CLIENT_ID }}
-    tenant-id: ${{ vars.AZURE_TENANT_ID }}
-    subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-- name: ACR login
-  run: az acr login --name "${{ vars.ACR_NAME }}"
+name: Build and deploy TechReserve to Azure
+
+on:
+  push:
+    branches: [main_repair]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: techreserve-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: analytics-service/requirements.txt
+
+      - name: Test analytics
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: analytics-service
+          DATABASE_URL: postgresql://test:test@127.0.0.1:5432/techreserve_test
+        run: |
+          python -m pip install -r analytics-service/requirements.txt
+          python -m unittest discover -s analytics-service/tests -p 'test_*.py' -v
+
+      # Reuse existing working Azure connection
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Reuse existing Azure Container Registry
+      - name: ACR login
+        run: az acr login --name "${{ vars.ACR_NAME }}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build and push frontend
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=https://techreserve.farahkenawy.codes
+            VITE_FRONTEND_URL=https://techreserve.farahkenawy.codes/
+            VITE_CLERK_PUBLISHABLE_KEY=${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+          tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/frontend:${{ github.sha }}
+
+      # Build and push backend
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/backend:${{ github.sha }}
+
+      # Build and push analytics
+      - name: Build and push analytics
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./analytics-service/Dockerfile
+          push: true
+          tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/analytics:${{ github.sha }}
+
+      # Update existing backend Container App
+      - name: Deploy backend
+        run: |
+          az containerapp update \
+            --name "${{ vars.BACKEND_APP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.ACR_NAME }}.azurecr.io/techreserve/backend:${{ github.sha }}"
+
+      # Update existing analytics Container App
+      - name: Deploy analytics
+        run: |
+          az containerapp update \
+            --name "${{ vars.ANALYTICS_APP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.ACR_NAME }}.azurecr.io/techreserve/analytics:${{ github.sha }}"
+
+      # Update existing frontend Container App
+      - name: Deploy frontend
+        run: |
+          az containerapp update \
+            --name "${{ vars.FRONTEND_APP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.ACR_NAME }}.azurecr.io/techreserve/frontend:${{ github.sha }}"
