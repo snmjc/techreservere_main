@@ -54,5 +54,9 @@ if [ "${APP_ENV:-dev}" != "prod" ]; then
   php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration 2>/dev/null || true
 fi
 
+# Temporary concurrency improvement for the PHP CLI server.
+# Replace with a production-capable PHP server in a later deployment.
+export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-4}"
+
 # Start PHP built-in server
 exec php -S 0.0.0.0:8000 -t public public/index.php
