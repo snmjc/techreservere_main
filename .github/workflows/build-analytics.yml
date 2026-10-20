@@ -31,6 +31,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
           PYTHONPATH: analytics-service
+          DATABASE_URL: postgresql://test:test@127.0.0.1:5432/techreserve_test
         run: |
           python -m unittest discover \
             -s analytics-service/tests \
