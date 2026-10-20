@@ -3,7 +3,8 @@ name: Build and deploy TechReserve to Azure
 
 on:
   push:
-    branches: [main_repair]
+    branches:
+      - main_repair
   workflow_dispatch:
 
 permissions:
@@ -22,6 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Analytics tests
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,24 +38,26 @@ jobs:
           DATABASE_URL: postgresql://test:test@127.0.0.1:5432/techreserve_test
         run: |
           python -m pip install -r analytics-service/requirements.txt
-          python -m unittest discover -s analytics-service/tests -p 'test_*.py' -v
+          python -m unittest discover \
+            -s analytics-service/tests \
+            -p 'test_*.py' -v
 
-      # Reuse existing working Azure connection
-      - name: Azure login (OIDC)
+      # Existing Azure OIDC connection
+      - name: Azure login
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # Reuse existing Azure Container Registry
+      # Existing Azure Container Registry
       - name: ACR login
         run: az acr login --name "${{ vars.ACR_NAME }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build and push frontend
+      # Frontend
       - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
@@ -66,7 +70,7 @@ jobs:
             VITE_CLERK_PUBLISHABLE_KEY=${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
           tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/frontend:${{ github.sha }}
 
-      # Build and push backend
+      # Backend
       - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
@@ -75,7 +79,7 @@ jobs:
           push: true
           tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/backend:${{ github.sha }}
 
-      # Build and push analytics
+      # Analytics
       - name: Build and push analytics
         uses: docker/build-push-action@v6
         with:
@@ -84,7 +88,7 @@ jobs:
           push: true
           tags: ${{ vars.ACR_NAME }}.azurecr.io/techreserve/analytics:${{ github.sha }}
 
-      # Update existing backend Container App
+      # Deploy to existing backend Container App
       - name: Deploy backend
         run: |
           az containerapp update \
@@ -92,7 +96,7 @@ jobs:
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.ACR_NAME }}.azurecr.io/techreserve/backend:${{ github.sha }}"
 
-      # Update existing analytics Container App
+      # Deploy to existing analytics Container App
       - name: Deploy analytics
         run: |
           az containerapp update \
@@ -100,7 +104,7 @@ jobs:
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.ACR_NAME }}.azurecr.io/techreserve/analytics:${{ github.sha }}"
 
-      # Update existing frontend Container App
+      # Deploy to existing frontend Container App
       - name: Deploy frontend
         run: |
           az containerapp update \
