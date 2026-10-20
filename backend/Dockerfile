@@ -32,7 +32,7 @@ WORKDIR /app
 
 # Pre-install composer deps at build time (layer cache)
 COPY composer.json composer.lock ./
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts --no-dev || true
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts --no-dev
 
 COPY . .
 
