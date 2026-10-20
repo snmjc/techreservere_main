@@ -1,6 +1,10 @@
+
 name: Build TechReserve Frontend
 
 on:
+  push:
+    branches:
+      - main_repair
   workflow_dispatch:
 
 permissions:

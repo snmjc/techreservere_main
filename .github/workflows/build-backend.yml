@@ -1,6 +1,10 @@
+
 name: Build TechReserve Backend
 
 on:
+  push:
+    branches:
+      - main_repair
   workflow_dispatch:
 
 permissions:
